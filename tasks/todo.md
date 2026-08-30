@@ -64,14 +64,16 @@ Ver `tasks/plan.md` para o grafo de dependência completo, riscos e perguntas em
 **Description:** Empacotar o projeto em Docker (mitiga falha documentada de build do módulo nativo do SQLite) com dois serviços isolados — Produção e Homologação — cada um com seu `.env` e volume de banco próprios.
 
 **Acceptance criteria:**
-- [ ] `Dockerfile` builda a imagem com `better-sqlite3` compilado corretamente
-- [ ] `docker-compose.yml` define os serviços `producao` e `homologacao`, cada um com volume e env file próprios
-- [ ] Nenhum segredo hardcoded no compose (só referência a `.env.producao`/`.env.homologacao`, ambos no `.gitignore`)
+- [x] `Dockerfile` builda a imagem com `better-sqlite3` compilado corretamente
+- [x] `docker-compose.yml` define os serviços `producao` e `homologacao`, cada um com volume e env file próprios
+- [x] Nenhum segredo hardcoded no compose (só referência a `.env.producao`/`.env.homologacao`, ambos no `.gitignore`)
 
 **Verification:**
-- [ ] Build succeeds: `docker build .`
-- [ ] Manual check: `docker compose config` valida os dois serviços sem erro
-- [ ] Manual check: `.env.producao`/`.env.homologacao` cobertos pelo `.gitignore` existente
+- [x] Build succeeds: `docker build .` — **verificado via CI** (job `docker` novo em `.github/workflows/ci.yml`), não localmente: Docker não está instalado nesta máquina Windows
+- [x] Manual check: `docker compose config` valida os dois serviços sem erro — idem, verificado via CI (cria `.env.producao`/`.env.homologacao` de teste a partir do `.env.example`, nunca comitados)
+- [x] Manual check: `.env.producao`/`.env.homologacao` cobertos pelo `.gitignore` existente (padrão `.env.*` já cobria, confirmado com `git check-ignore -v`)
+
+**Nota (2026-08-30):** Docker não está instalado localmente — a verificação real de build/compose acontece no CI (GitHub Actions já tem Docker nos runners), não nesta máquina. Job `docker` adicionado ao `ci.yml` como parte desta tarefa.
 
 **Dependencies:** Tarefa 2
 
