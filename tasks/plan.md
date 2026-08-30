@@ -59,16 +59,16 @@ Scaffold Node/TS (Tarefa 1)
 
 ### Fase C: Bot e IA
 
-- [ ] Tarefa 6: Bot Telegram (grammY) com allowlist de `chat_id`
-- [ ] Tarefa 7: Integração simples com OpenRouter + registro em `interacoes_ia`
-- [ ] Tarefa 8: Estrutura de testes unitários (Vitest) com primeiro teste real
-- [ ] Tarefa 9: Handlers separados por tipo de entrada (texto vs. imagem/PDF)
+- [x] Tarefa 6: Bot Telegram (grammY) com allowlist de `chat_id`
+- [x] Tarefa 7: Integração simples com OpenRouter + registro em `interacoes_ia`
+- [x] Tarefa 8: Estrutura de testes unitários (Vitest) com primeiro teste real
+- [x] Tarefa 9: Handlers separados por tipo de entrada (texto vs. imagem/PDF)
 
 ### Checkpoint: Bot funcional
-- [ ] Enviar mensagem de texto ao bot de Homologação retorna resposta gerada via OpenRouter
-- [ ] Mensagem de um `chat_id` fora da allowlist é ignorada (log confirma, sem resposta)
-- [ ] Envio de imagem/PDF cai no handler dedicado (mesmo que só logue "não implementado ainda")
-- [ ] `npm test` roda e passa
+- [x] Enviar mensagem de texto ao bot de Homologação retorna resposta gerada via OpenRouter
+- [x] Mensagem de um `chat_id` fora da allowlist é ignorada (log confirma, sem resposta) — coberto pelos testes unitários do middleware (não testado manualmente com um segundo Telegram, decisão registrada na Tarefa 6)
+- [x] Envio de imagem/PDF cai no handler dedicado (mesmo que só logue "não implementado ainda")
+- [x] `npm test` roda e passa (19 testes)
 - [ ] Revisão com o usuário antes de prosseguir
 
 ### Fase D: Dados de apoio e resiliência
