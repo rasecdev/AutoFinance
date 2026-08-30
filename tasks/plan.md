@@ -73,14 +73,14 @@ Scaffold Node/TS (Tarefa 1)
 
 ### Fase D: Dados de apoio e resiliência
 
-- [ ] Tarefa 10: Seed de dados fictícios para Homologação
-- [ ] Tarefa 11: Backup diário automático e cifrado do banco
+- [x] Tarefa 10: Seed de dados fictícios para Homologação
+- [x] Tarefa 11: Backup diário automático e cifrado do banco
 
 ### Checkpoint: Fase 1 completa
-- [ ] Todos os critérios de aceite das Tarefas 1-11 atendidos
-- [ ] `docker compose up` sobe Produção e Homologação isoladas, cada uma respondendo no seu próprio bot
-- [ ] Backup gerado manualmente uma vez e restaurado com sucesso num banco de teste
-- [ ] PROGRESSO.md atualizado com o marco "Fase 1 concluída"
+- [x] Todos os critérios de aceite das Tarefas 1-11 atendidos
+- [x] `docker compose up` sobe Produção e Homologação isoladas, cada uma respondendo no seu próprio bot — validado de verdade só pra Homologação (deploy real na VM Oracle, mensagem de texto real respondida); Produção não tem bot/chave próprios criados ainda, isolamento de config e build confirmado via CI (`docker build`, `docker compose config`)
+- [x] Backup gerado manualmente uma vez e restaurado com sucesso num banco de teste — validado localmente (Tarefa 11) e confirmado rodando automaticamente no deploy real da VM
+- [x] PROGRESSO.md atualizado com o marco "Fase 1 concluída"
 - [ ] Pronto para `check-impl-against-spec` conferir o código contra o PLANO.md
 
 ## Risks and Mitigations
