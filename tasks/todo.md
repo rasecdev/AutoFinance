@@ -120,13 +120,13 @@ Ver `tasks/plan.md` para o grafo de dependência completo, riscos e perguntas em
 **Description:** Configurar logger `pino` com saída JSON, níveis debug/info/warn/error, suporte a logger escopado por `trace_id`, mascaramento de campos sensíveis (segredo, dado financeiro completo), e um handler global de exceção/promise rejeitada que loga e não derruba o processo.
 
 **Acceptance criteria:**
-- [ ] Logger expõe uma função para criar filho escopado por `trace_id`
-- [ ] Configuração de mascaramento cobre pelo menos: token do bot, chave OpenRouter, número de conta
-- [ ] `process.on('uncaughtException')`/`unhandledRejection` capturam, logam e mantêm o processo vivo
+- [x] Logger expõe uma função para criar filho escopado por `trace_id` (`withTraceId`)
+- [x] Configuração de mascaramento cobre pelo menos: token do bot, chave OpenRouter, número de conta
+- [x] `process.on('uncaughtException')`/`unhandledRejection` capturam, logam e mantêm o processo vivo
 
 **Verification:**
-- [ ] Tests pass: teste confirmando que um campo mascarado não aparece em texto puro na saída do logger
-- [ ] Manual check: lançar um erro não tratado propositalmente e confirmar que o processo continua rodando
+- [x] Tests pass: 3 testes novos (`tests/logging/logger.test.ts`) cobrindo mascaramento, campo comum não mascarado, e `withTraceId`
+- [x] Manual check: script descartável lançou erro não tratado propositalmente via `setTimeout` — logado como `uncaughtException` e o processo seguiu executando o código depois (confirmado por log adicional + exit code 0 controlado)
 
 **Dependencies:** Tarefa 2
 
