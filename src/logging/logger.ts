@@ -17,10 +17,10 @@ export const CAMPOS_SENSIVEIS = [
 
 export type Logger = pino.Logger;
 
-export function createLogger(destination?: DestinationStream): Logger {
+export function createLogger(destination?: DestinationStream, level = 'info'): Logger {
   return pino(
     {
-      level: process.env.LOG_LEVEL ?? 'info',
+      level,
       redact: {
         paths: CAMPOS_SENSIVEIS,
         censor: '[REDACTED]',
@@ -30,8 +30,6 @@ export function createLogger(destination?: DestinationStream): Logger {
   );
 }
 
-export const logger = createLogger();
-
-export function withTraceId(traceId: string): Logger {
+export function withTraceId(logger: Logger, traceId: string): Logger {
   return logger.child({ traceId });
 }
