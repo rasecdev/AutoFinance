@@ -172,13 +172,17 @@ Ver `tasks/plan.md` para o grafo de dependência completo, riscos e perguntas em
 **Description:** Chamada simples ao OpenRouter (SDK compatível com OpenAI) a partir do handler de texto do bot — sem tool calling ainda (isso é Fase 3, ver "Open Questions" no plan.md). Toda chamada grava um registro em `interacoes_ia` com `trace_id`, conforme "Observabilidade e rastreabilidade de IA".
 
 **Acceptance criteria:**
-- [ ] Mensagem de texto do usuário gera uma chamada ao OpenRouter e a resposta volta pro Telegram
-- [ ] Cada chamada grava uma linha em `interacoes_ia` (mensagem, modelo, resposta, `trace_id`, resultado)
-- [ ] `trace_id` gerado por interação é o mesmo usado no log (Tarefa 5) daquela requisição
+- [x] Mensagem de texto do usuário gera uma chamada ao OpenRouter e a resposta volta pro Telegram
+- [x] Cada chamada grava uma linha em `interacoes_ia` (mensagem, modelo, resposta, `trace_id`, resultado)
+- [x] `trace_id` gerado por interação é o mesmo usado no log (Tarefa 5) daquela requisição
 
 **Verification:**
-- [ ] Tests pass: teste unitário do módulo que grava `interacoes_ia` (sem chamar a API de verdade — mockar o client do OpenRouter)
-- [ ] Manual check: enviar mensagem real no bot de Homologação e conferir a linha gravada em `interacoes_ia`
+- [x] Tests pass: teste unitário do módulo que grava `interacoes_ia` (sem chamar a API de verdade — mockar o client do OpenRouter)
+- [x] Manual check: enviar mensagem real no bot de Homologação e conferir a linha gravada em `interacoes_ia`
+
+**Nota (2026-08-30):** SDK `openai` instalado (aponta pra `baseURL` do OpenRouter, conforme decisão do PLANO.md). Modelo hardcoded (`openai/gpt-4o-mini`) como ponto de partida — roteamento dinâmico por fluxo (`roteamento_tarefas`, catálogo do OpenRouter) é decisão da Fase 5, fora do escopo desta tarefa. Testado manualmente contra o bot de Homologação: duas mensagens reais enviadas, ambas registradas em `interacoes_ia` com resposta do modelo, `trace_id` e `resultado: sucesso` (conferido lendo o banco cifrado diretamente). Resposta do modelo é genérica por design nesta fase — sem tool calling, a IA não tem acesso a nenhum dado financeiro real ainda (isso é Fase 3); a integração ponta a ponta é o que este critério de aceite cobre.
+
+**Achado durante a implementação — bug real, não hipotético:** o `paths` do `tsconfig.json` adicionado na Tarefa 4 (pra resolver TS7016 do `better-sqlite3-multiple-ciphers`) fazia o `tsx` (usado em `npm run dev` e nos testes manuais) resolver o pacote pro arquivo de tipos (`.d.ts`) em vez do código real, quebrando em runtime com `ReferenceError: Database is not defined` — só descoberto agora porque foi a primeira vez que o app rodou de ponta a ponta via `tsx` (antes só `npm run build` + testes via Vitest exercitavam esse import, e nenhum dos dois usa a resolução de `paths` do jeito que o `tsx`/esbuild usa). Corrigido removendo o `paths` e adicionando uma declaração de tipo ambiente própria (`src/types/better-sqlite3-multiple-ciphers.d.ts`, só com a superfície de API usada no projeto) — resolve o tipo pro `tsc` sem afetar a resolução de módulo em runtime de nenhuma ferramenta. Também descoberto e corrigido: `migrate()` nunca tinha sido chamado de fato pelo `index.ts` (só nos testes) — ao ligar isso agora, o Dockerfile precisou de um passo a mais (`cp -r src/db/migrations dist/db/migrations`), já que `tsc` não copia arquivos `.sql` pro `dist/`.
 
 **Dependencies:** Tarefa 4, Tarefa 6
 
