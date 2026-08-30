@@ -41,8 +41,8 @@ Scaffold Node/TS (Tarefa 1)
 - [ ] Tarefa 2: Configuração de ambiente validada por Zod
 
 ### Checkpoint: Fundação
-- [ ] `npm run build` compila sem erro
-- [ ] `npm run lint` roda sem erro
+- [x] `npm run build` compila sem erro
+- [x] `npm run lint` roda sem erro
 - [ ] Revisão com o usuário antes de prosseguir
 
 ### Fase B: Infraestrutura (Docker, banco, log)
