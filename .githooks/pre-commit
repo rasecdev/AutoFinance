@@ -1,0 +1,8 @@
+#!/bin/sh
+# Bloqueia o commit se houver segredo/token detectado no staged diff (Gitleaks).
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "aviso: gitleaks não encontrado no PATH — commit não verificado (instale via 'winget install Gitleaks.Gitleaks')" >&2
+  exit 0
+fi
+
+gitleaks protect --staged --redact -v
