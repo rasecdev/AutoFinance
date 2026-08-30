@@ -69,7 +69,7 @@ Scaffold Node/TS (Tarefa 1)
 - [x] Mensagem de um `chat_id` fora da allowlist é ignorada (log confirma, sem resposta) — coberto pelos testes unitários do middleware (não testado manualmente com um segundo Telegram, decisão registrada na Tarefa 6)
 - [x] Envio de imagem/PDF cai no handler dedicado (mesmo que só logue "não implementado ainda")
 - [x] `npm test` roda e passa (19 testes)
-- [ ] Revisão com o usuário antes de prosseguir
+- [x] Revisão com o usuário antes de prosseguir
 
 ### Fase D: Dados de apoio e resiliência
 
