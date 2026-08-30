@@ -47,14 +47,15 @@ Scaffold Node/TS (Tarefa 1)
 
 ### Fase B: Infraestrutura (Docker, banco, log)
 
-- [ ] Tarefa 3: Dockerfile + docker-compose (Produção/Homologação)
-- [ ] Tarefa 4: Schema do banco (modelo de dados completo) + client SQLCipher
-- [ ] Tarefa 5: Log estruturado (pino) + handler global de erro
+- [x] Tarefa 3: Dockerfile + docker-compose (Produção/Homologação)
+- [x] Tarefa 4: Schema do banco (modelo de dados completo) + client SQLCipher
+- [x] Tarefa 5: Log estruturado (pino) + handler global de erro
 
 ### Checkpoint: Infraestrutura
-- [ ] `docker compose config` valida os dois serviços sem erro
-- [ ] Migração roda contra um banco vazio e cria todas as tabelas do "Modelo de dados"
-- [ ] Log de teste aparece em JSON no stdout com `trace_id`
+- [x] `docker compose config` valida os dois serviços sem erro (verificado via CI, job `docker`)
+- [x] Migração roda contra um banco vazio e cria todas as tabelas do "Modelo de dados" (15 tabelas, incluindo `interacoes_ia`)
+- [x] Log de teste aparece em JSON no stdout com `trace_id` (`withTraceId`, coberto por teste)
+- [ ] Revisão com o usuário antes de prosseguir
 
 ### Fase C: Bot e IA
 
