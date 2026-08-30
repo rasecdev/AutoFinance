@@ -1,10 +1,8 @@
 FROM node:22-bookworm-slim AS builder
 WORKDIR /app
 
-# python3/make/g++ são exigidos pelo node-gyp do better-sqlite3 (módulo nativo)
-RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
-    && rm -rf /var/lib/apt/lists/*
-
+# better-sqlite3-multiple-ciphers já traz binário pré-compilado pra linux-x64 —
+# sem precisar de toolchain de compilação (python3/make/g++) na imagem.
 COPY package.json package-lock.json ./
 RUN npm ci
 

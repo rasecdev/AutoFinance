@@ -91,14 +91,18 @@ Ver `tasks/plan.md` para o grafo de dependência completo, riscos e perguntas em
 
 **Description:** Criar a migração inicial com todas as tabelas da seção "Modelo de dados" do PLANO.md (`bancos`, `contas`, `cartoes`, `faturas`, `transacoes`, `dividas`, `parcelas`, `renegociacoes`, `roteamento_tarefas`, `modelos_openrouter_historico`, `uso_tokens`, `metas`, `transferencias`, `despesas_fixas`) e um client de acesso ao banco via `better-sqlite3` + SQLCipher.
 
+**Nota (2026-08-30):** adicionada também `interacoes_ia` (seção "Observabilidade e rastreabilidade de IA" do PLANO.md) ao escopo desta tarefa — a Tarefa 7 (ainda dentro da Fase 1) grava nela, e nenhuma tarefa anterior criava essa tabela. `erros_execucao`/`analises_qualidade` ficaram de fora por não terem consumidor dentro da Fase 1 (jobs periódicos só entram na Fase 5) — ficam para quando a Fase que as usa for quebrada em tarefas.
+
+**Nota 2 (2026-08-30) — mudança de dependência:** `better-sqlite3` puro não suporta SQLCipher. Pesquisa real confirma **`better-sqlite3-multiple-ciphers`** como escolha correta (fork ativo, API idêntica ao `better-sqlite3`, suporte a `PRAGMA cipher='sqlcipher'`) — e, de brinde, resolve o risco de build nativo documentado desde a Tarefa 1: vem com binário pré-compilado pra win32-x64 **e** linux-x64 embutido no próprio pacote npm, sem exigir Visual Studio Build Tools localmente nem toolchain de compilação no Docker. Dockerfile da Tarefa 3 simplificado como consequência (`apt-get install python3 make g++` removido). `@types/better-sqlite3` removido (o pacote novo já traz seus próprios tipos); `tsconfig.json` ganhou `paths` mapeando o módulo pro `index.d.ts` dele, porque o `package.json` do pacote não declara `types` dentro de `exports` (limitação conhecida sob `moduleResolution: NodeNext`).
+
 **Acceptance criteria:**
-- [ ] Migração cria todas as 14 tabelas listadas no PLANO.md, com os campos e tipos descritos
-- [ ] Banco é aberto sempre cifrado (SQLCipher), chave vinda da config validada na Tarefa 2
-- [ ] Cliente exporta uma função de acesso única (sem instanciar conexão solta em múltiplos arquivos)
+- [x] Migração cria todas as 15 tabelas (14 do "Modelo de dados" + `interacoes_ia`), com os campos e tipos descritos
+- [x] Banco é aberto sempre cifrado (SQLCipher), chave vinda da config validada na Tarefa 2
+- [x] Cliente exporta uma função de acesso única (sem instanciar conexão solta em múltiplos arquivos)
 
 **Verification:**
-- [ ] Tests pass: teste que roda a migração contra um banco novo em memória/arquivo temporário e confere que as tabelas existem
-- [ ] Manual check: tentar abrir o arquivo do banco sem a chave falha (confirma que está de fato cifrado)
+- [x] Tests pass: teste que roda a migração contra um banco novo em arquivo temporário e confere que as 15 tabelas existem (`tests/db/migrate.test.ts`, 3 testes)
+- [x] Manual check: tentar abrir o arquivo do banco sem a chave falha (confirma que está de fato cifrado) — coberto pelo teste automatizado "banco cifrado não pode ser lido sem a chave correta"
 
 **Dependencies:** Tarefa 2
 
