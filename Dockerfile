@@ -11,6 +11,7 @@ RUN npm ci --ignore-scripts
 COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
+RUN cp -r src/db/migrations dist/db/migrations
 
 FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
