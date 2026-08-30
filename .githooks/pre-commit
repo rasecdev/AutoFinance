@@ -1,8 +1,19 @@
 #!/bin/sh
 # Bloqueia o commit se houver segredo/token detectado no staged diff (Gitleaks).
-if ! command -v gitleaks >/dev/null 2>&1; then
-  echo "aviso: gitleaks não encontrado no PATH — commit não verificado (instale via 'winget install Gitleaks.Gitleaks')" >&2
+GITLEAKS_BIN="gitleaks"
+
+if ! command -v "$GITLEAKS_BIN" >/dev/null 2>&1; then
+  # PATH do shell pode não ter sido atualizado ainda após a instalação via
+  # winget (exige reiniciar o terminal) — procura o binário direto.
+  FALLBACK=$(find "$LOCALAPPDATA/Microsoft/WinGet/Packages" -maxdepth 1 -iname "Gitleaks.Gitleaks_*" 2>/dev/null | head -n1)
+  if [ -n "$FALLBACK" ] && [ -x "$FALLBACK/gitleaks.exe" ]; then
+    GITLEAKS_BIN="$FALLBACK/gitleaks.exe"
+  fi
+fi
+
+if ! command -v "$GITLEAKS_BIN" >/dev/null 2>&1 && [ ! -x "$GITLEAKS_BIN" ]; then
+  echo "aviso: gitleaks não encontrado — commit não verificado (instale via 'winget install Gitleaks.Gitleaks')" >&2
   exit 0
 fi
 
-gitleaks protect --staged --redact -v
+"$GITLEAKS_BIN" protect --staged --redact -v
