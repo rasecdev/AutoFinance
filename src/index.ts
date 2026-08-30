@@ -1,16 +1,18 @@
 import { createOpenRouterClient } from './ai/openrouter.js';
 import { createBot } from './bot/bot.js';
 import { createHandlerMidia } from './bot/handlers/midia.js';
+import { createHandlerNaoSuportado } from './bot/handlers/naoSuportado.js';
 import { createHandlerTexto } from './bot/handlers/texto.js';
 import { loadEnv } from './config/env.js';
 import { getDb } from './db/client.js';
 import { migrate } from './db/migrate.js';
 import { registerGlobalErrorHandlers } from './logging/errorHandler.js';
-import { logger } from './logging/logger.js';
-
-registerGlobalErrorHandlers(logger);
+import { createLogger } from './logging/logger.js';
 
 const env = loadEnv();
+const logger = createLogger(undefined, env.logLevel);
+
+registerGlobalErrorHandlers(logger);
 
 const db = getDb(env);
 migrate(db);
@@ -18,8 +20,9 @@ migrate(db);
 const openRouterClient = createOpenRouterClient(env.openrouterApiKey);
 const handlerTexto = createHandlerTexto(openRouterClient, db, logger);
 const handlerMidia = createHandlerMidia(logger);
+const handlerNaoSuportado = createHandlerNaoSuportado(logger);
 
-const bot = createBot(env, logger, handlerTexto, handlerMidia);
+const bot = createBot(env, logger, handlerTexto, handlerMidia, handlerNaoSuportado);
 
 bot.start({
   onStart: () => {

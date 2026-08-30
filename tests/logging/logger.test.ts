@@ -41,7 +41,8 @@ describe('logger', () => {
   });
 
   it('withTraceId cria logger filho com trace_id anexado', () => {
-    const child = withTraceId('trace-123');
+    const { stream } = criarStreamDeCaptura();
+    const child = withTraceId(createLogger(stream), 'trace-123');
     expect(child).toBeDefined();
   });
 });

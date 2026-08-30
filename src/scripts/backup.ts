@@ -2,12 +2,15 @@ import { mkdirSync, readdirSync, statSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadEnv } from '../config/env.js';
 import { getDb } from '../db/client.js';
-import { logger } from '../logging/logger.js';
+import { createLogger, type Logger } from '../logging/logger.js';
 
 const RETENCAO_DIAS = 7;
 const DIR_BACKUP = './data/backups';
 
-function removerBackupsExpirados(dir: string, retencaoDias: number): void {
+const env = loadEnv();
+const logger = createLogger(undefined, env.logLevel);
+
+function removerBackupsExpirados(dir: string, retencaoDias: number, logger: Logger): void {
   const limite = Date.now() - retencaoDias * 24 * 60 * 60 * 1000;
 
   for (const arquivo of readdirSync(dir)) {
@@ -21,7 +24,6 @@ function removerBackupsExpirados(dir: string, retencaoDias: number): void {
 }
 
 async function main(): Promise<void> {
-  const env = loadEnv();
   const db = getDb(env);
 
   mkdirSync(DIR_BACKUP, { recursive: true });
@@ -32,7 +34,7 @@ async function main(): Promise<void> {
   db.prepare('VACUUM INTO ?').run(destino);
   logger.info({ destino }, 'backup do banco criado');
 
-  removerBackupsExpirados(DIR_BACKUP, RETENCAO_DIAS);
+  removerBackupsExpirados(DIR_BACKUP, RETENCAO_DIAS, logger);
 }
 
 main().catch((erro: unknown) => {
