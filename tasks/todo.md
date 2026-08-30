@@ -227,13 +227,15 @@ Ver `tasks/plan.md` para o grafo de dependência completo, riscos e perguntas em
 **Description:** Separar o roteamento de mensagem recebida pelo bot por tipo (texto já tratado na Tarefa 7; imagem/PDF ganha handler próprio, mesmo que ainda sem OCR/extração real — Fase 1 só prepara o terreno pro roteamento de IA por fluxo da Fase 5).
 
 **Acceptance criteria:**
-- [ ] Mensagem de texto vai para `handlers/texto.ts` (já existente da Tarefa 7)
-- [ ] Mensagem com foto ou documento (PDF) vai para um handler dedicado, que responde algo como "recebido, processamento de imagem/PDF ainda não implementado" e loga a interação
-- [ ] Nenhum tipo de mensagem cai num handler genérico/padrão silencioso
+- [x] Mensagem de texto vai para `handlers/texto.ts` (já existente da Tarefa 7)
+- [x] Mensagem com foto ou documento (PDF) vai para um handler dedicado, que responde algo como "recebido, processamento de imagem/PDF ainda não implementado" e loga a interação
+- [x] Nenhum tipo de mensagem cai num handler genérico/padrão silencioso
 
 **Verification:**
-- [ ] Tests pass: teste unitário do roteador confirmando que cada tipo de update vai pro handler certo
-- [ ] Manual check: enviar uma foto pro bot de Homologação e confirmar a resposta de "ainda não implementado"
+- [x] Tests pass: teste unitário do roteador confirmando que cada tipo de update vai pro handler certo
+- [x] Manual check: enviar uma foto pro bot de Homologação e confirmar a resposta de "ainda não implementado"
+
+**Nota (2026-08-30):** `src/bot/router.ts` extrai o roteamento (antes inline em `bot.ts`) pra um módulo próprio, testável sem precisar de uma instância real do grammY (`bot.on` mockado). Handler de mídia (`src/bot/handlers/midia.ts`) cobre `message:photo` e `message:document` com a mesma resposta — não grava em `interacoes_ia` (essa tabela é só pra interação real com IA, e mídia ainda não chama IA nenhuma), só loga via pino com `trace_id` próprio. Testado manualmente contra o bot de Homologação com foto **e** PDF — ambos confirmados retornando a mensagem de "ainda não implementado" e logando `tipo` correto. Fecha o checkpoint de **Bot funcional** (Tarefas 6, 7, 8, 9).
 
 **Dependencies:** Tarefa 6
 
