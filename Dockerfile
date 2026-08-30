@@ -1,10 +1,12 @@
 FROM node:22-bookworm-slim AS builder
 WORKDIR /app
 
-# better-sqlite3-multiple-ciphers já traz binário pré-compilado pra linux-x64 —
-# sem precisar de toolchain de compilação (python3/make/g++) na imagem.
+# better-sqlite3-multiple-ciphers já traz binário pré-compilado pra linux-x64
+# dentro do próprio pacote — --ignore-scripts evita que o npm tente rodar
+# o node-gyp rebuild implícito (por causa do binding.gyp do pacote), que
+# falharia sem toolchain de compilação e é desnecessário aqui.
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 COPY tsconfig.json ./
 COPY src ./src
