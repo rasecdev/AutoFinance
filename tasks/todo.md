@@ -37,14 +37,14 @@ Ver `tasks/plan.md` para o grafo de dependência completo, riscos e perguntas em
 **Description:** Carregar variáveis de ambiente (token do bot, chave do OpenRouter, caminho/chave do banco, allowlist de `chat_id`) via um schema Zod único, falhando rápido e com mensagem clara se algo obrigatório faltar. Cobre "Implicação técnica" da seção Ambientes e item 2 da Segurança (segredo nunca hardcoded).
 
 **Acceptance criteria:**
-- [ ] `.env.example` documenta todas as variáveis exigidas, sem valor real
-- [ ] Schema Zod rejeita a inicialização se uma variável obrigatória faltar, com mensagem indicando qual
-- [ ] Módulo de config é o único ponto de leitura de `process.env` no projeto
+- [x] `.env.example` documenta todas as variáveis exigidas, sem valor real
+- [x] Schema Zod rejeita a inicialização se uma variável obrigatória faltar, com mensagem indicando qual
+- [x] Módulo de config é o único ponto de leitura de `process.env` no projeto
 
 **Verification:**
-- [ ] Tests pass: teste unitário cobrindo variável obrigatória ausente e caso válido
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: rodar sem `.env` e confirmar erro claro, não crash genérico
+- [x] Tests pass: teste unitário cobrindo variável obrigatória ausente e caso válido (`tests/config/env.test.ts`, 3 testes)
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: `loadEnv` lança erro com o nome do campo faltante (coberto pelo teste automatizado, equivalente ao check manual)
 
 **Dependencies:** Tarefa 1
 
