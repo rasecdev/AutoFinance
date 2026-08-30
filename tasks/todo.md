@@ -255,12 +255,14 @@ Ver `tasks/plan.md` para o grafo de dependência completo, riscos e perguntas em
 **Description:** Script que popula o banco de Homologação com contas, cartões, dívidas e transações fictícias, cobrindo os cenários citados no PLANO.md (PF/PJ, renegociação, fatura).
 
 **Acceptance criteria:**
-- [ ] Script roda contra o banco de Homologação (nunca contra Produção — validação explícita do ambiente antes de rodar)
-- [ ] Popula ao menos: 1 conta PF, 1 conta PJ, 1 cartão com fatura, 1 dívida com renegociação vinculada
+- [x] Script roda contra o banco de Homologação (nunca contra Produção — validação explícita do ambiente antes de rodar)
+- [x] Popula ao menos: 1 conta PF, 1 conta PJ, 1 cartão com fatura, 1 dívida com renegociação vinculada
 
 **Verification:**
-- [ ] Manual check: rodar o script e consultar o banco confirmando os dados fictícios
-- [ ] Manual check: tentar rodar apontando pra config de Produção falha explicitamente
+- [x] Manual check: rodar o script e consultar o banco confirmando os dados fictícios
+- [x] Manual check: tentar rodar apontando pra config de Produção falha explicitamente
+
+**Nota (2026-08-30):** `scripts/seed.ts` valida `env.ambiente === 'homologacao'` antes de qualquer escrita, lançando erro explícito e abortando (testado apontando `.env.producao`, falhou como esperado). Popula 1 banco fictício, 1 conta PF + 1 conta PJ, 1 cartão com fatura aberta, 2 dívidas (original com status `renegociado` + nova `ativo`) ligadas por uma linha em `renegociacoes`, e 3 transações de exemplo (receita PJ, despesa PF em conta, despesa PF no cartão) — cobre os cenários citados na descrição da tarefa. Rodado via `npm run seed` (novo script no `package.json`), conferido lendo o banco cifrado diretamente. Script fica fora do `tsconfig.json`/`dist` (não faz parte do runtime da aplicação, só ferramenta de desenvolvimento local).
 
 **Dependencies:** Tarefa 4
 
