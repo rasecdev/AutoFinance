@@ -278,18 +278,26 @@ Ver `tasks/plan.md` para o grafo de dependência completo, riscos e perguntas em
 **Description:** Rotina (cron dentro do container, ou job agendado do processo) que copia o arquivo do banco diariamente para um destino separado, mantendo a mesma cifragem do original, com retenção de alguns dias/semanas.
 
 **Acceptance criteria:**
-- [ ] Backup roda diariamente sem intervenção manual (agendado)
-- [ ] Arquivo de backup permanece cifrado (mesma proteção do original — nunca texto puro)
-- [ ] Backups mais antigos que a retenção configurada são removidos automaticamente
+- [x] Backup roda diariamente sem intervenção manual (agendado)
+- [x] Arquivo de backup permanece cifrado (mesma proteção do original — nunca texto puro)
+- [x] Backups mais antigos que a retenção configurada são removidos automaticamente
 
 **Verification:**
-- [ ] Manual check: rodar o job manualmente uma vez, confirmar o arquivo gerado
-- [ ] Manual check: restaurar esse backup num banco de teste e confirmar que os dados batem
+- [x] Manual check: rodar o job manualmente uma vez, confirmar o arquivo gerado
+- [x] Manual check: restaurar esse backup num banco de teste e confirmar que os dados batem
 
 **Dependencies:** Tarefa 4, Tarefa 3 (agendamento dentro do container)
 
 **Files likely touched:**
-- `scripts/backup.ts`
+- ~~`scripts/backup.ts`~~ → `src/scripts/backup.ts` (ver nota abaixo)
 - `docker-compose.yml` (agendamento/cron do serviço)
+
+**Nota (2026-08-30) — desvio do caminho de arquivo planejado:** ao contrário do `scripts/seed.ts` (Tarefa 10, só dev local), o backup **precisa rodar dentro do container em produção** — colocado em `src/scripts/backup.ts` em vez de `scripts/backup.ts` pra ser compilado pelo `tsc` normal (que só cobre `src/`) e existir em `dist/scripts/backup.js` na imagem Docker, sem precisar levar `tsx`/TypeScript pro ambiente de produção.
+
+**Nota 2 — bug real encontrado, não hipotético:** a primeira implementação usava `db.backup(destino)` (API nativa do `better-sqlite3`) e falhou com `"backup is not supported with incompatible source and target databases"` — a API de backup binária não lida bem com bancos cifrados via SQLCipher nesta lib (o destino não herda a cifragem da conexão de origem). Corrigido usando `VACUUM INTO ?` (comando nativo do SQLite, executado através da mesma conexão já cifrada) — o arquivo gerado herda a cifragem da conexão automaticamente, sem esse problema.
+
+**Agendamento:** dois serviços novos no `docker-compose.yml` (`backup-producao`, `backup-homologacao`), mesma imagem/volume dos serviços principais, `command` sobrescrito com um loop (`while true; do node dist/scripts/backup.js; sleep 86400; done`) — evita precisar de cron/toolchain extra na imagem.
+
+**Testado manualmente, ponta a ponta:** populei o banco de Homologação via `npm run seed`, rodei `node dist/scripts/backup.js` (arquivo gerado em `data/backups/`), confirmei que o backup **não abre sem a chave** (cifrado) e que os dados batem com o original lendo com a chave certa (2 contas, 2 dívidas, 1 renegociação, 3 transações). Testei a retenção criando um arquivo de backup fictício com data de 10 dias atrás e rodando o job de novo — o arquivo antigo foi removido automaticamente, mantendo só os recentes.
 
 **Estimated scope:** Small: 2 files
