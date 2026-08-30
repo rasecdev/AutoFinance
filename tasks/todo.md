@@ -9,13 +9,15 @@ Ver `tasks/plan.md` para o grafo de dependência completo, riscos e perguntas em
 **Description:** Inicializar o projeto Node.js + TypeScript com as dependências decididas no PLANO.md (grammY, Zod, better-sqlite3, pino) e ferramentas de lint/format, sem lógica de negócio ainda.
 
 **Acceptance criteria:**
-- [ ] `package.json` com scripts `build`, `dev`, `lint`, `test`
-- [ ] `tsconfig.json` configurado para Node atual + strict mode
-- [ ] ESLint + Prettier configurados e sem erro num projeto vazio
+- [x] `package.json` com scripts `build`, `dev`, `lint`, `test`
+- [x] `tsconfig.json` configurado para Node atual + strict mode
+- [x] ESLint + Prettier configurados e sem erro num projeto vazio
 
 **Verification:**
-- [ ] `npm run build` compila sem erro
-- [ ] `npm run lint` roda sem erro
+- [x] `npm run build` compila sem erro
+- [x] `npm run lint` roda sem erro
+
+**Nota (2026-08-30):** `npm install` do `better-sqlite3` falha ao compilar o módulo nativo neste Windows local por falta de Visual Studio Build Tools — confirma o risco já registrado em `tasks/plan.md`. Não bloqueia esta tarefa (build/lint não dependem do binário nativo); a verificação funcional do banco fica pra Tarefa 3/4 via Docker, como o plano já previa.
 
 **Dependencies:** None
 
