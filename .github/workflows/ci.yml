@@ -24,7 +24,7 @@ jobs:
       - if: steps.has-package-json.outputs.exists == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - if: steps.has-package-json.outputs.exists == 'true'
         run: npm ci
@@ -34,3 +34,17 @@ jobs:
         run: npm test --if-present
       - if: steps.has-package-json.outputs.exists == 'true'
         run: npm audit --audit-level=high
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: has-dockerfile
+        run: echo "exists=$(test -f Dockerfile && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - if: steps.has-dockerfile.outputs.exists == 'true'
+        run: docker build .
+      - if: steps.has-dockerfile.outputs.exists == 'true'
+        name: Criar .env de teste só pra validar docker compose config (nunca comitados, gitignored)
+        run: cp .env.example .env.producao && cp .env.example .env.homologacao
+      - if: steps.has-dockerfile.outputs.exists == 'true'
+        run: docker compose config
