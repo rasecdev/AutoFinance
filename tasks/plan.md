@@ -55,7 +55,7 @@ Scaffold Node/TS (Tarefa 1)
 - [x] `docker compose config` valida os dois serviços sem erro (verificado via CI, job `docker`)
 - [x] Migração roda contra um banco vazio e cria todas as tabelas do "Modelo de dados" (15 tabelas, incluindo `interacoes_ia`)
 - [x] Log de teste aparece em JSON no stdout com `trace_id` (`withTraceId`, coberto por teste)
-- [ ] Revisão com o usuário antes de prosseguir
+- [x] Revisão com o usuário antes de prosseguir
 
 ### Fase C: Bot e IA
 
