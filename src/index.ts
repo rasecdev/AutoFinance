@@ -1,5 +1,6 @@
 import { createOpenRouterClient } from './ai/openrouter.js';
 import { createBot } from './bot/bot.js';
+import { createHandlerMidia } from './bot/handlers/midia.js';
 import { createHandlerTexto } from './bot/handlers/texto.js';
 import { loadEnv } from './config/env.js';
 import { getDb } from './db/client.js';
@@ -16,8 +17,9 @@ migrate(db);
 
 const openRouterClient = createOpenRouterClient(env.openrouterApiKey);
 const handlerTexto = createHandlerTexto(openRouterClient, db, logger);
+const handlerMidia = createHandlerMidia(logger);
 
-const bot = createBot(env, logger, handlerTexto);
+const bot = createBot(env, logger, handlerTexto, handlerMidia);
 
 bot.start({
   onStart: () => {
