@@ -17,6 +17,9 @@
   "author": "",
   "license": "MIT",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "bugs": {
     "url": "https://github.com/rasecdev/AutoFinance/issues"
   },

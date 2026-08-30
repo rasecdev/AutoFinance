@@ -1,0 +1,18 @@
+services:
+  producao:
+    build: .
+    env_file: .env.producao
+    volumes:
+      - producao-db:/app/data
+    restart: unless-stopped
+
+  homologacao:
+    build: .
+    env_file: .env.homologacao
+    volumes:
+      - homologacao-db:/app/data
+    restart: unless-stopped
+
+volumes:
+  producao-db:
+  homologacao-db:
