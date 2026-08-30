@@ -86,9 +86,9 @@ Scaffold Node/TS (Tarefa 1)
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| `better-sqlite3` falha ao compilar módulo nativo fora do Docker (ambiente Windows local) | Médio — trava dev local antes do Docker existir | Tarefa 1 já valida a instalação isolada antes de seguir; Tarefa 3 (Docker) resolve o caso de produção/deploy documentado no PLANO.md |
+| ~~`better-sqlite3` falha ao compilar módulo nativo fora do Docker~~ — **resolvido na Tarefa 4** | ~~Médio~~ | Trocado por `better-sqlite3-multiple-ciphers` (mesma API, com suporte a SQLCipher — necessário de qualquer forma pra Segurança item 3): vem com binário pré-compilado pra win32-x64 **e** linux-x64 embutido no pacote npm, sem precisar de toolchain de compilação em nenhum dos dois ambientes. Dockerfile da Tarefa 3 simplificado (removido `apt-get install python3 make g++`, que deixou de ser necessário) |
 | Vitest não é de fato o que o usuário quer | Baixo — só padronização | Confirmar antes da Tarefa 8 (não bloqueia Tarefas 1-7) |
-| Schema completo (13 tabelas) na Tarefa 4 é maior que o normal para uma tarefa M | Médio — tarefa tende a L | Migração é só DDL (sem lógica), tratado como uma tarefa por ser uma unidade atômica (schema inicial precisa existir de uma vez); dividir por tabela geraria migrações fragmentadas sem valor de checkpoint intermediário |
+| Schema completo (15 tabelas — 14 do "Modelo de dados" + `interacoes_ia`, adicionada em 2026-08-30 por ser consumida pela Tarefa 7) na Tarefa 4 é maior que o normal para uma tarefa M | Médio — tarefa tende a L | Migração é só DDL (sem lógica), tratado como uma tarefa por ser uma unidade atômica (schema inicial precisa existir de uma vez); dividir por tabela geraria migrações fragmentadas sem valor de checkpoint intermediário |
 | Allowlist mal configurada expõe o bot | Alto (Segurança, item 1 do PLANO.md) | Critério de aceite da Tarefa 6 exige teste explícito de rejeição antes de considerar concluída |
 
 ## Open Questions
