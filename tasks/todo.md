@@ -146,13 +146,15 @@ Ver `tasks/plan.md` para o grafo de dependência completo, riscos e perguntas em
 **Description:** Subir o bot via grammY em long polling, rejeitando silenciosamente (só log, sem resposta) qualquer mensagem de fora da allowlist de `chat_id`/`user_id` configurada por ambiente.
 
 **Acceptance criteria:**
-- [ ] Bot conecta e responde a mensagem de um `chat_id` permitido
-- [ ] Mensagem de `chat_id` fora da allowlist é ignorada e gera log (nunca resposta)
-- [ ] Token do bot vem exclusivamente da config validada (Tarefa 2)
+- [x] Bot conecta e responde a mensagem de um `chat_id` permitido
+- [x] Mensagem de `chat_id` fora da allowlist é ignorada e gera log (nunca resposta)
+- [x] Token do bot vem exclusivamente da config validada (Tarefa 2)
 
 **Verification:**
-- [ ] Tests pass: teste unitário do middleware de allowlist (permitido vs. negado), sem precisar conectar no Telegram de verdade
-- [ ] Manual check: enviar mensagem de teste pelo bot de Homologação e confirmar resposta
+- [x] Tests pass: teste unitário do middleware de allowlist (permitido vs. negado), sem precisar conectar no Telegram de verdade
+- [x] Manual check: enviar mensagem de teste pelo bot de Homologação e confirmar resposta
+
+**Nota (2026-08-30):** bot de Homologação criado no BotFather (`.env.homologacao` local, nunca comitado), `chat_id` real obtido via `@userinfobot`. Testado manualmente rodando `src/index.ts` local (long polling) — mensagem enviada pelo Telegram recebeu "Mensagem recebida." de volta, confirmando o fluxo completo (config → bot → allowlist → handler). Cenário de bloqueio (chat_id fora da allowlist) coberto só pelos 3 testes unitários (`tests/bot/allowlist.test.ts`), sem teste manual duplicado — exigiria uma segunda conta Telegram sem trazer garantia adicional. `src/index.ts` passou a de fato inicializar e rodar o bot (antes só logava uma mensagem estática).
 
 **Dependencies:** Tarefa 5
 
