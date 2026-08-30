@@ -6,6 +6,8 @@ const chatIdListSchema = z
   .transform((value) => value.split(',').map((id) => id.trim()))
   .pipe(z.array(z.string().min(1)).min(1));
 
+const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace'] as const;
+
 const envSchema = z.object({
   AMBIENTE: z.enum(['producao', 'homologacao']),
   TELEGRAM_BOT_TOKEN: z.string().min(1, 'TELEGRAM_BOT_TOKEN é obrigatório'),
@@ -13,6 +15,10 @@ const envSchema = z.object({
   OPENROUTER_API_KEY: z.string().min(1, 'OPENROUTER_API_KEY é obrigatório'),
   DATABASE_PATH: z.string().min(1, 'DATABASE_PATH é obrigatório'),
   DATABASE_ENCRYPTION_KEY: z.string().min(1, 'DATABASE_ENCRYPTION_KEY é obrigatório'),
+  LOG_LEVEL: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.enum(LOG_LEVELS).default('info'),
+  ),
 });
 
 export type Env = {
@@ -22,6 +28,7 @@ export type Env = {
   openrouterApiKey: string;
   databasePath: string;
   databaseEncryptionKey: string;
+  logLevel: (typeof LOG_LEVELS)[number];
 };
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
@@ -43,5 +50,6 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     openrouterApiKey: parsed.OPENROUTER_API_KEY,
     databasePath: parsed.DATABASE_PATH,
     databaseEncryptionKey: parsed.DATABASE_ENCRYPTION_KEY,
+    logLevel: parsed.LOG_LEVEL,
   };
 }

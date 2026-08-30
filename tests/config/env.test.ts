@@ -21,7 +21,17 @@ describe('loadEnv', () => {
       openrouterApiKey: 'chave-teste',
       databasePath: './data/teste.db',
       databaseEncryptionKey: 'chave-cifragem-teste',
+      logLevel: 'info',
     });
+  });
+
+  it('aceita LOG_LEVEL customizado e válido', () => {
+    const env = loadEnv({ ...validEnv, LOG_LEVEL: 'debug' });
+    expect(env.logLevel).toBe('debug');
+  });
+
+  it('rejeita LOG_LEVEL inválido', () => {
+    expect(() => loadEnv({ ...validEnv, LOG_LEVEL: 'verbose' })).toThrowError(/LOG_LEVEL/);
   });
 
   it('rejeita quando falta uma variável obrigatória', () => {
