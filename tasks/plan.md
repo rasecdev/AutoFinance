@@ -37,13 +37,13 @@ Scaffold Node/TS (Tarefa 1)
 
 ### Fase A: Fundação
 
-- [ ] Tarefa 1: Scaffold do projeto Node/TS
-- [ ] Tarefa 2: Configuração de ambiente validada por Zod
+- [x] Tarefa 1: Scaffold do projeto Node/TS
+- [x] Tarefa 2: Configuração de ambiente validada por Zod
 
 ### Checkpoint: Fundação
 - [x] `npm run build` compila sem erro
 - [x] `npm run lint` roda sem erro
-- [ ] Revisão com o usuário antes de prosseguir
+- [x] Revisão com o usuário antes de prosseguir
 
 ### Fase B: Infraestrutura (Docker, banco, log)
 
@@ -81,7 +81,7 @@ Scaffold Node/TS (Tarefa 1)
 - [x] `docker compose up` sobe Produção e Homologação isoladas, cada uma respondendo no seu próprio bot — validado de verdade só pra Homologação (deploy real na VM Oracle, mensagem de texto real respondida); Produção não tem bot/chave próprios criados ainda, isolamento de config e build confirmado via CI (`docker build`, `docker compose config`)
 - [x] Backup gerado manualmente uma vez e restaurado com sucesso num banco de teste — validado localmente (Tarefa 11) e confirmado rodando automaticamente no deploy real da VM
 - [x] PROGRESSO.md atualizado com o marco "Fase 1 concluída"
-- [ ] Pronto para `check-impl-against-spec` conferir o código contra o PLANO.md
+- [x] Pronto para `check-impl-against-spec` conferir o código contra o PLANO.md — a skill em si não se aplicou (exige `spec_context.md`/`pr_diff.txt` de um fluxo de PR review que não existe aqui); auditoria manual equivalente feita, encontrou e corrigiu 2 mismatches reais + 1 gap de segurança (PRs #10 e #11)
 
 ## Risks and Mitigations
 

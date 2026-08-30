@@ -18,7 +18,7 @@ Bot no Telegram, escrito em **Node.js + TypeScript**, que funciona como assisten
 
 ```
 Telegram (bot API) ⇄ Backend (Node.js/TS)
-                          ├─ Banco (SQLite, opcionalmente cifrado com SQLCipher)
+                          ├─ Banco (SQLite, sempre cifrado via SQLCipher)
                           ├─ Camada de "tools" (funções): registrar gasto, consultar saldo, etc.
                           ├─ Roteador de modelo por fluxo + cache (prompt caching + categorização)
                           ├─ Observabilidade (trace_id ligando log técnico ↔ registro semântico da IA)
@@ -46,7 +46,7 @@ Cada item destes dois resumos tem seção própria mais abaixo com o detalhe com
 
 ```
 Telegram (bot API) ⇄ Backend (Node.js/TS)
-                          ├─ Banco (SQLite, opcionalmente cifrado com SQLCipher)
+                          ├─ Banco (SQLite, sempre cifrado via SQLCipher)
                           ├─ Camada de "tools" (funções): registrar gasto, consultar saldo, etc.
                           ├─ Roteador de modelo por fluxo + cache (prompt caching + categorização)
                           ├─ Observabilidade (trace_id ligando log técnico ↔ registro semântico da IA)
@@ -601,8 +601,8 @@ Dados financeiros e pessoais vão trafegar e ficar armazenados em vários pontos
 - **Gitleaks** como hook de pre-commit — scanner open-source (MIT), roda em menos de 1 segundo, bloqueia o commit se detectar algo com formato de segredo/token/string de conexão. É rede de segurança automática pra complementar a regra manual acima, sem precisar de secret manager dedicado (Vault/Doppler são pensados pra time, não fazem sentido pra escala pessoal deste projeto).
 
 **3. Dados em repouso (banco de dados)**
-- O banco guarda saldo, contas, dívidas e histórico de conversa — dado sensível. Recomendado usar **SQLCipher** (SQLite criptografado, drop-in) em vez de SQLite puro, ou garantir que o disco do provedor de hospedagem já seja criptografado em repouso.
-- Permissões de arquivo restritas (só o processo do bot lê/escreve o arquivo do banco).
+- O banco guarda saldo, contas, dívidas e histórico de conversa — dado sensível. **Decidido e implementado (Tarefa 4):** banco sempre aberto cifrado via **SQLCipher** (`better-sqlite3-multiple-ciphers`), chave vinda da config validada — nunca SQLite puro.
+- Permissões de arquivo restritas (só o processo do bot lê/escreve o arquivo do banco) — **implementado (fix pós-Fase-1)**: container roda como usuário `node` não-root, não mais como root.
 - **Backup**: sem isso, perder o arquivo do banco (disco corrompido, erro de deploy) é perder todo o histórico financeiro, sem volta. Backup automático diário do arquivo do banco (ex: cron simples copiando pra um storage separado do provedor de hospedagem), retendo alguns dias/semanas — cifrado do mesmo jeito que o banco original, em local de acesso restrito (um backup em texto puro anula a criptografia do original). Vale testar a restauração pelo menos uma vez, não só confiar que o backup existe.
 
 **4. Dados em trânsito**
@@ -616,6 +616,7 @@ Dados financeiros e pessoais vão trafegar e ficar armazenados em vários pontos
 
 **7. Hospedagem**
 - Se optar por VPS: acesso só por chave SSH (sem senha), firewall liberando só as portas necessárias, sistema operacional atualizado. Provedores gerenciados (Railway, Fly.io) já cobrem boa parte disso por padrão.
+- **Verificado na VM Oracle (2026-08-30):** `sshd -T` confirma `passwordauthentication no`, `pubkeyauthentication yes`, `permitrootlogin without-password` — acesso só por chave, nunca senha, inclusive pra root. Firewall (iptables local + Network Security Group) libera só as portas necessárias (22 SSH, 8080 do `keepalive`).
 
 **8. Ações de alto impacto exigem confirmação (Excessive Agency)**
 - Ferramentas que criam, alteram ou removem controle financeiro de forma trabalhosa de corrigir — `criar_divida`, `renegociar`, `quitar_divida`, `amortizar_divida`, `excluir_transacao`, `criar_conta`, `criar_cartao` — passam por uma confirmação explícita no Telegram antes de executar, de forma síncrona (pergunta e espera resposta na mesma conversa, sem gravar pendência em banco — ver Fase 3). `excluir_transacao` é exclusão lógica (marca `transacoes.status = excluida`, nunca `DELETE` — ver "Princípio de exclusão lógica" no topo do documento), então tecnicamente reversível, mas continua na lista: escolher a transação errada pra excluir some ela dos relatórios até você notar e reverter, o que ainda vale uma confirmação antes. Registrar um gasto do dia a dia (`registrar_transacao`) ou pagar uma fatura/parcela de rotina (`pagar_fatura`, `pagar_parcela`) continuam diretos, sem fricção, por serem de baixo impacto e fáceis de corrigir depois.
@@ -888,7 +889,6 @@ Registrado aqui pra não se perder: skills instaladas globalmente no Claude Code
 **Nota (mitigação de idle-reclaim, fora do escopo deste repositório):** pra reduzir o risco de idle-reclaim descrito acima, a mesma VM também vai rodar um serviço `keepalive` (repositório próprio, `github.com/rasecdev/keepalive`, privado — infraestrutura da VM, não parte do AutoFinance) com um endpoint HTTP `/health`, chamado por um monitor de uptime externo gratuito pra gerar tráfego de rede real e manter a instância fora do critério de reclaim.
 
 ## Decisões em aberto (não bloqueiam início)
-- Banco: SQLite resolve bem pra uso pessoal single-user — considerar SQLCipher (ver seção Segurança) em vez de SQLite puro.
 - Categorias de gasto/receita específicas do seu dia a dia.
 - **Subcategoria hierárquica** *(achado comparando com projeto real similar, ver "Estudo: comparação com projetos reais no GitHub")* — hoje `transacoes.categoria` é sempre plana (ex: "Alimentação"), sem subcategoria (ex: "Alimentação → Delivery"/"Alimentação → Mercado"). Nunca foi decidido explicitamente ficar de fora — só nunca apareceu. Não implementado agora porque é decisão de escopo com custo de fricção real (mais uma pergunta opcional em `registrar_transacao`, campo novo em `cache_categorizacao`) — vale decidir se o nível de detalhe compensa antes de adicionar, não é óbvio que sim pro seu uso.
 - **Multi-moeda** *(mesmo achado da comparação)* — o projeto assume Real (BRL) implicitamente em todo o design (valores, relatórios, patrimônio líquido) — nunca foi decisão explícita de ficar fora, só nunca apareceu como necessidade. Só vira relevante se você tiver conta/gasto em moeda estrangeira; do contrário, adicionar isso seria complexidade sem uso real (câmbio, conversão pra relatório consolidado).
