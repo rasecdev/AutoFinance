@@ -11,8 +11,9 @@ describe('registerRoutes', () => {
     const bot = criarBotFake();
     const handlerTexto = vi.fn();
     const handlerMidia = vi.fn();
+    const handlerNaoSuportado = vi.fn();
 
-    registerRoutes(bot, handlerTexto, handlerMidia);
+    registerRoutes(bot, handlerTexto, handlerMidia, handlerNaoSuportado);
 
     expect(bot.on).toHaveBeenCalledWith('message:text', handlerTexto);
   });
@@ -21,9 +22,21 @@ describe('registerRoutes', () => {
     const bot = criarBotFake();
     const handlerTexto = vi.fn();
     const handlerMidia = vi.fn();
+    const handlerNaoSuportado = vi.fn();
 
-    registerRoutes(bot, handlerTexto, handlerMidia);
+    registerRoutes(bot, handlerTexto, handlerMidia, handlerNaoSuportado);
 
     expect(bot.on).toHaveBeenCalledWith(['message:photo', 'message:document'], handlerMidia);
+  });
+
+  it('registra o handler de fallback para qualquer outro tipo de mensagem', () => {
+    const bot = criarBotFake();
+    const handlerTexto = vi.fn();
+    const handlerMidia = vi.fn();
+    const handlerNaoSuportado = vi.fn();
+
+    registerRoutes(bot, handlerTexto, handlerMidia, handlerNaoSuportado);
+
+    expect(bot.on).toHaveBeenCalledWith('message', handlerNaoSuportado);
   });
 });
