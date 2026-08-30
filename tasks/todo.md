@@ -201,12 +201,14 @@ Ver `tasks/plan.md` para o grafo de dependência completo, riscos e perguntas em
 **Description:** Configurar o runner de testes (Vitest, confirmado pelo usuário) e migrar/ativar os testes já escritos como parte das Tarefas 2, 4, 5 e 6, que até aqui ficaram descritos mas dependiam desta tarefa pra rodar.
 
 **Acceptance criteria:**
-- [ ] `npm test` executa todos os testes já escritos nas tarefas anteriores
-- [ ] Cobertura mínima: pelo menos um teste de regra de negócio real por módulo com lógica (config, allowlist, mascaramento de log, `interacoes_ia`)
+- [x] `npm test` executa todos os testes já escritos nas tarefas anteriores
+- [x] Cobertura mínima: pelo menos um teste de regra de negócio real por módulo com lógica (config, allowlist, mascaramento de log, `interacoes_ia`)
 
 **Verification:**
-- [ ] Tests pass: `npm test` verde
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npm test` verde
+- [x] Build succeeds: `npm run build`
+
+**Nota (2026-08-30):** nenhum arquivo novo foi necessário. O Vitest já roda com config zero desde a Tarefa 1 (`npm test` → `vitest run`, descobre `tests/**/*.test.ts` sozinho) e cada tarefa desde então (2, 5, 6, 7) já escreveu e ativou seu teste real no momento da implementação, em vez de deixar pendente até esta tarefa — por isso o critério de cobertura mínima por módulo já estava satisfeito antes desta tarefa começar: `tests/config/env.test.ts`, `tests/logging/logger.test.ts`, `tests/bot/allowlist.test.ts`, `tests/db/interacoesIa.test.ts` (+ `tests/db/migrate.test.ts`, da Tarefa 4). `npm test` roda os 5 arquivos, 15 testes, verde. Criar um `vitest.config.ts` vazio só pra ter um artefato da tarefa seria configuração sem propósito real — evitado por não ser necessário.
 
 **Dependencies:** Tarefa 1 (pode ser feita em paralelo com Tarefas 3-7, mas os testes escritos nelas só rodam de fato depois desta)
 
