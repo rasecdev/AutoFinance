@@ -6,14 +6,35 @@ import type { DbClient } from '../../db/client.js';
 import { registrarInteracaoIa } from '../../db/repositories/interacoesIa.js';
 import { registrarUsoTokens } from '../../db/repositories/usoTokens.js';
 import type { Logger } from '../../logging/logger.js';
+import { definirPendencia, ehConfirmacaoAfirmativa, obterPendencia, removerPendencia } from '../confirmacao.js';
 
 const FLUXO = 'conversa_texto';
 
 export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger) {
   return async function handlerTexto(ctx: Context): Promise<void> {
     const mensagemUsuario = ctx.message?.text;
+    const chatId = ctx.chat?.id;
 
-    if (mensagemUsuario === undefined) {
+    if (mensagemUsuario === undefined || chatId === undefined) {
+      return;
+    }
+
+    const pendencia = obterPendencia(chatId);
+    if (pendencia) {
+      removerPendencia(chatId);
+
+      if (!ehConfirmacaoAfirmativa(mensagemUsuario)) {
+        await ctx.reply('Ação cancelada.');
+        return;
+      }
+
+      try {
+        const resultado = await pendencia.tool.handler(pendencia.argumentos, { chatId });
+        await ctx.reply(resultado);
+      } catch (erro) {
+        logger.error({ err: erro }, 'falha ao executar ação confirmada pelo usuário');
+        await ctx.reply('Não consegui concluir a ação confirmada, tente novamente.');
+      }
       return;
     }
 
@@ -21,10 +42,12 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
     const log = logger.child({ traceId });
 
     try {
-      const { modelo, resposta, toolCalls, tokensPrompt, tokensCompletion } = await gerarResposta(
-        client,
-        mensagemUsuario,
-      );
+      const { modelo, resposta, toolCalls, tokensPrompt, tokensCompletion, pendenciaConfirmacao } =
+        await gerarResposta(client, mensagemUsuario, [], { chatId });
+
+      if (pendenciaConfirmacao) {
+        definirPendencia(chatId, pendenciaConfirmacao);
+      }
 
       registrarInteracaoIa(db, {
         traceId,

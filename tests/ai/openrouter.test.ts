@@ -105,6 +105,22 @@ describe('gerarResposta — loop de tool calling', () => {
     expect(resultado.toolCalls).toEqual([{ nome: 'nao_existe', argumentos: null }]);
   });
 
+  it('não executa ferramenta marcada como requerConfirmacao — devolve pendência e pergunta', async () => {
+    const handler = vi.fn();
+    const toolAltoImpacto: ToolDefinition = { ...ecoar, name: 'excluir_transacao', requerConfirmacao: true, handler };
+    const client = criarClienteFalso(respostaToolCall('excluir_transacao', { texto: 'x' }));
+
+    const resultado = await gerarResposta(client, 'exclui essa transação', [toolAltoImpacto]);
+
+    expect(handler).not.toHaveBeenCalled();
+    expect(resultado.pendenciaConfirmacao).toEqual({
+      tool: toolAltoImpacto,
+      argumentos: { texto: 'x' },
+    });
+    expect(resultado.resposta).toContain('excluir_transacao');
+    expect(resultado.resposta.toLowerCase()).toContain('confirma');
+  });
+
   it('lança erro tratável ao exceder o limite de iterações', async () => {
     const client = criarClienteFalso(
       respostaToolCall('ecoar', { texto: '1' }, 'call-1'),

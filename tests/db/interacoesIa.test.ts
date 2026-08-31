@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import Database from 'better-sqlite3-multiple-ciphers';
 import type OpenAI from 'openai';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { definirPendencia, obterPendencia } from '../../src/bot/confirmacao.js';
 import { createHandlerTexto } from '../../src/bot/handlers/texto.js';
 import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
@@ -50,9 +51,10 @@ function lerUsoTokens() {
   return db.prepare('SELECT * FROM uso_tokens').all() as Array<Record<string, unknown>>;
 }
 
-function criarContextoFake(texto: string) {
+function criarContextoFake(texto: string, chatId = 111) {
   return {
     message: { text: texto },
+    chat: { id: chatId },
     reply: vi.fn(),
   } as unknown as Parameters<ReturnType<typeof createHandlerTexto>>[0] & { reply: ReturnType<typeof vi.fn> };
 }
@@ -146,5 +148,47 @@ describe('handlerTexto (OpenRouter mockado, sem chamada real)', () => {
     const linhas = lerInteracoes();
     expect(linhas).toHaveLength(1);
     expect(linhas[0]).toMatchObject({ resultado: 'erro', mensagem_usuario: 'oi' });
+  });
+});
+
+describe('handlerTexto — pendência de confirmação (Tarefa 3)', () => {
+  it('executa a ferramenta pendente quando o usuário confirma com "sim"', async () => {
+    const client = criarClienteOpenAiFalso('não deveria ser chamado');
+    const logger = createLogger({ write() {} });
+    const handler = createHandlerTexto(client, db, logger);
+    const chatId = 555;
+    const toolHandler = vi.fn().mockResolvedValue('transação excluída com sucesso');
+
+    definirPendencia(chatId, {
+      tool: { name: 'excluir_transacao', description: '', schema: {} as never, handler: toolHandler },
+      argumentos: { id: 42 },
+    });
+
+    const ctx = criarContextoFake('sim', chatId);
+    await handler(ctx);
+
+    expect(toolHandler).toHaveBeenCalledWith({ id: 42 }, { chatId });
+    expect(ctx.reply).toHaveBeenCalledWith('transação excluída com sucesso');
+    expect(obterPendencia(chatId)).toBeUndefined();
+  });
+
+  it('cancela a pendência sem executar quando o usuário não confirma', async () => {
+    const client = criarClienteOpenAiFalso('não deveria ser chamado');
+    const logger = createLogger({ write() {} });
+    const handler = createHandlerTexto(client, db, logger);
+    const chatId = 556;
+    const toolHandler = vi.fn();
+
+    definirPendencia(chatId, {
+      tool: { name: 'excluir_transacao', description: '', schema: {} as never, handler: toolHandler },
+      argumentos: { id: 42 },
+    });
+
+    const ctx = criarContextoFake('deixa quieto', chatId);
+    await handler(ctx);
+
+    expect(toolHandler).not.toHaveBeenCalled();
+    expect(ctx.reply).toHaveBeenCalledWith('Ação cancelada.');
+    expect(obterPendencia(chatId)).toBeUndefined();
   });
 });
