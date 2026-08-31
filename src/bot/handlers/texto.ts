@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { Context } from 'grammy';
 import type OpenAI from 'openai';
 import { gerarResposta, MODELO_PADRAO } from '../../ai/openrouter.js';
+import { criarToolCriarCartao, criarToolCriarConta } from '../../ai/tools/contas.js';
 import type { DbClient } from '../../db/client.js';
 import { registrarInteracaoIa } from '../../db/repositories/interacoesIa.js';
 import { registrarUsoTokens } from '../../db/repositories/usoTokens.js';
@@ -11,6 +12,8 @@ import { definirPendencia, ehConfirmacaoAfirmativa, obterPendencia, removerPende
 const FLUXO = 'conversa_texto';
 
 export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger) {
+  const tools = [criarToolCriarConta(db), criarToolCriarCartao(db)];
+
   return async function handlerTexto(ctx: Context): Promise<void> {
     const mensagemUsuario = ctx.message?.text;
     const chatId = ctx.chat?.id;
@@ -43,7 +46,7 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
 
     try {
       const { modelo, resposta, toolCalls, tokensPrompt, tokensCompletion, pendenciaConfirmacao } =
-        await gerarResposta(client, mensagemUsuario, [], { chatId });
+        await gerarResposta(client, mensagemUsuario, tools, { chatId });
 
       if (pendenciaConfirmacao) {
         definirPendencia(chatId, pendenciaConfirmacao);
