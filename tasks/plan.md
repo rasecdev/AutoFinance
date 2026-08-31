@@ -56,11 +56,11 @@ Tarefas detalhadas em `tasks/todo.md`.
 ### Fase A: Fundação de tool calling
 - [x] Tarefa 1: Motor de tool calling (loop multi-turno + registry + validação Zod)
 - [x] Tarefa 2: Persistência de `uso_tokens` e `tool_calls` em `interacoes_ia`
-- [ ] Tarefa 3: Mecanismo de confirmação síncrona
+- [x] Tarefa 3: Mecanismo de confirmação síncrona
 
 ### Checkpoint: Fundação de tool calling
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Uma ferramenta de teste simples (ex: eco) roda de ponta a ponta via tool calling real contra o OpenRouter
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Uma ferramenta de teste simples (ex: eco) roda de ponta a ponta via tool calling real contra o OpenRouter
 - [ ] Revisão com o usuário antes de prosseguir
 
 ### Fase B: Ferramentas essenciais (contas e transações)
