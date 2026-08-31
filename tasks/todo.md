@@ -100,7 +100,11 @@
 
 ## Fase B: Ferramentas essenciais (contas e transações)
 
-### Tarefa 4: `criar_conta`, `criar_cartao`
+### Tarefa 4: `criar_conta`, `criar_cartao` ✅
+
+**Implementado:** `src/db/repositories/contas.ts` (`criarConta` — cria o banco automaticamente por nome se não existir, reaproveita se já existir; `contaExiste`) e `src/db/repositories/cartoes.ts` (`criarCartao`). `src/ai/tools/contas.ts` define as duas ferramentas (`criar_conta`, `criar_cartao`), ambas `requerConfirmacao: true`; `criar_cartao` verifica se a conta existe antes de gravar, devolvendo mensagem clara em vez de erro de FK se não existir. **Primeira vez que `handlerTexto` passa ferramentas de verdade pro `gerarResposta`** (antes era `[]` hardcoded) — `createHandlerTexto` monta a lista de tools uma vez, fechando sobre `db`. 12 testes novos (60 no total).
+
+**Verificado manualmente via Telegram real** (container da VM parado, bot rodado localmente): criada uma conta PF no "Nubank" (banco criado automaticamente) via linguagem natural, confirmada com "sim" — conferida no banco cifrado (`contas`/`bancos`). Criado um cartão vinculado a essa conta, também confirmado — conferido em `cartoes`. **Observações não-bloqueantes registradas no PROGRESSO.md:** (1) sem memória de conversa entre mensagens ainda (Fase 4), a IA por vezes "esqueceu" contexto de mensagens anteriores dentro da mesma conversa até a mensagem final conter tudo que precisava; (2) `dia_vencimento` não informado pelo usuário foi preenchido pela IA sem perguntar (schema exige o campo, e a regra de "perguntar quando há dúvida real" ainda não está implementada para esse caso) — a confirmação mostrou o valor antes de gravar, mitigando o risco, mas vale observar se incomodar na prática.
 
 **Descrição:** Repositórios de `contas` e `cartoes` (insert + select básico) e as ferramentas correspondentes, marcadas como alto impacto (usam a confirmação da Tarefa 3). `criar_conta` pede banco (ou cria um `bancos` novo se não existir — decisão simples: buscar por nome, criar se não achar), tipo (PF/PJ), apelido. `criar_cartao` pede conta vinculada, nome, limite, dia de fechamento/vencimento.
 
