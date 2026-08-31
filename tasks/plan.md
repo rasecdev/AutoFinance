@@ -61,7 +61,7 @@ Tarefas detalhadas em `tasks/todo.md`.
 ### Checkpoint: Fundação de tool calling
 - [x] `npm run build`/`lint`/`test` sem erro
 - [x] Uma ferramenta de teste simples (ex: eco) roda de ponta a ponta via tool calling real contra o OpenRouter
-- [ ] Revisão com o usuário antes de prosseguir
+- [x] Revisão com o usuário antes de prosseguir
 
 ### Fase B: Ferramentas essenciais (contas e transações)
 - [ ] Tarefa 4: `criar_conta`, `criar_cartao`
