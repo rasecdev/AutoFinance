@@ -4,7 +4,9 @@
 
 ## Fase A: Fundação de tool calling
 
-### Tarefa 1: Motor de tool calling (loop multi-turno + registry + validação Zod)
+### Tarefa 1: Motor de tool calling (loop multi-turno + registry + validação Zod) ✅
+
+**Implementado:** `gerarResposta` aceita `tools: ToolDefinition[]` e `ctx: ToolContext`; roda loop de até 5 iterações, enviando `tools`/`tool_choice: 'auto'` só quando há ferramentas registradas (mantém 100% de compatibilidade com o comportamento anterior quando `tools` é omitido — os testes da Fase 1 não precisaram de nenhuma alteração). Conversão Zod → JSON Schema via `z.toJSONSchema` nativo do Zod 4 (`src/ai/tools/registry.ts`), sem depender de `zod-to-json-schema`. Validação de argumento via `schema.safeParse` antes do handler rodar; ferramenta desconhecida ou JSON malformado retorna mensagem de erro pro modelo em vez de lançar exceção; só o cap de iterações lança `Error` (capturado normalmente pelo `try/catch` já existente em `handlerTexto`). Verificado com uma ferramenta de teste (`ecoar`) contra a API real do OpenRouter via script descartável (não commitado) — o modelo chamou a ferramenta, o handler executou, e a resposta final incorporou o resultado corretamente.
 
 **Descrição:** Estender `gerarResposta` para suportar tool calling: aceitar uma lista de ferramentas (nome, descrição, schema Zod, handler), gerar a definição JSON Schema de cada uma via `z.toJSONSchema`, enviar `tools`+`tool_choice: 'auto'` na chamada, e rodar um loop que executa a ferramenta escolhida e reenvia o resultado até o modelo devolver texto final (com cap de iterações). Criar uma ferramenta de teste simples (`ecoar`, sem efeito no banco) só para validar o mecanismo ponta a ponta antes de qualquer ferramenta de negócio existir.
 
