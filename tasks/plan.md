@@ -54,8 +54,8 @@ Motor de tool calling (Tarefa 1)
 Tarefas detalhadas em `tasks/todo.md`.
 
 ### Fase A: Fundação de tool calling
-- [ ] Tarefa 1: Motor de tool calling (loop multi-turno + registry + validação Zod)
-- [ ] Tarefa 2: Persistência de `uso_tokens` e `tool_calls` em `interacoes_ia`
+- [x] Tarefa 1: Motor de tool calling (loop multi-turno + registry + validação Zod)
+- [x] Tarefa 2: Persistência de `uso_tokens` e `tool_calls` em `interacoes_ia`
 - [ ] Tarefa 3: Mecanismo de confirmação síncrona
 
 ### Checkpoint: Fundação de tool calling
