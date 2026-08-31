@@ -18,13 +18,27 @@ export type ToolCallRegistrada = {
   argumentos: unknown;
 };
 
+export type PendenciaConfirmacao = {
+  tool: ToolDefinition;
+  argumentos: unknown;
+};
+
 export type RespostaGerada = {
   modelo: string;
   resposta: string;
   toolCalls: ToolCallRegistrada[];
   tokensPrompt: number;
   tokensCompletion: number;
+  pendenciaConfirmacao?: PendenciaConfirmacao;
 };
+
+type ResultadoToolCall =
+  | { tipo: 'executado'; conteudo: string; argumentos: unknown }
+  | { tipo: 'pendente_confirmacao'; tool: ToolDefinition; argumentos: unknown };
+
+function gerarPerguntaConfirmacao(tool: ToolDefinition, argumentos: unknown): string {
+  return `Confirma a ação "${tool.name}" com os parâmetros ${JSON.stringify(argumentos)}? Responda "sim" para confirmar, ou qualquer outra coisa para cancelar.`;
+}
 
 export async function gerarResposta(
   client: OpenAI,
@@ -70,6 +84,18 @@ export async function gerarResposta(
       if (toolCall.type !== 'function') continue;
 
       const resultado = await executarToolCall(registry.get(toolCall.function.name), toolCall, ctx);
+
+      if (resultado.tipo === 'pendente_confirmacao') {
+        return {
+          modelo: MODELO_PADRAO,
+          resposta: gerarPerguntaConfirmacao(resultado.tool, resultado.argumentos),
+          toolCalls: [...toolCallsRegistradas, { nome: resultado.tool.name, argumentos: resultado.argumentos }],
+          tokensPrompt,
+          tokensCompletion,
+          pendenciaConfirmacao: { tool: resultado.tool, argumentos: resultado.argumentos },
+        };
+      }
+
       toolCallsRegistradas.push({ nome: toolCall.function.name, argumentos: resultado.argumentos });
       mensagens.push({ role: 'tool', tool_call_id: toolCall.id, content: resultado.conteudo });
     }
@@ -82,35 +108,44 @@ async function executarToolCall(
   tool: ToolDefinition | undefined,
   toolCall: OpenAI.Chat.Completions.ChatCompletionMessageToolCall,
   ctx: ToolContext,
-): Promise<{ conteudo: string; argumentos: unknown }> {
+): Promise<ResultadoToolCall> {
   if (toolCall.type !== 'function') {
-    return { conteudo: 'Tipo de ferramenta não suportado', argumentos: null };
+    return { tipo: 'executado', conteudo: 'Tipo de ferramenta não suportado', argumentos: null };
   }
 
   if (!tool) {
-    return { conteudo: `Ferramenta desconhecida: ${toolCall.function.name}`, argumentos: null };
+    return { tipo: 'executado', conteudo: `Ferramenta desconhecida: ${toolCall.function.name}`, argumentos: null };
   }
 
   let argumentosBrutos: unknown;
   try {
     argumentosBrutos = JSON.parse(toolCall.function.arguments || '{}');
   } catch {
-    return { conteudo: 'Argumentos inválidos: JSON malformado', argumentos: null };
+    return { tipo: 'executado', conteudo: 'Argumentos inválidos: JSON malformado', argumentos: null };
   }
 
   const validacao = tool.schema.safeParse(argumentosBrutos);
   if (!validacao.success) {
     return {
+      tipo: 'executado',
       conteudo: `Argumentos inválidos para ${tool.name}: ${validacao.error.message}`,
       argumentos: argumentosBrutos,
     };
   }
 
+  if (tool.requerConfirmacao) {
+    return { tipo: 'pendente_confirmacao', tool, argumentos: validacao.data };
+  }
+
   try {
     const conteudo = await tool.handler(validacao.data, ctx);
-    return { conteudo, argumentos: validacao.data };
+    return { tipo: 'executado', conteudo, argumentos: validacao.data };
   } catch (erro) {
     const mensagemErro = erro instanceof Error ? erro.message : String(erro);
-    return { conteudo: `Erro ao executar ${tool.name}: ${mensagemErro}`, argumentos: validacao.data };
+    return {
+      tipo: 'executado',
+      conteudo: `Erro ao executar ${tool.name}: ${mensagemErro}`,
+      argumentos: validacao.data,
+    };
   }
 }

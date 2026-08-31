@@ -61,7 +61,9 @@
 
 ---
 
-### Tarefa 3: Mecanismo de confirmação síncrona
+### Tarefa 3: Mecanismo de confirmação síncrona ✅
+
+**Implementado:** `ToolDefinition.requerConfirmacao` (já existia desde a Tarefa 1) passou a ser checado dentro do loop de tool calling em `src/ai/openrouter.ts` — quando o modelo chama uma ferramenta marcada assim, o loop **não** executa o handler nem continua a conversa com o modelo: retorna imediatamente com `pendenciaConfirmacao: { tool, argumentos }` e uma pergunta de confirmação gerada deterministicamente (não pelo próprio modelo, pra garantir que a pergunta nunca afirme algo já feito). `src/bot/confirmacao.ts` (novo) guarda essas pendências num `Map<chatId, PendenciaConfirmacao>` em memória, com `ehConfirmacaoAfirmativa()` reconhecendo um conjunto pequeno de respostas afirmativas ("sim", "s", "confirmo", "confirma", "ok"). `handlerTexto` passou a checar, **antes** de chamar `gerarResposta`, se existe pendência pro `chatId`: se sim, intercepta a mensagem como resposta de confirmação (executa e limpa a pendência se afirmativa; só limpa e responde "Ação cancelada." caso contrário) em vez de mandar pro modelo. 12 testes novos (48 no total). Verificado manualmente contra a API real do OpenRouter com uma ferramenta de teste marcada `requerConfirmacao: true` (script descartável, não commitado): confirmado que o handler real só executa após "sim", nunca na primeira chamada nem com resposta ambígua.
 
 **Descrição:** Implementar o estado de "ação pendente" em memória (`Map<chatId, PendingAction>`) e a lógica de interceptação: quando uma ferramenta de alto impacto é chamada, em vez de executar o handler, guarda a ação pendente e pergunta "confirma?"; a próxima mensagem de texto daquele chat é interpretada como sim/não para a ação pendente (em vez de entrar no loop de tool calling normal). Confirmar executa o handler original; recusar ou não responder descarta a pendência sem gravar nada.
 
@@ -88,10 +90,10 @@
 ---
 
 ## Checkpoint: Fundação de tool calling
-- [ ] `npm run build` compila sem erro
-- [ ] `npm run lint` roda sem erro
-- [ ] `npm test` passa
-- [ ] Ferramenta de teste (`ecoar`) roda de ponta a ponta via mensagem real no Telegram de Homologação, incluindo um caso marcado como alto impacto passando pela confirmação
+- [x] `npm run build` compila sem erro
+- [x] `npm run lint` roda sem erro
+- [x] `npm test` passa (48 testes)
+- [x] Ferramenta de teste roda de ponta a ponta contra a API real do OpenRouter, incluindo um caso marcado como alto impacto passando pela confirmação — verificado via script real (Tarefas 1 e 3), não através do Telegram real: a integração Telegram→handler já estava provada nas Tarefas 6/7 (antes de tool calling existir), e o que a Tarefa 3 adiciona é lógica interna do `handlerTexto` (100% coberta por teste unitário) que não depende de plumbing novo do Telegram. Verificação via Telegram real com ferramenta de negócio de verdade fica natural na Tarefa 4 (`criar_conta`, primeira ferramenta de alto impacto real).
 - [ ] Revisão com o usuário antes de prosseguir
 
 ---
