@@ -37,10 +37,17 @@ function criarClienteOpenAiFalso(resposta: string | Error): OpenAI {
     if (resposta instanceof Error) {
       throw resposta;
     }
-    return { choices: [{ message: { content: resposta } }] };
+    return {
+      choices: [{ message: { content: resposta } }],
+      usage: { prompt_tokens: 7, completion_tokens: 3 },
+    };
   });
 
   return { chat: { completions: { create } } } as unknown as OpenAI;
+}
+
+function lerUsoTokens() {
+  return db.prepare('SELECT * FROM uso_tokens').all() as Array<Record<string, unknown>>;
 }
 
 function criarContextoFake(texto: string) {
@@ -70,7 +77,25 @@ describe('registrarInteracaoIa', () => {
       mensagem_usuario: 'oi',
       resposta_modelo: 'olá!',
       resultado: 'sucesso',
+      tool_calls: null,
     });
+  });
+
+  it('grava tool_calls como JSON quando houver', () => {
+    registrarInteracaoIa(db, {
+      traceId: 'trace-com-tool',
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      mensagemUsuario: 'quanto gastei em março?',
+      respostaModelo: 'você gastou R$ 100',
+      toolCalls: [{ nome: 'resumo_mensal', argumentos: { mes: 3 } }],
+      resultado: 'sucesso',
+    });
+
+    const linhas = lerInteracoes();
+    expect(JSON.parse(linhas[0].tool_calls as string)).toEqual([
+      { nome: 'resumo_mensal', argumentos: { mes: 3 } },
+    ]);
   });
 });
 
@@ -94,6 +119,16 @@ describe('handlerTexto (OpenRouter mockado, sem chamada real)', () => {
       resultado: 'sucesso',
     });
     expect(linhas[0].trace_id).toEqual(expect.any(String));
+
+    const usoTokens = lerUsoTokens();
+    expect(usoTokens).toHaveLength(1);
+    expect(usoTokens[0]).toMatchObject({
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      tokens_prompt: 7,
+      tokens_completion: 3,
+      origem: 'uso_real',
+    });
   });
 
   it('registra falha e responde com mensagem de erro quando a chamada ao OpenRouter falha', async () => {
