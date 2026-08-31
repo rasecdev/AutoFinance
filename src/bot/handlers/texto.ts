@@ -4,6 +4,7 @@ import type OpenAI from 'openai';
 import { gerarResposta, MODELO_PADRAO } from '../../ai/openrouter.js';
 import type { DbClient } from '../../db/client.js';
 import { registrarInteracaoIa } from '../../db/repositories/interacoesIa.js';
+import { registrarUsoTokens } from '../../db/repositories/usoTokens.js';
 import type { Logger } from '../../logging/logger.js';
 
 const FLUXO = 'conversa_texto';
@@ -20,7 +21,10 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
     const log = logger.child({ traceId });
 
     try {
-      const { modelo, resposta } = await gerarResposta(client, mensagemUsuario);
+      const { modelo, resposta, toolCalls, tokensPrompt, tokensCompletion } = await gerarResposta(
+        client,
+        mensagemUsuario,
+      );
 
       registrarInteracaoIa(db, {
         traceId,
@@ -28,10 +32,22 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
         modelo,
         mensagemUsuario,
         respostaModelo: resposta,
+        toolCalls,
         resultado: 'sucesso',
       });
 
-      log.info({ modelo }, 'interação com IA registrada');
+      // custo_estimado fica 0 até a Fase 5 (monitoramento de preço/roteamento)
+      // existir uma fonte real de preço por modelo pra calcular em cima.
+      registrarUsoTokens(db, {
+        fluxo: FLUXO,
+        modelo,
+        tokensPrompt,
+        tokensCompletion,
+        custoEstimado: 0,
+        origem: 'uso_real',
+      });
+
+      log.info({ modelo, tokensPrompt, tokensCompletion }, 'interação com IA registrada');
       await ctx.reply(resposta);
     } catch (erro) {
       registrarInteracaoIa(db, {

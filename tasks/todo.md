@@ -33,7 +33,9 @@
 
 ---
 
-### Tarefa 2: Persistência de `uso_tokens` e `tool_calls` em `interacoes_ia`
+### Tarefa 2: Persistência de `uso_tokens` e `tool_calls` em `interacoes_ia` ✅
+
+**Implementado:** `gerarResposta` (`src/ai/openrouter.ts`) passou a acumular `tokensPrompt`/`tokensCompletion` de `completion.usage` a cada iteração do loop de tool calling, expondo o total no retorno. Novo repositório `src/db/repositories/usoTokens.ts` (`registrarUsoTokens`) insere uma linha por chamada de modelo; `custo_estimado` fica em `0` por ora — não há fonte real de preço por modelo ainda (isso é a Fase 5, monitoramento de preço/roteamento). `registrarInteracaoIa` ganhou o campo opcional `toolCalls`, serializado como JSON (`null` quando vazio). `handlerTexto` chama os dois repositórios a cada chamada bem-sucedida, sem alterar a resposta ao usuário. 4 testes novos (31 no total). Verificado manualmente: bot rodado localmente contra Homologação (container da VM parado temporariamente pra evitar conflito de long polling), mensagem real enviada, `uso_tokens` e `interacoes_ia.tool_calls` conferidos direto no banco cifrado — `tokens_prompt`/`tokens_completion` batem com valores reais, `tool_calls` fica `null` (esperado, nenhuma ferramenta de negócio existe ainda). VM restaurada ao estado normal depois do teste.
 
 **Descrição:** Criar o repositório de `uso_tokens` (grava `fluxo`, `modelo`, `tokens_prompt`, `tokens_completion`, `custo_estimado`, `origem: 'uso_real'`, `data_hora`) e estender `registrarInteracaoIa` para aceitar e gravar `tool_calls` (JSON serializado). Ligar em `handlerTexto`: toda chamada ao `gerarResposta` passa a gravar `uso_tokens` (a partir de `completion.usage`) e as `tool_calls` decididas pelo modelo.
 

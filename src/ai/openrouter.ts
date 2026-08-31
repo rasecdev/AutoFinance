@@ -22,6 +22,8 @@ export type RespostaGerada = {
   modelo: string;
   resposta: string;
   toolCalls: ToolCallRegistrada[];
+  tokensPrompt: number;
+  tokensCompletion: number;
 };
 
 export async function gerarResposta(
@@ -37,6 +39,8 @@ export async function gerarResposta(
     { role: 'user', content: mensagemUsuario },
   ];
   const toolCallsRegistradas: ToolCallRegistrada[] = [];
+  let tokensPrompt = 0;
+  let tokensCompletion = 0;
 
   for (let iteracao = 0; iteracao < MAX_ITERACOES_TOOL_CALLING; iteracao++) {
     const completion = await client.chat.completions.create({
@@ -45,6 +49,9 @@ export async function gerarResposta(
       ...(ferramentas ? { tools: ferramentas, tool_choice: 'auto' as const } : {}),
     });
 
+    tokensPrompt += completion.usage?.prompt_tokens ?? 0;
+    tokensCompletion += completion.usage?.completion_tokens ?? 0;
+
     const mensagem = completion.choices[0]?.message;
 
     if (!mensagem?.tool_calls || mensagem.tool_calls.length === 0) {
@@ -52,6 +59,8 @@ export async function gerarResposta(
         modelo: MODELO_PADRAO,
         resposta: mensagem?.content ?? '',
         toolCalls: toolCallsRegistradas,
+        tokensPrompt,
+        tokensCompletion,
       };
     }
 
