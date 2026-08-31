@@ -12,11 +12,16 @@ function criarClienteFalso(...respostas: unknown[]): OpenAI {
   return { chat: { completions: { create } } } as unknown as OpenAI;
 }
 
-function respostaTexto(texto: string) {
-  return { choices: [{ message: { content: texto } }] };
+function respostaTexto(texto: string, usage?: { prompt_tokens: number; completion_tokens: number }) {
+  return { choices: [{ message: { content: texto } }], usage };
 }
 
-function respostaToolCall(nome: string, argumentos: unknown, id = 'call-1') {
+function respostaToolCall(
+  nome: string,
+  argumentos: unknown,
+  id = 'call-1',
+  usage?: { prompt_tokens: number; completion_tokens: number },
+) {
   return {
     choices: [
       {
@@ -33,6 +38,7 @@ function respostaToolCall(nome: string, argumentos: unknown, id = 'call-1') {
         },
       },
     ],
+    usage,
   };
 }
 
@@ -42,7 +48,13 @@ describe('gerarResposta — sem ferramentas (compatibilidade)', () => {
 
     const resultado = await gerarResposta(client, 'oi');
 
-    expect(resultado).toEqual({ modelo: 'openai/gpt-4o-mini', resposta: 'olá!', toolCalls: [] });
+    expect(resultado).toEqual({
+      modelo: 'openai/gpt-4o-mini',
+      resposta: 'olá!',
+      toolCalls: [],
+      tokensPrompt: 0,
+      tokensCompletion: 0,
+    });
   });
 });
 
@@ -56,14 +68,16 @@ describe('gerarResposta — loop de tool calling', () => {
 
   it('executa a ferramenta chamada pelo modelo e devolve a resposta final', async () => {
     const client = criarClienteFalso(
-      respostaToolCall('ecoar', { texto: 'oi' }),
-      respostaTexto('a ferramenta disse: eco: oi'),
+      respostaToolCall('ecoar', { texto: 'oi' }, 'call-1', { prompt_tokens: 10, completion_tokens: 5 }),
+      respostaTexto('a ferramenta disse: eco: oi', { prompt_tokens: 20, completion_tokens: 8 }),
     );
 
     const resultado = await gerarResposta(client, 'usa a ferramenta eco com "oi"', [ecoar]);
 
     expect(resultado.resposta).toBe('a ferramenta disse: eco: oi');
     expect(resultado.toolCalls).toEqual([{ nome: 'ecoar', argumentos: { texto: 'oi' } }]);
+    expect(resultado.tokensPrompt).toBe(30);
+    expect(resultado.tokensCompletion).toBe(13);
   });
 
   it('rejeita argumento inválido sem executar o handler', async () => {
