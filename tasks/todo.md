@@ -1,303 +1,448 @@
-# To-do: Fase 1 — Esqueleto funcional
+# Tarefas: Fase 3 — Tool calling
 
-Ver `tasks/plan.md` para o grafo de dependência completo, riscos e perguntas em aberto.
+> Ver `tasks/plan.md` para o grafo de dependência completo e as decisões de arquitetura. Fluxo de trabalho (branch/PR/merge) conforme `CLAUDE.md`.
 
-## Fase A: Fundação
+## Fase A: Fundação de tool calling
 
-### Tarefa 1: Scaffold do projeto Node/TS
+### Tarefa 1: Motor de tool calling (loop multi-turno + registry + validação Zod)
 
-**Description:** Inicializar o projeto Node.js + TypeScript com as dependências decididas no PLANO.md (grammY, Zod, better-sqlite3, pino) e ferramentas de lint/format, sem lógica de negócio ainda.
+**Descrição:** Estender `gerarResposta` para suportar tool calling: aceitar uma lista de ferramentas (nome, descrição, schema Zod, handler), gerar a definição JSON Schema de cada uma via `z.toJSONSchema`, enviar `tools`+`tool_choice: 'auto'` na chamada, e rodar um loop que executa a ferramenta escolhida e reenvia o resultado até o modelo devolver texto final (com cap de iterações). Criar uma ferramenta de teste simples (`ecoar`, sem efeito no banco) só para validar o mecanismo ponta a ponta antes de qualquer ferramenta de negócio existir.
 
 **Acceptance criteria:**
-- [x] `package.json` com scripts `build`, `dev`, `lint`, `test`
-- [x] `tsconfig.json` configurado para Node atual + strict mode
-- [x] ESLint + Prettier configurados e sem erro num projeto vazio
+- [ ] `gerarResposta` aceita uma lista de ferramentas e as expõe ao modelo via `tools`
+- [ ] Quando o modelo chama uma ferramenta, o handler correspondente é executado e o resultado retorna ao modelo como mensagem `tool`, repetindo até resposta final em texto
+- [ ] Loop tem cap de iterações; ao estourar, retorna erro tratável (não trava nem lança exceção não capturada)
+- [ ] Argumento da ferramenta é validado pelo schema Zod antes do handler rodar; argumento inválido não executa o handler
 
 **Verification:**
-- [x] `npm run build` compila sem erro
-- [x] `npm run lint` roda sem erro
-
-**Nota (2026-08-30):** `npm install` do `better-sqlite3` falha ao compilar o módulo nativo neste Windows local por falta de Visual Studio Build Tools — confirma o risco já registrado em `tasks/plan.md`. Não bloqueia esta tarefa (build/lint não dependem do binário nativo); a verificação funcional do banco fica pra Tarefa 3/4 via Docker, como o plano já previa.
+- [ ] `npm test` cobre: schema→JSON Schema, execução de tool call simulada (mock do client), cap de iterações, argumento inválido rejeitado
+- [ ] `npm run build` compila sem erro
+- [ ] Manual: enviar mensagem real que force a IA a chamar a ferramenta `ecoar` (ex: "use a ferramenta eco com o texto X") e confirmar que a resposta final reflete o resultado da ferramenta
 
 **Dependencies:** None
 
 **Files likely touched:**
-- `package.json`
-- `tsconfig.json`
-- `.eslintrc.*` / `eslint.config.js`
-- `.prettierrc`
-- `src/index.ts` (placeholder)
+- `src/ai/openrouter.ts`
+- `src/ai/tools/types.ts` (novo)
+- `src/ai/tools/registry.ts` (novo)
+- `tests/ai/openrouter.test.ts`
 
-**Estimated scope:** Small: 1-2 files (+ configs gerados)
+**Estimated scope:** Medium (4 arquivos)
 
 ---
 
-### Tarefa 2: Configuração de ambiente validada por Zod
+### Tarefa 2: Persistência de `uso_tokens` e `tool_calls` em `interacoes_ia`
 
-**Description:** Carregar variáveis de ambiente (token do bot, chave do OpenRouter, caminho/chave do banco, allowlist de `chat_id`) via um schema Zod único, falhando rápido e com mensagem clara se algo obrigatório faltar. Cobre "Implicação técnica" da seção Ambientes e item 2 da Segurança (segredo nunca hardcoded).
+**Descrição:** Criar o repositório de `uso_tokens` (grava `fluxo`, `modelo`, `tokens_prompt`, `tokens_completion`, `custo_estimado`, `origem: 'uso_real'`, `data_hora`) e estender `registrarInteracaoIa` para aceitar e gravar `tool_calls` (JSON serializado). Ligar em `handlerTexto`: toda chamada ao `gerarResposta` passa a gravar `uso_tokens` (a partir de `completion.usage`) e as `tool_calls` decididas pelo modelo.
 
 **Acceptance criteria:**
-- [x] `.env.example` documenta todas as variáveis exigidas, sem valor real
-- [x] Schema Zod rejeita a inicialização se uma variável obrigatória faltar, com mensagem indicando qual
-- [x] Módulo de config é o único ponto de leitura de `process.env` no projeto
+- [ ] `registrarUsoTokens(db, {...})` insere uma linha em `uso_tokens` por chamada de modelo
+- [ ] `registrarInteracaoIa` grava `tool_calls` como JSON quando houver, `null` quando não houver
+- [ ] `handlerTexto` chama os dois repositórios sem alterar o comportamento de resposta ao usuário já existente
 
 **Verification:**
-- [x] Tests pass: teste unitário cobrindo variável obrigatória ausente e caso válido (`tests/config/env.test.ts`, 3 testes)
-- [x] Build succeeds: `npm run build`
-- [x] Manual check: `loadEnv` lança erro com o nome do campo faltante (coberto pelo teste automatizado, equivalente ao check manual)
+- [ ] `npm test` cobre o novo repositório (insert) e a extensão de `interacoesIa` (novo campo)
+- [ ] `npm run build` e `npm run lint` sem erro
+- [ ] Manual: enviar mensagem real, inspecionar `interacoes_ia.tool_calls` e `uso_tokens` no banco de Homologação (via `sqlite3`/consulta cifrada) confirmando os valores gravados
 
 **Dependencies:** Tarefa 1
 
 **Files likely touched:**
-- `src/config/env.ts`
-- `.env.example`
-- `tests/config/env.test.ts` (depende da Tarefa 8 existir para rodar; escrever o teste já, ativar quando o runner existir)
-
-**Estimated scope:** Small: 1-2 files
-
----
-
-## Fase B: Infraestrutura (Docker, banco, log)
-
-### Tarefa 3: Dockerfile + docker-compose (Produção/Homologação)
-
-**Description:** Empacotar o projeto em Docker (mitiga falha documentada de build do módulo nativo do SQLite) com dois serviços isolados — Produção e Homologação — cada um com seu `.env` e volume de banco próprios.
-
-**Acceptance criteria:**
-- [x] `Dockerfile` builda a imagem com `better-sqlite3` compilado corretamente
-- [x] `docker-compose.yml` define os serviços `producao` e `homologacao`, cada um com volume e env file próprios
-- [x] Nenhum segredo hardcoded no compose (só referência a `.env.producao`/`.env.homologacao`, ambos no `.gitignore`)
-
-**Verification:**
-- [x] Build succeeds: `docker build .` — **verificado via CI** (job `docker` novo em `.github/workflows/ci.yml`), não localmente: Docker não está instalado nesta máquina Windows
-- [x] Manual check: `docker compose config` valida os dois serviços sem erro — idem, verificado via CI (cria `.env.producao`/`.env.homologacao` de teste a partir do `.env.example`, nunca comitados)
-- [x] Manual check: `.env.producao`/`.env.homologacao` cobertos pelo `.gitignore` existente (padrão `.env.*` já cobria, confirmado com `git check-ignore -v`)
-
-**Nota (2026-08-30):** Docker não está instalado localmente — a verificação real de build/compose acontece no CI (GitHub Actions já tem Docker nos runners), não nesta máquina. Job `docker` adicionado ao `ci.yml` como parte desta tarefa.
-
-**Dependencies:** Tarefa 2
-
-**Files likely touched:**
-- `Dockerfile`
-- `docker-compose.yml`
-- `.dockerignore`
-- `.gitignore` (adicionar `.env.producao`/`.env.homologacao` se ainda não cobertos pelo padrão `.env*`)
-
-**Estimated scope:** Small: 2-3 files
-
----
-
-### Tarefa 4: Schema do banco (modelo de dados completo) + client SQLCipher
-
-**Description:** Criar a migração inicial com todas as tabelas da seção "Modelo de dados" do PLANO.md (`bancos`, `contas`, `cartoes`, `faturas`, `transacoes`, `dividas`, `parcelas`, `renegociacoes`, `roteamento_tarefas`, `modelos_openrouter_historico`, `uso_tokens`, `metas`, `transferencias`, `despesas_fixas`) e um client de acesso ao banco via `better-sqlite3` + SQLCipher.
-
-**Nota (2026-08-30):** adicionada também `interacoes_ia` (seção "Observabilidade e rastreabilidade de IA" do PLANO.md) ao escopo desta tarefa — a Tarefa 7 (ainda dentro da Fase 1) grava nela, e nenhuma tarefa anterior criava essa tabela. `erros_execucao`/`analises_qualidade` ficaram de fora por não terem consumidor dentro da Fase 1 (jobs periódicos só entram na Fase 5) — ficam para quando a Fase que as usa for quebrada em tarefas.
-
-**Nota 2 (2026-08-30) — mudança de dependência:** `better-sqlite3` puro não suporta SQLCipher. Pesquisa real confirma **`better-sqlite3-multiple-ciphers`** como escolha correta (fork ativo, API idêntica ao `better-sqlite3`, suporte a `PRAGMA cipher='sqlcipher'`) — e, de brinde, resolve o risco de build nativo documentado desde a Tarefa 1: vem com binário pré-compilado pra win32-x64 **e** linux-x64 embutido no próprio pacote npm, sem exigir Visual Studio Build Tools localmente nem toolchain de compilação no Docker. Dockerfile da Tarefa 3 simplificado como consequência (`apt-get install python3 make g++` removido). `@types/better-sqlite3` removido (o pacote novo já traz seus próprios tipos); `tsconfig.json` ganhou `paths` mapeando o módulo pro `index.d.ts` dele, porque o `package.json` do pacote não declara `types` dentro de `exports` (limitação conhecida sob `moduleResolution: NodeNext`).
-
-**Acceptance criteria:**
-- [x] Migração cria todas as 15 tabelas (14 do "Modelo de dados" + `interacoes_ia`), com os campos e tipos descritos
-- [x] Banco é aberto sempre cifrado (SQLCipher), chave vinda da config validada na Tarefa 2
-- [x] Cliente exporta uma função de acesso única (sem instanciar conexão solta em múltiplos arquivos)
-
-**Verification:**
-- [x] Tests pass: teste que roda a migração contra um banco novo em arquivo temporário e confere que as 15 tabelas existem (`tests/db/migrate.test.ts`, 3 testes)
-- [x] Manual check: tentar abrir o arquivo do banco sem a chave falha (confirma que está de fato cifrado) — coberto pelo teste automatizado "banco cifrado não pode ser lido sem a chave correta"
-
-**Dependencies:** Tarefa 2
-
-**Files likely touched:**
-- `src/db/migrations/0001_schema_inicial.sql`
-- `src/db/client.ts`
-- `src/db/migrate.ts`
-
-**Estimated scope:** Medium: 3 files (schema grande, mas sem lógica — ver "Risks" no plan.md)
-
----
-
-### Tarefa 5: Log estruturado (pino) + handler global de erro
-
-**Description:** Configurar logger `pino` com saída JSON, níveis debug/info/warn/error, suporte a logger escopado por `trace_id`, mascaramento de campos sensíveis (segredo, dado financeiro completo), e um handler global de exceção/promise rejeitada que loga e não derruba o processo.
-
-**Acceptance criteria:**
-- [x] Logger expõe uma função para criar filho escopado por `trace_id` (`withTraceId`)
-- [x] Configuração de mascaramento cobre pelo menos: token do bot, chave OpenRouter, número de conta
-- [x] `process.on('uncaughtException')`/`unhandledRejection` capturam, logam e mantêm o processo vivo
-
-**Verification:**
-- [x] Tests pass: 3 testes novos (`tests/logging/logger.test.ts`) cobrindo mascaramento, campo comum não mascarado, e `withTraceId`
-- [x] Manual check: script descartável lançou erro não tratado propositalmente via `setTimeout` — logado como `uncaughtException` e o processo seguiu executando o código depois (confirmado por log adicional + exit code 0 controlado)
-
-**Dependencies:** Tarefa 2
-
-**Files likely touched:**
-- `src/logging/logger.ts`
-- `src/logging/errorHandler.ts`
-- `tests/logging/logger.test.ts`
-
-**Estimated scope:** Small: 2-3 files
-
----
-
-## Fase C: Bot e IA
-
-### Tarefa 6: Bot Telegram (grammY) com allowlist de `chat_id`
-
-**Description:** Subir o bot via grammY em long polling, rejeitando silenciosamente (só log, sem resposta) qualquer mensagem de fora da allowlist de `chat_id`/`user_id` configurada por ambiente.
-
-**Acceptance criteria:**
-- [x] Bot conecta e responde a mensagem de um `chat_id` permitido
-- [x] Mensagem de `chat_id` fora da allowlist é ignorada e gera log (nunca resposta)
-- [x] Token do bot vem exclusivamente da config validada (Tarefa 2)
-
-**Verification:**
-- [x] Tests pass: teste unitário do middleware de allowlist (permitido vs. negado), sem precisar conectar no Telegram de verdade
-- [x] Manual check: enviar mensagem de teste pelo bot de Homologação e confirmar resposta
-
-**Nota (2026-08-30):** bot de Homologação criado no BotFather (`.env.homologacao` local, nunca comitado), `chat_id` real obtido via `@userinfobot`. Testado manualmente rodando `src/index.ts` local (long polling) — mensagem enviada pelo Telegram recebeu "Mensagem recebida." de volta, confirmando o fluxo completo (config → bot → allowlist → handler). Cenário de bloqueio (chat_id fora da allowlist) coberto só pelos 3 testes unitários (`tests/bot/allowlist.test.ts`), sem teste manual duplicado — exigiria uma segunda conta Telegram sem trazer garantia adicional. `src/index.ts` passou a de fato inicializar e rodar o bot (antes só logava uma mensagem estática).
-
-**Dependencies:** Tarefa 5
-
-**Files likely touched:**
-- `src/bot/bot.ts`
-- `src/bot/middleware/allowlist.ts`
-- `tests/bot/allowlist.test.ts`
-
-**Estimated scope:** Small: 2-3 files
-
----
-
-### Tarefa 7: Integração simples com OpenRouter + registro em `interacoes_ia`
-
-**Description:** Chamada simples ao OpenRouter (SDK compatível com OpenAI) a partir do handler de texto do bot — sem tool calling ainda (isso é Fase 3, ver "Open Questions" no plan.md). Toda chamada grava um registro em `interacoes_ia` com `trace_id`, conforme "Observabilidade e rastreabilidade de IA".
-
-**Acceptance criteria:**
-- [x] Mensagem de texto do usuário gera uma chamada ao OpenRouter e a resposta volta pro Telegram
-- [x] Cada chamada grava uma linha em `interacoes_ia` (mensagem, modelo, resposta, `trace_id`, resultado)
-- [x] `trace_id` gerado por interação é o mesmo usado no log (Tarefa 5) daquela requisição
-
-**Verification:**
-- [x] Tests pass: teste unitário do módulo que grava `interacoes_ia` (sem chamar a API de verdade — mockar o client do OpenRouter)
-- [x] Manual check: enviar mensagem real no bot de Homologação e conferir a linha gravada em `interacoes_ia`
-
-**Nota (2026-08-30):** SDK `openai` instalado (aponta pra `baseURL` do OpenRouter, conforme decisão do PLANO.md). Modelo hardcoded (`openai/gpt-4o-mini`) como ponto de partida — roteamento dinâmico por fluxo (`roteamento_tarefas`, catálogo do OpenRouter) é decisão da Fase 5, fora do escopo desta tarefa. Testado manualmente contra o bot de Homologação: duas mensagens reais enviadas, ambas registradas em `interacoes_ia` com resposta do modelo, `trace_id` e `resultado: sucesso` (conferido lendo o banco cifrado diretamente). Resposta do modelo é genérica por design nesta fase — sem tool calling, a IA não tem acesso a nenhum dado financeiro real ainda (isso é Fase 3); a integração ponta a ponta é o que este critério de aceite cobre.
-
-**Achado durante a implementação — bug real, não hipotético:** o `paths` do `tsconfig.json` adicionado na Tarefa 4 (pra resolver TS7016 do `better-sqlite3-multiple-ciphers`) fazia o `tsx` (usado em `npm run dev` e nos testes manuais) resolver o pacote pro arquivo de tipos (`.d.ts`) em vez do código real, quebrando em runtime com `ReferenceError: Database is not defined` — só descoberto agora porque foi a primeira vez que o app rodou de ponta a ponta via `tsx` (antes só `npm run build` + testes via Vitest exercitavam esse import, e nenhum dos dois usa a resolução de `paths` do jeito que o `tsx`/esbuild usa). Corrigido removendo o `paths` e adicionando uma declaração de tipo ambiente própria (`src/types/better-sqlite3-multiple-ciphers.d.ts`, só com a superfície de API usada no projeto) — resolve o tipo pro `tsc` sem afetar a resolução de módulo em runtime de nenhuma ferramenta. Também descoberto e corrigido: `migrate()` nunca tinha sido chamado de fato pelo `index.ts` (só nos testes) — ao ligar isso agora, o Dockerfile precisou de um passo a mais (`cp -r src/db/migrations dist/db/migrations`), já que `tsc` não copia arquivos `.sql` pro `dist/`.
-
-**Dependencies:** Tarefa 4, Tarefa 6
-
-**Files likely touched:**
-- `src/ai/openrouter.ts`
+- `src/db/repositories/usoTokens.ts` (novo)
 - `src/db/repositories/interacoesIa.ts`
 - `src/bot/handlers/texto.ts`
-- `tests/db/interacoesIa.test.ts`
+- `tests/db/usoTokens.test.ts` (novo)
 
-**Estimated scope:** Medium: 4 files
+**Estimated scope:** Small (4 arquivos)
 
 ---
 
-### Tarefa 8: Estrutura de testes unitários (Vitest) com primeiro teste real
+### Tarefa 3: Mecanismo de confirmação síncrona
 
-**Description:** Configurar o runner de testes (Vitest, confirmado pelo usuário) e migrar/ativar os testes já escritos como parte das Tarefas 2, 4, 5 e 6, que até aqui ficaram descritos mas dependiam desta tarefa pra rodar.
+**Descrição:** Implementar o estado de "ação pendente" em memória (`Map<chatId, PendingAction>`) e a lógica de interceptação: quando uma ferramenta de alto impacto é chamada, em vez de executar o handler, guarda a ação pendente e pergunta "confirma?"; a próxima mensagem de texto daquele chat é interpretada como sim/não para a ação pendente (em vez de entrar no loop de tool calling normal). Confirmar executa o handler original; recusar ou não responder descarta a pendência sem gravar nada.
 
 **Acceptance criteria:**
-- [x] `npm test` executa todos os testes já escritos nas tarefas anteriores
-- [x] Cobertura mínima: pelo menos um teste de regra de negócio real por módulo com lógica (config, allowlist, mascaramento de log, `interacoes_ia`)
+- [ ] Existe uma forma de marcar uma ferramenta como "alto impacto" no registry (ex: campo `requerConfirmacao: true`)
+- [ ] Chamar uma ferramenta de alto impacto não executa o handler imediatamente — gera pergunta de confirmação
+- [ ] Resposta afirmativa executa o handler original com os argumentos originais; resposta negativa ou nova mensagem não relacionada descarta a pendência sem gravar nada no banco
+- [ ] Ferramentas sem `requerConfirmacao` continuam executando direto, sem mudança de comportamento
 
 **Verification:**
-- [x] Tests pass: `npm test` verde
-- [x] Build succeeds: `npm run build`
+- [ ] `npm test` cobre: pendência criada, confirmação executa handler, recusa descarta, chat sem pendência não é afetado
+- [ ] `npm run build` sem erro
+- [ ] Manual: adiar para a Tarefa 4 (primeira ferramenta real de alto impacto) — aqui o teste manual usa uma ferramenta de teste marcada como alto impacto
 
-**Nota (2026-08-30):** nenhum arquivo novo foi necessário. O Vitest já roda com config zero desde a Tarefa 1 (`npm test` → `vitest run`, descobre `tests/**/*.test.ts` sozinho) e cada tarefa desde então (2, 5, 6, 7) já escreveu e ativou seu teste real no momento da implementação, em vez de deixar pendente até esta tarefa — por isso o critério de cobertura mínima por módulo já estava satisfeito antes desta tarefa começar: `tests/config/env.test.ts`, `tests/logging/logger.test.ts`, `tests/bot/allowlist.test.ts`, `tests/db/interacoesIa.test.ts` (+ `tests/db/migrate.test.ts`, da Tarefa 4). `npm test` roda os 5 arquivos, 15 testes, verde. Criar um `vitest.config.ts` vazio só pra ter um artefato da tarefa seria configuração sem propósito real — evitado por não ser necessário.
-
-**Dependencies:** Tarefa 1 (pode ser feita em paralelo com Tarefas 3-7, mas os testes escritos nelas só rodam de fato depois desta)
+**Dependencies:** Tarefa 1
 
 **Files likely touched:**
-- `vitest.config.ts`
-- `package.json` (script `test`)
+- `src/bot/confirmacao.ts` (novo)
+- `src/bot/handlers/texto.ts`
+- `tests/bot/confirmacao.test.ts` (novo)
 
-**Estimated scope:** Small: 1-2 files
-
-**Parallelizable:** Sim, com Tarefas 3, 4 e 5 — só precisa da Tarefa 1. Ativar os testes escritos por elas é a parte sequencial.
+**Estimated scope:** Medium (3 arquivos)
 
 ---
 
-### Tarefa 9: Handlers separados por tipo de entrada (texto vs. imagem/PDF)
+## Checkpoint: Fundação de tool calling
+- [ ] `npm run build` compila sem erro
+- [ ] `npm run lint` roda sem erro
+- [ ] `npm test` passa
+- [ ] Ferramenta de teste (`ecoar`) roda de ponta a ponta via mensagem real no Telegram de Homologação, incluindo um caso marcado como alto impacto passando pela confirmação
+- [ ] Revisão com o usuário antes de prosseguir
 
-**Description:** Separar o roteamento de mensagem recebida pelo bot por tipo (texto já tratado na Tarefa 7; imagem/PDF ganha handler próprio, mesmo que ainda sem OCR/extração real — Fase 1 só prepara o terreno pro roteamento de IA por fluxo da Fase 5).
+---
+
+## Fase B: Ferramentas essenciais (contas e transações)
+
+### Tarefa 4: `criar_conta`, `criar_cartao`
+
+**Descrição:** Repositórios de `contas` e `cartoes` (insert + select básico) e as ferramentas correspondentes, marcadas como alto impacto (usam a confirmação da Tarefa 3). `criar_conta` pede banco (ou cria um `bancos` novo se não existir — decisão simples: buscar por nome, criar se não achar), tipo (PF/PJ), apelido. `criar_cartao` pede conta vinculada, nome, limite, dia de fechamento/vencimento.
 
 **Acceptance criteria:**
-- [x] Mensagem de texto vai para `handlers/texto.ts` (já existente da Tarefa 7)
-- [x] Mensagem com foto ou documento (PDF) vai para um handler dedicado, que responde algo como "recebido, processamento de imagem/PDF ainda não implementado" e loga a interação
-- [x] Nenhum tipo de mensagem cai num handler genérico/padrão silencioso
+- [ ] `criar_conta` grava em `contas` (e em `bancos`, se necessário) só após confirmação
+- [ ] `criar_cartao` grava em `cartoes` vinculado a uma conta existente, só após confirmação
+- [ ] Argumentos inválidos (tipo fora de PF/PJ, dia fora de 1-31) são rejeitados pelo Zod antes de qualquer gravação
 
 **Verification:**
-- [x] Tests pass: teste unitário do roteador confirmando que cada tipo de update vai pro handler certo
-- [x] Manual check: enviar uma foto pro bot de Homologação e confirmar a resposta de "ainda não implementado"
+- [ ] `npm test` cobre os dois repositórios e as duas ferramentas (incluindo rejeição de argumento inválido)
+- [ ] `npm run build` sem erro
+- [ ] Manual: criar uma conta e um cartão via mensagem real no Telegram de Homologação, confirmando os dois; conferir os registros no banco
 
-**Nota (2026-08-30):** `src/bot/router.ts` extrai o roteamento (antes inline em `bot.ts`) pra um módulo próprio, testável sem precisar de uma instância real do grammY (`bot.on` mockado). Handler de mídia (`src/bot/handlers/midia.ts`) cobre `message:photo` e `message:document` com a mesma resposta — não grava em `interacoes_ia` (essa tabela é só pra interação real com IA, e mídia ainda não chama IA nenhuma), só loga via pino com `trace_id` próprio. Testado manualmente contra o bot de Homologação com foto **e** PDF — ambos confirmados retornando a mensagem de "ainda não implementado" e logando `tipo` correto. Fecha o checkpoint de **Bot funcional** (Tarefas 6, 7, 8, 9).
-
-**Dependencies:** Tarefa 6
+**Dependencies:** Tarefa 3
 
 **Files likely touched:**
-- `src/bot/router.ts`
-- `src/bot/handlers/midia.ts`
-- `tests/bot/router.test.ts`
+- `src/db/repositories/contas.ts` (novo)
+- `src/db/repositories/cartoes.ts` (novo)
+- `src/ai/tools/contas.ts` (novo)
+- `tests/db/contas.test.ts`, `tests/ai/tools/contas.test.ts` (novos)
 
-**Estimated scope:** Small: 2-3 files
+**Estimated scope:** Medium (5 arquivos)
 
 ---
 
-## Fase D: Dados de apoio e resiliência
+### Tarefa 5: `registrar_transacao`, `editar_transacao`, `excluir_transacao`
 
-### Tarefa 10: Seed de dados fictícios para Homologação
-
-**Description:** Script que popula o banco de Homologação com contas, cartões, dívidas e transações fictícias, cobrindo os cenários citados no PLANO.md (PF/PJ, renegociação, fatura).
+**Descrição:** Repositório de `transacoes` (insert, update, exclusão lógica) e as três ferramentas. `registrar_transacao` grava direto e ecoa o resultado (baixo impacto). `editar_transacao` sobrescreve um registro existente, também direto com eco. `excluir_transacao` marca `status = 'excluida'` (nunca `DELETE`) e é alto impacto — passa pela confirmação da Tarefa 3, apesar de logicamente reversível (conforme PLANO.md item 8 de Segurança).
 
 **Acceptance criteria:**
-- [x] Script roda contra o banco de Homologação (nunca contra Produção — validação explícita do ambiente antes de rodar)
-- [x] Popula ao menos: 1 conta PF, 1 conta PJ, 1 cartão com fatura, 1 dívida com renegociação vinculada
+- [ ] `registrar_transacao` grava com `status = 'ativa'` e a resposta ecoa valor/categoria/data gravados
+- [ ] `editar_transacao` atualiza um registro existente por id e ecoa o que mudou
+- [ ] `excluir_transacao` só executa após confirmação e faz `UPDATE status = 'excluida'`, nunca `DELETE`
 
 **Verification:**
-- [x] Manual check: rodar o script e consultar o banco confirmando os dados fictícios
-- [x] Manual check: tentar rodar apontando pra config de Produção falha explicitamente
-
-**Nota (2026-08-30):** `scripts/seed.ts` valida `env.ambiente === 'homologacao'` antes de qualquer escrita, lançando erro explícito e abortando (testado apontando `.env.producao`, falhou como esperado). Popula 1 banco fictício, 1 conta PF + 1 conta PJ, 1 cartão com fatura aberta, 2 dívidas (original com status `renegociado` + nova `ativo`) ligadas por uma linha em `renegociacoes`, e 3 transações de exemplo (receita PJ, despesa PF em conta, despesa PF no cartão) — cobre os cenários citados na descrição da tarefa. Rodado via `npm run seed` (novo script no `package.json`), conferido lendo o banco cifrado diretamente. Script fica fora do `tsconfig.json`/`dist` (não faz parte do runtime da aplicação, só ferramenta de desenvolvimento local).
+- [ ] `npm test` cobre insert, update, exclusão lógica (e que `DELETE` nunca é chamado) e o fluxo de confirmação de `excluir_transacao`
+- [ ] `npm run build` sem erro
+- [ ] Manual: registrar uma transação real, editá-la, excluí-la (confirmando), tudo via Telegram de Homologação
 
 **Dependencies:** Tarefa 4
 
 **Files likely touched:**
-- `scripts/seed.ts`
+- `src/db/repositories/transacoes.ts` (novo)
+- `src/ai/tools/transacoes.ts` (novo)
+- `tests/db/transacoes.test.ts`, `tests/ai/tools/transacoes.test.ts` (novos)
 
-**Estimated scope:** Small: 1 file
+**Estimated scope:** Medium (4 arquivos)
 
 ---
 
-### Tarefa 11: Backup diário automático e cifrado do banco
+### Tarefa 6: `consultar_saldo`, `listar_transacoes`, `resumo_mensal`
 
-**Description:** Rotina (cron dentro do container, ou job agendado do processo) que copia o arquivo do banco diariamente para um destino separado, mantendo a mesma cifragem do original, com retenção de alguns dias/semanas.
+**Descrição:** Consultas de leitura sobre `transacoes`/`contas`, sempre filtrando `status = 'ativa'` por padrão (conforme regra do Modelo de dados). `consultar_saldo` retorna o saldo de uma conta; `listar_transacoes` filtra por período/categoria/conta; `resumo_mensal` agrega receita/despesa por categoria num mês.
 
 **Acceptance criteria:**
-- [x] Backup roda diariamente sem intervenção manual (agendado)
-- [x] Arquivo de backup permanece cifrado (mesma proteção do original — nunca texto puro)
-- [x] Backups mais antigos que a retenção configurada são removidos automaticamente
+- [ ] As três ferramentas nunca retornam transações com `status = 'excluida'`
+- [ ] `resumo_mensal` agrega valores corretamente por categoria e tipo (receita/despesa)
+- [ ] Nenhuma das três exige confirmação (são leitura, sem efeito colateral)
 
 **Verification:**
-- [x] Manual check: rodar o job manualmente uma vez, confirmar o arquivo gerado
-- [x] Manual check: restaurar esse backup num banco de teste e confirmar que os dados batem
+- [ ] `npm test` cobre os três casos, incluindo que uma transação excluída não aparece em nenhum resultado
+- [ ] `npm run build` sem erro
+- [ ] Manual: perguntar saldo, listar transações do mês e pedir resumo mensal via Telegram de Homologação, comparando com os dados reais gravados até aqui
 
-**Dependencies:** Tarefa 4, Tarefa 3 (agendamento dentro do container)
+**Dependencies:** Tarefa 5
 
 **Files likely touched:**
-- ~~`scripts/backup.ts`~~ → `src/scripts/backup.ts` (ver nota abaixo)
-- `docker-compose.yml` (agendamento/cron do serviço)
+- `src/db/repositories/transacoes.ts` (estender)
+- `src/ai/tools/consultas.ts` (novo)
+- `tests/ai/tools/consultas.test.ts` (novo)
 
-**Nota (2026-08-30) — desvio do caminho de arquivo planejado:** ao contrário do `scripts/seed.ts` (Tarefa 10, só dev local), o backup **precisa rodar dentro do container em produção** — colocado em `src/scripts/backup.ts` em vez de `scripts/backup.ts` pra ser compilado pelo `tsc` normal (que só cobre `src/`) e existir em `dist/scripts/backup.js` na imagem Docker, sem precisar levar `tsx`/TypeScript pro ambiente de produção.
+**Estimated scope:** Small (3 arquivos)
 
-**Nota 2 — bug real encontrado, não hipotético:** a primeira implementação usava `db.backup(destino)` (API nativa do `better-sqlite3`) e falhou com `"backup is not supported with incompatible source and target databases"` — a API de backup binária não lida bem com bancos cifrados via SQLCipher nesta lib (o destino não herda a cifragem da conexão de origem). Corrigido usando `VACUUM INTO ?` (comando nativo do SQLite, executado através da mesma conexão já cifrada) — o arquivo gerado herda a cifragem da conexão automaticamente, sem esse problema.
+---
 
-**Agendamento:** dois serviços novos no `docker-compose.yml` (`backup-producao`, `backup-homologacao`), mesma imagem/volume dos serviços principais, `command` sobrescrito com um loop (`while true; do node dist/scripts/backup.js; sleep 86400; done`) — evita precisar de cron/toolchain extra na imagem.
+### Tarefa 7: `registrar_transferencia`
 
-**Testado manualmente, ponta a ponta:** populei o banco de Homologação via `npm run seed`, rodei `node dist/scripts/backup.js` (arquivo gerado em `data/backups/`), confirmei que o backup **não abre sem a chave** (cifrado) e que os dados batem com o original lendo com a chave certa (2 contas, 2 dívidas, 1 renegociação, 3 transações). Testei a retenção criando um arquivo de backup fictício com data de 10 dias atrás e rodando o job de novo — o arquivo antigo foi removido automaticamente, mantendo só os recentes.
+**Descrição:** Repositório de `transferencias` e a ferramenta correspondente. Debita `valor` cheio da conta de origem, credita `valor - taxa` na conta de destino (`taxa` opcional, padrão 0). Não é receita nem despesa — não grava em `transacoes`.
 
-**Estimated scope:** Small: 2 files
+**Acceptance criteria:**
+- [ ] `registrar_transferencia` grava em `transferencias`, nunca em `transacoes`
+- [ ] Com `taxa` informada, o destino recebe `valor - taxa` (validar no saldo da conta de destino se o saldo for atualizado nesta tarefa, ou documentar que o saldo consolidado fica pra consulta agregada — decisão a confirmar durante a implementação, ver Open Questions do plano)
+- [ ] Sem `taxa`, comportamento é 1:1 (mesma regra de antes)
+
+**Verification:**
+- [ ] `npm test` cobre transferência com e sem taxa
+- [ ] `npm run build` sem erro
+- [ ] Manual: transferir entre duas contas reais (com e sem taxa) via Telegram de Homologação
+
+**Dependencies:** Tarefa 4
+
+**Files likely touched:**
+- `src/db/repositories/transferencias.ts` (novo)
+- `src/ai/tools/transferencias.ts` (novo)
+- `tests/db/transferencias.test.ts` (novo)
+
+**Estimated scope:** Small (3 arquivos)
+
+---
+
+## Checkpoint: Fluxo financeiro básico funcional
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Testar manualmente em Homologação: criar conta, registrar transação, consultar saldo, listar transações, resumo mensal, transferir entre contas — tudo via mensagem real no Telegram
+- [ ] Revisão com o usuário antes de prosseguir
+
+---
+
+## Fase C: Dívidas e faturas
+
+### Tarefa 8: Cálculo de amortização Price/SAC (função pura testada)
+
+**Descrição:** Função determinística que, dado saldo devedor, taxa de juros, número de parcelas restantes, valor extra amortizado e modo (`reduzir_parcelas`/`reduzir_valor`), calcula o novo número de parcelas ou novo valor de parcela — separadamente para Price (parcela fixa recalculada por valor presente) e SAC (amortização constante, juro decrescente sobre saldo). Sem I/O, sem banco — só matemática, testada com múltiplos casos numéricos.
+
+**Acceptance criteria:**
+- [ ] Função calcula corretamente Price e SAC nos dois modos (`reduzir_parcelas`, `reduzir_valor`)
+- [ ] Casos de borda cobertos: amortização maior que o saldo devedor, taxa de juros zero, uma única parcela restante
+
+**Verification:**
+- [ ] `npm test` com pelo menos 8-10 casos numéricos (Price/SAC × 2 modos × casos de borda), valores conferidos manualmente contra fórmula financeira padrão
+- [ ] `npm run build` sem erro
+- [ ] Sem verificação manual via Telegram (função pura, sem integração ainda)
+
+**Dependencies:** None (paralelizável com Fase B)
+
+**Files likely touched:**
+- `src/finance/amortizacao.ts` (novo)
+- `tests/finance/amortizacao.test.ts` (novo)
+
+**Estimated scope:** Small (2 arquivos)
+
+---
+
+### Tarefa 9: `criar_divida` (com geração de `parcelas`)
+
+**Descrição:** Repositórios de `dividas` e `parcelas`, e a ferramenta `criar_divida` (tipo, valor total, num_parcelas, taxa de juros, opcionalmente `sistema_amortizacao`/`indexador`/`taxa_indexador_spread`/`periodicidade_reajuste`). Gera as `parcelas` de uma vez, com `data_vencimento` calculada a partir de `data_inicio`. Alto impacto — passa pela confirmação da Tarefa 3.
+
+**Acceptance criteria:**
+- [ ] `criar_divida` grava a dívida e todas as parcelas correspondentes numa única operação (transação de banco), só após confirmação
+- [ ] Campos opcionais (`sistema_amortizacao`, `indexador`, etc.) aceitam ausência sem erro, usando os defaults do schema (`indexador = 'fixo'`)
+- [ ] Datas de vencimento das parcelas são calculadas corretamente a partir de `data_inicio` (mensal)
+
+**Verification:**
+- [ ] `npm test` cobre criação com e sem campos opcionais, e a geração correta das parcelas
+- [ ] `npm run build` sem erro
+- [ ] Manual: criar uma dívida real (ex: financiamento com `sistema_amortizacao = price`) via Telegram de Homologação, confirmando, e conferir as parcelas geradas no banco
+
+**Dependencies:** Tarefa 3
+
+**Files likely touched:**
+- `src/db/repositories/dividas.ts` (novo)
+- `src/db/repositories/parcelas.ts` (novo)
+- `src/ai/tools/dividas.ts` (novo)
+- `tests/db/dividas.test.ts` (novo)
+
+**Estimated scope:** Medium (4 arquivos)
+
+---
+
+### Tarefa 10: `renegociar`
+
+**Descrição:** Ferramenta `renegociar` que marca a dívida (ou fatura) original como `renegociada`, cria uma nova linha em `dividas` (reaproveitando o repositório da Tarefa 9) com os termos novos, e liga as duas via `renegociacoes`. Alto impacto.
+
+**Acceptance criteria:**
+- [ ] Dívida/fatura original tem seu `status` atualizado para `renegociado`/`renegociada`
+- [ ] Nova linha em `dividas` herda `tipo` da origem quando a origem é uma dívida; usa `tipo = 'outro'` quando a origem é uma fatura
+- [ ] `renegociacoes` registra origem (tipo + id) e a nova dívida gerada
+
+**Verification:**
+- [ ] `npm test` cobre renegociação a partir de dívida e a partir de fatura (dois casos de `tipo` resultante)
+- [ ] `npm run build` sem erro
+- [ ] Manual: renegociar uma dívida real de teste via Telegram de Homologação, confirmando
+
+**Dependencies:** Tarefa 9
+
+**Files likely touched:**
+- `src/db/repositories/renegociacoes.ts` (novo)
+- `src/db/repositories/dividas.ts` (estender)
+- `src/ai/tools/dividas.ts` (estender)
+- `tests/db/renegociacoes.test.ts` (novo)
+
+**Estimated scope:** Medium (4 arquivos)
+
+---
+
+### Tarefa 11: `pagar_parcela`, `pagar_fatura`
+
+**Descrição:** Ferramentas de transição de status, rotina, sem confirmação. `pagar_parcela` marca a parcela como paga, incrementa `dividas.parcelas_pagas`, e transiciona `dividas.status` para `quitado` quando atinge `num_parcelas`. `pagar_fatura` marca `faturas.status = 'paga'`.
+
+**Acceptance criteria:**
+- [ ] `pagar_parcela` atualiza a parcela, incrementa o contador da dívida, e quita a dívida automaticamente quando for a última parcela
+- [ ] `pagar_fatura` marca a fatura como paga com `data_pagamento`
+- [ ] Nenhuma das duas exige confirmação
+
+**Verification:**
+- [ ] `npm test` cobre pagamento de parcela intermediária e da última parcela (transição automática pra quitado), e pagamento de fatura
+- [ ] `npm run build` sem erro
+- [ ] Manual: pagar uma parcela e uma fatura reais via Telegram de Homologação
+
+**Dependencies:** Tarefa 9
+
+**Files likely touched:**
+- `src/db/repositories/parcelas.ts` (estender)
+- `src/db/repositories/faturas.ts` (novo)
+- `src/ai/tools/pagamentos.ts` (novo)
+- `tests/db/parcelas.test.ts`, `tests/db/faturas.test.ts` (novos)
+
+**Estimated scope:** Medium (5 arquivos)
+
+---
+
+### Tarefa 12: `quitar_divida`
+
+**Descrição:** Ferramenta de quitação antecipada (paga o saldo restante de uma vez, antes do previsto). Alto impacto — passa pela confirmação da Tarefa 3. Marca as parcelas restantes como pagas (ou canceladas, a decidir na implementação conforme o que fizer mais sentido para o relatório de histórico) e `dividas.status = 'quitado'`.
+
+**Acceptance criteria:**
+- [ ] `quitar_divida` só executa após confirmação
+- [ ] Dívida transiciona para `status = 'quitado'` e nenhuma parcela fica pendente depois da quitação
+
+**Verification:**
+- [ ] `npm test` cobre a quitação antecipada com parcelas restantes em diferentes quantidades
+- [ ] `npm run build` sem erro
+- [ ] Manual: quitar uma dívida de teste real via Telegram de Homologação, confirmando
+
+**Dependencies:** Tarefa 9
+
+**Files likely touched:**
+- `src/db/repositories/dividas.ts` (estender)
+- `src/ai/tools/dividas.ts` (estender)
+- `tests/db/dividas.test.ts` (estender)
+
+**Estimated scope:** Small (3 arquivos)
+
+---
+
+### Tarefa 13: `amortizar_divida`
+
+**Descrição:** Ferramenta de amortização extraordinária, usando o cálculo da Tarefa 8. Fluxo: registra o valor extra pago, calcula a estimativa (se `sistema_amortizacao` estiver preenchido) e pergunta se bate com o informado pelo banco — "confere" aplica o calculado, "foi diferente" aceita o valor real informado por você, que sempre prevalece. Sem `sistema_amortizacao`, pula direto pra pedir o valor real (sem tentar estimar). Alto impacto — confirmação. Se a dívida for indexada (`indexador != 'fixo'`), a mensagem de confirmação inclui aviso de que a taxa pode estar desatualizada.
+
+**Acceptance criteria:**
+- [ ] Com `sistema_amortizacao` preenchido, a ferramenta usa a função da Tarefa 8 para estimar e apresenta a estimativa antes de aplicar
+- [ ] Sem `sistema_amortizacao`, não tenta estimar — pede direto o valor informado pelo banco
+- [ ] Ao aplicar (confirmado ou com valor real divergente), marca como `cancelada` as parcelas que deixaram de existir e ajusta `dividas.num_parcelas`/`valor_parcela` conforme o modo escolhido
+- [ ] Dívida com `indexador != 'fixo'` inclui o aviso de taxa possivelmente desatualizada na mensagem de confirmação
+
+**Verification:**
+- [ ] `npm test` cobre: com e sem `sistema_amortizacao`, os dois modos (`reduzir_parcelas`/`reduzir_valor`), confirmação do calculado vs. correção com valor real, e o aviso de dívida indexada
+- [ ] `npm run build` sem erro
+- [ ] Manual: amortizar uma dívida de teste real (com `sistema_amortizacao` preenchido) via Telegram de Homologação, testando tanto "confere" quanto "foi diferente"
+
+**Dependencies:** Tarefa 8, Tarefa 9
+
+**Files likely touched:**
+- `src/db/repositories/dividas.ts` (estender)
+- `src/db/repositories/parcelas.ts` (estender)
+- `src/ai/tools/dividas.ts` (estender)
+- `tests/db/dividas.test.ts` (estender)
+
+**Estimated scope:** Medium (4 arquivos, lógica mais densa desta fase)
+
+---
+
+### Tarefa 14: `consultar_fatura`, `consultar_dividas_ativas`, `resumo_dividas`
+
+**Descrição:** Ferramentas de leitura sobre `faturas`/`dividas`/`parcelas`. Sem confirmação.
+
+**Acceptance criteria:**
+- [ ] `consultar_fatura` retorna a fatura de um cartão/mês específico
+- [ ] `consultar_dividas_ativas` lista só dívidas com `status = 'ativo'`
+- [ ] `resumo_dividas` agrega saldo devedor total e próximas parcelas a vencer
+
+**Verification:**
+- [ ] `npm test` cobre as três consultas
+- [ ] `npm run build` sem erro
+- [ ] Manual: consultar fatura, dívidas ativas e resumo de dívidas via Telegram de Homologação
+
+**Dependencies:** Tarefa 9
+
+**Files likely touched:**
+- `src/ai/tools/consultasDividas.ts` (novo)
+- `tests/ai/tools/consultasDividas.test.ts` (novo)
+
+**Estimated scope:** Small (2 arquivos)
+
+---
+
+## Checkpoint: Dívidas completas
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Testar manualmente em Homologação um fluxo completo: criar dívida (com `sistema_amortizacao`) → pagar parcela → amortizar (confirmando estimativa) → quitar antecipadamente
+- [ ] Testar renegociação isoladamente
+- [ ] Revisão com o usuário antes de prosseguir
+
+---
+
+## Fase D: Despesas fixas e feedback
+
+### Tarefa 15: `criar_despesa_fixa`, `editar_despesa_fixa`
+
+**Descrição:** Repositório de `despesas_fixas` e as duas ferramentas. `criar_despesa_fixa` cadastro manual (descrição, categoria, valor esperado, dia esperado, conta/cartão vinculado). `editar_despesa_fixa` ajusta valor/dia ou muda `status` entre `ativa`/`pausada`. Nenhuma exige confirmação (baixo impacto, fácil de corrigir).
+
+**Acceptance criteria:**
+- [ ] `criar_despesa_fixa` grava com `origem = 'manual'`
+- [ ] `editar_despesa_fixa` atualiza valor/dia/status de um registro existente
+
+**Verification:**
+- [ ] `npm test` cobre criação e edição (incluindo mudança de status)
+- [ ] `npm run build` sem erro
+- [ ] Manual: cadastrar e editar uma despesa fixa real via Telegram de Homologação
+
+**Dependencies:** Tarefa 4 (precisa de `contas`/`cartoes` existirem)
+
+**Files likely touched:**
+- `src/db/repositories/despesasFixas.ts` (novo)
+- `src/ai/tools/despesasFixas.ts` (novo)
+- `tests/db/despesasFixas.test.ts` (novo)
+
+**Estimated scope:** Small (3 arquivos)
+
+---
+
+### Tarefa 16: Feedback de avaliação (`avaliacao_usuario`)
+
+**Descrição:** Mecanismo de marcar uma resposta do bot como incorreta (reação ou comando respondendo à mensagem, ex: `/errado`) que grava `interacoes_ia.avaliacao_usuario = 'incorreto'` no registro correspondente (via `trace_id`, guardado numa correlação mensagem-do-Telegram → `trace_id` em memória ou reaproveitando o `message_id` da resposta). Não é uma ferramenta exposta à IA — é ação direta do bot/router.
+
+**Acceptance criteria:**
+- [ ] Existe uma forma de, a partir de uma resposta do bot já enviada, localizar o `trace_id` da interação correspondente
+- [ ] Comando/reação de feedback atualiza `interacoes_ia.avaliacao_usuario` sem exigir você saber o `trace_id` manualmente
+
+**Verification:**
+- [ ] `npm test` cobre a atualização de `avaliacao_usuario` a partir do mecanismo escolhido
+- [ ] `npm run build` sem erro
+- [ ] Manual: marcar uma resposta real como incorreta via Telegram de Homologação e conferir `interacoes_ia.avaliacao_usuario` no banco
+
+**Dependencies:** Tarefa 2
+
+**Files likely touched:**
+- `src/bot/handlers/feedback.ts` (novo)
+- `src/db/repositories/interacoesIa.ts` (estender com update)
+- `src/bot/router.ts` (estender)
+- `tests/bot/feedback.test.ts` (novo)
+
+**Estimated scope:** Medium (4 arquivos)
+
+---
+
+## Checkpoint: Fase 3 completa
+- [ ] Todos os critérios de aceite das Tarefas 1-16 atendidos
+- [ ] Checklist manual: cada ferramenta de alto impacto (`criar_conta`, `criar_cartao`, `criar_divida`, `renegociar`, `quitar_divida`, `amortizar_divida`, `excluir_transacao`) de fato passa pela confirmação da Tarefa 3 — nenhuma esquecida
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste end-to-end real em Homologação: fluxo completo de uma dívida (criar → pagar parcela → amortizar → quitar)
+- [ ] PROGRESSO.md atualizado com o marco "Fase 3 concluída"
+- [ ] Revisão com o usuário antes de prosseguir para a Fase 4
