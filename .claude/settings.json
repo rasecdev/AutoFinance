@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/check-docs-sync.sh",
+            "if": "Bash(gh pr merge*)",
+            "statusMessage": "Verificando sincronizacao de tasks/plan.md, tasks/todo.md e PROGRESSO.md..."
+          }
+        ]
+      }
+    ]
+  }
+}
