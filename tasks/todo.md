@@ -11,15 +11,15 @@
 **Descrição:** Estender `gerarResposta` para suportar tool calling: aceitar uma lista de ferramentas (nome, descrição, schema Zod, handler), gerar a definição JSON Schema de cada uma via `z.toJSONSchema`, enviar `tools`+`tool_choice: 'auto'` na chamada, e rodar um loop que executa a ferramenta escolhida e reenvia o resultado até o modelo devolver texto final (com cap de iterações). Criar uma ferramenta de teste simples (`ecoar`, sem efeito no banco) só para validar o mecanismo ponta a ponta antes de qualquer ferramenta de negócio existir.
 
 **Acceptance criteria:**
-- [ ] `gerarResposta` aceita uma lista de ferramentas e as expõe ao modelo via `tools`
-- [ ] Quando o modelo chama uma ferramenta, o handler correspondente é executado e o resultado retorna ao modelo como mensagem `tool`, repetindo até resposta final em texto
-- [ ] Loop tem cap de iterações; ao estourar, retorna erro tratável (não trava nem lança exceção não capturada)
-- [ ] Argumento da ferramenta é validado pelo schema Zod antes do handler rodar; argumento inválido não executa o handler
+- [x] `gerarResposta` aceita uma lista de ferramentas e as expõe ao modelo via `tools`
+- [x] Quando o modelo chama uma ferramenta, o handler correspondente é executado e o resultado retorna ao modelo como mensagem `tool`, repetindo até resposta final em texto
+- [x] Loop tem cap de iterações; ao estourar, retorna erro tratável (não trava nem lança exceção não capturada)
+- [x] Argumento da ferramenta é validado pelo schema Zod antes do handler rodar; argumento inválido não executa o handler
 
 **Verification:**
-- [ ] `npm test` cobre: schema→JSON Schema, execução de tool call simulada (mock do client), cap de iterações, argumento inválido rejeitado
-- [ ] `npm run build` compila sem erro
-- [ ] Manual: enviar mensagem real que force a IA a chamar a ferramenta `ecoar` (ex: "use a ferramenta eco com o texto X") e confirmar que a resposta final reflete o resultado da ferramenta
+- [x] `npm test` cobre: schema→JSON Schema, execução de tool call simulada (mock do client), cap de iterações, argumento inválido rejeitado
+- [x] `npm run build` compila sem erro
+- [x] Manual: enviar mensagem real que force a IA a chamar a ferramenta `ecoar` (ex: "use a ferramenta eco com o texto X") e confirmar que a resposta final reflete o resultado da ferramenta
 
 **Dependencies:** None
 
@@ -40,14 +40,14 @@
 **Descrição:** Criar o repositório de `uso_tokens` (grava `fluxo`, `modelo`, `tokens_prompt`, `tokens_completion`, `custo_estimado`, `origem: 'uso_real'`, `data_hora`) e estender `registrarInteracaoIa` para aceitar e gravar `tool_calls` (JSON serializado). Ligar em `handlerTexto`: toda chamada ao `gerarResposta` passa a gravar `uso_tokens` (a partir de `completion.usage`) e as `tool_calls` decididas pelo modelo.
 
 **Acceptance criteria:**
-- [ ] `registrarUsoTokens(db, {...})` insere uma linha em `uso_tokens` por chamada de modelo
-- [ ] `registrarInteracaoIa` grava `tool_calls` como JSON quando houver, `null` quando não houver
-- [ ] `handlerTexto` chama os dois repositórios sem alterar o comportamento de resposta ao usuário já existente
+- [x] `registrarUsoTokens(db, {...})` insere uma linha em `uso_tokens` por chamada de modelo
+- [x] `registrarInteracaoIa` grava `tool_calls` como JSON quando houver, `null` quando não houver
+- [x] `handlerTexto` chama os dois repositórios sem alterar o comportamento de resposta ao usuário já existente
 
 **Verification:**
-- [ ] `npm test` cobre o novo repositório (insert) e a extensão de `interacoesIa` (novo campo)
-- [ ] `npm run build` e `npm run lint` sem erro
-- [ ] Manual: enviar mensagem real, inspecionar `interacoes_ia.tool_calls` e `uso_tokens` no banco de Homologação (via `sqlite3`/consulta cifrada) confirmando os valores gravados
+- [x] `npm test` cobre o novo repositório (insert) e a extensão de `interacoesIa` (novo campo)
+- [x] `npm run build` e `npm run lint` sem erro
+- [x] Manual: enviar mensagem real, inspecionar `interacoes_ia.tool_calls` e `uso_tokens` no banco de Homologação (via `sqlite3`/consulta cifrada) confirmando os valores gravados
 
 **Dependencies:** Tarefa 1
 
@@ -68,15 +68,15 @@
 **Descrição:** Implementar o estado de "ação pendente" em memória (`Map<chatId, PendingAction>`) e a lógica de interceptação: quando uma ferramenta de alto impacto é chamada, em vez de executar o handler, guarda a ação pendente e pergunta "confirma?"; a próxima mensagem de texto daquele chat é interpretada como sim/não para a ação pendente (em vez de entrar no loop de tool calling normal). Confirmar executa o handler original; recusar ou não responder descarta a pendência sem gravar nada.
 
 **Acceptance criteria:**
-- [ ] Existe uma forma de marcar uma ferramenta como "alto impacto" no registry (ex: campo `requerConfirmacao: true`)
-- [ ] Chamar uma ferramenta de alto impacto não executa o handler imediatamente — gera pergunta de confirmação
-- [ ] Resposta afirmativa executa o handler original com os argumentos originais; resposta negativa ou nova mensagem não relacionada descarta a pendência sem gravar nada no banco
-- [ ] Ferramentas sem `requerConfirmacao` continuam executando direto, sem mudança de comportamento
+- [x] Existe uma forma de marcar uma ferramenta como "alto impacto" no registry (ex: campo `requerConfirmacao: true`)
+- [x] Chamar uma ferramenta de alto impacto não executa o handler imediatamente — gera pergunta de confirmação
+- [x] Resposta afirmativa executa o handler original com os argumentos originais; resposta negativa ou nova mensagem não relacionada descarta a pendência sem gravar nada no banco
+- [x] Ferramentas sem `requerConfirmacao` continuam executando direto, sem mudança de comportamento
 
 **Verification:**
-- [ ] `npm test` cobre: pendência criada, confirmação executa handler, recusa descarta, chat sem pendência não é afetado
-- [ ] `npm run build` sem erro
-- [ ] Manual: adiar para a Tarefa 4 (primeira ferramenta real de alto impacto) — aqui o teste manual usa uma ferramenta de teste marcada como alto impacto
+- [x] `npm test` cobre: pendência criada, confirmação executa handler, recusa descarta, chat sem pendência não é afetado
+- [x] `npm run build` sem erro
+- [x] Manual: verificado via script real contra o OpenRouter nesta tarefa (resposta ambígua cancela, "sim" executa) — o caso via Telegram real com ferramenta de negócio de verdade foi concluído na Tarefa 4
 
 **Dependencies:** Tarefa 1
 
@@ -109,14 +109,14 @@
 **Descrição:** Repositórios de `contas` e `cartoes` (insert + select básico) e as ferramentas correspondentes, marcadas como alto impacto (usam a confirmação da Tarefa 3). `criar_conta` pede banco (ou cria um `bancos` novo se não existir — decisão simples: buscar por nome, criar se não achar), tipo (PF/PJ), apelido. `criar_cartao` pede conta vinculada, nome, limite, dia de fechamento/vencimento.
 
 **Acceptance criteria:**
-- [ ] `criar_conta` grava em `contas` (e em `bancos`, se necessário) só após confirmação
-- [ ] `criar_cartao` grava em `cartoes` vinculado a uma conta existente, só após confirmação
-- [ ] Argumentos inválidos (tipo fora de PF/PJ, dia fora de 1-31) são rejeitados pelo Zod antes de qualquer gravação
+- [x] `criar_conta` grava em `contas` (e em `bancos`, se necessário) só após confirmação
+- [x] `criar_cartao` grava em `cartoes` vinculado a uma conta existente, só após confirmação
+- [x] Argumentos inválidos (tipo fora de PF/PJ, dia fora de 1-31) são rejeitados pelo Zod antes de qualquer gravação
 
 **Verification:**
-- [ ] `npm test` cobre os dois repositórios e as duas ferramentas (incluindo rejeição de argumento inválido)
-- [ ] `npm run build` sem erro
-- [ ] Manual: criar uma conta e um cartão via mensagem real no Telegram de Homologação, confirmando os dois; conferir os registros no banco
+- [x] `npm test` cobre os dois repositórios e as duas ferramentas (incluindo rejeição de argumento inválido)
+- [x] `npm run build` sem erro
+- [x] Manual: criar uma conta e um cartão via mensagem real no Telegram de Homologação, confirmando os dois; conferir os registros no banco
 
 **Dependencies:** Tarefa 3
 
