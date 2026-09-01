@@ -147,6 +147,26 @@ export function marcarDividaRenegociada(db: DbClient, id: number): void {
   db.prepare("UPDATE dividas SET status = 'renegociado' WHERE id = ?").run(id);
 }
 
+// Incrementa parcelas_pagas e, quando atinge num_parcelas, transiciona a
+// dívida sozinha pra "quitado" — mesma lógica descrita no PLANO.md pra
+// pagar_parcela (rotina, nunca deixa dividas.parcelas_pagas dessincronizado
+// das parcelas reais).
+export function incrementarParcelasPagas(db: DbClient, dividaId: number): Divida {
+  db.prepare('UPDATE dividas SET parcelas_pagas = parcelas_pagas + 1 WHERE id = ?').run(dividaId);
+
+  const atualizada = obterDivida(db, dividaId);
+  if (!atualizada) {
+    throw new Error(`dívida ${dividaId} não encontrada após atualizar parcelas_pagas`);
+  }
+
+  if (atualizada.status === 'ativo' && atualizada.parcelasPagas >= atualizada.numParcelas) {
+    db.prepare("UPDATE dividas SET status = 'quitado' WHERE id = ?").run(dividaId);
+    return { ...atualizada, status: 'quitado' };
+  }
+
+  return atualizada;
+}
+
 export function criarDivida(db: DbClient, divida: NovaDivida): { divida: Divida; parcelas: Parcela[] } {
   const valores = gerarValoresParcelas(divida.valorTotal, divida.numParcelas, divida.taxaJuros, divida.sistemaAmortizacao);
   const valorParcela = valores[0] ?? 0;

@@ -1,6 +1,6 @@
 import type { DbClient } from '../../db/client.js';
-import { buscarCartaoPorNome, cartaoExiste, listarCartoes } from '../../db/repositories/cartoes.js';
-import { buscarContaPorApelido, contaExiste, listarContas } from '../../db/repositories/contas.js';
+import { buscarCartaoPorNome, buscarCartaoPorNomeParcial, cartaoExiste, listarCartoes } from '../../db/repositories/cartoes.js';
+import { buscarContaPorApelido, buscarContaPorApelidoParcial, contaExiste, listarContas } from '../../db/repositories/contas.js';
 import { buscarDividasPorContaETipo, type TipoDivida } from '../../db/repositories/dividas.js';
 import { encontrarPorSemelhanca } from './similaridade.js';
 
@@ -48,6 +48,11 @@ export function resolverContaId(db: DbClient, contaId?: number, contaApelido?: s
 
   if (contaApelido !== undefined) {
     let encontradas = buscarContaPorApelido(db, contaApelido);
+    if (encontradas.length === 0) {
+      // Nome parcial (ex: "nubank" pra uma conta "Nubank PJ") não é erro de
+      // digitação — tenta substring antes de aproximação por distância.
+      encontradas = buscarContaPorApelidoParcial(db, contaApelido);
+    }
     if (encontradas.length === 0) {
       const aproximado = encontrarPorSemelhanca(
         contaApelido,
@@ -97,6 +102,11 @@ export function resolverCartaoId(db: DbClient, cartaoId?: number, cartaoNome?: s
 
   if (cartaoNome !== undefined) {
     let encontrados = buscarCartaoPorNome(db, cartaoNome);
+    if (encontrados.length === 0) {
+      // Nome parcial (ex: "nubank" pra um cartão "Nubank Cartão") não é erro
+      // de digitação — tenta substring antes de aproximação por distância.
+      encontrados = buscarCartaoPorNomeParcial(db, cartaoNome);
+    }
     if (encontrados.length === 0) {
       const aproximado = encontrarPorSemelhanca(
         cartaoNome,

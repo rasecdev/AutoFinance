@@ -55,6 +55,21 @@ export function buscarCartaoPorNome(db: DbClient, nome: string): Cartao[] {
   return linhas.map(paraCartao);
 }
 
+// Achado real (Tarefa 11): usuário disse "cartão nubank" pra um cartão
+// cadastrado como "Nubank Cartão" — não é erro de digitação (distância de
+// edição grande demais pra busca aproximada), é nome parcial. Contenção de
+// substring cobre esse caso sem risco de "adivinhar": mais de um resultado
+// cai na mesma lógica de ambiguidade já usada pra nome exato.
+export function buscarCartaoPorNomeParcial(db: DbClient, textoParcial: string): Cartao[] {
+  const linhas = db
+    .prepare(
+      "SELECT id, conta_id, nome, limite, dia_fechamento, dia_vencimento FROM cartoes WHERE LOWER(nome) LIKE '%' || LOWER(?) || '%'",
+    )
+    .all(textoParcial) as LinhaCartao[];
+
+  return linhas.map(paraCartao);
+}
+
 export function listarCartoes(db: DbClient): Cartao[] {
   const linhas = db
     .prepare('SELECT id, conta_id, nome, limite, dia_fechamento, dia_vencimento FROM cartoes ORDER BY nome')
