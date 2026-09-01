@@ -82,7 +82,7 @@ Tarefas detalhadas em `tasks/todo.md`.
 - [ ] Revisão com o usuário antes de prosseguir
 
 ### Fase C: Dívidas e faturas
-- [ ] Tarefa 8: Cálculo de amortização Price/SAC (função pura testada)
+- [x] Tarefa 8: Cálculo de amortização Price/SAC (função pura testada)
 - [ ] Tarefa 9: `criar_divida` (com geração de `parcelas`)
 - [ ] Tarefa 10: `renegociar`
 - [ ] Tarefa 11: `pagar_parcela`, `pagar_fatura`
