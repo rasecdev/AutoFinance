@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import Database from 'better-sqlite3-multiple-ciphers';
 import type OpenAI from 'openai';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MODELO_PADRAO } from '../../src/ai/openrouter.js';
 import { definirPendencia, obterPendencia } from '../../src/bot/confirmacao.js';
 import { createHandlerTexto } from '../../src/bot/handlers/texto.js';
 import type { DbClient } from '../../src/db/client.js';
@@ -126,11 +127,22 @@ describe('handlerTexto (OpenRouter mockado, sem chamada real)', () => {
     expect(usoTokens).toHaveLength(1);
     expect(usoTokens[0]).toMatchObject({
       fluxo: 'conversa_texto',
-      modelo: 'openai/gpt-4o-mini',
+      modelo: MODELO_PADRAO,
       tokens_prompt: 7,
       tokens_completion: 3,
       origem: 'uso_real',
     });
+  });
+
+  it('nunca manda mensagem vazia pro Telegram (achado real: Gemini às vezes devolve content vazio)', async () => {
+    const client = criarClienteOpenAiFalso('');
+    const logger = createLogger({ write() {} });
+    const handler = createHandlerTexto(client, db, logger);
+    const ctx = criarContextoFake('oi');
+
+    await handler(ctx);
+
+    expect(ctx.reply).toHaveBeenCalledWith('Não entendi, pode reformular?');
   });
 
   it('registra falha e responde com mensagem de erro quando a chamada ao OpenRouter falha', async () => {
