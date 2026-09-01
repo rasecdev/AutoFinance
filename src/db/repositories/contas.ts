@@ -84,6 +84,18 @@ export function buscarContaPorApelido(db: DbClient, apelido: string): Conta[] {
   return linhas.map(paraConta);
 }
 
+// Nome parcial (ex: "nubank" pra uma conta apelidada "Nubank PJ") não é erro
+// de digitação — busca aproximada por distância de edição não pega isso.
+// Contenção de substring cobre, sem risco de adivinhar: mais de um resultado
+// cai na mesma lógica de ambiguidade já usada pra apelido exato.
+export function buscarContaPorApelidoParcial(db: DbClient, textoParcial: string): Conta[] {
+  const linhas = db
+    .prepare("SELECT id, banco_id, tipo, apelido, saldo_atual FROM contas WHERE LOWER(apelido) LIKE '%' || LOWER(?) || '%'")
+    .all(textoParcial) as LinhaConta[];
+
+  return linhas.map(paraConta);
+}
+
 export function listarContas(db: DbClient): Conta[] {
   const linhas = db
     .prepare('SELECT id, banco_id, tipo, apelido, saldo_atual FROM contas ORDER BY apelido')

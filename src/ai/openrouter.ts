@@ -3,7 +3,7 @@ import { SYSTEM_PROMPT } from './systemPrompt.js';
 import { paraDefinicaoOpenAI } from './tools/registry.js';
 import type { ToolContext, ToolDefinition } from './tools/types.js';
 
-export const MODELO_PADRAO = 'qwen/qwen3-32b';
+export const MODELO_PADRAO = 'openai/gpt-4o-mini';
 
 const MAX_ITERACOES_TOOL_CALLING = 5;
 const MAX_RETENTATIVAS_FALHA_MODELO = 1;
@@ -31,6 +31,7 @@ export type RespostaGerada = {
   toolCalls: ToolCallRegistrada[];
   tokensPrompt: number;
   tokensCompletion: number;
+  duracaoMs: number;
   pendenciaConfirmacao?: PendenciaConfirmacao;
 };
 
@@ -48,6 +49,7 @@ export async function gerarResposta(
   tools: ToolDefinition[] = [],
   ctx: ToolContext = { chatId: 0 },
 ): Promise<RespostaGerada> {
+  const inicio = Date.now();
   const registry = new Map(tools.map((tool) => [tool.name, tool]));
   const ferramentas = tools.length > 0 ? tools.map(paraDefinicaoOpenAI) : undefined;
 
@@ -95,6 +97,7 @@ export async function gerarResposta(
         toolCalls: toolCallsRegistradas,
         tokensPrompt,
         tokensCompletion,
+        duracaoMs: Date.now() - inicio,
       };
     }
 
@@ -112,6 +115,7 @@ export async function gerarResposta(
           toolCalls: [...toolCallsRegistradas, { nome: resultado.tool.name, argumentos: resultado.argumentos }],
           tokensPrompt,
           tokensCompletion,
+          duracaoMs: Date.now() - inicio,
           pendenciaConfirmacao: { tool: resultado.tool, argumentos: resultado.argumentos },
         };
       }

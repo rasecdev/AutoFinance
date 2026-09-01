@@ -15,6 +15,7 @@ import {
 } from '../../ai/tools/transacoes.js';
 import { criarToolRegistrarTransferencia } from '../../ai/tools/transferencias.js';
 import { criarToolCriarDivida, criarToolRenegociar } from '../../ai/tools/dividas.js';
+import { criarToolPagarFatura, criarToolPagarParcela } from '../../ai/tools/pagamentos.js';
 import type { DbClient } from '../../db/client.js';
 import { registrarInteracaoIa } from '../../db/repositories/interacoesIa.js';
 import { registrarUsoTokens } from '../../db/repositories/usoTokens.js';
@@ -36,6 +37,8 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
     criarToolRegistrarTransferencia(db),
     criarToolCriarDivida(db),
     criarToolRenegociar(db),
+    criarToolPagarParcela(db),
+    criarToolPagarFatura(db),
   ];
 
   return async function handlerTexto(ctx: Context): Promise<void> {
@@ -69,7 +72,7 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
     const log = logger.child({ traceId });
 
     try {
-      const { modelo, resposta, toolCalls, tokensPrompt, tokensCompletion, pendenciaConfirmacao } =
+      const { modelo, resposta, toolCalls, tokensPrompt, tokensCompletion, duracaoMs, pendenciaConfirmacao } =
         await gerarResposta(client, mensagemUsuario, tools, { chatId });
 
       if (pendenciaConfirmacao) {
@@ -97,7 +100,7 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
         origem: 'uso_real',
       });
 
-      log.info({ modelo, tokensPrompt, tokensCompletion }, 'interação com IA registrada');
+      log.info({ modelo, tokensPrompt, tokensCompletion, duracaoMs }, 'interação com IA registrada');
       await ctx.reply(resposta.trim().length > 0 ? resposta : 'Não entendi, pode reformular?');
     } catch (erro) {
       registrarInteracaoIa(db, {

@@ -50,6 +50,10 @@ export function marcarFaturaRenegociada(db: DbClient, id: number): void {
   db.prepare("UPDATE faturas SET status = 'renegociada' WHERE id = ?").run(id);
 }
 
+export function marcarFaturaPaga(db: DbClient, id: number, dataPagamento: string): void {
+  db.prepare("UPDATE faturas SET status = 'paga', data_pagamento = ? WHERE id = ?").run(dataPagamento, id);
+}
+
 export function buscarFaturaPorCartaoEMes(db: DbClient, cartaoId: number, mesReferencia: string): Fatura | undefined {
   const linha = db
     .prepare(

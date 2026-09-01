@@ -374,29 +374,35 @@
 
 ---
 
-### Tarefa 11: `pagar_parcela`, `pagar_fatura`
+### Tarefa 11: `pagar_parcela`, `pagar_fatura` ✅
 
 **Descrição:** Ferramentas de transição de status, rotina, sem confirmação. `pagar_parcela` marca a parcela como paga, incrementa `dividas.parcelas_pagas`, e transiciona `dividas.status` para `quitado` quando atinge `num_parcelas`. `pagar_fatura` marca `faturas.status = 'paga'`.
 
+**Achados reais do teste manual, corrigidos na hora (mesma classe de bug: usuário fala em linguagem natural sem repetir dado técnico):**
+1. "Pague a fatura do Nubank de agosto" (sem ano) fazia o modelo inventar o ano sozinho (`mes_referencia` era obrigatório em "AAAA-MM") — novo `src/ai/tools/mesReferencia.ts` (`normalizarMesReferencia`) aceita só o mês, o **código** completa com o ano atual. Aplicado também em `renegociar` (Tarefa 10, mesmo campo).
+2. "Cartão nubank" não resolvia pro cartão "Nubank Cartão" — não é erro de digitação, é nome parcial. Novo `buscarCartaoPorNomeParcial`/`buscarContaPorApelidoParcial` (substring) como mais um fallback em `resolverCartaoId`/`resolverContaId`.
+3. **Fora do escopo da ferramenta em si, mas descoberto durante o teste**: comparação de custo real GPT-4o-mini vs. Qwen3 32B (capturas de tela do usuário, `openrouter.ai/settings/profile`) e instrumentação de latência (`duracaoMs` em `gerarResposta`) levaram a reverter `MODELO_PADRAO` pro GPT-4o-mini de novo — Qwen3 32B media ~20s por resposta (vs. ~2,7s do GPT-4o-mini), e a economia de custo real (~15%) não compensa a demora numa conversa de chat. Ver PROGRESSO.md/PLANO.md pra detalhe completo.
+
 **Acceptance criteria:**
-- [ ] `pagar_parcela` atualiza a parcela, incrementa o contador da dívida, e quita a dívida automaticamente quando for a última parcela
-- [ ] `pagar_fatura` marca a fatura como paga com `data_pagamento`
-- [ ] Nenhuma das duas exige confirmação
+- [x] `pagar_parcela` atualiza a parcela, incrementa o contador da dívida, e quita a dívida automaticamente quando for a última parcela
+- [x] `pagar_fatura` marca a fatura como paga com `data_pagamento`
+- [x] Nenhuma das duas exige confirmação
 
 **Verification:**
-- [ ] `npm test` cobre pagamento de parcela intermediária e da última parcela (transição automática pra quitado), e pagamento de fatura
-- [ ] `npm run build` sem erro
-- [ ] Manual: pagar uma parcela e uma fatura reais via Telegram de Homologação
+- [x] `npm test` cobre pagamento de parcela intermediária e da última parcela (transição automática pra quitado), e pagamento de fatura (235/235)
+- [x] `npm run build` sem erro
+- [x] Manual: parcela e fatura reais pagas via Telegram de Homologação (fatura só depois das correções de mes_referencia/nome parcial acima)
 
 **Dependencies:** Tarefa 9
 
 **Files likely touched:**
 - `src/db/repositories/parcelas.ts` (estender)
-- `src/db/repositories/faturas.ts` (novo)
+- `src/db/repositories/faturas.ts` (estender — já existia desde a Tarefa 10)
 - `src/ai/tools/pagamentos.ts` (novo)
-- `tests/db/parcelas.test.ts`, `tests/db/faturas.test.ts` (novos)
+- `src/ai/tools/mesReferencia.ts` (novo)
+- `tests/db/parcelas.test.ts`, `tests/db/faturas.test.ts` (estendido), `tests/ai/tools/pagamentos.test.ts`, `tests/ai/tools/mesReferencia.test.ts` (novos)
 
-**Estimated scope:** Medium (5 arquivos)
+**Estimated scope:** Medium (5 arquivos) — na prática maior, pelos achados reais do teste manual
 
 ---
 

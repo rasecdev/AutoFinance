@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../src/db/client.js';
-import { buscarCartaoPorNome, cartaoExiste, criarCartao } from '../../src/db/repositories/cartoes.js';
+import { buscarCartaoPorNome, buscarCartaoPorNomeParcial, cartaoExiste, criarCartao } from '../../src/db/repositories/cartoes.js';
 import { criarConta } from '../../src/db/repositories/contas.js';
 import { migrate } from '../../src/db/migrate.js';
 
@@ -97,5 +97,24 @@ describe('buscarCartaoPorNome', () => {
     criarCartao(db, { contaId: conta2.id, nome: 'Cartão', limite: 2000, diaFechamento: 10, diaVencimento: 17 });
 
     expect(buscarCartaoPorNome(db, 'Cartão')).toHaveLength(2);
+  });
+});
+
+describe('buscarCartaoPorNomeParcial', () => {
+  it('encontra por substring, case-insensitive (achado real: "nubank" para "Nubank Cartão")', () => {
+    const conta = criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Principal' });
+    const cartao = criarCartao(db, {
+      contaId: conta.id,
+      nome: 'Nubank Cartão',
+      limite: 5000,
+      diaFechamento: 5,
+      diaVencimento: 10,
+    });
+
+    expect(buscarCartaoPorNomeParcial(db, 'nubank')).toEqual([cartao]);
+  });
+
+  it('retorna array vazio quando nenhum nome contém o texto', () => {
+    expect(buscarCartaoPorNomeParcial(db, 'xablau')).toEqual([]);
   });
 });
