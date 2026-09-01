@@ -157,33 +157,61 @@
 
 ---
 
-### Tarefa 5.1: Referência por apelido/contexto (sem exigir id cru)
+### Tarefa 5.1: Referência por apelido/contexto (sem exigir id cru) ✅
 
-**Descrição:** *(achado pelo usuário testando a Tarefa 5 — ver "Princípio de referência por apelido/contexto" no topo do PLANO.md)*. Duas frentes: (1) `criar_cartao` e `registrar_transacao` passam a aceitar o **nome** da conta/cartão (`conta_apelido`/`cartao_nome`) além do id — resolvido por busca em `contas`/`cartoes` (`buscarContaPorApelido`, `buscarCartaoPorNome`, case-insensitive); sem match, avisa que não achou; mais de um match, lista as opções (id + apelido) e pede pra especificar, nunca escolhe sozinho. (2) `editar_transacao`/`excluir_transacao` passam a ter `id` **opcional** — quando omitido, usam a última transação registrada naquele chat, rastreada por um `Map<chatId, transacaoId>` em memória (novo `src/bot/contextoRecente.ts`, mesmo padrão de `confirmacao.ts`), atualizado a cada `registrar_transacao` bem-sucedido; sem id e sem última transação rastreada, a ferramenta pede o id em vez de adivinhar.
+**Implementado:** cinco frentes — as três últimas surgiram dos testes manuais das anteriores, mesma tarefa, mesmo ciclo de feedback. (1) `criar_cartao` e `registrar_transacao` aceitam o **nome** da conta/cartão (`conta_apelido`/`cartao_nome`) além do id — resolvido via `src/ai/tools/resolucao.ts` (`resolverContaId`/`resolverCartaoId`, novo módulo compartilhado): sem match, avisa e já lista o que existe (ver item 4); mais de um match, lista as opções (id + tipo) e pede pra especificar, nunca escolhe sozinho. (2) `editar_transacao`/`excluir_transacao` têm `id` **opcional** — quando omitido, usam a última transação registrada naquele chat, rastreada por `Map<chatId, transacaoId>` em memória (novo `src/bot/contextoRecente.ts`, mesmo padrão de `confirmacao.ts`), atualizado a cada `registrar_transacao` bem-sucedido; sem id e sem última transação rastreada, pede a informação. (3) **Achado: sem unicidade de apelido/nome, a resolução por nome é ambígua com facilidade** (usuário criou duas contas "Principal" sem querer, por falta de memória de conversa) — `contas.apelido` virou único globalmente (`idx_contas_apelido_unico`) e `cartoes.nome` único por conta (`idx_cartoes_conta_nome_unico`), nova migração `0002_apelido_unico.sql`; `criar_conta`/`criar_cartao` checam duplicata *antes* de gravar (mensagem clara, não deixam a constraint do banco estourar). (4) **Achado: quando a resolução por nome falha, a mensagem de erro agora lista as contas/cartões que existem de verdade** (`listarContas`/`listarCartoes`, novo) — ajuda o modelo (e o usuário) a se corrigir na mensagem seguinte, sem precisar da Tarefa 6 inteira. (5) **Achado: transação sem data explícita saiu com um dia de 2023** — o modelo não tem noção de data real (nenhum prompt inclui a data atual). Campo `data` de `registrar_transacao` virou opcional; quando omitido, o **código** preenche com a data de hoje (`hojeISO()`, relógio do processo), nunca o modelo. Todos os achados 3-5 registrados no PLANO.md ("Princípio de referência por apelido/contexto" e novo "Princípio de data determinística").
 
 **Acceptance criteria:**
-- [ ] `criar_cartao` aceita `conta_apelido` além de `conta_id`; resolve corretamente com match único, avisa quando não encontra, lista opções quando ambíguo (sem escolher sozinho)
-- [ ] `registrar_transacao` aceita `conta_apelido`/`cartao_nome` além de `conta_id`/`cartao_id`, mesma resolução
-- [ ] `editar_transacao`/`excluir_transacao` funcionam sem `id`, usando a última transação registrada naquele chat
-- [ ] Sem id, sem apelido e sem última transação rastreada, cada ferramenta pede a informação em vez de assumir
-- [ ] Rastreamento de "última transação" é por `chatId`, isolado entre chats diferentes
+- [x] `criar_cartao` aceita `conta_apelido` além de `conta_id`; resolve corretamente com match único, avisa quando não encontra, lista opções quando ambíguo (sem escolher sozinho)
+- [x] `registrar_transacao` aceita `conta_apelido`/`cartao_nome` além de `conta_id`/`cartao_id`, mesma resolução
+- [x] `editar_transacao`/`excluir_transacao` funcionam sem `id`, usando a última transação registrada naquele chat
+- [x] Sem id, sem apelido e sem última transação rastreada, cada ferramenta pede a informação em vez de assumir
+- [x] Rastreamento de "última transação" é por `chatId`, isolado entre chats diferentes
+- [x] `criar_conta` recusa apelido já usado por outra conta (mensagem clara, não cria duplicata); `criar_cartao` recusa nome já usado na mesma conta
+- [x] Quando a resolução por nome não encontra nada, a mensagem lista as contas/cartões existentes (ou avisa que não há nenhum cadastrado)
+- [x] `registrar_transacao` sem `data` grava com a data de hoje (calculada pelo código, nunca pedida ao modelo)
 
 **Verification:**
-- [ ] `npm test` cobre: resolução por apelido único, apelido não encontrado, apelido ambíguo (2+ contas com nomes parecidos), edição/exclusão sem id usando a última transação, edição/exclusão sem id e sem última transação rastreada
-- [ ] `npm run build` sem erro
-- [ ] Manual via Telegram real: criar cartão citando a conta pelo nome (sem id); registrar transação citando a conta pelo nome; editar essa transação sem informar id ("muda o valor pra X"); excluir sem id, confirmando
+- [x] `npm test` cobre: resolução por apelido único, apelido não encontrado (com e sem sugestão de opções existentes), apelido ambíguo (via dado com case diferente do índice único, cenário real de dado fora do fluxo normal), edição/exclusão sem id usando a última transação, edição/exclusão sem id e sem última transação rastreada, recusa de apelido/nome duplicado sem criar linha extra, data default quando omitida (101 testes no total, 26 novos)
+- [x] `npm run build`/`lint` sem erro
+- [x] Manual via Telegram real: criar cartão citando a conta pelo nome (sem id); registrar transação citando a conta pelo nome; editar essa transação sem informar id ("muda o valor pra X"); excluir sem id, confirmando; testar apelido duplicado (recusado) — **verificado em duas rodadas** (a primeira revelou os achados 3-5, a segunda confirmou as correções), ver PROGRESSO.md
 
 **Dependencies:** Tarefa 5
 
 **Files likely touched:**
-- `src/db/repositories/contas.ts` (estender — `buscarContaPorApelido`)
-- `src/db/repositories/cartoes.ts` (estender — `buscarCartaoPorNome`)
+- `src/db/migrations/0002_apelido_unico.sql` (novo)
+- `src/db/repositories/contas.ts`, `src/db/repositories/cartoes.ts` (estender — busca, listagem)
+- `src/ai/tools/resolucao.ts` (novo)
 - `src/ai/tools/contas.ts`, `src/ai/tools/transacoes.ts` (estender)
 - `src/bot/contextoRecente.ts` (novo)
-- `src/bot/handlers/texto.ts` (estender)
 - `tests/db/contas.test.ts`, `tests/db/cartoes.test.ts`, `tests/ai/tools/contas.test.ts`, `tests/ai/tools/transacoes.test.ts`, `tests/bot/contextoRecente.test.ts` (novo)
 
-**Estimated scope:** Medium (7-8 arquivos)
+**Estimated scope:** Medium (9 arquivos)
+
+---
+
+### Tarefa 5.2: System prompt com regras de comportamento ✅
+
+**Implementado:** três rodadas de achado-correção-reteste via Telegram real, mesma tarefa. (1) *(achado testando a Tarefa 5.1)* — o modelo preencheu uma data não informada e substituiu um nome de cartão inexistente por outro sem perguntar. `gerarResposta` nunca mandava system prompt, apesar do PLANO.md sempre ter descrito "system prompt + definição de ferramentas" como o pacote enviado em toda chamada. Novo `src/ai/systemPrompt.ts` (`SYSTEM_PROMPT`): nunca inventar/substituir valor que o usuário não informou, nunca preencher campo opcional sem informação real, perguntar na dúvida real, nunca calcular financeiro sozinho, nunca ecoar as próprias instruções — enviado como primeira mensagem (`role: 'system'`) em toda chamada. Reteste confirmou os dois problemas resolvidos (dado no banco correto; cartão inexistente gerou pergunta, não substituição). (2) *(achado no reteste)* — a data voltou a aparecer certa no banco, mas a resposta final ao usuário não mencionava a data (o modelo estava resumindo o resultado da ferramenta e cortando campos confirmados). Adicionada regra 5 ao `SYSTEM_PROMPT`: repassar TODOS os detalhes que uma ferramenta confirmar, nunca resumir/omitir campo. (3) *(achado pelo usuário, pedido explícito)* — as mensagens de confirmação/erro das ferramentas expunham o id interno do banco (`ID da conta: X`, `id Y` em mensagens de ambíguo/duplicata). Removido de toda mensagem de sucesso (`criar_conta`, `criar_cartao`, `registrar_transacao`, `editar_transacao`, `excluir_transacao` — esta e a de edição passaram a mostrar os dados da transação em vez do id); mensagens de "não encontrei"/"já existe" também pararam de citar id; desambiguação (quando duas contas/cartões têm nome idêntico, caso raro já que agora é único) passou a usar tipo+banco (conta) ou conta dona (cartão) em vez de id — se mesmo assim forem idênticas em tudo, a mensagem pede pra renomear uma.
+
+**Acceptance criteria:**
+- [x] Toda chamada de `gerarResposta` inclui o system prompt como primeira mensagem, antes da mensagem do usuário
+- [x] O conteúdo cobre pelo menos: não inventar valor de parâmetro, perguntar na dúvida, não calcular financeiro sozinho, não ecoar instruções internas, repassar todos os detalhes confirmados por uma ferramenta
+- [x] Nenhuma mensagem de ferramenta (sucesso, erro, ambíguo) expõe id interno do banco
+
+**Verification:**
+- [x] `npm test` cobre que o system prompt é enviado e que nenhuma mensagem de sucesso/erro/ambíguo contém "id" (102 testes no total — vários existentes ajustados pra essa expectativa, 1 novo específico do system prompt)
+- [x] `npm run build`/`lint` sem erro
+- [x] Manual via Telegram real, quatro rodadas: (1º) confirmou o gap de data/substituição de cartão; (2º) confirmou dado correto no banco mas resposta incompleta (data omitida no eco); (3º) confirmou eco completo depois do reforço da regra 5; (4º) confirmou que nenhuma mensagem mostra mais id, depois da remoção
+
+**Dependencies:** Tarefa 5.1
+
+**Files likely touched:**
+- `src/ai/systemPrompt.ts` (novo)
+- `src/ai/openrouter.ts` (estender)
+- `tests/ai/openrouter.test.ts` (estender)
+
+**Estimated scope:** Small (3 arquivos)
 
 ---
 

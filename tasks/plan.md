@@ -30,6 +30,8 @@ Motor de tool calling (Tarefa 1)
             │       ├── registrar_transacao / editar_transacao / excluir_transacao (Tarefa 5)
             │       │       │
             │       │       ├── Referência por apelido/contexto (Tarefa 5.1)
+            │       │       │       │
+            │       │       │       └── System prompt com regras de comportamento (Tarefa 5.2)
             │       │       │
             │       │       └── consultar_saldo / listar_transacoes / resumo_mensal (Tarefa 6)
             │       │
@@ -69,7 +71,8 @@ Tarefas detalhadas em `tasks/todo.md`.
 ### Fase B: Ferramentas essenciais (contas e transações)
 - [x] Tarefa 4: `criar_conta`, `criar_cartao`
 - [x] Tarefa 5: `registrar_transacao`, `editar_transacao`, `excluir_transacao`
-- [ ] Tarefa 5.1: Referência por apelido/contexto (achado do usuário, sem exigir id cru)
+- [x] Tarefa 5.1: Referência por apelido/contexto (achado do usuário, sem exigir id cru)
+- [x] Tarefa 5.2: System prompt com regras de comportamento (achado testando a 5.1)
 - [ ] Tarefa 6: `consultar_saldo`, `listar_transacoes`, `resumo_mensal`
 - [ ] Tarefa 7: `registrar_transferencia`
 

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../src/db/client.js';
-import { criarCartao } from '../../src/db/repositories/cartoes.js';
+import { buscarCartaoPorNome, cartaoExiste, criarCartao } from '../../src/db/repositories/cartoes.js';
 import { criarConta } from '../../src/db/repositories/contas.js';
 import { migrate } from '../../src/db/migrate.js';
 
@@ -51,5 +51,51 @@ describe('criarCartao', () => {
       unknown
     >;
     expect(linha).toMatchObject({ conta_id: conta.id, nome: 'Nubank Roxinho', limite: 5000 });
+  });
+});
+
+describe('cartaoExiste', () => {
+  it('retorna true para cartão existente e false para inexistente', () => {
+    const conta = criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Principal' });
+    const cartao = criarCartao(db, {
+      contaId: conta.id,
+      nome: 'Roxinho',
+      limite: 1000,
+      diaFechamento: 5,
+      diaVencimento: 12,
+    });
+
+    expect(cartaoExiste(db, cartao.id)).toBe(true);
+    expect(cartaoExiste(db, cartao.id + 999)).toBe(false);
+  });
+});
+
+describe('buscarCartaoPorNome', () => {
+  it('encontra por nome exato, sem diferenciar maiúsculas/minúsculas', () => {
+    const conta = criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Principal' });
+    const cartao = criarCartao(db, {
+      contaId: conta.id,
+      nome: 'Roxinho',
+      limite: 1000,
+      diaFechamento: 5,
+      diaVencimento: 12,
+    });
+
+    expect(buscarCartaoPorNome(db, 'roxinho')).toEqual([cartao]);
+  });
+
+  it('retorna array vazio quando não encontra', () => {
+    expect(buscarCartaoPorNome(db, 'Inexistente')).toEqual([]);
+  });
+
+  it('retorna todos os cartões quando o nome é ambíguo entre contas diferentes', () => {
+    const conta1 = criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Principal' });
+    const conta2 = criarConta(db, { bancoNome: 'Itaú', tipo: 'PJ', apelido: 'Empresa' });
+    // idx_cartoes_conta_nome_unico só impede nome repetido na MESMA conta — nomes iguais em
+    // contas diferentes continuam ambíguos pra busca global (buscarCartaoPorNome).
+    criarCartao(db, { contaId: conta1.id, nome: 'Cartão', limite: 1000, diaFechamento: 5, diaVencimento: 12 });
+    criarCartao(db, { contaId: conta2.id, nome: 'Cartão', limite: 2000, diaFechamento: 10, diaVencimento: 17 });
+
+    expect(buscarCartaoPorNome(db, 'Cartão')).toHaveLength(2);
   });
 });

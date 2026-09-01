@@ -9,6 +9,7 @@ import {
   criarToolRegistrarTransacao,
 } from '../../../src/ai/tools/transacoes.js';
 import type { DbClient } from '../../../src/db/client.js';
+import { criarCartao } from '../../../src/db/repositories/cartoes.js';
 import { criarConta } from '../../../src/db/repositories/contas.js';
 import { criarTransacao, obterTransacao } from '../../../src/db/repositories/transacoes.js';
 import { migrate } from '../../../src/db/migrate.js';
@@ -65,7 +66,71 @@ describe('tool registrar_transacao', () => {
     expect(resultado).toContain('42.50');
     expect(resultado).toContain('Alimentação');
     expect(resultado).toContain('2026-08-31');
-    expect(resultado).toMatch(/ID da transação: \d+/);
+    expect(resultado).not.toMatch(/\bid\b/i);
+  });
+
+  it('sem data informada, usa a data de hoje (o modelo não tem noção de data real)', async () => {
+    const tool = criarToolRegistrarTransacao(db);
+    const args = tool.schema.parse({
+      conta_id: contaId,
+      tipo: 'despesa',
+      valor: 10,
+      categoria: 'Alimentação',
+    });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    const hoje = new Date();
+    const hojeISO = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+    expect(resultado).toContain(hojeISO);
+  });
+
+  it('grava resolvendo a conta pelo apelido', async () => {
+    const tool = criarToolRegistrarTransacao(db);
+    const args = tool.schema.parse({
+      conta_apelido: 'conta principal',
+      tipo: 'despesa',
+      valor: 20,
+      categoria: 'Transporte',
+      data: '2026-08-31',
+    });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).not.toMatch(/\bid\b/i);
+  });
+
+  it('avisa quando o apelido da conta não é encontrado', async () => {
+    const tool = criarToolRegistrarTransacao(db);
+    const args = tool.schema.parse({
+      conta_apelido: 'Inexistente',
+      tipo: 'despesa',
+      valor: 20,
+      categoria: 'Transporte',
+      data: '2026-08-31',
+    });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).toContain('Não encontrei');
+  });
+
+  it('quando não encontra o cartão pelo nome, sugere os cartões que já existem', async () => {
+    criarCartao(db, { contaId, nome: 'Roxinho', limite: 1000, diaFechamento: 5, diaVencimento: 12 });
+
+    const tool = criarToolRegistrarTransacao(db);
+    const args = tool.schema.parse({
+      cartao_nome: 'Inexistente',
+      tipo: 'despesa',
+      valor: 20,
+      categoria: 'Transporte',
+      data: '2026-08-31',
+    });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).toContain('Cartões existentes');
+    expect(resultado).toContain('Roxinho');
   });
 });
 
@@ -102,6 +167,34 @@ describe('tool editar_transacao', () => {
     expect(resultado).toContain('valor, categoria');
     expect(resultado).toContain('75.00');
     expect(resultado).toContain('Transporte');
+    expect(resultado).not.toMatch(/\bid\b/i);
+  });
+
+  it('sem id, edita a última transação registrada naquele chat', async () => {
+    const toolRegistrar = criarToolRegistrarTransacao(db);
+    const argsRegistrar = toolRegistrar.schema.parse({
+      conta_id: contaId,
+      tipo: 'despesa',
+      valor: 50,
+      categoria: 'Alimentação',
+      data: '2026-08-31',
+    });
+    await toolRegistrar.handler(argsRegistrar, { chatId: 42 });
+
+    const toolEditar = criarToolEditarTransacao(db);
+    const argsEditar = toolEditar.schema.parse({ valor: 99 });
+    const resultado = await toolEditar.handler(argsEditar, { chatId: 42 });
+
+    expect(resultado).toContain('99.00');
+  });
+
+  it('sem id e sem última transação rastreada naquele chat, pede a informação', async () => {
+    const tool = criarToolEditarTransacao(db);
+    const args = tool.schema.parse({ valor: 10 });
+
+    const resultado = await tool.handler(args, { chatId: 999 });
+
+    expect(resultado).toContain('Não sei qual transação');
   });
 });
 
@@ -135,6 +228,35 @@ describe('tool excluir_transacao', () => {
     const resultado = await tool.handler(args, { chatId: 1 });
 
     expect(resultado).toContain('excluída');
+    expect(resultado).toContain('50.00');
+    expect(resultado).not.toMatch(/\bid\b/i);
     expect(obterTransacao(db, transacao.id)).toMatchObject({ status: 'excluida' });
+  });
+
+  it('sem id, exclui a última transação registrada naquele chat', async () => {
+    const toolRegistrar = criarToolRegistrarTransacao(db);
+    const argsRegistrar = toolRegistrar.schema.parse({
+      conta_id: contaId,
+      tipo: 'despesa',
+      valor: 50,
+      categoria: 'Alimentação',
+      data: '2026-08-31',
+    });
+    await toolRegistrar.handler(argsRegistrar, { chatId: 43 });
+
+    const toolExcluir = criarToolExcluirTransacao(db);
+    const args = toolExcluir.schema.parse({});
+    const resultado = await toolExcluir.handler(args, { chatId: 43 });
+
+    expect(resultado).toContain('excluída');
+  });
+
+  it('sem id e sem última transação rastreada naquele chat, pede a informação', async () => {
+    const tool = criarToolExcluirTransacao(db);
+    const args = tool.schema.parse({});
+
+    const resultado = await tool.handler(args, { chatId: 998 });
+
+    expect(resultado).toContain('Não sei qual transação');
   });
 });
