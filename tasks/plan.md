@@ -85,7 +85,7 @@ Tarefas detalhadas em `tasks/todo.md`.
 - [x] Tarefa 8: Cálculo de amortização Price/SAC (função pura testada)
 - [x] Tarefa 9: `criar_divida` (com geração de `parcelas`)
 - [x] Tarefa 10: `renegociar`
-- [ ] Tarefa 11: `pagar_parcela`, `pagar_fatura`
+- [x] Tarefa 11: `pagar_parcela`, `pagar_fatura`
 - [ ] Tarefa 12: `quitar_divida`
 - [ ] Tarefa 13: `amortizar_divida`
 - [ ] Tarefa 14: `consultar_fatura`, `consultar_dividas_ativas`, `resumo_dividas`

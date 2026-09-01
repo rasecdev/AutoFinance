@@ -5,7 +5,7 @@ import Database from 'better-sqlite3-multiple-ciphers';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
-import { buscarContaPorApelido, contaExiste, criarConta } from '../../src/db/repositories/contas.js';
+import { buscarContaPorApelido, buscarContaPorApelidoParcial, contaExiste, criarConta } from '../../src/db/repositories/contas.js';
 
 const CHAVE_TESTE = 'chave-teste-contas';
 
@@ -85,5 +85,19 @@ describe('buscarContaPorApelido', () => {
     criarConta(db, { bancoNome: 'Itaú', tipo: 'PJ', apelido: 'principal' });
 
     expect(buscarContaPorApelido(db, 'Principal')).toHaveLength(2);
+  });
+});
+
+describe('buscarContaPorApelidoParcial', () => {
+  it('encontra por substring, case-insensitive', () => {
+    const conta = criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Nubank PJ' });
+
+    expect(buscarContaPorApelidoParcial(db, 'nubank')).toEqual([conta]);
+  });
+
+  it('retorna array vazio quando nenhum apelido contém o texto', () => {
+    criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Principal' });
+
+    expect(buscarContaPorApelidoParcial(db, 'xablau')).toEqual([]);
   });
 });
