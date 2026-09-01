@@ -151,7 +151,7 @@ export function criarToolResumoMensal(db: DbClient): ToolDefinition {
   return {
     name: 'resumo_mensal',
     description:
-      'Resume receitas e despesas de um mês (formato AAAA-MM), agregando por categoria e tipo. Sem mês informado, usa o mês atual. Aceita filtrar por conta (id ou apelido) — assim que o usuário citar o nome/apelido da conta, chame diretamente com esse nome em conta_apelido, mesmo que pareça um tipo de conta (ex: "PJ", "PF"); não peça confirmação extra.',
+      'Resume receitas, despesas e transferências de um mês (formato AAAA-MM) — o extrato consolidado da conta no período: receita/despesa agregadas por categoria, mais o total enviado e recebido via transferência. Sem mês informado, usa o mês atual. Aceita filtrar por conta (id ou apelido) — assim que o usuário citar o nome/apelido da conta, chame diretamente com esse nome em conta_apelido, mesmo que pareça um tipo de conta (ex: "PJ", "PF"); não peça confirmação extra.',
     schema: schemaResumoMensal,
     handler: async (args) => {
       const {
@@ -163,10 +163,12 @@ export function criarToolResumoMensal(db: DbClient): ToolDefinition {
       const mes = mesInformado ?? mesAtualISO();
 
       let contaResolvidaId: number | undefined;
+      let apelidoDaContaFiltrada: string | undefined;
       if (contaId !== undefined || contaApelido !== undefined) {
         const resolucao = resolverContaId(db, contaId, contaApelido);
         if (!resolucao.ok) return resolucao.mensagem;
         contaResolvidaId = resolucao.id;
+        apelidoDaContaFiltrada = obterConta(db, resolucao.id)?.apelido;
       }
 
       const { inicio, fim } = limitesDoMes(mes);
@@ -175,9 +177,14 @@ export function criarToolResumoMensal(db: DbClient): ToolDefinition {
         dataInicio: inicio,
         dataFim: fim,
       });
+      const transferencias = listarTransferencias(db, {
+        contaId: contaResolvidaId,
+        dataInicio: inicio,
+        dataFim: fim,
+      });
 
-      if (transacoes.length === 0) {
-        return `Nenhuma transação encontrada em ${mes}.`;
+      if (transacoes.length === 0 && transferencias.length === 0) {
+        return `Nenhuma movimentação encontrada em ${mes}.`;
       }
 
       const totaisPorCategoria = new Map<string, { receita: number; despesa: number }>();
@@ -196,14 +203,36 @@ export function criarToolResumoMensal(db: DbClient): ToolDefinition {
         totaisPorCategoria.set(t.categoria, totais);
       }
 
-      const linhas = [...totaisPorCategoria.entries()].map(([categoria, totais]) => {
+      const linhasCategoria = [...totaisPorCategoria.entries()].map(([categoria, totais]) => {
         const partes: string[] = [];
         if (totais.receita > 0) partes.push(`receita R$ ${totais.receita.toFixed(2)}`);
         if (totais.despesa > 0) partes.push(`despesa R$ ${totais.despesa.toFixed(2)}`);
         return `- "${categoria}": ${partes.join(', ')}`;
       });
 
-      return `Resumo de ${mes}: receita total R$ ${totalReceita.toFixed(2)}, despesa total R$ ${totalDespesa.toFixed(2)}.\nPor categoria:\n${linhas.join('\n')}`;
+      let blocoCategorias = '';
+      if (linhasCategoria.length > 0) {
+        blocoCategorias = `\nPor categoria:\n${linhasCategoria.join('\n')}`;
+      }
+
+      let blocoTransferencias = '';
+      if (transferencias.length > 0) {
+        let totalEnviado = 0;
+        let totalRecebido = 0;
+        const linhasTransferencias = transferencias.map((tr) => {
+          if (apelidoDaContaFiltrada === undefined || tr.contaOrigemApelido === apelidoDaContaFiltrada) {
+            totalEnviado += tr.valor;
+          }
+          if (apelidoDaContaFiltrada === undefined || tr.contaDestinoApelido === apelidoDaContaFiltrada) {
+            totalRecebido += tr.valor - tr.taxa;
+          }
+          const parteTaxa = tr.taxa > 0 ? `, R$ ${(tr.valor - tr.taxa).toFixed(2)} líquidos (taxa R$ ${tr.taxa.toFixed(2)})` : '';
+          return `- "${tr.contaOrigemApelido}" para "${tr.contaDestinoApelido}": R$ ${tr.valor.toFixed(2)}${parteTaxa}`;
+        });
+        blocoTransferencias = `\nTransferências:\n${linhasTransferencias.join('\n')}\nTotal: R$ ${totalEnviado.toFixed(2)} enviados, R$ ${totalRecebido.toFixed(2)} recebidos.`;
+      }
+
+      return `Resumo de ${mes}: receita total R$ ${totalReceita.toFixed(2)}, despesa total R$ ${totalDespesa.toFixed(2)}.${blocoCategorias}${blocoTransferencias}`;
     },
   };
 }
