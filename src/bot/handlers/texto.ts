@@ -95,7 +95,7 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
       });
 
       log.info({ modelo, tokensPrompt, tokensCompletion }, 'interação com IA registrada');
-      await ctx.reply(resposta);
+      await ctx.reply(resposta.trim().length > 0 ? resposta : 'Não entendi, pode reformular?');
     } catch (erro) {
       registrarInteracaoIa(db, {
         traceId,
