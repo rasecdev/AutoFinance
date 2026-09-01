@@ -18,6 +18,7 @@ export type NovaDivida = {
   taxaIndexadorSpread?: number;
   periodicidadeReajuste?: PeriodicidadeReajuste;
   dataInicio: string;
+  descricao?: string;
 };
 
 export type Divida = {
@@ -35,6 +36,7 @@ export type Divida = {
   periodicidadeReajuste: PeriodicidadeReajuste;
   dataInicio: string;
   status: StatusDivida;
+  descricao: string | null;
 };
 
 // Primeira parcela vence um mês após data_inicio (data da contratação/liberação),
@@ -79,6 +81,72 @@ export function gerarValoresParcelas(
   return Array.from({ length: numParcelas }, () => valor);
 }
 
+type LinhaDivida = {
+  id: number;
+  conta_id: number;
+  tipo: TipoDivida;
+  valor_total: number;
+  num_parcelas: number;
+  valor_parcela: number;
+  parcelas_pagas: number;
+  taxa_juros: number | null;
+  sistema_amortizacao: SistemaAmortizacao | null;
+  indexador: Indexador;
+  taxa_indexador_spread: number | null;
+  periodicidade_reajuste: PeriodicidadeReajuste;
+  data_inicio: string;
+  status: StatusDivida;
+  descricao: string | null;
+};
+
+const COLUNAS_DIVIDA = `id, conta_id, tipo, valor_total, num_parcelas, valor_parcela, parcelas_pagas, taxa_juros,
+       sistema_amortizacao, indexador, taxa_indexador_spread, periodicidade_reajuste, data_inicio, status, descricao`;
+
+function paraDivida(linha: LinhaDivida): Divida {
+  return {
+    id: linha.id,
+    contaId: linha.conta_id,
+    tipo: linha.tipo,
+    valorTotal: linha.valor_total,
+    numParcelas: linha.num_parcelas,
+    valorParcela: linha.valor_parcela,
+    parcelasPagas: linha.parcelas_pagas,
+    taxaJuros: linha.taxa_juros,
+    sistemaAmortizacao: linha.sistema_amortizacao,
+    indexador: linha.indexador,
+    taxaIndexadorSpread: linha.taxa_indexador_spread,
+    periodicidadeReajuste: linha.periodicidade_reajuste,
+    dataInicio: linha.data_inicio,
+    status: linha.status,
+    descricao: linha.descricao,
+  };
+}
+
+export function obterDivida(db: DbClient, id: number): Divida | undefined {
+  const linha = db.prepare(`SELECT ${COLUNAS_DIVIDA} FROM dividas WHERE id = ?`).get(id) as
+    | LinhaDivida
+    | undefined;
+  return linha ? paraDivida(linha) : undefined;
+}
+
+// Dívida não tem apelido próprio como conta/cartão — é identificada por
+// conta + tipo; descricao (opcional, dado quando existir mais de uma do
+// mesmo tipo na mesma conta) desambigua (ver "Princípio de referência por
+// apelido/contexto" no PLANO.md).
+// Só considera dívidas ativas — uma já quitada/renegociada não é um alvo válido
+// pra identificar por conta+tipo (senão uma renegociação bem-sucedida deixaria
+// a dívida antiga "fantasma" disputando ambiguidade com a nova).
+export function buscarDividasPorContaETipo(db: DbClient, contaId: number, tipo: TipoDivida): Divida[] {
+  const linhas = db
+    .prepare(`SELECT ${COLUNAS_DIVIDA} FROM dividas WHERE conta_id = ? AND tipo = ? AND status = 'ativo' ORDER BY id`)
+    .all(contaId, tipo) as LinhaDivida[];
+  return linhas.map(paraDivida);
+}
+
+export function marcarDividaRenegociada(db: DbClient, id: number): void {
+  db.prepare("UPDATE dividas SET status = 'renegociado' WHERE id = ?").run(id);
+}
+
 export function criarDivida(db: DbClient, divida: NovaDivida): { divida: Divida; parcelas: Parcela[] } {
   const valores = gerarValoresParcelas(divida.valorTotal, divida.numParcelas, divida.taxaJuros, divida.sistemaAmortizacao);
   const valorParcela = valores[0] ?? 0;
@@ -90,8 +158,8 @@ export function criarDivida(db: DbClient, divida: NovaDivida): { divida: Divida;
       .prepare(
         `INSERT INTO dividas (
            conta_id, tipo, valor_total, num_parcelas, valor_parcela, taxa_juros,
-           sistema_amortizacao, indexador, taxa_indexador_spread, periodicidade_reajuste, data_inicio
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           sistema_amortizacao, indexador, taxa_indexador_spread, periodicidade_reajuste, data_inicio, descricao
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         divida.contaId,
@@ -105,6 +173,7 @@ export function criarDivida(db: DbClient, divida: NovaDivida): { divida: Divida;
         divida.taxaIndexadorSpread ?? null,
         periodicidadeReajuste,
         divida.dataInicio,
+        divida.descricao ?? null,
       );
 
     const dividaId = Number(resultado.lastInsertRowid);
@@ -137,6 +206,7 @@ export function criarDivida(db: DbClient, divida: NovaDivida): { divida: Divida;
       periodicidadeReajuste,
       dataInicio: divida.dataInicio,
       status: 'ativo',
+      descricao: divida.descricao ?? null,
     },
     parcelas: criarTudo.parcelas,
   };
