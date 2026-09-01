@@ -1,6 +1,8 @@
 import type { DbClient } from '../../db/client.js';
 import { buscarCartaoPorNome, cartaoExiste, listarCartoes } from '../../db/repositories/cartoes.js';
 import { buscarContaPorApelido, contaExiste, listarContas } from '../../db/repositories/contas.js';
+import { buscarDividasPorContaETipo, type TipoDivida } from '../../db/repositories/dividas.js';
+import { encontrarPorSemelhanca } from './similaridade.js';
 
 export type ResolucaoId = { ok: true; id: number } | { ok: false; mensagem: string };
 
@@ -45,7 +47,16 @@ export function resolverContaId(db: DbClient, contaId?: number, contaApelido?: s
   }
 
   if (contaApelido !== undefined) {
-    const encontradas = buscarContaPorApelido(db, contaApelido);
+    let encontradas = buscarContaPorApelido(db, contaApelido);
+    if (encontradas.length === 0) {
+      const aproximado = encontrarPorSemelhanca(
+        contaApelido,
+        listarContas(db).map((conta) => conta.apelido),
+      );
+      if (aproximado !== undefined) {
+        encontradas = buscarContaPorApelido(db, aproximado);
+      }
+    }
     if (encontradas.length === 0) {
       return {
         ok: false,
@@ -85,7 +96,16 @@ export function resolverCartaoId(db: DbClient, cartaoId?: number, cartaoNome?: s
   }
 
   if (cartaoNome !== undefined) {
-    const encontrados = buscarCartaoPorNome(db, cartaoNome);
+    let encontrados = buscarCartaoPorNome(db, cartaoNome);
+    if (encontrados.length === 0) {
+      const aproximado = encontrarPorSemelhanca(
+        cartaoNome,
+        listarCartoes(db).map((cartao) => cartao.nome),
+      );
+      if (aproximado !== undefined) {
+        encontrados = buscarCartaoPorNome(db, aproximado);
+      }
+    }
     if (encontrados.length === 0) {
       return {
         ok: false,
@@ -112,4 +132,58 @@ export function resolverCartaoId(db: DbClient, cartaoId?: number, cartaoNome?: s
   }
 
   return { ok: false, mensagem: 'Informe o id ou o nome do cartão.' };
+}
+
+// Dívida não tem apelido próprio — identificada por conta + tipo, com
+// descricao opcional só pra desambiguar quando há mais de uma do mesmo tipo
+// na mesma conta (achado da Tarefa 10, ver PLANO.md).
+export function resolverDividaId(
+  db: DbClient,
+  contaId: number,
+  tipo: TipoDivida,
+  descricao?: string,
+): ResolucaoId {
+  const candidatas = buscarDividasPorContaETipo(db, contaId, tipo);
+
+  if (candidatas.length === 0) {
+    return { ok: false, mensagem: `Não encontrei nenhuma dívida do tipo "${tipo}" nesta conta.` };
+  }
+
+  if (descricao !== undefined) {
+    let filtradas = candidatas.filter(
+      (divida) => divida.descricao !== null && divida.descricao.toLowerCase() === descricao.toLowerCase(),
+    );
+    if (filtradas.length === 0) {
+      const nomes = candidatas.map((divida) => divida.descricao).filter((nome): nome is string => nome !== null);
+      const aproximado = encontrarPorSemelhanca(descricao, nomes);
+      if (aproximado !== undefined) {
+        filtradas = candidatas.filter(
+          (divida) => divida.descricao !== null && divida.descricao.toLowerCase() === aproximado.toLowerCase(),
+        );
+      }
+    }
+    if (filtradas.length === 1) {
+      const encontrada = filtradas[0];
+      if (encontrada) return { ok: true, id: encontrada.id };
+    }
+    if (filtradas.length === 0) {
+      return {
+        ok: false,
+        mensagem: `Não encontrei nenhuma dívida do tipo "${tipo}" chamada "${descricao}" nesta conta.`,
+      };
+    }
+  }
+
+  if (candidatas.length === 1) {
+    const unica = candidatas[0];
+    if (unica) return { ok: true, id: unica.id };
+  }
+
+  const opcoes = candidatas
+    .map((divida) => `"${divida.descricao ?? 'sem nome'}" (R$ ${divida.valorTotal.toFixed(2)}, iniciada em ${divida.dataInicio})`)
+    .join(', ');
+  return {
+    ok: false,
+    mensagem: `Encontrei mais de uma dívida do tipo "${tipo}" nesta conta: ${opcoes}. Diga qual (pelo nome, se tiver, ou outro detalhe que diferencie).`,
+  };
 }

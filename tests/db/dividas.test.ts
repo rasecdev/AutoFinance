@@ -4,7 +4,12 @@ import { join } from 'node:path';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../src/db/client.js';
-import { criarDivida, gerarValoresParcelas } from '../../src/db/repositories/dividas.js';
+import {
+  buscarDividasPorContaETipo,
+  criarDivida,
+  gerarValoresParcelas,
+  marcarDividaRenegociada,
+} from '../../src/db/repositories/dividas.js';
 import { migrate } from '../../src/db/migrate.js';
 import { criarConta } from '../../src/db/repositories/contas.js';
 
@@ -95,6 +100,89 @@ describe('criarDivida', () => {
 
     expect(divida.parcelasPagas).toBe(0);
     expect(divida.status).toBe('ativo');
+  });
+
+  it('grava descricao quando informada, null quando omitida', () => {
+    const comDescricao = criarDivida(db, {
+      contaId,
+      tipo: 'emprestimo',
+      valorTotal: 1000,
+      numParcelas: 2,
+      dataInicio: '2026-09-01',
+      descricao: 'Carro',
+    }).divida;
+    const semDescricao = criarDivida(db, {
+      contaId,
+      tipo: 'outro',
+      valorTotal: 1000,
+      numParcelas: 2,
+      dataInicio: '2026-09-01',
+    }).divida;
+
+    expect(comDescricao.descricao).toBe('Carro');
+    expect(semDescricao.descricao).toBeNull();
+  });
+});
+
+describe('buscarDividasPorContaETipo', () => {
+  it('não tem apelido próprio — retorna vazio quando não há dívida desse tipo na conta', () => {
+    expect(buscarDividasPorContaETipo(db, contaId, 'financiamento')).toEqual([]);
+  });
+
+  it('retorna só as dívidas do tipo pedido, dentro da conta pedida', () => {
+    criarDivida(db, { contaId, tipo: 'emprestimo', valorTotal: 1000, numParcelas: 2, dataInicio: '2026-09-01' });
+    criarDivida(db, { contaId, tipo: 'financiamento', valorTotal: 2000, numParcelas: 2, dataInicio: '2026-09-01' });
+    const outraContaId = criarConta(db, { bancoNome: 'Bradesco', tipo: 'PF', apelido: 'Outra' }).id;
+    criarDivida(db, {
+      contaId: outraContaId,
+      tipo: 'emprestimo',
+      valorTotal: 3000,
+      numParcelas: 2,
+      dataInicio: '2026-09-01',
+    });
+
+    const encontradas = buscarDividasPorContaETipo(db, contaId, 'emprestimo');
+
+    expect(encontradas).toHaveLength(1);
+    expect(encontradas[0]?.valorTotal).toBe(1000);
+  });
+
+  it('retorna mais de uma quando há duas dívidas do mesmo tipo na mesma conta', () => {
+    criarDivida(db, {
+      contaId,
+      tipo: 'emprestimo',
+      valorTotal: 1000,
+      numParcelas: 2,
+      dataInicio: '2026-09-01',
+      descricao: 'Carro',
+    });
+    criarDivida(db, {
+      contaId,
+      tipo: 'emprestimo',
+      valorTotal: 2000,
+      numParcelas: 2,
+      dataInicio: '2026-09-01',
+      descricao: 'Reforma',
+    });
+
+    expect(buscarDividasPorContaETipo(db, contaId, 'emprestimo')).toHaveLength(2);
+  });
+
+  it('ignora dívida renegociada — não disputa ambiguidade com a nova dívida gerada pela renegociação', () => {
+    const { divida: original } = criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 10000,
+      numParcelas: 10,
+      dataInicio: '2026-09-01',
+    });
+    marcarDividaRenegociada(db, original.id);
+    criarDivida(db, { contaId, tipo: 'financiamento', valorTotal: 8000, numParcelas: 12, dataInicio: '2026-09-01' });
+
+    const encontradas = buscarDividasPorContaETipo(db, contaId, 'financiamento');
+
+    expect(encontradas).toHaveLength(1);
+    expect(encontradas[0]?.valorTotal).toBe(8000);
   });
 });
 
