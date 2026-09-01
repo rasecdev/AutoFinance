@@ -5,6 +5,10 @@ import {
   calcularSaldoTransacoesConta,
   listarTransacoesAtivas,
 } from '../../db/repositories/transacoes.js';
+import {
+  calcularSaldoTransferenciasConta,
+  listarTransferencias,
+} from '../../db/repositories/transferencias.js';
 import { resolverContaId } from './resolucao.js';
 import type { ToolDefinition } from './types.js';
 
@@ -26,10 +30,18 @@ const schemaListarTransacoes = z.object({
 });
 
 const schemaResumoMensal = z.object({
-  mes: z.string().regex(/^\d{4}-\d{2}$/, 'Use o formato AAAA-MM.'),
+  mes: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/, 'Use o formato AAAA-MM.')
+    .optional(),
   conta_id: z.number().int().positive().optional(),
   conta_apelido: z.string().min(1).optional(),
 });
+
+function mesAtualISO(): string {
+  const agora = new Date();
+  return `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`;
+}
 
 function limitesDoMes(mes: string): { inicio: string; fim: string } {
   const [anoStr, mesStr] = mes.split('-');
@@ -42,7 +54,8 @@ function limitesDoMes(mes: string): { inicio: string; fim: string } {
 export function criarToolConsultarSaldo(db: DbClient): ToolDefinition {
   return {
     name: 'consultar_saldo',
-    description: 'Consulta o saldo atual de uma conta, informada pelo id ou pelo apelido.',
+    description:
+      'Consulta o saldo atual de uma conta. Assim que o usuário citar o nome/apelido da conta, chame esta ferramenta diretamente com esse nome em conta_apelido — mesmo que o apelido pareça um tipo de conta (ex: "PJ", "PF"), é só um nome como outro qualquer; não peça confirmação extra, a ferramenta resolve ou avisa sozinha se não encontrar.',
     schema: schemaConsultarSaldo,
     handler: async (args) => {
       const { conta_id: contaId, conta_apelido: contaApelido } = args as z.infer<
@@ -55,7 +68,10 @@ export function criarToolConsultarSaldo(db: DbClient): ToolDefinition {
       const conta = obterConta(db, resolucao.id);
       if (!conta) return 'Não encontrei essa conta.';
 
-      const saldo = conta.saldoAtual + calcularSaldoTransacoesConta(db, resolucao.id);
+      const saldo =
+        conta.saldoAtual +
+        calcularSaldoTransacoesConta(db, resolucao.id) +
+        calcularSaldoTransferenciasConta(db, resolucao.id);
       return `Saldo de "${conta.apelido}": R$ ${saldo.toFixed(2)}.`;
     },
   };
@@ -65,16 +81,24 @@ export function criarToolListarTransacoes(db: DbClient): ToolDefinition {
   return {
     name: 'listar_transacoes',
     description:
-      'Lista transações ativas, com filtros opcionais por conta (id ou apelido), categoria e período (data_inicio/data_fim, formato AAAA-MM-DD).',
+      'Lista transações ativas e transferências entre contas, com filtros opcionais por conta (id ou apelido), categoria e período (data_inicio/data_fim, formato AAAA-MM-DD). Sem período informado, usa o mês atual. Transferência não tem categoria — ao filtrar por categoria, só transações aparecem. Assim que o usuário citar o nome/apelido da conta, chame esta ferramenta diretamente com esse nome em conta_apelido — mesmo que pareça um tipo de conta (ex: "PJ", "PF"), é só um nome; não peça confirmação extra.',
     schema: schemaListarTransacoes,
     handler: async (args) => {
       const {
         conta_id: contaId,
         conta_apelido: contaApelido,
         categoria,
-        data_inicio: dataInicio,
-        data_fim: dataFim,
+        data_inicio: dataInicioInformada,
+        data_fim: dataFimInformada,
       } = args as z.infer<typeof schemaListarTransacoes>;
+
+      let dataInicio = dataInicioInformada;
+      let dataFim = dataFimInformada;
+      if (dataInicio === undefined && dataFim === undefined) {
+        const limites = limitesDoMes(mesAtualISO());
+        dataInicio = limites.inicio;
+        dataFim = limites.fim;
+      }
 
       let contaResolvidaId: number | undefined;
       if (contaId !== undefined || contaApelido !== undefined) {
@@ -90,15 +114,35 @@ export function criarToolListarTransacoes(db: DbClient): ToolDefinition {
         dataFim,
       });
 
-      if (transacoes.length === 0) {
+      const transferencias =
+        categoria === undefined
+          ? listarTransferencias(db, { contaId: contaResolvidaId, dataInicio, dataFim })
+          : [];
+
+      if (transacoes.length === 0 && transferencias.length === 0) {
         return 'Nenhuma transação encontrada com esses filtros.';
       }
 
-      const linhas = transacoes.map(
-        (t) =>
-          `- ${t.tipo === 'receita' ? 'Receita' : 'Despesa'} R$ ${t.valor.toFixed(2)}, categoria "${t.categoria}", data ${t.data}`,
+      const linhasTransacoes = transacoes.map((t) => ({
+        data: t.data,
+        texto: `- ${t.tipo === 'receita' ? 'Receita' : 'Despesa'} R$ ${t.valor.toFixed(2)}, categoria "${t.categoria}", data ${t.data}`,
+      }));
+
+      const linhasTransferencias = transferencias.map((tr) => {
+        const recebido = tr.valor - tr.taxa;
+        const parteTaxa = tr.taxa > 0 ? `, R$ ${recebido.toFixed(2)} recebidos (taxa R$ ${tr.taxa.toFixed(2)})` : '';
+        return {
+          data: tr.data,
+          texto: `- Transferência de "${tr.contaOrigemApelido}" para "${tr.contaDestinoApelido}": R$ ${tr.valor.toFixed(2)} enviados${parteTaxa}, data ${tr.data}`,
+        };
+      });
+
+      const linhas = [...linhasTransacoes, ...linhasTransferencias].sort((a, b) =>
+        a.data.localeCompare(b.data),
       );
-      return `${transacoes.length} transação(ões) encontrada(s):\n${linhas.join('\n')}`;
+      const total = transacoes.length + transferencias.length;
+
+      return `${total} registro(s) encontrado(s):\n${linhas.map((l) => l.texto).join('\n')}`;
     },
   };
 }
@@ -107,12 +151,16 @@ export function criarToolResumoMensal(db: DbClient): ToolDefinition {
   return {
     name: 'resumo_mensal',
     description:
-      'Resume receitas e despesas de um mês (formato AAAA-MM), agregando por categoria e tipo. Aceita filtrar por conta (id ou apelido).',
+      'Resume receitas e despesas de um mês (formato AAAA-MM), agregando por categoria e tipo. Sem mês informado, usa o mês atual. Aceita filtrar por conta (id ou apelido) — assim que o usuário citar o nome/apelido da conta, chame diretamente com esse nome em conta_apelido, mesmo que pareça um tipo de conta (ex: "PJ", "PF"); não peça confirmação extra.',
     schema: schemaResumoMensal,
     handler: async (args) => {
-      const { mes, conta_id: contaId, conta_apelido: contaApelido } = args as z.infer<
-        typeof schemaResumoMensal
-      >;
+      const {
+        mes: mesInformado,
+        conta_id: contaId,
+        conta_apelido: contaApelido,
+      } = args as z.infer<typeof schemaResumoMensal>;
+
+      const mes = mesInformado ?? mesAtualISO();
 
       let contaResolvidaId: number | undefined;
       if (contaId !== undefined || contaApelido !== undefined) {
