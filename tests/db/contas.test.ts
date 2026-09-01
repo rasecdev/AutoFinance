@@ -5,7 +5,7 @@ import Database from 'better-sqlite3-multiple-ciphers';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
-import { contaExiste, criarConta } from '../../src/db/repositories/contas.js';
+import { buscarContaPorApelido, contaExiste, criarConta } from '../../src/db/repositories/contas.js';
 
 const CHAVE_TESTE = 'chave-teste-contas';
 
@@ -62,5 +62,28 @@ describe('contaExiste', () => {
 
     expect(contaExiste(db, conta.id)).toBe(true);
     expect(contaExiste(db, conta.id + 999)).toBe(false);
+  });
+});
+
+describe('buscarContaPorApelido', () => {
+  it('encontra por apelido exato, sem diferenciar maiúsculas/minúsculas', () => {
+    const conta = criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Principal' });
+
+    expect(buscarContaPorApelido(db, 'principal')).toEqual([conta]);
+    expect(buscarContaPorApelido(db, 'PRINCIPAL')).toEqual([conta]);
+  });
+
+  it('retorna array vazio quando não encontra', () => {
+    expect(buscarContaPorApelido(db, 'Inexistente')).toEqual([]);
+  });
+
+  it('retorna todas as contas quando o apelido é ambíguo (case diferente, fora do índice único)', () => {
+    // apelido tem índice único case-sensitive (idx_contas_apelido_unico) — "Principal" e
+    // "principal" não colidem no banco, mas colidem na busca case-insensitive daqui, cenário
+    // real pra dado legado/inserido fora do fluxo normal (criarConta já bloqueia isso).
+    criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Principal' });
+    criarConta(db, { bancoNome: 'Itaú', tipo: 'PJ', apelido: 'principal' });
+
+    expect(buscarContaPorApelido(db, 'Principal')).toHaveLength(2);
   });
 });

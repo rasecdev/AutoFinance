@@ -56,6 +56,18 @@ describe('gerarResposta — sem ferramentas (compatibilidade)', () => {
       tokensCompletion: 0,
     });
   });
+
+  it('sempre envia o system prompt como primeira mensagem', async () => {
+    const client = criarClienteFalso(respostaTexto('olá!'));
+    const create = client.chat.completions.create as unknown as ReturnType<typeof vi.fn>;
+
+    await gerarResposta(client, 'oi');
+
+    const mensagensEnviadas = create.mock.calls[0]?.[0]?.messages;
+    expect(mensagensEnviadas[0]).toMatchObject({ role: 'system' });
+    expect(mensagensEnviadas[0].content).toContain('Nunca invente ou substitua um valor');
+    expect(mensagensEnviadas[1]).toEqual({ role: 'user', content: 'oi' });
+  });
 });
 
 describe('gerarResposta — loop de tool calling', () => {
