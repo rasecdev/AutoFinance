@@ -284,18 +284,20 @@
 
 ## Fase C: Dívidas e faturas
 
-### Tarefa 8: Cálculo de amortização Price/SAC (função pura testada)
+### Tarefa 8: Cálculo de amortização Price/SAC (função pura testada) ✅
 
 **Descrição:** Função determinística que, dado saldo devedor, taxa de juros, número de parcelas restantes, valor extra amortizado e modo (`reduzir_parcelas`/`reduzir_valor`), calcula o novo número de parcelas ou novo valor de parcela — separadamente para Price (parcela fixa recalculada por valor presente) e SAC (amortização constante, juro decrescente sobre saldo). Sem I/O, sem banco — só matemática, testada com múltiplos casos numéricos.
 
 **Acceptance criteria:**
-- [ ] Função calcula corretamente Price e SAC nos dois modos (`reduzir_parcelas`, `reduzir_valor`)
-- [ ] Casos de borda cobertos: amortização maior que o saldo devedor, taxa de juros zero, uma única parcela restante
+- [x] Função calcula corretamente Price e SAC nos dois modos (`reduzir_parcelas`, `reduzir_valor`)
+- [x] Casos de borda cobertos: amortização maior que o saldo devedor, taxa de juros zero, uma única parcela restante
+
+**Decisão de modelagem (perguntada ao usuário antes de codar):** no SAC a parcela não é fixa (amortização constante, juros decrescente) — `reduzir_valor` devolve o valor da **próxima parcela** (amortização + juros sobre o novo saldo), não só a amortização isolada, por ser o número que o usuário de fato reconhece como "quanto vou pagar".
 
 **Verification:**
-- [ ] `npm test` com pelo menos 8-10 casos numéricos (Price/SAC × 2 modos × casos de borda), valores conferidos manualmente contra fórmula financeira padrão
-- [ ] `npm run build` sem erro
-- [ ] Sem verificação manual via Telegram (função pura, sem integração ainda)
+- [x] `npm test` com 10 casos numéricos (Price/SAC × 2 modos × casos de borda — taxa zero, quitação total, 1 parcela restante, caso geral verificado por reconstrução da fórmula de valor presente da anuidade), 146 testes no total (10 novos)
+- [x] `npm run build` sem erro
+- [x] Sem verificação manual via Telegram (função pura, sem integração ainda)
 
 **Dependencies:** None (paralelizável com Fase B)
 
