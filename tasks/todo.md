@@ -337,29 +337,40 @@
 
 ---
 
-### Tarefa 10: `renegociar`
+### Tarefa 10: `renegociar` ✅
 
 **Descrição:** Ferramenta `renegociar` que marca a dívida (ou fatura) original como `renegociada`, cria uma nova linha em `dividas` (reaproveitando o repositório da Tarefa 9) com os termos novos, e liga as duas via `renegociacoes`. Alto impacto.
 
+**Decisões de implementação (achados reais do usuário durante o teste manual):**
+1. **Dívida não tem id exposto ao usuário** (princípio já estabelecido pra conta/cartão, mas nunca tinha sido aplicado a dívida) — identificada por conta + tipo (`dividas` ganhou coluna `descricao` opcional, migração `0003_divida_descricao.sql`, só usada pra desambiguar quando há mais de uma dívida do mesmo tipo na mesma conta). Fatura é identificada por cartão + `mes_referencia` (campo que já existia).
+2. **`buscarDividasPorContaETipo` só considera `status = 'ativo'`** — sem esse filtro, uma dívida já renegociada continuava "concorrendo" na resolução com a nova dívida gerada, gerando falso positivo de ambiguidade (achado real do usuário, reproduzido e corrigido na hora).
+3. **Campo não informado na renegociação herda da dívida original** (taxa_juros, sistema_amortizacao, indexador, taxa_indexador_spread, descricao) em vez de virar `null` — renegociação normalmente muda só uma ou duas coisas, o resto do contrato tende a continuar igual (achado real do usuário: "a parcela antiga era price e tinha 2%, porque isso mudou?"). Só se aplica a origem = dívida; fatura não tem esses campos pra herdar.
+4. **Resposta mostra "total com juros"** quando o total das parcelas geradas supera o valor principal (pedido explícito do usuário), tanto em `criar_divida` quanto em `renegociar`.
+5. **Busca aproximada por erro de digitação** (`src/ai/tools/similaridade.ts`, `encontrarPorSemelhanca` via distância de Levenshtein) — aplicada como fallback em `resolverContaId`/`resolverCartaoId`/`resolverDividaId` quando a busca exata falha. Só ativa a partir de 4 caracteres (nome curto é arriscado demais) e nunca escolhe em caso de empate entre dois candidatos igualmente próximos — silêncio preferível a adivinhar errado com dinheiro real em jogo.
+
 **Acceptance criteria:**
-- [ ] Dívida/fatura original tem seu `status` atualizado para `renegociado`/`renegociada`
-- [ ] Nova linha em `dividas` herda `tipo` da origem quando a origem é uma dívida; usa `tipo = 'outro'` quando a origem é uma fatura
-- [ ] `renegociacoes` registra origem (tipo + id) e a nova dívida gerada
+- [x] Dívida/fatura original tem seu `status` atualizado para `renegociado`/`renegociada`
+- [x] Nova linha em `dividas` herda `tipo` da origem quando a origem é uma dívida; usa `tipo = 'outro'` quando a origem é uma fatura
+- [x] `renegociacoes` registra origem (tipo + id) e a nova dívida gerada
 
 **Verification:**
-- [ ] `npm test` cobre renegociação a partir de dívida e a partir de fatura (dois casos de `tipo` resultante)
-- [ ] `npm run build` sem erro
-- [ ] Manual: renegociar uma dívida real de teste via Telegram de Homologação, confirmando
+- [x] `npm test` cobre renegociação a partir de dívida e a partir de fatura (dois casos de `tipo` resultante) — 200/200
+- [x] `npm run build` sem erro
+- [x] Manual: renegociado o financiamento de teste via Telegram de Homologação (inclusive com erro de digitação "conta princip" resolvido sozinho), confirmando — parcelas geradas corretamente, herança de taxa/sistema confirmada, `renegociacoes` com a cadeia de auditoria intacta em duas renegociações seguidas
 
 **Dependencies:** Tarefa 9
 
 **Files likely touched:**
 - `src/db/repositories/renegociacoes.ts` (novo)
 - `src/db/repositories/dividas.ts` (estender)
+- `src/db/repositories/faturas.ts` (novo — trazido da Tarefa 11, mínimo necessário pra `renegociar` resolver fatura por cartão+mês)
 - `src/ai/tools/dividas.ts` (estender)
-- `tests/db/renegociacoes.test.ts` (novo)
+- `src/ai/tools/resolucao.ts` (estender — `resolverDividaId`, busca aproximada)
+- `src/ai/tools/similaridade.ts` (novo)
+- `tests/db/renegociacoes.test.ts`, `tests/db/faturas.test.ts` (novos)
+- `tests/ai/tools/resolucao.test.ts`, `tests/ai/tools/similaridade.test.ts` (novos)
 
-**Estimated scope:** Medium (4 arquivos)
+**Estimated scope:** Medium (4 arquivos) — na prática maior, pela busca aproximada e pelos achados reais do teste manual
 
 ---
 
