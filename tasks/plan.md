@@ -79,11 +79,11 @@ Tarefas detalhadas em `tasks/todo.md`.
 ### Checkpoint: Fluxo financeiro básico funcional
 - [x] Testar manualmente em Homologação: criar conta, registrar transação, consultar saldo, transferir entre contas — tudo via mensagem real no Telegram (feito incrementalmente nas Tarefas 4-7, ver PROGRESSO.md)
 - [x] `npm test` passa (131/131 em `development`)
-- [ ] Revisão com o usuário antes de prosseguir
+- [x] Revisão com o usuário antes de prosseguir
 
 ### Fase C: Dívidas e faturas
 - [x] Tarefa 8: Cálculo de amortização Price/SAC (função pura testada)
-- [ ] Tarefa 9: `criar_divida` (com geração de `parcelas`)
+- [x] Tarefa 9: `criar_divida` (com geração de `parcelas`)
 - [ ] Tarefa 10: `renegociar`
 - [ ] Tarefa 11: `pagar_parcela`, `pagar_fatura`
 - [ ] Tarefa 12: `quitar_divida`
