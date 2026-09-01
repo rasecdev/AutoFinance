@@ -50,3 +50,37 @@ export function contaExiste(db: DbClient, id: number): boolean {
   const linha = db.prepare('SELECT 1 FROM contas WHERE id = ?').get(id);
   return linha !== undefined;
 }
+
+type LinhaConta = {
+  id: number;
+  banco_id: number;
+  tipo: TipoConta;
+  apelido: string;
+  saldo_atual: number;
+};
+
+function paraConta(linha: LinhaConta): Conta {
+  return {
+    id: linha.id,
+    bancoId: linha.banco_id,
+    tipo: linha.tipo,
+    apelido: linha.apelido,
+    saldoAtual: linha.saldo_atual,
+  };
+}
+
+export function buscarContaPorApelido(db: DbClient, apelido: string): Conta[] {
+  const linhas = db
+    .prepare('SELECT id, banco_id, tipo, apelido, saldo_atual FROM contas WHERE LOWER(apelido) = LOWER(?)')
+    .all(apelido) as LinhaConta[];
+
+  return linhas.map(paraConta);
+}
+
+export function listarContas(db: DbClient): Conta[] {
+  const linhas = db
+    .prepare('SELECT id, banco_id, tipo, apelido, saldo_atual FROM contas ORDER BY apelido')
+    .all() as LinhaConta[];
+
+  return linhas.map(paraConta);
+}

@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { SYSTEM_PROMPT } from './systemPrompt.js';
 import { paraDefinicaoOpenAI } from './tools/registry.js';
 import type { ToolContext, ToolDefinition } from './tools/types.js';
 
@@ -50,6 +51,7 @@ export async function gerarResposta(
   const ferramentas = tools.length > 0 ? tools.map(paraDefinicaoOpenAI) : undefined;
 
   const mensagens: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+    { role: 'system', content: SYSTEM_PROMPT },
     { role: 'user', content: mensagemUsuario },
   ];
   const toolCallsRegistradas: ToolCallRegistrada[] = [];
