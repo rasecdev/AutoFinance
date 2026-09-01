@@ -6,6 +6,7 @@ import type { ToolContext, ToolDefinition } from './tools/types.js';
 export const MODELO_PADRAO = 'openai/gpt-4o-mini';
 
 const MAX_ITERACOES_TOOL_CALLING = 5;
+const MAX_RETENTATIVAS_FALHA_MODELO = 1;
 
 export function createOpenRouterClient(apiKey: string): OpenAI {
   return new OpenAI({
@@ -59,11 +60,28 @@ export async function gerarResposta(
   let tokensCompletion = 0;
 
   for (let iteracao = 0; iteracao < MAX_ITERACOES_TOOL_CALLING; iteracao++) {
-    const completion = await client.chat.completions.create({
+    let completion = await client.chat.completions.create({
       model: MODELO_PADRAO,
       messages: mensagens,
       ...(ferramentas ? { tools: ferramentas, tool_choice: 'auto' as const } : {}),
     });
+
+    // Achado real testando Gemini via OpenRouter: o modelo às vezes falha internamente
+    // ao montar uma chamada de função (finish_reason "error"/"MALFORMED_FUNCTION_CALL")
+    // e devolve tudo vazio (sem content, sem tool_calls, sem usage) — intermitente, a
+    // mesma pergunta funciona logo depois. Retentar uma vez antes de desistir.
+    for (
+      let retentativa = 0;
+      (completion.choices[0]?.finish_reason as string) === 'error' &&
+      retentativa < MAX_RETENTATIVAS_FALHA_MODELO;
+      retentativa++
+    ) {
+      completion = await client.chat.completions.create({
+        model: MODELO_PADRAO,
+        messages: mensagens,
+        ...(ferramentas ? { tools: ferramentas, tool_choice: 'auto' as const } : {}),
+      });
+    }
 
     tokensPrompt += completion.usage?.prompt_tokens ?? 0;
     tokensCompletion += completion.usage?.completion_tokens ?? 0;
@@ -85,7 +103,7 @@ export async function gerarResposta(
     for (const toolCall of mensagem.tool_calls) {
       if (toolCall.type !== 'function') continue;
 
-      const resultado = await executarToolCall(registry.get(toolCall.function.name), toolCall, ctx);
+      const resultado = await executarToolCall(resolverTool(registry, toolCall.function.name), toolCall, ctx);
 
       if (resultado.tipo === 'pendente_confirmacao') {
         return {
@@ -104,6 +122,16 @@ export async function gerarResposta(
   }
 
   throw new Error(`limite de ${MAX_ITERACOES_TOOL_CALLING} iterações de tool calling excedido`);
+}
+
+function resolverTool(registry: Map<string, ToolDefinition>, nome: string): ToolDefinition | undefined {
+  const direto = registry.get(nome);
+  if (direto) return direto;
+
+  // Alguns modelos (ex: Gemini via OpenRouter) prefixam o nome da função com algo
+  // como "default_api." — cai pro nome depois do último ponto antes de desistir.
+  const semPrefixo = nome.includes('.') ? nome.slice(nome.lastIndexOf('.') + 1) : undefined;
+  return semPrefixo ? registry.get(semPrefixo) : undefined;
 }
 
 async function executarToolCall(

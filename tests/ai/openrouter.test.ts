@@ -1,7 +1,7 @@
 import type OpenAI from 'openai';
 import { z } from 'zod';
 import { describe, expect, it, vi } from 'vitest';
-import { gerarResposta } from '../../src/ai/openrouter.js';
+import { MODELO_PADRAO, gerarResposta } from '../../src/ai/openrouter.js';
 import type { ToolDefinition } from '../../src/ai/tools/types.js';
 
 function criarClienteFalso(...respostas: unknown[]): OpenAI {
@@ -14,6 +14,10 @@ function criarClienteFalso(...respostas: unknown[]): OpenAI {
 
 function respostaTexto(texto: string, usage?: { prompt_tokens: number; completion_tokens: number }) {
   return { choices: [{ message: { content: texto } }], usage };
+}
+
+function respostaErroModelo() {
+  return { choices: [{ finish_reason: 'error', message: { content: null } }] };
 }
 
 function respostaToolCall(
@@ -49,7 +53,7 @@ describe('gerarResposta — sem ferramentas (compatibilidade)', () => {
     const resultado = await gerarResposta(client, 'oi');
 
     expect(resultado).toEqual({
-      modelo: 'openai/gpt-4o-mini',
+      modelo: MODELO_PADRAO,
       resposta: 'olá!',
       toolCalls: [],
       tokensPrompt: 0,
@@ -92,6 +96,18 @@ describe('gerarResposta — loop de tool calling', () => {
     expect(resultado.tokensCompletion).toBe(13);
   });
 
+  it('resolve a ferramenta mesmo quando o modelo prefixa o nome (ex: "default_api.ecoar", achado real testando Gemini)', async () => {
+    const client = criarClienteFalso(
+      respostaToolCall('default_api.ecoar', { texto: 'oi' }),
+      respostaTexto('a ferramenta disse: eco: oi'),
+    );
+
+    const resultado = await gerarResposta(client, 'usa a ferramenta eco com "oi"', [ecoar]);
+
+    expect(resultado.resposta).toBe('a ferramenta disse: eco: oi');
+    expect(resultado.toolCalls).toEqual([{ nome: 'default_api.ecoar', argumentos: { texto: 'oi' } }]);
+  });
+
   it('rejeita argumento inválido sem executar o handler', async () => {
     const handler = vi.fn();
     const toolComHandlerEspiao: ToolDefinition = { ...ecoar, handler };
@@ -131,6 +147,22 @@ describe('gerarResposta — loop de tool calling', () => {
     });
     expect(resultado.resposta).toContain('excluir_transacao');
     expect(resultado.resposta.toLowerCase()).toContain('confirma');
+  });
+
+  it('retenta uma vez quando o modelo devolve finish_reason "error" (achado real: falha intermitente do Gemini)', async () => {
+    const client = criarClienteFalso(respostaErroModelo(), respostaTexto('funcionou na segunda tentativa'));
+
+    const resultado = await gerarResposta(client, 'msg', [ecoar]);
+
+    expect(resultado.resposta).toBe('funcionou na segunda tentativa');
+  });
+
+  it('desiste depois de uma retentativa e devolve resposta vazia sem lançar exceção', async () => {
+    const client = criarClienteFalso(respostaErroModelo(), respostaErroModelo());
+
+    const resultado = await gerarResposta(client, 'msg', [ecoar]);
+
+    expect(resultado.resposta).toBe('');
   });
 
   it('lança erro tratável ao exceder o limite de iterações', async () => {
