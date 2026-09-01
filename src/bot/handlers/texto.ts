@@ -4,6 +4,11 @@ import type OpenAI from 'openai';
 import { gerarResposta, MODELO_PADRAO } from '../../ai/openrouter.js';
 import { criarToolCriarCartao, criarToolCriarConta } from '../../ai/tools/contas.js';
 import {
+  criarToolConsultarSaldo,
+  criarToolListarTransacoes,
+  criarToolResumoMensal,
+} from '../../ai/tools/consultas.js';
+import {
   criarToolEditarTransacao,
   criarToolExcluirTransacao,
   criarToolRegistrarTransacao,
@@ -23,6 +28,9 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
     criarToolRegistrarTransacao(db),
     criarToolEditarTransacao(db),
     criarToolExcluirTransacao(db),
+    criarToolConsultarSaldo(db),
+    criarToolListarTransacoes(db),
+    criarToolResumoMensal(db),
   ];
 
   return async function handlerTexto(ctx: Context): Promise<void> {
