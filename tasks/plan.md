@@ -65,7 +65,7 @@ Tarefas detalhadas em `tasks/todo.md`.
 
 ### Fase B: Ferramentas essenciais (contas e transações)
 - [x] Tarefa 4: `criar_conta`, `criar_cartao`
-- [ ] Tarefa 5: `registrar_transacao`, `editar_transacao`, `excluir_transacao`
+- [x] Tarefa 5: `registrar_transacao`, `editar_transacao`, `excluir_transacao`
 - [ ] Tarefa 6: `consultar_saldo`, `listar_transacoes`, `resumo_mensal`
 - [ ] Tarefa 7: `registrar_transferencia`
 
