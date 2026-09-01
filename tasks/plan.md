@@ -73,7 +73,7 @@ Tarefas detalhadas em `tasks/todo.md`.
 - [x] Tarefa 5: `registrar_transacao`, `editar_transacao`, `excluir_transacao`
 - [x] Tarefa 5.1: Referência por apelido/contexto (achado do usuário, sem exigir id cru)
 - [x] Tarefa 5.2: System prompt com regras de comportamento (achado testando a 5.1)
-- [ ] Tarefa 6: `consultar_saldo`, `listar_transacoes`, `resumo_mensal`
+- [x] Tarefa 6: `consultar_saldo`, `listar_transacoes`, `resumo_mensal`
 - [ ] Tarefa 7: `registrar_transferencia`
 
 ### Checkpoint: Fluxo financeiro básico funcional
