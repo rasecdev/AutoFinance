@@ -11,6 +11,7 @@ import {
 import type { DbClient } from '../../../src/db/client.js';
 import { criarConta } from '../../../src/db/repositories/contas.js';
 import { criarTransacao, excluirTransacao } from '../../../src/db/repositories/transacoes.js';
+import { criarTransferencia } from '../../../src/db/repositories/transferencias.js';
 import { migrate } from '../../../src/db/migrate.js';
 
 const CHAVE_TESTE = 'chave-teste-tools-consultas';
@@ -80,6 +81,21 @@ describe('tool consultar_saldo', () => {
     expect(resultado).toContain('100.00');
     expect(resultado).not.toMatch(/\bid\b/i);
   });
+
+  it('reflete transferências enviadas e recebidas', async () => {
+    const contaDestinoId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Destino' }).id;
+    criarTransferencia(db, { contaOrigemId: contaId, contaDestinoId, valor: 30, taxa: 5, data: '2026-08-31' });
+
+    const tool = criarToolConsultarSaldo(db);
+
+    const resultadoOrigem = await tool.handler(tool.schema.parse({ conta_id: contaId }), { chatId: 1 });
+    expect(resultadoOrigem).toContain('70.00');
+
+    const resultadoDestino = await tool.handler(tool.schema.parse({ conta_id: contaDestinoId }), {
+      chatId: 1,
+    });
+    expect(resultadoDestino).toContain('25.00');
+  });
 });
 
 describe('tool listar_transacoes', () => {
@@ -106,7 +122,7 @@ describe('tool listar_transacoes', () => {
     excluirTransacao(db, excluida.id);
 
     const tool = criarToolListarTransacoes(db);
-    const args = tool.schema.parse({});
+    const args = tool.schema.parse({ data_inicio: '2026-08-01', data_fim: '2026-08-31' });
     const resultado = await tool.handler(args, { chatId: 1 });
 
     expect(resultado).toContain('10.00');
@@ -137,6 +153,53 @@ describe('tool listar_transacoes', () => {
     const resultado = await tool.handler(args, { chatId: 1 });
 
     expect(resultado).toContain('Nenhuma transação');
+  });
+
+  it('inclui transferências da conta na listagem', async () => {
+    const contaDestinoId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Destino' }).id;
+    criarTransferencia(db, { contaOrigemId: contaId, contaDestinoId, valor: 40, taxa: 5, data: '2026-08-10' });
+
+    const tool = criarToolListarTransacoes(db);
+    const args = tool.schema.parse({ conta_id: contaId, data_inicio: '2026-08-01', data_fim: '2026-08-31' });
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).toContain('Transferência');
+    expect(resultado).toContain('40.00');
+    expect(resultado).toContain('35.00');
+  });
+
+  it('filtro por categoria exclui transferências (elas não têm categoria)', async () => {
+    const contaDestinoId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Destino' }).id;
+    criarTransferencia(db, { contaOrigemId: contaId, contaDestinoId, valor: 40, data: '2026-08-10' });
+    criarTransacao(db, { contaId, tipo: 'despesa', valor: 15, categoria: 'Alimentação', data: '2026-08-10' });
+
+    const tool = criarToolListarTransacoes(db);
+    const args = tool.schema.parse({
+      conta_id: contaId,
+      categoria: 'Alimentação',
+      data_inicio: '2026-08-01',
+      data_fim: '2026-08-31',
+    });
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).not.toContain('Transferência');
+    expect(resultado).toContain('15.00');
+  });
+
+  it('sem período informado, usa o mês atual', async () => {
+    const hoje = new Date();
+    const mesPassado = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 15);
+    const dataMesPassado = `${mesPassado.getFullYear()}-${String(mesPassado.getMonth() + 1).padStart(2, '0')}-15`;
+    const dataMesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-01`;
+
+    criarTransacao(db, { contaId, tipo: 'despesa', valor: 11, categoria: 'Alimentação', data: dataMesPassado });
+    criarTransacao(db, { contaId, tipo: 'despesa', valor: 22, categoria: 'Alimentação', data: dataMesAtual });
+
+    const tool = criarToolListarTransacoes(db);
+    const resultado = await tool.handler(tool.schema.parse({ conta_id: contaId }), { chatId: 1 });
+
+    expect(resultado).toContain('22.00');
+    expect(resultado).not.toContain('11.00');
   });
 });
 
@@ -176,6 +239,17 @@ describe('tool resumo_mensal', () => {
     const resultado = await tool.handler(args, { chatId: 1 });
 
     expect(resultado).toContain('Nenhuma transação encontrada em 2026-08');
+  });
+
+  it('sem mês informado, usa o mês atual', async () => {
+    const hoje = new Date();
+    const dataMesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-01`;
+    criarTransacao(db, { contaId, tipo: 'receita', valor: 77, categoria: 'Salário', data: dataMesAtual });
+
+    const tool = criarToolResumoMensal(db);
+    const resultado = await tool.handler(tool.schema.parse({}), { chatId: 1 });
+
+    expect(resultado).toContain('receita total R$ 77.00');
   });
 
   it('rejeita mês em formato inválido', () => {
