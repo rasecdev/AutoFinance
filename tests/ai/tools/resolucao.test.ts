@@ -57,6 +57,36 @@ describe('resolverCartaoId — busca aproximada (erro de digitação)', () => {
   });
 });
 
+describe('resolverContaId/resolverCartaoId — nome parcial (achado real: "nubank" para "Nubank Cartão")', () => {
+  it('resolve conta por nome parcial (substring, não é erro de digitação)', () => {
+    const contaId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Nubank PJ' }).id;
+
+    const resultado = resolverContaId(db, undefined, 'nubank');
+
+    expect(resultado).toEqual({ ok: true, id: contaId });
+  });
+
+  it('resolve cartão por nome parcial (substring, não é erro de digitação)', () => {
+    const contaId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Principal' }).id;
+    const cartaoId = criarCartao(db, { contaId, nome: 'Nubank Cartão', limite: 5000, diaFechamento: 5, diaVencimento: 10 }).id;
+
+    const resultado = resolverCartaoId(db, undefined, 'nubank');
+
+    expect(resultado).toEqual({ ok: true, id: cartaoId });
+  });
+
+  it('pede pra desambiguar quando o nome parcial casa com mais de um cartão', () => {
+    const contaId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Principal' }).id;
+    const outraContaId = criarConta(db, { bancoNome: 'Bradesco', tipo: 'PF', apelido: 'Outra' }).id;
+    criarCartao(db, { contaId, nome: 'Nubank PF', limite: 5000, diaFechamento: 5, diaVencimento: 10 });
+    criarCartao(db, { contaId: outraContaId, nome: 'Nubank PJ', limite: 5000, diaFechamento: 5, diaVencimento: 10 });
+
+    const resultado = resolverCartaoId(db, undefined, 'nubank');
+
+    expect(resultado.ok).toBe(false);
+  });
+});
+
 describe('resolverDividaId — busca aproximada na divida_descricao', () => {
   it('resolve mesmo com um erro de digitação na descrição', () => {
     const contaId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Principal' }).id;

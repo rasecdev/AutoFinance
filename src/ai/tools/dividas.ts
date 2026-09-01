@@ -4,6 +4,7 @@ import { obterConta } from '../../db/repositories/contas.js';
 import { criarDivida, marcarDividaRenegociada, obterDivida, type Divida, type TipoDivida } from '../../db/repositories/dividas.js';
 import { buscarFaturaPorCartaoEMes, marcarFaturaRenegociada } from '../../db/repositories/faturas.js';
 import { criarRenegociacao } from '../../db/repositories/renegociacoes.js';
+import { normalizarMesReferencia } from './mesReferencia.js';
 import { resolverCartaoId, resolverContaId, resolverDividaId } from './resolucao.js';
 import type { ToolDefinition } from './types.js';
 
@@ -106,7 +107,10 @@ const schemaRenegociar = z
     divida_descricao: z.string().min(1).optional(),
     cartao_id: z.number().int().positive().optional(),
     cartao_nome: z.string().min(1).optional(),
-    mes_referencia: z.string().min(1).optional(),
+    mes_referencia: z
+      .string()
+      .regex(/^(\d{4}-\d{2}|\d{1,2})$/, 'Use "AAAA-MM", ou só o mês ("8"/"08") quando o usuário não disser o ano.')
+      .optional(),
     valor_total: z.number().positive(),
     num_parcelas: z.number().int().positive(),
     taxa_juros: z.number().min(0).optional(),
@@ -135,7 +139,7 @@ export function criarToolRenegociar(db: DbClient): ToolDefinition {
   return {
     name: 'renegociar',
     description:
-      'Renegocia uma dívida ou fatura existente: marca a origem como renegociada e cria uma nova dívida com os termos novos. valor_total e num_parcelas são sempre os valores novos, informados pelo usuário. Os demais campos (taxa_juros, sistema_amortizacao, indexador, taxa_indexador_spread, descricao) são opcionais: quando origem = "divida" e o usuário não informar um deles, a nova dívida herda o valor da dívida original automaticamente (renegociação normalmente muda só uma ou duas coisas, o resto do contrato tende a continuar igual) — não precisa perguntar isso ao usuário nem pedir pra repetir dado que não mudou. Quando origem = "fatura" não há nada pra herdar (fatura não tem esses campos). Nunca use id pra identificar a origem — dívida é identificada por conta + tipo_divida (divida_descricao só quando houver mais de uma do mesmo tipo na mesma conta e a ferramenta pedir pra desambiguar); fatura é identificada por cartão (nome/id) + mes_referencia (AAAA-MM). A nova dívida herda o tipo da dívida original quando origem = "divida", ou usa tipo "outro" quando origem = "fatura". Ação de alto impacto — só executa após confirmação.',
+      'Renegocia uma dívida ou fatura existente: marca a origem como renegociada e cria uma nova dívida com os termos novos. valor_total e num_parcelas são sempre os valores novos, informados pelo usuário. Os demais campos (taxa_juros, sistema_amortizacao, indexador, taxa_indexador_spread, descricao) são opcionais: quando origem = "divida" e o usuário não informar um deles, a nova dívida herda o valor da dívida original automaticamente (renegociação normalmente muda só uma ou duas coisas, o resto do contrato tende a continuar igual) — não precisa perguntar isso ao usuário nem pedir pra repetir dado que não mudou. Quando origem = "fatura" não há nada pra herdar (fatura não tem esses campos). Nunca use id pra identificar a origem — dívida é identificada por conta + tipo_divida (divida_descricao só quando houver mais de uma do mesmo tipo na mesma conta e a ferramenta pedir pra desambiguar); fatura é identificada por cartão (nome/id) + mes_referencia, que aceita "AAAA-MM" quando o usuário disser o ano, ou só o mês ("8"/"08") quando ele não disser — nesse caso NUNCA invente o ano sozinho, o sistema completa com o ano atual automaticamente. A nova dívida herda o tipo da dívida original quando origem = "divida", ou usa tipo "outro" quando origem = "fatura". Ação de alto impacto — só executa após confirmação.',
     schema: schemaRenegociar,
     requerConfirmacao: true,
     handler: async (args) => {
@@ -180,8 +184,9 @@ export function criarToolRenegociar(db: DbClient): ToolDefinition {
         const resolucaoCartao = resolverCartaoId(db, cartaoIdInformado, cartaoNome);
         if (!resolucaoCartao.ok) return resolucaoCartao.mensagem;
 
-        const fatura = buscarFaturaPorCartaoEMes(db, resolucaoCartao.id, mesReferencia as string);
-        if (!fatura) return `Não encontrei fatura de referência "${mesReferencia}" nesse cartão.`;
+        const mesNormalizado = normalizarMesReferencia(mesReferencia as string);
+        const fatura = buscarFaturaPorCartaoEMes(db, resolucaoCartao.id, mesNormalizado);
+        if (!fatura) return `Não encontrei fatura de referência "${mesNormalizado}" nesse cartão.`;
 
         contaId = fatura.contaId;
         tipoNovaDivida = 'outro';

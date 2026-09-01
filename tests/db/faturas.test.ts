@@ -6,7 +6,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../src/db/client.js';
 import { criarCartao } from '../../src/db/repositories/cartoes.js';
 import { criarConta } from '../../src/db/repositories/contas.js';
-import { buscarFaturaPorCartaoEMes, marcarFaturaRenegociada, obterFatura } from '../../src/db/repositories/faturas.js';
+import {
+  buscarFaturaPorCartaoEMes,
+  marcarFaturaPaga,
+  marcarFaturaRenegociada,
+  obterFatura,
+} from '../../src/db/repositories/faturas.js';
 import { migrate } from '../../src/db/migrate.js';
 
 const CHAVE_TESTE = 'chave-teste-faturas';
@@ -76,5 +81,17 @@ describe('marcarFaturaRenegociada', () => {
     marcarFaturaRenegociada(db, faturaId);
 
     expect(obterFatura(db, faturaId)?.status).toBe('renegociada');
+  });
+});
+
+describe('marcarFaturaPaga', () => {
+  it('atualiza status e data_pagamento', () => {
+    const faturaId = inserirFatura('2026-08');
+
+    marcarFaturaPaga(db, faturaId, '2026-08-10');
+
+    const fatura = obterFatura(db, faturaId);
+    expect(fatura?.status).toBe('paga');
+    expect(fatura?.dataPagamento).toBe('2026-08-10');
   });
 });

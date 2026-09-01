@@ -58,6 +58,7 @@ describe('gerarResposta — sem ferramentas (compatibilidade)', () => {
       toolCalls: [],
       tokensPrompt: 0,
       tokensCompletion: 0,
+      duracaoMs: expect.any(Number),
     });
   });
 

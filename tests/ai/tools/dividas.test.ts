@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3-multiple-ciphers';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { criarToolCriarDivida, criarToolRenegociar } from '../../../src/ai/tools/dividas.js';
 import type { DbClient } from '../../../src/db/client.js';
 import { criarCartao } from '../../../src/db/repositories/cartoes.js';
@@ -451,5 +451,31 @@ describe('tool renegociar', () => {
 
     expect(resultado).not.toContain('sistema');
     expect(resultado).not.toContain('taxa');
+  });
+
+  it('mes_referencia só com o mês (sem ano): completa com o ano atual, nunca inventado pelo modelo', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 15));
+    try {
+      criarCartao(db, { contaId, nome: 'Nubank', limite: 5000, diaFechamento: 5, diaVencimento: 10 });
+      db.prepare(
+        "INSERT INTO faturas (cartao_id, mes_referencia, valor, status) VALUES ((SELECT id FROM cartoes WHERE nome = 'Nubank'), '2026-08', 1500, 'aberta')",
+      ).run();
+
+      const tool = criarToolRenegociar(db);
+      const args = tool.schema.parse({
+        origem: 'fatura',
+        cartao_nome: 'Nubank',
+        mes_referencia: '08',
+        valor_total: 1500,
+        num_parcelas: 6,
+      });
+
+      const resultado = await tool.handler(args, { chatId: 1 });
+
+      expect(resultado).toContain('fatura original marcada como renegociada');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
