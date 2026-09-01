@@ -51,6 +51,13 @@ export function contaExiste(db: DbClient, id: number): boolean {
   return linha !== undefined;
 }
 
+export function obterConta(db: DbClient, id: number): Conta | undefined {
+  const linha = db
+    .prepare('SELECT id, banco_id, tipo, apelido, saldo_atual FROM contas WHERE id = ?')
+    .get(id) as LinhaConta | undefined;
+  return linha ? paraConta(linha) : undefined;
+}
+
 type LinhaConta = {
   id: number;
   banco_id: number;

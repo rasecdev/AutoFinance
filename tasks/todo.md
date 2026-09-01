@@ -215,19 +215,21 @@
 
 ---
 
-### Tarefa 6: `consultar_saldo`, `listar_transacoes`, `resumo_mensal`
+### Tarefa 6: `consultar_saldo`, `listar_transacoes`, `resumo_mensal` ✅
 
 **Descrição:** Consultas de leitura sobre `transacoes`/`contas`, sempre filtrando `status = 'ativa'` por padrão (conforme regra do Modelo de dados). `consultar_saldo` retorna o saldo de uma conta; `listar_transacoes` filtra por período/categoria/conta; `resumo_mensal` agrega receita/despesa por categoria num mês.
 
 **Acceptance criteria:**
-- [ ] As três ferramentas nunca retornam transações com `status = 'excluida'`
-- [ ] `resumo_mensal` agrega valores corretamente por categoria e tipo (receita/despesa)
-- [ ] Nenhuma das três exige confirmação (são leitura, sem efeito colateral)
+- [x] As três ferramentas nunca retornam transações com `status = 'excluida'`
+- [x] `resumo_mensal` agrega valores corretamente por categoria e tipo (receita/despesa)
+- [x] Nenhuma das três exige confirmação (são leitura, sem efeito colateral)
 
 **Verification:**
-- [ ] `npm test` cobre os três casos, incluindo que uma transação excluída não aparece em nenhum resultado
-- [ ] `npm run build` sem erro
-- [ ] Manual: perguntar saldo, listar transações do mês e pedir resumo mensal via Telegram de Homologação, comparando com os dados reais gravados até aqui
+- [x] `npm test` cobre os três casos, incluindo que uma transação excluída não aparece em nenhum resultado (114 testes no total, 12 novos)
+- [x] `npm run build` sem erro
+- [x] Manual: perguntar saldo, listar transações do mês e pedir resumo mensal via Telegram de Homologação, comparando com os dados reais gravados até aqui — confirmado pelo usuário
+
+**Nota de implementação:** `contas.saldo_atual` nunca foi atualizado por `registrar_transacao`/`editar_transacao`/`excluir_transacao` (gap deixado na Tarefa 5, nunca ficou explícito no PLANO.md que a coluna seria um saldo corrente mantido). Decisão (confirmada com o usuário): `consultar_saldo` calcula dinamicamente — `saldo_atual` (saldo inicial) + soma de receitas − soma de despesas das transações ativas vinculadas à conta — em vez de manter um campo corrente. Sempre correto após editar/excluir transação, sem reabrir a Tarefa 5.
 
 **Dependencies:** Tarefa 5
 
