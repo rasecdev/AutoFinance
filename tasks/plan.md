@@ -74,11 +74,11 @@ Tarefas detalhadas em `tasks/todo.md`.
 - [x] Tarefa 5.1: Referência por apelido/contexto (achado do usuário, sem exigir id cru)
 - [x] Tarefa 5.2: System prompt com regras de comportamento (achado testando a 5.1)
 - [x] Tarefa 6: `consultar_saldo`, `listar_transacoes`, `resumo_mensal`
-- [ ] Tarefa 7: `registrar_transferencia`
+- [x] Tarefa 7: `registrar_transferencia`
 
 ### Checkpoint: Fluxo financeiro básico funcional
-- [ ] Testar manualmente em Homologação: criar conta, registrar transação, consultar saldo, transferir entre contas — tudo via mensagem real no Telegram
-- [ ] `npm test` passa
+- [x] Testar manualmente em Homologação: criar conta, registrar transação, consultar saldo, transferir entre contas — tudo via mensagem real no Telegram (feito incrementalmente nas Tarefas 4-7, ver PROGRESSO.md)
+- [x] `npm test` passa (131/131 em `development`)
 - [ ] Revisão com o usuário antes de prosseguir
 
 ### Fase C: Dívidas e faturas
