@@ -238,7 +238,28 @@ describe('tool resumo_mensal', () => {
     const args = tool.schema.parse({ mes: '2026-08' });
     const resultado = await tool.handler(args, { chatId: 1 });
 
-    expect(resultado).toContain('Nenhuma transação encontrada em 2026-08');
+    expect(resultado).toContain('Nenhuma movimentação encontrada em 2026-08');
+  });
+
+  it('inclui total enviado e recebido via transferência no resumo', async () => {
+    const contaDestinoId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Destino' }).id;
+    criarTransferencia(db, { contaOrigemId: contaId, contaDestinoId, valor: 40, taxa: 5, data: '2026-08-10' });
+
+    const tool = criarToolResumoMensal(db);
+    const resultadoOrigem = await tool.handler(
+      tool.schema.parse({ mes: '2026-08', conta_id: contaId }),
+      { chatId: 1 },
+    );
+    expect(resultadoOrigem).toContain('R$ 40.00 enviados');
+    expect(resultadoOrigem).toContain('R$ 0.00 recebidos');
+    expect(resultadoOrigem).toContain('"Conta principal" para "Destino"');
+
+    const resultadoDestino = await tool.handler(
+      tool.schema.parse({ mes: '2026-08', conta_id: contaDestinoId }),
+      { chatId: 1 },
+    );
+    expect(resultadoDestino).toContain('R$ 0.00 enviados');
+    expect(resultadoDestino).toContain('R$ 35.00 recebidos');
   });
 
   it('sem mês informado, usa o mês atual', async () => {
