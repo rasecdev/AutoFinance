@@ -130,19 +130,21 @@
 
 ---
 
-### Tarefa 5: `registrar_transacao`, `editar_transacao`, `excluir_transacao`
+### Tarefa 5: `registrar_transacao`, `editar_transacao`, `excluir_transacao` ✅
+
+**Implementado:** `src/db/repositories/transacoes.ts` (`criarTransacao`, `obterTransacao`, `atualizarTransacao` — `UPDATE` dinâmico só nos campos informados, `excluirTransacao` — `UPDATE status = 'excluida' WHERE status = 'ativa'`, nunca `DELETE`). `src/ai/tools/transacoes.ts` define as três ferramentas: `registrar_transacao` e `editar_transacao` sem `requerConfirmacao` (baixo impacto, executam direto e ecoam o resultado); `excluir_transacao` com `requerConfirmacao: true`. `registrar_transacao` exige `conta_id` ou `cartao_id` (refinamento Zod); `editar_transacao` exige pelo menos um campo além do `id`. `handlerTexto` passou a expor as três ferramentas junto das da Tarefa 4. 15 testes novos (75 no total).
 
 **Descrição:** Repositório de `transacoes` (insert, update, exclusão lógica) e as três ferramentas. `registrar_transacao` grava direto e ecoa o resultado (baixo impacto). `editar_transacao` sobrescreve um registro existente, também direto com eco. `excluir_transacao` marca `status = 'excluida'` (nunca `DELETE`) e é alto impacto — passa pela confirmação da Tarefa 3, apesar de logicamente reversível (conforme PLANO.md item 8 de Segurança).
 
 **Acceptance criteria:**
-- [ ] `registrar_transacao` grava com `status = 'ativa'` e a resposta ecoa valor/categoria/data gravados
-- [ ] `editar_transacao` atualiza um registro existente por id e ecoa o que mudou
-- [ ] `excluir_transacao` só executa após confirmação e faz `UPDATE status = 'excluida'`, nunca `DELETE`
+- [x] `registrar_transacao` grava com `status = 'ativa'` e a resposta ecoa valor/categoria/data gravados
+- [x] `editar_transacao` atualiza um registro existente por id e ecoa o que mudou
+- [x] `excluir_transacao` só executa após confirmação e faz `UPDATE status = 'excluida'`, nunca `DELETE`
 
 **Verification:**
-- [ ] `npm test` cobre insert, update, exclusão lógica (e que `DELETE` nunca é chamado) e o fluxo de confirmação de `excluir_transacao`
-- [ ] `npm run build` sem erro
-- [ ] Manual: registrar uma transação real, editá-la, excluí-la (confirmando), tudo via Telegram de Homologação
+- [x] `npm test` cobre insert, update, exclusão lógica (e que `DELETE` nunca é chamado) e o fluxo de confirmação de `excluir_transacao`
+- [x] `npm run build` sem erro
+- [x] Manual: registrar uma transação real, editá-la, excluí-la (confirmando), tudo via Telegram de Homologação — **verificado** (VM parada temporariamente, bot local, conferido no banco cifrado: transação criada, editada, `status = 'excluida'` após exclusão confirmada). Observação não-bloqueante: durante o teste, a IA criou uma conta/banco extra chamado "Principal" a partir de uma instrução ambígua do usuário (comportamento de `criar_conta`, Tarefa 4, não desta tarefa) — registrado no PROGRESSO.md, sem ação corretiva por ora.
 
 **Dependencies:** Tarefa 4
 
