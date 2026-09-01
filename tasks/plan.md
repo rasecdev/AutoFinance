@@ -15,6 +15,7 @@ Escopo conforme PLANO.md > "Fases" > "Fase 3 — Tool calling" (linhas 467-477),
 - **Cálculo de amortização (Price/SAC) é função pura e testada** (`src/finance/amortizacao.ts`), nunca feita pelo modelo — reaproveitada só por `amortizar_divida`. Isolada numa tarefa própria antes de `amortizar_divida` por ser lógica financeira de alto risco de erro silencioso (arredondamento, fórmula errada), merece testes de unidade dedicados e extensos antes de qualquer ferramenta depender dela.
 - **Estrutura de pastas nova**: `src/ai/tools/` (definição de ferramentas por domínio), `src/finance/` (cálculo financeiro puro), `src/db/repositories/<dominio>.ts` (um repositório por tabela/domínio, mesmo padrão já usado em `interacoesIa.ts` na Fase 1 — INSERT/UPDATE/SELECT via prepared statements com named params).
 - **Sem roteamento por fluxo ainda** (isso é Fase 5) — todas as ferramentas desta fase continuam no único fluxo `conversa_texto`, com o mesmo `MODELO_PADRAO` já configurado. `uso_tokens.fluxo` já grava `'conversa_texto'` desde já, preparando o terreno sem implementar o roteamento em si.
+- **Referência por apelido/contexto** (Tarefa 5.1, achado do usuário testando a Tarefa 5 — ver "Princípio de referência por apelido/contexto" no topo do PLANO.md): nenhuma ferramenta deve exigir id numérico decorado. Conta/cartão (têm nome natural) resolvem por busca em `apelido`/`nome`; transação (sem nome natural) resolve pela última registrada naquele chat, via `Map<chatId, transacaoId>` em memória (mesmo padrão do `Map` de confirmação da Tarefa 3) — não é a Fase 4 (memória de conversa completa), é um atalho mínimo só pra essa referência comum. Ambiguidade (mais de um match) sempre lista as opções e pergunta, nunca escolhe sozinho (mesmo princípio da confirmação por dúvida).
 - **Ordem de implementação segue o grafo de dependência abaixo** — infraestrutura de tool calling primeiro (nada funciona sem isso), depois ferramentas essenciais de conta/transação (menor risco, valor mais imediato), depois dívidas/faturas (mais complexo, cálculo financeiro envolvido), depois despesas fixas e feedback (menor prioridade, mais isolado).
 
 ```
@@ -27,6 +28,8 @@ Motor de tool calling (Tarefa 1)
             ├── criar_conta / criar_cartao (Tarefa 4)
             │       │
             │       ├── registrar_transacao / editar_transacao / excluir_transacao (Tarefa 5)
+            │       │       │
+            │       │       ├── Referência por apelido/contexto (Tarefa 5.1)
             │       │       │
             │       │       └── consultar_saldo / listar_transacoes / resumo_mensal (Tarefa 6)
             │       │
@@ -66,6 +69,7 @@ Tarefas detalhadas em `tasks/todo.md`.
 ### Fase B: Ferramentas essenciais (contas e transações)
 - [x] Tarefa 4: `criar_conta`, `criar_cartao`
 - [x] Tarefa 5: `registrar_transacao`, `editar_transacao`, `excluir_transacao`
+- [ ] Tarefa 5.1: Referência por apelido/contexto (achado do usuário, sem exigir id cru)
 - [ ] Tarefa 6: `consultar_saldo`, `listar_transacoes`, `resumo_mensal`
 - [ ] Tarefa 7: `registrar_transferencia`
 
