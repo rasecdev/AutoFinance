@@ -242,21 +242,29 @@
 
 ---
 
-### Tarefa 7: `registrar_transferencia`
+### Tarefa 7: `registrar_transferencia` ✅
 
 **Descrição:** Repositório de `transferencias` e a ferramenta correspondente. Debita `valor` cheio da conta de origem, credita `valor - taxa` na conta de destino (`taxa` opcional, padrão 0). Não é receita nem despesa — não grava em `transacoes`.
 
 **Acceptance criteria:**
-- [ ] `registrar_transferencia` grava em `transferencias`, nunca em `transacoes`
-- [ ] Com `taxa` informada, o destino recebe `valor - taxa` (validar no saldo da conta de destino se o saldo for atualizado nesta tarefa, ou documentar que o saldo consolidado fica pra consulta agregada — decisão a confirmar durante a implementação, ver Open Questions do plano)
-- [ ] Sem `taxa`, comportamento é 1:1 (mesma regra de antes)
+- [x] `registrar_transferencia` grava em `transferencias`, nunca em `transacoes`
+- [x] Com `taxa` informada, o destino recebe `valor - taxa` — `consultar_saldo` (Tarefa 6) passou a somar também `calcularSaldoTransferenciasConta` (débito cheio na origem, `valor - taxa` no destino), mesma continuação do cálculo dinâmico já decidido na Tarefa 6, em vez de manter `contas.saldo_atual` como campo corrente
+- [x] Sem `taxa`, comportamento é 1:1 (mesma regra de antes)
+- [x] Aceita `conta_origem_apelido`/`conta_destino_apelido` além de id (mesmo padrão de resolução por apelido da Tarefa 5.1); recusa transferência da conta pra ela mesma
 
 **Verification:**
-- [ ] `npm test` cobre transferência com e sem taxa
-- [ ] `npm run build` sem erro
-- [ ] Manual: transferir entre duas contas reais (com e sem taxa) via Telegram de Homologação
+- [x] `npm test` cobre transferência com e sem taxa (131 testes no total, 17 novos)
+- [x] `npm run build` sem erro
+- [x] Manual: transferir entre duas contas reais (com e sem taxa) via Telegram de Homologação — confirmado pelo usuário, saldo das duas contas conferido contra o cálculo manual
 
 **Dependencies:** Tarefa 4
+
+**Achados do teste manual, corrigidos durante a tarefa (ver PROGRESSO.md pro relato completo):**
+1. Modelo nunca chamava `registrar_transferencia` mesmo com origem/destino/valor completos numa mensagem só — hesitação maior que em `registrar_transacao` por ter duas contas pra resolver na mesma chamada. Corrigido reforçando a descrição da ferramenta (chamar direto com o apelido informado, sem pedir confirmação extra).
+2. `listar_transacoes`/`resumo_mensal` (Tarefa 6) não mostravam transferência nenhuma — por desenho (transferência não é receita/despesa, PLANO.md já registrava isso), mas dava a impressão de "sumiço" no extrato. Decisão (confirmada com o usuário): `listar_transacoes` passou a incluir transferências (marcadas como tal, sem categoria); `resumo_mensal` continua só receita/despesa.
+3. Relatórios sem período informado pediam o mês ao usuário — a pedido do usuário, generalizado o "Princípio de data determinística" (já usado em `registrar_transacao`) pra período: sem `mes`/`data_inicio`/`data_fim`, o código assume o mês atual.
+4. Resolução por apelido "PJ" (mesmo texto do campo `tipo` PF/PJ) fazia o modelo hesitar e pedir confirmação em vez de chamar a ferramenta — reforçada a descrição de `consultar_saldo`/`listar_transacoes`/`resumo_mensal` avisando que um apelido "parecido com tipo" ainda é só um nome.
+5. Confirmado que não é bug: `resumo_mensal` de uma conta que só tem transferência (sem nenhuma receita/despesa) retorna corretamente "nenhuma transação" — o saldo real dessa conta só aparece via `consultar_saldo`, que já soma transferências.
 
 **Files likely touched:**
 - `src/db/repositories/transferencias.ts` (novo)
