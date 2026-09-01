@@ -157,6 +157,36 @@
 
 ---
 
+### Tarefa 5.1: Referência por apelido/contexto (sem exigir id cru)
+
+**Descrição:** *(achado pelo usuário testando a Tarefa 5 — ver "Princípio de referência por apelido/contexto" no topo do PLANO.md)*. Duas frentes: (1) `criar_cartao` e `registrar_transacao` passam a aceitar o **nome** da conta/cartão (`conta_apelido`/`cartao_nome`) além do id — resolvido por busca em `contas`/`cartoes` (`buscarContaPorApelido`, `buscarCartaoPorNome`, case-insensitive); sem match, avisa que não achou; mais de um match, lista as opções (id + apelido) e pede pra especificar, nunca escolhe sozinho. (2) `editar_transacao`/`excluir_transacao` passam a ter `id` **opcional** — quando omitido, usam a última transação registrada naquele chat, rastreada por um `Map<chatId, transacaoId>` em memória (novo `src/bot/contextoRecente.ts`, mesmo padrão de `confirmacao.ts`), atualizado a cada `registrar_transacao` bem-sucedido; sem id e sem última transação rastreada, a ferramenta pede o id em vez de adivinhar.
+
+**Acceptance criteria:**
+- [ ] `criar_cartao` aceita `conta_apelido` além de `conta_id`; resolve corretamente com match único, avisa quando não encontra, lista opções quando ambíguo (sem escolher sozinho)
+- [ ] `registrar_transacao` aceita `conta_apelido`/`cartao_nome` além de `conta_id`/`cartao_id`, mesma resolução
+- [ ] `editar_transacao`/`excluir_transacao` funcionam sem `id`, usando a última transação registrada naquele chat
+- [ ] Sem id, sem apelido e sem última transação rastreada, cada ferramenta pede a informação em vez de assumir
+- [ ] Rastreamento de "última transação" é por `chatId`, isolado entre chats diferentes
+
+**Verification:**
+- [ ] `npm test` cobre: resolução por apelido único, apelido não encontrado, apelido ambíguo (2+ contas com nomes parecidos), edição/exclusão sem id usando a última transação, edição/exclusão sem id e sem última transação rastreada
+- [ ] `npm run build` sem erro
+- [ ] Manual via Telegram real: criar cartão citando a conta pelo nome (sem id); registrar transação citando a conta pelo nome; editar essa transação sem informar id ("muda o valor pra X"); excluir sem id, confirmando
+
+**Dependencies:** Tarefa 5
+
+**Files likely touched:**
+- `src/db/repositories/contas.ts` (estender — `buscarContaPorApelido`)
+- `src/db/repositories/cartoes.ts` (estender — `buscarCartaoPorNome`)
+- `src/ai/tools/contas.ts`, `src/ai/tools/transacoes.ts` (estender)
+- `src/bot/contextoRecente.ts` (novo)
+- `src/bot/handlers/texto.ts` (estender)
+- `tests/db/contas.test.ts`, `tests/db/cartoes.test.ts`, `tests/ai/tools/contas.test.ts`, `tests/ai/tools/transacoes.test.ts`, `tests/bot/contextoRecente.test.ts` (novo)
+
+**Estimated scope:** Medium (7-8 arquivos)
+
+---
+
 ### Tarefa 6: `consultar_saldo`, `listar_transacoes`, `resumo_mensal`
 
 **Descrição:** Consultas de leitura sobre `transacoes`/`contas`, sempre filtrando `status = 'ativa'` por padrão (conforme regra do Modelo de dados). `consultar_saldo` retorna o saldo de uma conta; `listar_transacoes` filtra por período/categoria/conta; `resumo_mensal` agrega receita/despesa por categoria num mês.
