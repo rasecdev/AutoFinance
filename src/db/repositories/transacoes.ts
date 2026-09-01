@@ -129,3 +129,48 @@ export function excluirTransacao(db: DbClient, id: number): boolean {
     .run(id);
   return resultado.changes > 0;
 }
+
+export type FiltroTransacoes = {
+  contaId?: number;
+  categoria?: string;
+  dataInicio?: string;
+  dataFim?: string;
+};
+
+export function listarTransacoesAtivas(db: DbClient, filtro: FiltroTransacoes = {}): Transacao[] {
+  const condicoes: string[] = ["status = 'ativa'"];
+  const params: unknown[] = [];
+
+  if (filtro.contaId !== undefined) {
+    condicoes.push('conta_id = ?');
+    params.push(filtro.contaId);
+  }
+  if (filtro.categoria !== undefined) {
+    condicoes.push('LOWER(categoria) = LOWER(?)');
+    params.push(filtro.categoria);
+  }
+  if (filtro.dataInicio !== undefined) {
+    condicoes.push('data >= ?');
+    params.push(filtro.dataInicio);
+  }
+  if (filtro.dataFim !== undefined) {
+    condicoes.push('data <= ?');
+    params.push(filtro.dataFim);
+  }
+
+  const linhas = db
+    .prepare(`SELECT * FROM transacoes WHERE ${condicoes.join(' AND ')} ORDER BY data, id`)
+    .all(...params) as LinhaTransacao[];
+
+  return linhas.map(paraTransacao);
+}
+
+export function calcularSaldoTransacoesConta(db: DbClient, contaId: number): number {
+  const linha = db
+    .prepare(
+      `SELECT COALESCE(SUM(CASE WHEN tipo = 'receita' THEN valor ELSE -valor END), 0) AS delta
+       FROM transacoes WHERE conta_id = ? AND status = 'ativa'`,
+    )
+    .get(contaId) as { delta: number };
+  return linha.delta;
+}
