@@ -276,9 +276,9 @@
 ---
 
 ## Checkpoint: Fluxo financeiro básico funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Testar manualmente em Homologação: criar conta, registrar transação, consultar saldo, listar transações, resumo mensal, transferir entre contas — tudo via mensagem real no Telegram
-- [ ] Revisão com o usuário antes de prosseguir
+- [x] `npm run build`/`lint`/`test` sem erro (162/162 em `development`, checado nesta revisão)
+- [x] Testar manualmente em Homologação: criar conta, registrar transação, consultar saldo, listar transações, resumo mensal, transferir entre contas — tudo via mensagem real no Telegram (feito incrementalmente nas Tarefas 4-7, ver PROGRESSO.md — não numa rodada única à parte, já que cada ferramenta foi verificada com dado real na própria tarefa)
+- [x] Revisão com o usuário antes de prosseguir (aprovado — usuário confirmou seguir pra Fase C)
 
 ---
 
@@ -309,19 +309,21 @@
 
 ---
 
-### Tarefa 9: `criar_divida` (com geração de `parcelas`)
+### Tarefa 9: `criar_divida` (com geração de `parcelas`) ✅
 
 **Descrição:** Repositórios de `dividas` e `parcelas`, e a ferramenta `criar_divida` (tipo, valor total, num_parcelas, taxa de juros, opcionalmente `sistema_amortizacao`/`indexador`/`taxa_indexador_spread`/`periodicidade_reajuste`). Gera as `parcelas` de uma vez, com `data_vencimento` calculada a partir de `data_inicio`. Alto impacto — passa pela confirmação da Tarefa 3.
 
+**Decisão de implementação:** sem `sistema_amortizacao` informado, as parcelas saem em valor fixo (total dividido igualmente pelo número de parcelas), sem tentar aplicar juros compostos — evita inventar um sistema de amortização que o usuário não pediu. Com `price`, reaproveita a mesma fórmula de anuidade da Tarefa 8 (parcela constante). Com `sac`, amortização constante (`valor_total/num_parcelas`) e juro decrescente sobre o saldo restante, gerando parcelas decrescentes; `dividas.valor_parcela` grava o valor da primeira parcela (representativo — constante no Price, o maior no SAC). Primeira parcela vence um mês após `data_inicio` (convenção padrão de cronograma de amortização, contratação/liberação hoje, primeiro pagamento no mês seguinte).
+
 **Acceptance criteria:**
-- [ ] `criar_divida` grava a dívida e todas as parcelas correspondentes numa única operação (transação de banco), só após confirmação
-- [ ] Campos opcionais (`sistema_amortizacao`, `indexador`, etc.) aceitam ausência sem erro, usando os defaults do schema (`indexador = 'fixo'`)
-- [ ] Datas de vencimento das parcelas são calculadas corretamente a partir de `data_inicio` (mensal)
+- [x] `criar_divida` grava a dívida e todas as parcelas correspondentes numa única operação (transação de banco), só após confirmação
+- [x] Campos opcionais (`sistema_amortizacao`, `indexador`, etc.) aceitam ausência sem erro, usando os defaults do schema (`indexador = 'fixo'`)
+- [x] Datas de vencimento das parcelas são calculadas corretamente a partir de `data_inicio` (mensal)
 
 **Verification:**
-- [ ] `npm test` cobre criação com e sem campos opcionais, e a geração correta das parcelas
-- [ ] `npm run build` sem erro
-- [ ] Manual: criar uma dívida real (ex: financiamento com `sistema_amortizacao = price`) via Telegram de Homologação, confirmando, e conferir as parcelas geradas no banco
+- [x] `npm test` cobre criação com e sem campos opcionais, e a geração correta das parcelas (162/162)
+- [x] `npm run build` sem erro
+- [x] Manual: criado um financiamento real (R$12000, 12 parcelas, sistema price, taxa 2% a.m.) via Telegram de Homologação, confirmando com "sim" — conferido direto no banco: parcela constante R$1134,72, datas mensais de 2026-10-01 a 2027-09-01, todas `status: 'pendente'`. Também testado "listar dívidas", que corretamente respondeu que essa consulta ainda não existe (Tarefa 14), sem inventar dado
 
 **Dependencies:** Tarefa 3
 
