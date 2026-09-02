@@ -9,7 +9,8 @@ import { definirPendencia, obterPendencia } from '../../src/bot/confirmacao.js';
 import { createHandlerTexto } from '../../src/bot/handlers/texto.js';
 import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
-import { registrarInteracaoIa } from '../../src/db/repositories/interacoesIa.js';
+import { atualizarAvaliacaoInteracao, registrarInteracaoIa } from '../../src/db/repositories/interacoesIa.js';
+import { obterTraceIdPorMensagem } from '../../src/bot/rastroRespostas.js';
 import { createLogger } from '../../src/logging/logger.js';
 
 const CHAVE_TESTE = 'chave-teste-interacoes-ia';
@@ -56,7 +57,7 @@ function criarContextoFake(texto: string, chatId = 111) {
   return {
     message: { text: texto },
     chat: { id: chatId },
-    reply: vi.fn(),
+    reply: vi.fn().mockResolvedValue({ message_id: 999 }),
   } as unknown as Parameters<ReturnType<typeof createHandlerTexto>>[0] & { reply: ReturnType<typeof vi.fn> };
 }
 
@@ -102,6 +103,26 @@ describe('registrarInteracaoIa', () => {
   });
 });
 
+describe('atualizarAvaliacaoInteracao', () => {
+  it('marca avaliacao_usuario e retorna true quando a interação existe', () => {
+    registrarInteracaoIa(db, {
+      traceId: 'trace-avaliar',
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      resultado: 'sucesso',
+    });
+
+    const atualizado = atualizarAvaliacaoInteracao(db, 'trace-avaliar', 'incorreto');
+
+    expect(atualizado).toBe(true);
+    expect(lerInteracoes()[0]).toMatchObject({ avaliacao_usuario: 'incorreto' });
+  });
+
+  it('retorna false quando o trace_id não existe', () => {
+    expect(atualizarAvaliacaoInteracao(db, 'trace-inexistente', 'incorreto')).toBe(false);
+  });
+});
+
 describe('handlerTexto (OpenRouter mockado, sem chamada real)', () => {
   it('responde ao usuário e registra a interação como sucesso', async () => {
     const client = criarClienteOpenAiFalso('resposta gerada pela IA');
@@ -132,6 +153,19 @@ describe('handlerTexto (OpenRouter mockado, sem chamada real)', () => {
       tokens_completion: 3,
       origem: 'uso_real',
     });
+  });
+
+  it('rastreia o message_id da resposta enviada pro trace_id da interação (Tarefa 16)', async () => {
+    const client = criarClienteOpenAiFalso('resposta gerada pela IA');
+    const logger = createLogger({ write() {} });
+    const handler = createHandlerTexto(client, db, logger);
+    const ctx = criarContextoFake('quanto gastei esse mês?');
+
+    await handler(ctx);
+
+    const linhas = lerInteracoes();
+    const traceId = linhas[0]?.trace_id as string;
+    expect(obterTraceIdPorMensagem(999)).toBe(traceId);
   });
 
   it('nunca manda mensagem vazia pro Telegram (achado real: Gemini às vezes devolve content vazio)', async () => {

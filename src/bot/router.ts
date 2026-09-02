@@ -7,7 +7,9 @@ export function registerRoutes(
   handlerTexto: Handler,
   handlerMidia: Handler,
   handlerNaoSuportado: Handler,
+  handlerFeedback: Handler,
 ): void {
+  bot.command('errado', handlerFeedback);
   bot.on('message:text', handlerTexto);
   bot.on(['message:photo', 'message:document'], handlerMidia);
   bot.on('message', handlerNaoSuportado);
