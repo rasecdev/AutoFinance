@@ -21,6 +21,7 @@ const TABELAS_ESPERADAS = [
   'transferencias',
   'despesas_fixas',
   'interacoes_ia',
+  'resumos_conversa',
 ];
 
 const CHAVE_TESTE = 'chave-teste-migracao';
@@ -64,6 +65,25 @@ describe('migrate', () => {
 
     migrate(db);
     expect(() => migrate(db)).not.toThrow();
+
+    db.close();
+  });
+
+  it('adiciona chat_id e tokens em interacoes_ia (Fase 4, Tarefa 17)', () => {
+    const db = new Database(caminhoBanco);
+    db.pragma("cipher='sqlcipher'");
+    db.pragma(`key='${CHAVE_TESTE}'`);
+
+    migrate(db);
+
+    const colunas = db
+      .prepare('PRAGMA table_info(interacoes_ia)')
+      .all()
+      .map((row) => (row as { name: string }).name);
+
+    expect(colunas).toEqual(
+      expect.arrayContaining(['chat_id', 'tokens_prompt', 'tokens_completion']),
+    );
 
     db.close();
   });
