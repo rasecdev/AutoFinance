@@ -40,7 +40,9 @@ type ResultadoToolCall =
   | { tipo: 'pendente_confirmacao'; tool: ToolDefinition; argumentos: unknown };
 
 function gerarPerguntaConfirmacao(tool: ToolDefinition, argumentos: unknown): string {
-  return `Confirma a ação "${tool.name}" com os parâmetros ${JSON.stringify(argumentos)}? Responda "sim" para confirmar, ou qualquer outra coisa para cancelar.`;
+  const base = `Confirma a ação "${tool.name}" com os parâmetros ${JSON.stringify(argumentos)}? Responda "sim" para confirmar, ou qualquer outra coisa para cancelar.`;
+  const aviso = tool.avisoConfirmacao?.(argumentos);
+  return aviso ? `${aviso}\n\n${base}` : base;
 }
 
 export async function gerarResposta(

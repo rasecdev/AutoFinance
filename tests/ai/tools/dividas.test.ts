@@ -3,7 +3,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { criarToolCriarDivida, criarToolQuitarDivida, criarToolRenegociar } from '../../../src/ai/tools/dividas.js';
+import {
+  criarToolAmortizarDivida,
+  criarToolCriarDivida,
+  criarToolQuitarDivida,
+  criarToolRenegociar,
+} from '../../../src/ai/tools/dividas.js';
 import type { DbClient } from '../../../src/db/client.js';
 import { criarCartao } from '../../../src/db/repositories/cartoes.js';
 import { criarConta } from '../../../src/db/repositories/contas.js';
@@ -587,6 +592,281 @@ describe('tool quitar_divida', () => {
   it('avisa quando não há dívida do tipo informado nessa conta', async () => {
     const tool = criarToolQuitarDivida(db);
     const args = tool.schema.parse({ conta_apelido: 'Principal', tipo_divida: 'financiamento' });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).toContain('Não encontrei');
+  });
+});
+
+describe('tool amortizar_divida', () => {
+  it('exige confirmação (alto impacto)', () => {
+    const tool = criarToolAmortizarDivida(db);
+    expect(tool.requerConfirmacao).toBe(true);
+  });
+
+  it('regressão: saldo devedor usado na estimativa é o principal real, não a soma nominal das parcelas pendentes (achado real de teste manual — R$1000 amortizados não reduziam nada)', () => {
+    criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 12000,
+      numParcelas: 12,
+      taxaJuros: 0.02,
+      sistemaAmortizacao: 'price',
+      dataInicio: '2026-09-01',
+    });
+
+    const tool = criarToolAmortizarDivida(db);
+    const args = tool.schema.parse({
+      conta_apelido: 'Principal',
+      tipo_divida: 'financiamento',
+      valor: 1000,
+      modo: 'reduzir_parcelas',
+    });
+
+    const aviso = tool.avisoConfirmacao?.(args);
+
+    // Soma nominal das 12 parcelas seria ~R$13.616 (infla o saldo com juros
+    // futuros); o saldo real é R$12.000 — só o cálculo correto reduz a
+    // contagem de parcelas de 12 pra 11 com esse valor amortizado.
+    expect(aviso).toContain('11 parcelas no total (11 restantes');
+  });
+
+  it('saldo devedor no sistema sac usa a amortização constante original (valor_total/num_parcelas)', () => {
+    criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 1200,
+      numParcelas: 12,
+      taxaJuros: 0.03,
+      sistemaAmortizacao: 'sac',
+      dataInicio: '2026-09-01',
+    });
+
+    const tool = criarToolAmortizarDivida(db);
+    const args = tool.schema.parse({
+      conta_apelido: 'Principal',
+      tipo_divida: 'financiamento',
+      valor: 300,
+      modo: 'reduzir_parcelas',
+    });
+
+    const aviso = tool.avisoConfirmacao?.(args);
+
+    expect(aviso).toContain('9 parcelas no total (9 restantes');
+  });
+
+  it('avisoConfirmacao mostra a estimativa calculada (sistema price, modo reduzir_parcelas)', () => {
+    criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 1000,
+      numParcelas: 4,
+      taxaJuros: 0,
+      sistemaAmortizacao: 'price',
+      dataInicio: '2026-09-01',
+    });
+
+    const tool = criarToolAmortizarDivida(db);
+    const args = tool.schema.parse({
+      conta_apelido: 'Principal',
+      tipo_divida: 'financiamento',
+      valor: 500,
+      modo: 'reduzir_parcelas',
+    });
+
+    const aviso = tool.avisoConfirmacao?.(args);
+
+    expect(aviso).toContain('Estimativa calculada');
+    expect(aviso).toContain('sistema price');
+    expect(aviso).toContain('2 parcelas no total (2 restantes de R$ 250.00 cada)');
+  });
+
+  it('avisoConfirmacao avisa que vai usar o valor informado, sem estimar, quando informado', () => {
+    criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 1000,
+      numParcelas: 4,
+      taxaJuros: 0,
+      sistemaAmortizacao: 'price',
+      dataInicio: '2026-09-01',
+    });
+
+    const tool = criarToolAmortizarDivida(db);
+    const args = tool.schema.parse({
+      conta_apelido: 'Principal',
+      tipo_divida: 'financiamento',
+      valor: 500,
+      modo: 'reduzir_parcelas',
+      num_parcelas_informado: 3,
+    });
+
+    const aviso = tool.avisoConfirmacao?.(args);
+
+    expect(aviso).toContain('valor real informado por você');
+    expect(aviso).not.toContain('Estimativa');
+  });
+
+  it('avisoConfirmacao pede o valor real quando a dívida não tem sistema_amortizacao e nada foi informado', () => {
+    criarDivida(db, { contaId, tipo: 'emprestimo', valorTotal: 1000, numParcelas: 4, dataInicio: '2026-09-01' });
+
+    const tool = criarToolAmortizarDivida(db);
+    const args = tool.schema.parse({
+      conta_apelido: 'Principal',
+      tipo_divida: 'emprestimo',
+      valor: 500,
+      modo: 'reduzir_valor',
+    });
+
+    const aviso = tool.avisoConfirmacao?.(args);
+
+    expect(aviso).toContain('não tem sistema de amortização');
+    expect(aviso).toContain('valor_parcela_informado');
+  });
+
+  it('avisoConfirmacao inclui o aviso de dívida indexada quando indexador != fixo', () => {
+    criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 1000,
+      numParcelas: 4,
+      taxaJuros: 0.01,
+      sistemaAmortizacao: 'price',
+      indexador: 'ipca',
+      dataInicio: '2026-09-01',
+    });
+
+    const tool = criarToolAmortizarDivida(db);
+    const args = tool.schema.parse({
+      conta_apelido: 'Principal',
+      tipo_divida: 'financiamento',
+      valor: 200,
+      modo: 'reduzir_valor',
+    });
+
+    const aviso = tool.avisoConfirmacao?.(args);
+
+    expect(aviso).toContain('indexada a IPCA');
+    expect(aviso).toContain('pode estar desatualizada');
+  });
+
+  it('avisoConfirmacao não menciona indexação quando indexador é fixo', () => {
+    criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 1000,
+      numParcelas: 4,
+      taxaJuros: 0,
+      sistemaAmortizacao: 'price',
+      dataInicio: '2026-09-01',
+    });
+
+    const tool = criarToolAmortizarDivida(db);
+    const args = tool.schema.parse({
+      conta_apelido: 'Principal',
+      tipo_divida: 'financiamento',
+      valor: 500,
+      modo: 'reduzir_parcelas',
+    });
+
+    const aviso = tool.avisoConfirmacao?.(args);
+
+    expect(aviso).not.toContain('indexada');
+  });
+
+  it('handler aplica a estimativa calculada (modo reduzir_parcelas) e ecoa o resultado sem expor id', async () => {
+    const { divida } = criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 1000,
+      numParcelas: 4,
+      taxaJuros: 0,
+      sistemaAmortizacao: 'price',
+      dataInicio: '2026-09-01',
+      descricao: 'Financiamento Moto',
+    });
+
+    const tool = criarToolAmortizarDivida(db);
+    const args = tool.schema.parse({
+      conta_apelido: 'Principal',
+      tipo_divida: 'financiamento',
+      valor: 500,
+      modo: 'reduzir_parcelas',
+    });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).toContain('amortizada em R$ 500.00');
+    expect(resultado).toContain('estimativa, sistema price');
+    expect(resultado).toContain('2 parcelas no total (2 restantes de R$ 250.00 cada)');
+    expect(resultado).not.toMatch(/\bid\b/i);
+
+    const atualizada = obterDivida(db, divida.id);
+    expect(atualizada?.numParcelas).toBe(2);
+  });
+
+  it('handler aplica o valor real informado (modo reduzir_valor), ignorando o sistema_amortizacao cadastrado', async () => {
+    const { divida } = criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 1000,
+      numParcelas: 4,
+      taxaJuros: 0,
+      sistemaAmortizacao: 'price',
+      dataInicio: '2026-09-01',
+    });
+
+    const tool = criarToolAmortizarDivida(db);
+    const args = tool.schema.parse({
+      conta_apelido: 'Principal',
+      tipo_divida: 'financiamento',
+      valor: 500,
+      modo: 'reduzir_valor',
+      valor_parcela_informado: 123.45,
+    });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).toContain('valor informado por você');
+    expect(resultado).toContain('R$ 123.45');
+
+    const atualizada = obterDivida(db, divida.id);
+    expect(atualizada?.valorParcela).toBe(123.45);
+  });
+
+  it('handler não aplica nada e devolve mensagem quando falta sistema_amortizacao e valor informado', async () => {
+    const { divida } = criarDivida(db, {
+      contaId,
+      tipo: 'emprestimo',
+      valorTotal: 1000,
+      numParcelas: 4,
+      dataInicio: '2026-09-01',
+    });
+
+    const tool = criarToolAmortizarDivida(db);
+    const args = tool.schema.parse({
+      conta_apelido: 'Principal',
+      tipo_divida: 'emprestimo',
+      valor: 500,
+      modo: 'reduzir_parcelas',
+    });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).toContain('não tem sistema de amortização');
+    const atualizada = obterDivida(db, divida.id);
+    expect(atualizada?.numParcelas).toBe(4);
+  });
+
+  it('avisa quando a conta não é encontrada', async () => {
+    const tool = criarToolAmortizarDivida(db);
+    const args = tool.schema.parse({
+      conta_apelido: 'Inexistente',
+      tipo_divida: 'emprestimo',
+      valor: 500,
+      modo: 'reduzir_valor',
+    });
 
     const resultado = await tool.handler(args, { chatId: 1 });
 

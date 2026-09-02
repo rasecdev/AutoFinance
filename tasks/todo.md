@@ -441,16 +441,24 @@
 
 **Descrição:** Ferramenta de amortização extraordinária, usando o cálculo da Tarefa 8. Fluxo: registra o valor extra pago, calcula a estimativa (se `sistema_amortizacao` estiver preenchido) e pergunta se bate com o informado pelo banco — "confere" aplica o calculado, "foi diferente" aceita o valor real informado por você, que sempre prevalece. Sem `sistema_amortizacao`, pula direto pra pedir o valor real (sem tentar estimar). Alto impacto — confirmação. Se a dívida for indexada (`indexador != 'fixo'`), a mensagem de confirmação inclui aviso de que a taxa pode estar desatualizada.
 
+**Decisão de design (antes de codar, dado o que o loop de tool calling suporta hoje):** o mecanismo de confirmação síncrona (Tarefa 3) só sabia ecoar os parâmetros crus da chamada (JSON), não um valor calculado — insuficiente pra "mostra a estimativa e pergunta se confere" descrito acima. E como o loop não tem memória de conversa entre mensagens (achado da Tarefa 12), depender de duas mensagens separadas do usuário pra fechar o fluxo ("confere"/"foi diferente" como resposta a uma pergunta anterior) quebraria do mesmo jeito que quebrou em `quitar_divida`. Resolvido com dois ajustes mínimos, sem tabela nova nem estado novo guardado no bot:
+1. `ToolDefinition` ganhou `avisoConfirmacao?(args)` (`src/ai/tools/types.ts`) — texto extra que `gerarPerguntaConfirmacao` (`src/ai/openrouter.ts`) prefixa na pergunta genérica de "Confirma a ação..." quando a ferramenta define um. `amortizar_divida` usa isso pra mostrar a estimativa calculada (ou o aviso de "não dá pra estimar, me diga o valor real") **antes** do "sim" — sem precisar de segunda rodada.
+2. `valor_parcela_informado`/`num_parcelas_informado` (opcionais, um por `modo`) no schema: quando o usuário já sabe o valor real do banco (na mesma mensagem ou numa chamada seguinte, repetindo a identificação da dívida — mesmo padrão de "restate the context" já usado em `quitar_divida`), esse valor sempre prevalece sobre a estimativa, sem tentar calcular. Cada chamada de `amortizar_divida` é autossuficiente (não depende de nenhuma chamada anterior) — resolve `avisoConfirmacao` e o `handler` chamando a **mesma função pura** (`resolverResultadoAmortizacao`) com os mesmos dados, então o valor mostrado no aviso e o valor de fato aplicado nunca divergem.
+
+**Implementado:** `src/db/repositories/dividas.ts` (`amortizarDivida` — modo `reduzir_parcelas` cancela as parcelas pendentes excedentes a partir do fim e ajusta `num_parcelas`; modo `reduzir_valor` atualiza o valor de todas as parcelas ainda pendentes e `valor_parcela`, nunca mexendo nas já pagas) e `src/db/repositories/parcelas.ts` (`cancelarParcela`, novo — exclusão lógica, nunca `DELETE`). `src/ai/tools/dividas.ts` define `criarToolAmortizarDivida`, identificando a dívida pelo padrão já estabelecido (conta + tipo + descrição opcional).
+
 **Acceptance criteria:**
-- [ ] Com `sistema_amortizacao` preenchido, a ferramenta usa a função da Tarefa 8 para estimar e apresenta a estimativa antes de aplicar
-- [ ] Sem `sistema_amortizacao`, não tenta estimar — pede direto o valor informado pelo banco
-- [ ] Ao aplicar (confirmado ou com valor real divergente), marca como `cancelada` as parcelas que deixaram de existir e ajusta `dividas.num_parcelas`/`valor_parcela` conforme o modo escolhido
-- [ ] Dívida com `indexador != 'fixo'` inclui o aviso de taxa possivelmente desatualizada na mensagem de confirmação
+- [x] Com `sistema_amortizacao` preenchido, a ferramenta usa a função da Tarefa 8 para estimar e apresenta a estimativa antes de aplicar (no `avisoConfirmacao`, antes do "sim")
+- [x] Sem `sistema_amortizacao`, não tenta estimar — pede direto o valor informado pelo banco
+- [x] Ao aplicar (confirmado ou com valor real divergente), marca como `cancelada` as parcelas que deixaram de existir e ajusta `dividas.num_parcelas`/`valor_parcela` conforme o modo escolhido
+- [x] Dívida com `indexador != 'fixo'` inclui o aviso de taxa possivelmente desatualizada na mensagem de confirmação
+
+**Achado real do teste manual, corrigido na hora — bug de cálculo, não só de exibição:** o `saldoDevedor` passado pra `calcularAmortizacao` era a soma nominal das parcelas ainda pendentes — em Price/SAC isso já embute juros futuros, inflando o saldo real (ex: dívida de R$12.000/12x/2% a.m. tinha soma nominal de ~R$13.616,58, não R$12.000). Resultado prático: amortizar R$1.000 não reduzia nenhuma parcela (a estimativa devolvia "12 parcelas" de novo, igual ao original). Corrigido com `calcularSaldoDevedorAtual` (`src/ai/tools/dividas.ts`): Price inverte a própria fórmula de anuidade (`valorParcela` atual × valor presente) — funciona mesmo depois de uma amortização anterior; SAC usa a amortização constante original (`valor_total/num_parcelas`) — só exato pra primeira amortização da dívida, mesma classe de simplificação já aceita pra SAC desde a Tarefa 8. Também achado, no mesmo teste: nem a estimativa nem a confirmação mostravam o valor em R$ da parcela (só a contagem) — `avisoConfirmacao` e a mensagem final do handler passaram a sempre mostrar o valor por parcela, nos dois modos.
 
 **Verification:**
-- [ ] `npm test` cobre: com e sem `sistema_amortizacao`, os dois modos (`reduzir_parcelas`/`reduzir_valor`), confirmação do calculado vs. correção com valor real, e o aviso de dívida indexada
-- [ ] `npm run build` sem erro
-- [ ] Manual: amortizar uma dívida de teste real (com `sistema_amortizacao` preenchido) via Telegram de Homologação, testando tanto "confere" quanto "foi diferente"
+- [x] `npm test` cobre: com e sem `sistema_amortizacao`, os dois modos (`reduzir_parcelas`/`reduzir_valor`), estimativa vs. valor informado, o aviso de dívida indexada, e o achado do saldo devedor (Price e SAC) — 271 testes no total, 20 novos
+- [x] `npm run build`/`lint` sem erro
+- [x] Manual: financiamento real (R$12.000/12x/price/2% a.m.) via Telegram de Homologação (VM parada, bot local) — amortizado R$1.000 em `reduzir_parcelas` (estimativa correta: 11 parcelas de R$1.134,72 cada, confirmado no banco) e R$500 em `reduzir_valor` com valor informado pelo banco (R$900, aplicado direto, ignorando estimativa)
 
 **Dependencies:** Tarefa 8, Tarefa 9
 
