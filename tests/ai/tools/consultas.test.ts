@@ -5,7 +5,7 @@ import Database from 'better-sqlite3-multiple-ciphers';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   criarToolConsultarSaldo,
-  criarToolListarTransacoes,
+  criarToolConsultarExtrato,
   criarToolResumoMensal,
 } from '../../../src/ai/tools/consultas.js';
 import type { DbClient } from '../../../src/db/client.js';
@@ -98,9 +98,9 @@ describe('tool consultar_saldo', () => {
   });
 });
 
-describe('tool listar_transacoes', () => {
+describe('tool consultar_extrato', () => {
   it('não exige confirmação (leitura)', () => {
-    const tool = criarToolListarTransacoes(db);
+    const tool = criarToolConsultarExtrato(db);
     expect(tool.requerConfirmacao).toBeUndefined();
   });
 
@@ -121,7 +121,7 @@ describe('tool listar_transacoes', () => {
     });
     excluirTransacao(db, excluida.id);
 
-    const tool = criarToolListarTransacoes(db);
+    const tool = criarToolConsultarExtrato(db);
     const args = tool.schema.parse({ data_inicio: '2026-08-01', data_fim: '2026-08-31' });
     const resultado = await tool.handler(args, { chatId: 1 });
 
@@ -134,7 +134,7 @@ describe('tool listar_transacoes', () => {
     criarTransacao(db, { contaId, tipo: 'despesa', valor: 20, categoria: 'Alimentação', data: '2026-08-15' });
     criarTransacao(db, { contaId, tipo: 'despesa', valor: 30, categoria: 'Transporte', data: '2026-08-15' });
 
-    const tool = criarToolListarTransacoes(db);
+    const tool = criarToolConsultarExtrato(db);
     const args = tool.schema.parse({
       categoria: 'Alimentação',
       data_inicio: '2026-08-01',
@@ -148,7 +148,7 @@ describe('tool listar_transacoes', () => {
   });
 
   it('sem transações encontradas, avisa sem lançar exceção', async () => {
-    const tool = criarToolListarTransacoes(db);
+    const tool = criarToolConsultarExtrato(db);
     const args = tool.schema.parse({ categoria: 'Inexistente' });
     const resultado = await tool.handler(args, { chatId: 1 });
 
@@ -159,7 +159,7 @@ describe('tool listar_transacoes', () => {
     const contaDestinoId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Destino' }).id;
     criarTransferencia(db, { contaOrigemId: contaId, contaDestinoId, valor: 40, taxa: 5, data: '2026-08-10' });
 
-    const tool = criarToolListarTransacoes(db);
+    const tool = criarToolConsultarExtrato(db);
     const args = tool.schema.parse({ conta_id: contaId, data_inicio: '2026-08-01', data_fim: '2026-08-31' });
     const resultado = await tool.handler(args, { chatId: 1 });
 
@@ -173,7 +173,7 @@ describe('tool listar_transacoes', () => {
     criarTransferencia(db, { contaOrigemId: contaId, contaDestinoId, valor: 40, data: '2026-08-10' });
     criarTransacao(db, { contaId, tipo: 'despesa', valor: 15, categoria: 'Alimentação', data: '2026-08-10' });
 
-    const tool = criarToolListarTransacoes(db);
+    const tool = criarToolConsultarExtrato(db);
     const args = tool.schema.parse({
       conta_id: contaId,
       categoria: 'Alimentação',
@@ -195,7 +195,7 @@ describe('tool listar_transacoes', () => {
     criarTransacao(db, { contaId, tipo: 'despesa', valor: 11, categoria: 'Alimentação', data: dataMesPassado });
     criarTransacao(db, { contaId, tipo: 'despesa', valor: 22, categoria: 'Alimentação', data: dataMesAtual });
 
-    const tool = criarToolListarTransacoes(db);
+    const tool = criarToolConsultarExtrato(db);
     const resultado = await tool.handler(tool.schema.parse({ conta_id: contaId }), { chatId: 1 });
 
     expect(resultado).toContain('22.00');

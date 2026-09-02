@@ -5,7 +5,7 @@ import { gerarResposta, MODELO_PADRAO } from '../../ai/openrouter.js';
 import { criarToolCriarCartao, criarToolCriarConta } from '../../ai/tools/contas.js';
 import {
   criarToolConsultarSaldo,
-  criarToolListarTransacoes,
+  criarToolConsultarExtrato,
   criarToolResumoMensal,
 } from '../../ai/tools/consultas.js';
 import {
@@ -42,7 +42,7 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
     criarToolEditarTransacao(db),
     criarToolExcluirTransacao(db),
     criarToolConsultarSaldo(db),
-    criarToolListarTransacoes(db),
+    criarToolConsultarExtrato(db),
     criarToolResumoMensal(db),
     criarToolRegistrarTransferencia(db),
     criarToolCriarDivida(db),
