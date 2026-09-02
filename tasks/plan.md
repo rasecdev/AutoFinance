@@ -93,10 +93,10 @@ Tarefas detalhadas em `tasks/todo.md`.
 ### Checkpoint: Dívidas completas
 - [x] Testar manualmente em Homologação: criar dívida (com e sem `sistema_amortizacao`), pagar parcela, amortizar com estimativa (confirmar e divergir), quitar antecipado, renegociar — feito incrementalmente nas Tarefas 9-14 (mesmo padrão da Fase B), ver PROGRESSO.md
 - [x] `npm test` passa (298/298 em `development`, checado nesta revisão)
-- [ ] Revisão com o usuário antes de prosseguir
+- [x] Revisão com o usuário antes de prosseguir (aprovado — usuário pediu pra seguir pra Fase D)
 
 ### Fase D: Despesas fixas e feedback
-- [ ] Tarefa 15: `criar_despesa_fixa`, `editar_despesa_fixa`
+- [x] Tarefa 15: `criar_despesa_fixa`, `editar_despesa_fixa`
 - [ ] Tarefa 16: Feedback de avaliação (`avaliacao_usuario` via reação/comando no Telegram)
 
 ### Checkpoint: Fase 3 completa
