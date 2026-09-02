@@ -88,10 +88,18 @@ export function buscarContaPorApelido(db: DbClient, apelido: string): Conta[] {
 // de digitação — busca aproximada por distância de edição não pega isso.
 // Contenção de substring cobre, sem risco de adivinhar: mais de um resultado
 // cai na mesma lógica de ambiguidade já usada pra apelido exato.
+// Bidirecional: cobre tanto o apelido conter o texto informado (ex: "nubank"
+// pra uma conta "Nubank PJ") quanto o texto informado conter o apelido real
+// mais uma palavra genérica (ex: "Conta Principal" pro apelido "Principal" —
+// achado real de teste manual, o modelo tende a repetir a palavra "conta"/
+// "cartão" antes do nome que o usuário realmente cadastrou).
 export function buscarContaPorApelidoParcial(db: DbClient, textoParcial: string): Conta[] {
   const linhas = db
-    .prepare("SELECT id, banco_id, tipo, apelido, saldo_atual FROM contas WHERE LOWER(apelido) LIKE '%' || LOWER(?) || '%'")
-    .all(textoParcial) as LinhaConta[];
+    .prepare(
+      `SELECT id, banco_id, tipo, apelido, saldo_atual FROM contas
+       WHERE LOWER(apelido) LIKE '%' || LOWER(?) || '%' OR LOWER(?) LIKE '%' || LOWER(apelido) || '%'`,
+    )
+    .all(textoParcial, textoParcial) as LinhaConta[];
 
   return linhas.map(paraConta);
 }

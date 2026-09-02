@@ -111,4 +111,44 @@ describe('resolverDividaId — busca aproximada na divida_descricao', () => {
 
     expect(resultado.ok).toBe(true);
   });
+
+  it('resolve por nome parcial (não é erro de digitação, é descrição incompleta)', () => {
+    const contaId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Principal' }).id;
+    criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 12000,
+      numParcelas: 12,
+      dataInicio: '2026-09-01',
+      descricao: 'Financiamento Moto',
+    });
+    criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 8000,
+      numParcelas: 10,
+      dataInicio: '2026-09-01',
+      descricao: 'Reforma casa',
+    });
+
+    const resultado = resolverDividaId(db, contaId, 'financiamento', 'Moto');
+
+    expect(resultado.ok).toBe(true);
+  });
+
+  it('resolve também na direção inversa (texto informado maior que a descrição real)', () => {
+    const contaId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Principal' }).id;
+    criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 12000,
+      numParcelas: 12,
+      dataInicio: '2026-09-01',
+      descricao: 'Moto',
+    });
+
+    const resultado = resolverDividaId(db, contaId, 'financiamento', 'Financiamento da Moto');
+
+    expect(resultado.ok).toBe(true);
+  });
 });

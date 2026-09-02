@@ -7,7 +7,12 @@ import type { DbClient } from '../../src/db/client.js';
 import { criarConta } from '../../src/db/repositories/contas.js';
 import { criarDivida, incrementarParcelasPagas, obterDivida } from '../../src/db/repositories/dividas.js';
 import { migrate } from '../../src/db/migrate.js';
-import { marcarParcelaPaga, obterParcelaPorNumero, obterProximaParcelaPendente } from '../../src/db/repositories/parcelas.js';
+import {
+  listarParcelasPendentes,
+  marcarParcelaPaga,
+  obterParcelaPorNumero,
+  obterProximaParcelaPendente,
+} from '../../src/db/repositories/parcelas.js';
 
 const CHAVE_TESTE = 'chave-teste-parcelas';
 
@@ -81,6 +86,31 @@ describe('marcarParcelaPaga', () => {
     const atualizada = obterParcelaPorNumero(db, dividaId, 1);
     expect(atualizada?.status).toBe('paga');
     expect(atualizada?.dataPagamento).toBe('2026-10-05');
+  });
+});
+
+describe('listarParcelasPendentes', () => {
+  it('retorna todas as parcelas quando nenhuma foi paga', () => {
+    expect(listarParcelasPendentes(db, dividaId)).toHaveLength(4);
+  });
+
+  it('exclui parcelas já pagas', () => {
+    const parcela1 = obterParcelaPorNumero(db, dividaId, 1);
+    if (parcela1) marcarParcelaPaga(db, parcela1.id, '2026-10-01');
+
+    const pendentes = listarParcelasPendentes(db, dividaId);
+
+    expect(pendentes).toHaveLength(3);
+    expect(pendentes.map((p) => p.numeroParcela)).toEqual([2, 3, 4]);
+  });
+
+  it('retorna vazio quando todas já foram pagas', () => {
+    for (let n = 1; n <= 4; n++) {
+      const parcela = obterParcelaPorNumero(db, dividaId, n);
+      if (parcela) marcarParcelaPaga(db, parcela.id, '2026-10-01');
+    }
+
+    expect(listarParcelasPendentes(db, dividaId)).toEqual([]);
   });
 });
 
