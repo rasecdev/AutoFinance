@@ -26,6 +26,7 @@ import {
   criarToolConsultarFatura,
   criarToolResumoDividas,
 } from '../../ai/tools/consultasDividas.js';
+import { criarToolCriarDespesaFixa, criarToolEditarDespesaFixa } from '../../ai/tools/despesasFixas.js';
 import type { DbClient } from '../../db/client.js';
 import { registrarInteracaoIa } from '../../db/repositories/interacoesIa.js';
 import { registrarUsoTokens } from '../../db/repositories/usoTokens.js';
@@ -54,6 +55,8 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
     criarToolConsultarFatura(db),
     criarToolConsultarDividasAtivas(db),
     criarToolResumoDividas(db),
+    criarToolCriarDespesaFixa(db),
+    criarToolEditarDespesaFixa(db),
   ];
 
   return async function handlerTexto(ctx: Context): Promise<void> {
