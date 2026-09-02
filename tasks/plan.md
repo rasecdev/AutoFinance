@@ -105,7 +105,7 @@ Tarefas detalhadas em `tasks/todo.md`.
 - [x] Teste end-to-end real em Homologação de um fluxo completo de dívida (criar → pagar parcela → amortizar → quitar) — coberto pelo roteiro completo já rodado na VM (checkpoint "Dívidas completas"), sem necessidade de repetir
 - [x] `npm run build`/`lint`/`test` sem erro (323/323 em `development`, checado nesta revisão)
 - [x] PROGRESSO.md atualizado com o marco "Fase 3 concluída"
-- [ ] Revisão com o usuário antes de prosseguir para a Fase 4
+- [x] Revisão com o usuário antes de prosseguir para a Fase 4 (usuário dispensou revisão extra — já coberta na revisão feita após a Tarefa 14)
 
 ## Risks and Mitigations
 
