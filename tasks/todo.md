@@ -77,7 +77,7 @@
 **Verification:**
 - [x] `npm test` cobre: histórico vazio (comportamento inalterado), histórico com resumo, histórico sem resumo (só janela), isolamento entre chats, injeção real de ponta a ponta via `handlerTexto` (duas mensagens seguidas no mesmo chat) — 340/340 em `development`
 - [x] `npm run build`/`lint` sem erro
-- [ ] Manual em Homologação: perguntar algo, depois fazer uma pergunta de seguimento ("e comparado ao mês passado?") e confirmar que o bot responde corretamente usando o contexto do turno anterior
+- [x] Manual em Homologação: perguntar algo, depois fazer uma pergunta de seguimento ("e comparado ao mês passado?") e confirmar que o bot responde corretamente usando o contexto do turno anterior — verificado via Telegram real, deploy direto na VM (branch da tarefa, antes do merge): "Quanto gastei em março na conta Testes?" → "e na conta Poupança?" respondido corretamente como continuação de março, sem o usuário repetir o mês; `chat_id`/`tokens_prompt`/`tokens_completion` conferidos em `interacoes_ia`
 
 **Dependencies:** Tarefa 17, Tarefa 18
 
