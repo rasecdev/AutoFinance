@@ -8,6 +8,7 @@ import { criarConta } from '../../src/db/repositories/contas.js';
 import { criarDivida, incrementarParcelasPagas, obterDivida } from '../../src/db/repositories/dividas.js';
 import { migrate } from '../../src/db/migrate.js';
 import {
+  cancelarParcela,
   listarParcelasPendentes,
   marcarParcelaPaga,
   obterParcelaPorNumero,
@@ -111,6 +112,27 @@ describe('listarParcelasPendentes', () => {
     }
 
     expect(listarParcelasPendentes(db, dividaId)).toEqual([]);
+  });
+});
+
+describe('cancelarParcela', () => {
+  it('marca a parcela como cancelada, nunca DELETE', () => {
+    const parcela = obterParcelaPorNumero(db, dividaId, 4);
+    if (!parcela) throw new Error('parcela não encontrada no setup do teste');
+
+    cancelarParcela(db, parcela.id);
+
+    const atualizada = obterParcelaPorNumero(db, dividaId, 4);
+    expect(atualizada?.status).toBe('cancelada');
+  });
+
+  it('parcela cancelada some de listarParcelasPendentes', () => {
+    const parcela = obterParcelaPorNumero(db, dividaId, 4);
+    if (!parcela) throw new Error('parcela não encontrada no setup do teste');
+
+    cancelarParcela(db, parcela.id);
+
+    expect(listarParcelasPendentes(db, dividaId).map((p) => p.numeroParcela)).toEqual([1, 2, 3]);
   });
 });
 

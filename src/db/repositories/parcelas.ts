@@ -90,6 +90,12 @@ export function marcarParcelaPaga(db: DbClient, id: number, dataPagamento: strin
   db.prepare("UPDATE parcelas SET status = 'paga', data_pagamento = ? WHERE id = ?").run(dataPagamento, id);
 }
 
+// Usado por amortizar_divida (modo reduzir_parcelas): parcela que deixou de
+// existir depois do abatimento — nunca DELETE, exclusão lógica.
+export function cancelarParcela(db: DbClient, id: number): void {
+  db.prepare("UPDATE parcelas SET status = 'cancelada' WHERE id = ?").run(id);
+}
+
 // Usado por quitar_divida: parcelas ainda pendentes de uma quitação antecipada.
 export function listarParcelasPendentes(db: DbClient, dividaId: number): Parcela[] {
   const linhas = db

@@ -150,6 +150,33 @@ describe('gerarResposta — loop de tool calling', () => {
     expect(resultado.resposta.toLowerCase()).toContain('confirma');
   });
 
+  it('inclui o texto de avisoConfirmacao antes da pergunta genérica, quando a ferramenta define um', async () => {
+    const handler = vi.fn();
+    const toolComAviso: ToolDefinition = {
+      ...ecoar,
+      name: 'amortizar_divida',
+      requerConfirmacao: true,
+      avisoConfirmacao: (args) => `Estimativa calculada pra ${JSON.stringify(args)}.`,
+      handler,
+    };
+    const client = criarClienteFalso(respostaToolCall('amortizar_divida', { texto: 'x' }));
+
+    const resultado = await gerarResposta(client, 'amortiza', [toolComAviso]);
+
+    expect(resultado.resposta.startsWith('Estimativa calculada pra')).toBe(true);
+    expect(resultado.resposta).toContain('Confirma a ação "amortizar_divida"');
+  });
+
+  it('não quebra quando a ferramenta não define avisoConfirmacao (comportamento anterior preservado)', async () => {
+    const handler = vi.fn();
+    const toolSemAviso: ToolDefinition = { ...ecoar, name: 'excluir_transacao', requerConfirmacao: true, handler };
+    const client = criarClienteFalso(respostaToolCall('excluir_transacao', { texto: 'x' }));
+
+    const resultado = await gerarResposta(client, 'exclui', [toolSemAviso]);
+
+    expect(resultado.resposta.startsWith('Confirma a ação "excluir_transacao"')).toBe(true);
+  });
+
   it('retenta uma vez quando o modelo devolve finish_reason "error" (achado real: falha intermitente do Gemini)', async () => {
     const client = criarClienteFalso(respostaErroModelo(), respostaTexto('funcionou na segunda tentativa'));
 
