@@ -1,5 +1,5 @@
 import type { DbClient } from '../client.js';
-import { criarParcela, listarParcelasPendentes, marcarParcelaPaga, type Parcela } from './parcelas.js';
+import { cancelarParcela, criarParcela, listarParcelasPendentes, marcarParcelaPaga, type Parcela } from './parcelas.js';
 
 export type TipoDivida = 'emprestimo' | 'financiamento' | 'consignado' | 'outro';
 export type SistemaAmortizacao = 'price' | 'sac';
@@ -190,6 +190,52 @@ export function quitarDivida(
     }
 
     return { divida: atualizada, parcelasPagas: pendentes.map((parcela) => ({ ...parcela, status: 'paga' as const, dataPagamento })) };
+  })();
+}
+
+export type ModoAmortizacaoDivida = 'reduzir_parcelas' | 'reduzir_valor';
+
+export type ResultadoAplicarAmortizacao = { novoNumParcelas: number } | { novoValorParcela: number };
+
+// Amortização extraordinária: modo reduzir_parcelas cancela as parcelas
+// pendentes que deixaram de existir (as últimas, mantendo as mais próximas do
+// vencimento — nunca DELETE, exclusão lógica) e ajusta num_parcelas; modo
+// reduzir_valor mantém a mesma quantidade de parcelas pendentes mas atualiza o
+// valor de cada uma pro novo valor calculado/informado. Quem decide o número —
+// estimado por Price/SAC ou informado pelo banco — é sempre a camada de
+// ferramenta (`amortizar_divida`), este repositório só aplica o resultado já
+// resolvido.
+export function amortizarDivida(
+  db: DbClient,
+  dividaId: number,
+  modo: ModoAmortizacaoDivida,
+  resultado: ResultadoAplicarAmortizacao,
+): Divida {
+  return db.transaction(() => {
+    const pendentes = listarParcelasPendentes(db, dividaId);
+
+    if (modo === 'reduzir_parcelas' && 'novoNumParcelas' in resultado) {
+      const divida = obterDivida(db, dividaId);
+      if (!divida) throw new Error(`dívida ${dividaId} não encontrada`);
+
+      const excedentes = pendentes.slice(resultado.novoNumParcelas);
+      for (const parcela of excedentes) {
+        cancelarParcela(db, parcela.id);
+      }
+      db.prepare('UPDATE dividas SET num_parcelas = ? WHERE id = ?').run(
+        divida.parcelasPagas + resultado.novoNumParcelas,
+        dividaId,
+      );
+    } else if ('novoValorParcela' in resultado) {
+      for (const parcela of pendentes) {
+        db.prepare('UPDATE parcelas SET valor = ? WHERE id = ?').run(resultado.novoValorParcela, parcela.id);
+      }
+      db.prepare('UPDATE dividas SET valor_parcela = ? WHERE id = ?').run(resultado.novoValorParcela, dividaId);
+    }
+
+    const atualizada = obterDivida(db, dividaId);
+    if (!atualizada) throw new Error(`dívida ${dividaId} não encontrada após amortização`);
+    return atualizada;
   })();
 }
 
