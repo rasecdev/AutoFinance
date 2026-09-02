@@ -160,9 +160,18 @@ export function resolverDividaId(
   }
 
   if (descricao !== undefined) {
-    let filtradas = candidatas.filter(
-      (divida) => divida.descricao !== null && divida.descricao.toLowerCase() === descricao.toLowerCase(),
-    );
+    const alvo = descricao.toLowerCase();
+    let filtradas = candidatas.filter((divida) => divida.descricao !== null && divida.descricao.toLowerCase() === alvo);
+    if (filtradas.length === 0) {
+      // Nome parcial, nas duas direções (ex: "Moto" pra "Financiamento Moto", ou
+      // "Financiamento da Moto" pra "Moto") — não é erro de digitação, tenta
+      // substring antes de aproximação por distância (mesmo padrão de conta/cartão).
+      filtradas = candidatas.filter(
+        (divida) =>
+          divida.descricao !== null &&
+          (divida.descricao.toLowerCase().includes(alvo) || alvo.includes(divida.descricao.toLowerCase())),
+      );
+    }
     if (filtradas.length === 0) {
       const nomes = candidatas.map((divida) => divida.descricao).filter((nome): nome is string => nome !== null);
       const aproximado = encontrarPorSemelhanca(descricao, nomes);

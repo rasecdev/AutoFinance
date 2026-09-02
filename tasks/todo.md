@@ -406,18 +406,25 @@
 
 ---
 
-### Tarefa 12: `quitar_divida`
+### Tarefa 12: `quitar_divida` ✅
 
-**Descrição:** Ferramenta de quitação antecipada (paga o saldo restante de uma vez, antes do previsto). Alto impacto — passa pela confirmação da Tarefa 3. Marca as parcelas restantes como pagas (ou canceladas, a decidir na implementação conforme o que fizer mais sentido para o relatório de histórico) e `dividas.status = 'quitado'`.
+**Implementado:** `src/db/repositories/dividas.ts` (`quitarDivida` — dentro de uma transação, paga todas as parcelas ainda pendentes via `marcarParcelaPaga` e atualiza `dividas.parcelas_pagas = num_parcelas`/`status = 'quitado'` numa única query) e `src/db/repositories/parcelas.ts` (`listarParcelasPendentes`, novo). `src/ai/tools/dividas.ts` define `criarToolQuitarDivida` (`requerConfirmacao: true`), identificando a dívida por conta + tipo (mesmo padrão de `pagar_parcela`/`renegociar`, `resolverDividaId` já existente da Tarefa 10) — sem checagem extra de dívida já quitada/renegociada no handler, porque `resolverDividaId` já filtra só dívidas `status = 'ativo'` (uma dívida quitada não é mais resolvida por conta+tipo, mesmo comportamento já usado por `renegociar`). Mensagem final ecoa quantas parcelas foram pagas de uma vez e o total, sem expor id.
+
+**Achados reais do teste manual, corrigidos na hora (nenhum é específico de `quitar_divida` — todos afetavam ferramentas já existentes, só nunca tinham sido expostos por um teste anterior):**
+1. **VM com deploy desatualizado:** o container de Homologação estava travado no commit de antes da Fase 3 inteira (PR #11) — respondia como chatbot genérico, sem tools nem system prompt, mascarando qualquer teste real. Confirmado (`git log`/`docker compose ps` via SSH) e contornado como sempre: container parado, bot rodado localmente com o build da branch atual. Não é um bug de código, é um lembrete de que "testar em Homologação" nas tarefas de Fase 3 sempre significou rodar localmente, nunca o container da VM.
+2. **`taxa_juros` aceitava porcentagem crua sem avisar:** faltava validação — "2% ao mês" virou literal `2` (200% a.m.) em vez de `0.02`, gerando parcela de R$24.000 numa dívida de R$12.000. Corrigido com `.max(1, ...)` no schema de `criar_divida`/`renegociar` (rejeita qualquer coisa acima de 100% a.m., cobre o erro real sem travar taxa legítima) + descrição das duas ferramentas agora explicita o formato decimal.
+3. **`data_pagamento` sendo hallucinado quando o usuário dizia "hoje":** mesmo com a regra de "nunca preencher campo de data sozinho" já no system prompt, o modelo tentava "traduzir" a palavra "hoje" pra uma data literal e inventava datas de 2023 (conhecimento de treino). Corrigido reforçando a regra 2 do `SYSTEM_PROMPT` (`src/ai/systemPrompt.ts`) com instrução explícita: nunca resolver "hoje" sozinho, sempre omitir o campo mesmo se o usuário citar a palavra.
+4. **Busca por nome parcial de dívida (`divida_descricao`) não existia** — só tinha exata e aproximação por Levenshtein (típo de digitação), então "Moto" não resolvia pra "Financiamento Moto" (strings muito diferentes em tamanho pra contar como erro de digitação). Adicionado fallback de substring em `resolverDividaId` (`src/ai/tools/resolucao.ts`), mesmo padrão já usado em conta/cartão desde a Tarefa 11.
+5. **Achado mais profundo, o que de fato travava a confirmação:** a busca parcial de conta/cartão (`buscarContaPorApelidoParcial`/`buscarCartaoPorNomeParcial`) só cobria a direção "nome real contém o texto informado" — não a reversa. O modelo disse "Conta Principal" pro apelido real "Principal" (nome real É MENOR que o texto informado, tem uma palavra genérica extra na frente) e a busca falhava silenciosamente. Corrigido tornando os dois `LIKE` bidirecionais (`src/db/repositories/contas.ts`, `src/db/repositories/cartoes.ts`) — mesma correção aplicada por simetria em `resolverDividaId`. Esse era o bug real por trás de "confirmei com sim e não fez nada": a ferramenta era chamada e confirmada certinho, mas a resolução de conta silenciosamente não achava nada e devolvia mensagem de erro em vez de executar.
 
 **Acceptance criteria:**
-- [ ] `quitar_divida` só executa após confirmação
-- [ ] Dívida transiciona para `status = 'quitado'` e nenhuma parcela fica pendente depois da quitação
+- [x] `quitar_divida` só executa após confirmação
+- [x] Dívida transiciona para `status = 'quitado'` e nenhuma parcela fica pendente depois da quitação
 
 **Verification:**
-- [ ] `npm test` cobre a quitação antecipada com parcelas restantes em diferentes quantidades
-- [ ] `npm run build` sem erro
-- [ ] Manual: quitar uma dívida de teste real via Telegram de Homologação, confirmando
+- [x] `npm test` cobre a quitação antecipada com parcelas restantes em diferentes quantidades, mais os 4 achados acima (251/251 no total)
+- [x] `npm run build`/`lint` sem erro
+- [x] Manual: financiamento real criado, 2 parcelas pagas, dívida quitada por completo via Telegram de Homologação (bot local, VM parada durante o teste) — conferido direto no banco: `status = 'quitado'`, 12/12 parcelas `paga` com a data real do dia (não hallucinada)
 
 **Dependencies:** Tarefa 9
 
