@@ -113,7 +113,7 @@ export function criarToolEditarTransacao(db: DbClient): ToolDefinition {
   return {
     name: 'editar_transacao',
     description:
-      'Atualiza campos de uma transação existente. Aceita o id; quando omitido (ex: "edita a transação que acabei de registrar"), usa a última transação registrada nesta conversa.',
+      'Atualiza campos de uma transação existente. Aceita o id; quando omitido (ex: "edita a transação que acabei de registrar", "muda o valor dessa transação"), usa a última transação registrada nesta conversa — NUNCA pergunte pelo id ou peça "qual transação" antes de chamar, chame direto sem id.',
     schema: schemaEditarTransacao,
     handler: async (args, ctx) => {
       const { id: idInformado, ...mudancas } = args as z.infer<typeof schemaEditarTransacao>;
@@ -138,7 +138,7 @@ export function criarToolExcluirTransacao(db: DbClient): ToolDefinition {
   return {
     name: 'excluir_transacao',
     description:
-      'Exclui uma transação (exclusão lógica, nunca remove o registro do banco). Aceita o id; quando omitido, usa a última transação registrada nesta conversa.',
+      'Exclui uma transação (exclusão lógica, nunca remove o registro do banco). Aceita o id; quando omitido (ex: "exclui essa transação"), usa a última transação registrada nesta conversa — NUNCA pergunte pelo id antes de chamar, chame direto sem id.',
     schema: schemaExcluirTransacao,
     requerConfirmacao: true,
     handler: async (args, ctx) => {
