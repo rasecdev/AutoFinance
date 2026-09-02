@@ -543,7 +543,7 @@
 **Verification:**
 - [x] `npm test` cobre a atualização de `avaliacao_usuario`, o rastreamento message_id→trace_id, e os casos de erro (sem reply, rastro não encontrado) — 323 testes no total, 10 novos
 - [x] `npm run build`/`lint` sem erro
-- [ ] Manual: marcar uma resposta real como incorreta via Telegram de Homologação e conferir `interacoes_ia.avaliacao_usuario` no banco
+- [x] Manual: marcar uma resposta real como incorreta via Telegram de Homologação e conferir `interacoes_ia.avaliacao_usuario` no banco — verificado (deploy direto na VM, `feat/feedback-avaliacao`), inclusive achado real corrigido no meio do teste (ver PROGRESSO.md)
 
 **Dependencies:** Tarefa 2
 
