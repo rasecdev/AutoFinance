@@ -61,7 +61,7 @@ export function criarToolConsultarDividasAtivas(db: DbClient): ToolDefinition {
   return {
     name: 'consultar_dividas_ativas',
     description:
-      'Lista as dívidas ativas (empréstimo, financiamento, consignado — nunca quitadas/renegociadas). Use esta ferramenta pra qualquer pedido do tipo "liste as dívidas", "quais dívidas eu tenho", "dívidas ativas" — dívida/financiamento/empréstimo NUNCA é listar_transacoes, que é só receita/despesa do dia a dia e não sabe nada sobre dívida. conta é totalmente opcional — sem conta informada, lista de todas as contas; nunca pergunte pela conta antes de chamar, chame direto. Se o usuário citar o nome/apelido da conta, use-o diretamente, mesmo que pareça um tipo de conta (ex: "PJ", "PF"). Consulta, sem efeito colateral — não exige confirmação.',
+      'Lista as dívidas ativas (empréstimo, financiamento, consignado — nunca quitadas/renegociadas). Use esta ferramenta pra qualquer pedido do tipo "liste as dívidas", "quais dívidas eu tenho", "dívidas ativas" — dívida/financiamento/empréstimo NUNCA é consultar_extrato, que é só receita/despesa do dia a dia e não sabe nada sobre dívida. conta é totalmente opcional — sem conta informada, lista de todas as contas; nunca pergunte pela conta antes de chamar, chame direto. Se o usuário citar o nome/apelido da conta, use-o diretamente, mesmo que pareça um tipo de conta (ex: "PJ", "PF"). Consulta, sem efeito colateral — não exige confirmação.',
     schema: schemaConsultarDividasAtivas,
     handler: async (args) => {
       const { conta_id: contaId, conta_apelido: contaApelido } = args as z.infer<
