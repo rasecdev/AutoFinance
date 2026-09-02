@@ -63,18 +63,20 @@
 
 ## Fase F: Injeção de contexto na conversa
 
-### Tarefa 19: Montagem do prompt com resumo + janela curta
+### Tarefa 19: Montagem do prompt com resumo + janela curta ✅
+
+**Implementado:** conforme descrito abaixo, sem desvios do planejado. `montarHistorico` monta um `system` extra com o resumo (se existir) seguido dos pares `user`/`assistant` das interações do chat depois do `cobre_ate_trace_id` do resumo (ou as últimas `LIMITE_TURNOS_JANELA = 12`, sem resumo). `gerarResposta` ganhou um 5º parâmetro opcional `historico` (default `[]`, mantém 100% de compatibilidade com chamadas existentes), injetado entre o system prompt e a mensagem atual.
 
 **Descrição:** Novo módulo `src/ai/contexto.ts`: `montarHistorico(db, chatId)` retorna o array de mensagens (`role: 'assistant'`/`'user'`) a injetar entre o system prompt e a mensagem atual — busca `obterUltimoResumo`, injeta como uma mensagem `system` adicional (bloco fixo, resumo da conversa até aqui) se existir, e busca as últimas N interações do chat **depois** do `cobre_ate_trace_id` do resumo (ou as últimas N, se não houver resumo) como pares `user`/`assistant` verbatim. `gerarResposta` (`src/ai/openrouter.ts`) passa a aceitar `chatId` e usar `montarHistorico` pra montar `mensagens` antes da chamada. `handlerTexto` passa a chamar `registrarInteracaoIa` com `chatId` e os tokens retornados pela chamada (hoje descartados — conferir se `gerarResposta` já retorna `usage`, senão expor).
 
 **Acceptance criteria:**
-- [ ] Uma segunda mensagem no mesmo chat inclui as mensagens anteriores daquele chat no prompt enviado ao modelo
-- [ ] Chat sem histórico anterior (primeira mensagem) monta o prompt exatamente como hoje (system + mensagem atual, sem quebrar o comportamento existente)
-- [ ] `interacoes_ia.chat_id`/`tokens_prompt`/`tokens_completion` são gravados em toda chamada nova
+- [x] Uma segunda mensagem no mesmo chat inclui as mensagens anteriores daquele chat no prompt enviado ao modelo
+- [x] Chat sem histórico anterior (primeira mensagem) monta o prompt exatamente como hoje (system + mensagem atual, sem quebrar o comportamento existente)
+- [x] `interacoes_ia.chat_id`/`tokens_prompt`/`tokens_completion` são gravados em toda chamada nova
 
 **Verification:**
-- [ ] `npm test` cobre: histórico vazio (comportamento inalterado), histórico com resumo, histórico sem resumo (só janela)
-- [ ] `npm run build`/`lint` sem erro
+- [x] `npm test` cobre: histórico vazio (comportamento inalterado), histórico com resumo, histórico sem resumo (só janela), isolamento entre chats, injeção real de ponta a ponta via `handlerTexto` (duas mensagens seguidas no mesmo chat) — 340/340 em `development`
+- [x] `npm run build`/`lint` sem erro
 - [ ] Manual em Homologação: perguntar algo, depois fazer uma pergunta de seguimento ("e comparado ao mês passado?") e confirmar que o bot responde corretamente usando o contexto do turno anterior
 
 **Dependencies:** Tarefa 17, Tarefa 18
