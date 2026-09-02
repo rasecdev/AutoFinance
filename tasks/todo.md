@@ -499,27 +499,27 @@
 ---
 
 ## Checkpoint: Dívidas completas
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Testar manualmente em Homologação um fluxo completo: criar dívida (com `sistema_amortizacao`) → pagar parcela → amortizar (confirmando estimativa) → quitar antecipadamente
-- [ ] Testar renegociação isoladamente
-- [ ] Revisão com o usuário antes de prosseguir
+- [x] `npm run build`/`lint`/`test` sem erro (298/298 em `development`, checado nesta revisão)
+- [x] Testar manualmente em Homologação um fluxo completo: criar dívida (com `sistema_amortizacao`) → pagar parcela → amortizar (confirmando estimativa) → quitar antecipadamente — feito incrementalmente nas Tarefas 12-14, mais o roteiro manual completo rodado contra o bot real na VM (ver PROGRESSO.md)
+- [x] Testar renegociação isoladamente — Tarefa 10, reconfirmado no roteiro da VM
+- [x] Revisão com o usuário antes de prosseguir (aprovado — usuário pediu pra seguir pra Fase D)
 
 ---
 
 ## Fase D: Despesas fixas e feedback
 
-### Tarefa 15: `criar_despesa_fixa`, `editar_despesa_fixa`
+### Tarefa 15: `criar_despesa_fixa`, `editar_despesa_fixa` ✅
 
-**Descrição:** Repositório de `despesas_fixas` e as duas ferramentas. `criar_despesa_fixa` cadastro manual (descrição, categoria, valor esperado, dia esperado, conta/cartão vinculado). `editar_despesa_fixa` ajusta valor/dia ou muda `status` entre `ativa`/`pausada`. Nenhuma exige confirmação (baixo impacto, fácil de corrigir).
+**Implementado:** `src/db/repositories/despesasFixas.ts` (`criarDespesaFixa` — sempre `origem = 'manual'`, `status = 'ativa'`; `buscarDespesasFixasPorConta` — qualquer status, pra despesa pausada continuar encontrável; `atualizarDespesaFixa` — `UPDATE` dinâmico só nos campos informados, mesmo padrão de `atualizarTransacao`). `src/ai/tools/despesasFixas.ts` define as duas ferramentas, nenhuma com `requerConfirmacao` (baixo impacto). Despesa fixa não tem apelido próprio — identificada por conta + descrição (mesmo "Princípio de referência por apelido/contexto" já usado em dívida, conta+tipo+descrição): novo `resolverDespesaFixaId` (`src/ai/tools/resolucao.ts`), mesma cadeia exata → substring bidirecional → Levenshtein já usada pra conta/cartão/dívida. `criar_despesa_fixa` aceita conta/cartão por id ou apelido/nome (cartão opcional); `editar_despesa_fixa` exige conta + descrição e pelo menos um campo pra alterar (refino Zod), NUNCA pede id.
 
 **Acceptance criteria:**
-- [ ] `criar_despesa_fixa` grava com `origem = 'manual'`
-- [ ] `editar_despesa_fixa` atualiza valor/dia/status de um registro existente
+- [x] `criar_despesa_fixa` grava com `origem = 'manual'`
+- [x] `editar_despesa_fixa` atualiza valor/dia/status de um registro existente
 
 **Verification:**
-- [ ] `npm test` cobre criação e edição (incluindo mudança de status)
-- [ ] `npm run build` sem erro
-- [ ] Manual: cadastrar e editar uma despesa fixa real via Telegram de Homologação
+- [x] `npm test` cobre criação e edição (incluindo mudança de status, resolução por substring, e os casos de erro) — 313 testes no total, 15 novos
+- [x] `npm run build`/`lint` sem erro
+- [x] Manual: cadastrar e editar uma despesa fixa real via Telegram de Homologação — verificado (deploy direto na VM, `feat/despesas-fixas`): criação, edição de valor, edição de dia, pausa e erro "não encontrei" pra descrição inexistente, tudo conferido em `interacoes_ia`/`despesas_fixas`
 
 **Dependencies:** Tarefa 4 (precisa de `contas`/`cartoes` existirem)
 

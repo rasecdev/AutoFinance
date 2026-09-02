@@ -1,6 +1,7 @@
 import type { DbClient } from '../../db/client.js';
 import { buscarCartaoPorNome, buscarCartaoPorNomeParcial, cartaoExiste, listarCartoes } from '../../db/repositories/cartoes.js';
 import { buscarContaPorApelido, buscarContaPorApelidoParcial, contaExiste, listarContas } from '../../db/repositories/contas.js';
+import { buscarDespesasFixasPorConta } from '../../db/repositories/despesasFixas.js';
 import { buscarDividasPorContaETipo, type TipoDivida } from '../../db/repositories/dividas.js';
 import { encontrarPorSemelhanca } from './similaridade.js';
 
@@ -205,4 +206,55 @@ export function resolverDividaId(
     ok: false,
     mensagem: `Encontrei mais de uma dívida do tipo "${tipo}" nesta conta: ${opcoes}. Diga qual (pelo nome, se tiver, ou outro detalhe que diferencie).`,
   };
+}
+
+// Despesa fixa não tem apelido próprio — identificada por conta + descrição
+// (mesmo princípio de referência por conta+contexto de resolverDividaId).
+export function resolverDespesaFixaId(db: DbClient, contaId: number, descricao: string): ResolucaoId {
+  const candidatas = buscarDespesasFixasPorConta(db, contaId);
+
+  if (candidatas.length === 0) {
+    return { ok: false, mensagem: 'Não encontrei nenhuma despesa fixa cadastrada nesta conta.' };
+  }
+
+  const alvo = descricao.toLowerCase();
+  let filtradas = candidatas.filter((despesa) => despesa.descricao.toLowerCase() === alvo);
+  if (filtradas.length === 0) {
+    // Nome parcial, nas duas direções (mesmo padrão de resolverDividaId).
+    filtradas = candidatas.filter(
+      (despesa) =>
+        despesa.descricao.toLowerCase().includes(alvo) || alvo.includes(despesa.descricao.toLowerCase()),
+    );
+  }
+  if (filtradas.length === 0) {
+    const aproximado = encontrarPorSemelhanca(
+      descricao,
+      candidatas.map((despesa) => despesa.descricao),
+    );
+    if (aproximado !== undefined) {
+      filtradas = candidatas.filter((despesa) => despesa.descricao.toLowerCase() === aproximado.toLowerCase());
+    }
+  }
+
+  if (filtradas.length === 0) {
+    return {
+      ok: false,
+      mensagem: `Não encontrei nenhuma despesa fixa chamada "${descricao}" nesta conta.`,
+    };
+  }
+  if (filtradas.length > 1) {
+    const opcoes = filtradas
+      .map((despesa) => `"${despesa.descricao}" (R$ ${despesa.valorEsperado.toFixed(2)}, dia ${despesa.diaVencimentoEsperado})`)
+      .join(', ');
+    return {
+      ok: false,
+      mensagem: `Encontrei mais de uma despesa fixa chamada "${descricao}" nesta conta: ${opcoes}. Diga qual.`,
+    };
+  }
+
+  const encontrada = filtradas[0];
+  if (!encontrada) {
+    return { ok: false, mensagem: `Não encontrei nenhuma despesa fixa chamada "${descricao}" nesta conta.` };
+  }
+  return { ok: true, id: encontrada.id };
 }
