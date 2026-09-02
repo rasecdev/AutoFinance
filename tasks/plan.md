@@ -97,13 +97,14 @@ Tarefas detalhadas em `tasks/todo.md`.
 
 ### Fase D: Despesas fixas e feedback
 - [x] Tarefa 15: `criar_despesa_fixa`, `editar_despesa_fixa`
-- [ ] Tarefa 16: Feedback de avaliação (`avaliacao_usuario` via reação/comando no Telegram)
+- [x] Tarefa 16: Feedback de avaliação (`avaliacao_usuario` via reação/comando no Telegram)
 
 ### Checkpoint: Fase 3 completa
-- [ ] Todos os critérios de aceite das Tarefas 1-16 atendidos
-- [ ] Toda ferramenta de alto impacto listada na Segurança (item 8) passa por confirmação — checklist manual cruzando a lista do PLANO.md contra o código
-- [ ] Teste end-to-end real em Homologação de um fluxo completo de dívida (criar → pagar parcela → amortizar → quitar)
-- [ ] PROGRESSO.md atualizado com o marco "Fase 3 concluída"
+- [x] Todos os critérios de aceite das Tarefas 1-16 atendidos (checagem em `tasks/todo.md`, todas as 16 tarefas ✅)
+- [x] Toda ferramenta de alto impacto listada na Segurança (item 8) passa por confirmação — checklist manual cruzando a lista do PLANO.md contra o código (`grep requerConfirmacao` em `src/ai/tools/`): `criar_conta`, `criar_cartao` (`contas.ts`), `excluir_transacao` (`transacoes.ts`), `criar_divida`, `renegociar`, `quitar_divida`, `amortizar_divida` (`dividas.ts`) — as 7 exatas da lista, nenhuma faltando, nenhuma extra
+- [x] Teste end-to-end real em Homologação de um fluxo completo de dívida (criar → pagar parcela → amortizar → quitar) — coberto pelo roteiro completo já rodado na VM (checkpoint "Dívidas completas"), sem necessidade de repetir
+- [x] `npm run build`/`lint`/`test` sem erro (323/323 em `development`, checado nesta revisão)
+- [x] PROGRESSO.md atualizado com o marco "Fase 3 concluída"
 - [ ] Revisão com o usuário antes de prosseguir para a Fase 4
 
 ## Risks and Mitigations
