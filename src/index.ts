@@ -1,5 +1,6 @@
 import { createOpenRouterClient } from './ai/openrouter.js';
 import { createBot } from './bot/bot.js';
+import { createHandlerFeedback } from './bot/handlers/feedback.js';
 import { createHandlerMidia } from './bot/handlers/midia.js';
 import { createHandlerNaoSuportado } from './bot/handlers/naoSuportado.js';
 import { createHandlerTexto } from './bot/handlers/texto.js';
@@ -21,8 +22,9 @@ const openRouterClient = createOpenRouterClient(env.openrouterApiKey);
 const handlerTexto = createHandlerTexto(openRouterClient, db, logger);
 const handlerMidia = createHandlerMidia(logger);
 const handlerNaoSuportado = createHandlerNaoSuportado(logger);
+const handlerFeedback = createHandlerFeedback(db, logger);
 
-const bot = createBot(env, logger, handlerTexto, handlerMidia, handlerNaoSuportado);
+const bot = createBot(env, logger, handlerTexto, handlerMidia, handlerNaoSuportado, handlerFeedback);
 
 bot.start({
   onStart: () => {
