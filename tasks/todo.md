@@ -30,17 +30,19 @@
 
 ---
 
-### Tarefa 18: Repositório `resumos_conversa`
+### Tarefa 18: Repositório `resumos_conversa` ✅
+
+**Implementado:** conforme descrito abaixo, sem desvios do planejado.
 
 **Descrição:** `src/db/repositories/resumosConversa.ts` (novo): `criarResumoConversa(db, { chatId, resumoTexto, cobreAteTraceId, tokensJanelaNoGatilho })` (insert) e `obterUltimoResumo(db, chatId)` (último resumo daquele chat, por `criado_em` desc, ou `undefined` se nunca houve um).
 
 **Acceptance criteria:**
-- [ ] É possível criar um resumo associado a um chat e recuperar o mais recente
-- [ ] Um chat sem resumo nenhum retorna `undefined` (não lança erro)
+- [x] É possível criar um resumo associado a um chat e recuperar o mais recente
+- [x] Um chat sem resumo nenhum retorna `undefined` (não lança erro)
 
 **Verification:**
-- [ ] `npm test` cobre criação e recuperação do último resumo, incluindo o caso "nenhum resumo ainda"
-- [ ] `npm run build`/`lint` sem erro
+- [x] `npm test` cobre criação e recuperação do último resumo, incluindo o caso "nenhum resumo ainda" — 334 testes no total (4 novos), 4 falhas de timeout de hook em arquivos não relacionados durante a rodada completa, confirmadas flaky (passam isoladamente, mesmo padrão de sobrecarga sob paralelismo já visto na Tarefa 17)
+- [x] `npm run build`/`lint` sem erro
 
 **Dependencies:** Tarefa 17 (schema de `resumos_conversa`)
 
