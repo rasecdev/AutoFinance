@@ -1,6 +1,7 @@
 import type { DbClient } from '../client.js';
 
 export type ResultadoInteracao = 'sucesso' | 'erro' | 'rejeitado';
+export type AvaliacaoUsuario = 'correto' | 'incorreto';
 
 export type NovaInteracaoIa = {
   traceId: string;
@@ -27,4 +28,15 @@ export function registrarInteracaoIa(db: DbClient, interacao: NovaInteracaoIa): 
     resultado: interacao.resultado,
     dataHora: new Date().toISOString(),
   });
+}
+
+export function atualizarAvaliacaoInteracao(
+  db: DbClient,
+  traceId: string,
+  avaliacao: AvaliacaoUsuario,
+): boolean {
+  const resultado = db
+    .prepare('UPDATE interacoes_ia SET avaliacao_usuario = ? WHERE trace_id = ?')
+    .run(avaliacao, traceId);
+  return resultado.changes > 0;
 }
