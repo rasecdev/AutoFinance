@@ -11,12 +11,59 @@ export type NovaInteracaoIa = {
   respostaModelo?: string;
   toolCalls?: Array<{ nome: string; argumentos: unknown }>;
   resultado: ResultadoInteracao;
+  chatId?: number;
+  tokensPrompt?: number;
+  tokensCompletion?: number;
 };
+
+export type InteracaoIa = {
+  id: number;
+  traceId: string;
+  fluxo: string;
+  modelo: string;
+  mensagemUsuario: string | null;
+  respostaModelo: string | null;
+  resultado: ResultadoInteracao;
+  chatId: number | null;
+  tokensPrompt: number | null;
+  tokensCompletion: number | null;
+  dataHora: string;
+};
+
+type LinhaInteracaoIa = {
+  id: number;
+  trace_id: string;
+  fluxo: string;
+  modelo: string;
+  mensagem_usuario: string | null;
+  resposta_modelo: string | null;
+  resultado: ResultadoInteracao;
+  chat_id: number | null;
+  tokens_prompt: number | null;
+  tokens_completion: number | null;
+  data_hora: string;
+};
+
+function mapearLinha(linha: LinhaInteracaoIa): InteracaoIa {
+  return {
+    id: linha.id,
+    traceId: linha.trace_id,
+    fluxo: linha.fluxo,
+    modelo: linha.modelo,
+    mensagemUsuario: linha.mensagem_usuario,
+    respostaModelo: linha.resposta_modelo,
+    resultado: linha.resultado,
+    chatId: linha.chat_id,
+    tokensPrompt: linha.tokens_prompt,
+    tokensCompletion: linha.tokens_completion,
+    dataHora: linha.data_hora,
+  };
+}
 
 export function registrarInteracaoIa(db: DbClient, interacao: NovaInteracaoIa): void {
   db.prepare(
-    `INSERT INTO interacoes_ia (trace_id, fluxo, modelo, mensagem_usuario, resposta_modelo, tool_calls, resultado, data_hora)
-     VALUES (@traceId, @fluxo, @modelo, @mensagemUsuario, @respostaModelo, @toolCalls, @resultado, @dataHora)`,
+    `INSERT INTO interacoes_ia (trace_id, fluxo, modelo, mensagem_usuario, resposta_modelo, tool_calls, resultado, chat_id, tokens_prompt, tokens_completion, data_hora)
+     VALUES (@traceId, @fluxo, @modelo, @mensagemUsuario, @respostaModelo, @toolCalls, @resultado, @chatId, @tokensPrompt, @tokensCompletion, @dataHora)`,
   ).run({
     traceId: interacao.traceId,
     fluxo: interacao.fluxo,
@@ -26,6 +73,9 @@ export function registrarInteracaoIa(db: DbClient, interacao: NovaInteracaoIa): 
     toolCalls:
       interacao.toolCalls && interacao.toolCalls.length > 0 ? JSON.stringify(interacao.toolCalls) : null,
     resultado: interacao.resultado,
+    chatId: interacao.chatId ?? null,
+    tokensPrompt: interacao.tokensPrompt ?? null,
+    tokensCompletion: interacao.tokensCompletion ?? null,
     dataHora: new Date().toISOString(),
   });
 }
@@ -39,4 +89,45 @@ export function atualizarAvaliacaoInteracao(
     .prepare('UPDATE interacoes_ia SET avaliacao_usuario = ? WHERE trace_id = ?')
     .run(avaliacao, traceId);
   return resultado.changes > 0;
+}
+
+function obterIdPorTraceId(db: DbClient, traceId: string): number {
+  const linha = db.prepare('SELECT id FROM interacoes_ia WHERE trace_id = ?').get(traceId) as
+    | { id: number }
+    | undefined;
+  return linha?.id ?? 0;
+}
+
+export function buscarUltimasInteracoesPorChat(
+  db: DbClient,
+  chatId: number,
+  limite: number,
+  desdeTraceId?: string,
+): InteracaoIa[] {
+  const idMinimo = desdeTraceId !== undefined ? obterIdPorTraceId(db, desdeTraceId) : 0;
+
+  const linhas = db
+    .prepare(
+      `SELECT * FROM interacoes_ia
+       WHERE chat_id = ? AND id > ?
+       ORDER BY id DESC
+       LIMIT ?`,
+    )
+    .all(chatId, idMinimo, limite) as LinhaInteracaoIa[];
+
+  return linhas.reverse().map(mapearLinha);
+}
+
+export function somarTokensChat(db: DbClient, chatId: number, desdeTraceId?: string): number {
+  const idMinimo = desdeTraceId !== undefined ? obterIdPorTraceId(db, desdeTraceId) : 0;
+
+  const resultado = db
+    .prepare(
+      `SELECT COALESCE(SUM(tokens_prompt), 0) + COALESCE(SUM(tokens_completion), 0) AS total
+       FROM interacoes_ia
+       WHERE chat_id = ? AND id > ?`,
+    )
+    .get(chatId, idMinimo) as { total: number };
+
+  return resultado.total;
 }

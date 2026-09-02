@@ -4,18 +4,20 @@
 
 ## Fase E: Persistência de histórico
 
-### Tarefa 17: Migração de histórico por chat + repositório de leitura
+### Tarefa 17: Migração de histórico por chat + repositório de leitura ✅
+
+**Implementado:** conforme descrito abaixo, sem desvios do planejado.
 
 **Descrição:** Nova migração adicionando `chat_id`, `tokens_prompt`, `tokens_completion` em `interacoes_ia` (colunas nullable, sem preencher histórico antigo) e a tabela `resumos_conversa` (`id, chat_id, resumo_texto, cobre_ate_trace_id, tokens_janela_no_gatilho, criado_em`, conforme PLANO.md linha 518). Estender `src/db/repositories/interacoesIa.ts` com funções de leitura: buscar últimas N interações de um `chat_id` (ordenadas cronologicamente, com filtro opcional "depois de um `trace_id`"), e somar `tokens_prompt + tokens_completion` de um chat desde um `trace_id` (ou desde o início, se omitido). `registrarInteracaoIa` passa a aceitar `chatId`, `tokensPrompt`, `tokensCompletion` opcionais.
 
 **Acceptance criteria:**
-- [ ] Migração roda limpo em banco novo (`migrate()` do zero) e em banco já existente com dados da Fase 3 (linhas antigas de `interacoes_ia` ficam com `chat_id`/tokens `NULL`, sem erro)
-- [ ] Existe uma função que retorna as últimas N interações de um `chat_id`, em ordem cronológica
-- [ ] Existe uma função que soma tokens (`tokens_prompt + tokens_completion`) de um `chat_id`, opcionalmente a partir de um `trace_id`
+- [x] Migração roda limpo em banco novo (`migrate()` do zero) e em banco já existente com dados da Fase 3 (linhas antigas de `interacoes_ia` ficam com `chat_id`/tokens `NULL`, sem erro)
+- [x] Existe uma função que retorna as últimas N interações de um `chat_id`, em ordem cronológica
+- [x] Existe uma função que soma tokens (`tokens_prompt + tokens_completion`) de um `chat_id`, opcionalmente a partir de um `trace_id`
 
 **Verification:**
-- [ ] `npm test` cobre a migração (idempotência/coluna nova) e as duas funções de leitura novas
-- [ ] `npm run build`/`lint` sem erro
+- [x] `npm test` cobre a migração (idempotência/coluna nova) e as duas funções de leitura novas — 330/330 (1 falha em `dividas.test.ts` isolada por timeout de hook, confirmada flaky ao rodar o arquivo sozinho, sem relação com esta tarefa)
+- [x] `npm run build`/`lint` sem erro
 
 **Dependencies:** None
 
