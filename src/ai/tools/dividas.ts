@@ -2,15 +2,19 @@ import { z } from 'zod';
 import type { DbClient } from '../../db/client.js';
 import { obterConta } from '../../db/repositories/contas.js';
 import {
+  amortizarDivida,
   criarDivida,
   marcarDividaRenegociada,
   obterDivida,
   quitarDivida,
   type Divida,
+  type ResultadoAplicarAmortizacao,
   type TipoDivida,
 } from '../../db/repositories/dividas.js';
 import { buscarFaturaPorCartaoEMes, marcarFaturaRenegociada } from '../../db/repositories/faturas.js';
+import { listarParcelasPendentes } from '../../db/repositories/parcelas.js';
 import { criarRenegociacao } from '../../db/repositories/renegociacoes.js';
+import { calcularAmortizacao } from '../../finance/amortizacao.js';
 import { normalizarMesReferencia } from './mesReferencia.js';
 import { resolverCartaoId, resolverContaId, resolverDividaId } from './resolucao.js';
 import type { ToolDefinition } from './types.js';
@@ -299,6 +303,162 @@ export function criarToolQuitarDivida(db: DbClient): ToolDefinition {
       const parteDescricao = divida.descricao ? ` "${divida.descricao}"` : '';
 
       return `Dívida${parteDescricao} quitada: ${parcelasPagas.length} parcela(s) pendente(s) paga(s) de uma vez, total R$ ${totalQuitado.toFixed(2)}, data ${dataPagamento}. Status: quitado.`;
+    },
+  };
+}
+
+const schemaAmortizarDivida = z
+  .object({
+    conta_id: z.number().int().positive().optional(),
+    conta_apelido: z.string().min(1).optional(),
+    tipo_divida: z.enum(['emprestimo', 'financiamento', 'consignado', 'outro']),
+    divida_descricao: z.string().min(1).optional(),
+    valor: z.number().positive(),
+    modo: z.enum(['reduzir_parcelas', 'reduzir_valor']),
+    // Valor real informado pelo banco — quando presente, sempre prevalece sobre
+    // a estimativa calculada (Price/SAC), mesmo quando a dívida tem
+    // sistema_amortizacao cadastrado. Só o campo do modo escolhido é usado.
+    num_parcelas_informado: z.number().int().min(0).optional(),
+    valor_parcela_informado: z.number().min(0).optional(),
+  })
+  .refine((valor) => valor.conta_id !== undefined || valor.conta_apelido !== undefined, {
+    message: 'Informe a conta (id ou apelido).',
+  });
+
+type ArgsAmortizarDivida = z.infer<typeof schemaAmortizarDivida>;
+
+type ResolucaoAmortizacao =
+  | { ok: false; mensagem: string }
+  | { ok: true; divida: Divida; origem: 'informado' | 'estimado'; resultado: ResultadoAplicarAmortizacao };
+
+// Saldo devedor real (principal ainda em aberto), não a soma nominal das
+// parcelas pendentes — essa soma já embute juros futuros e infla o saldo
+// (achado real de teste manual: amortizar não reduzia nada porque o saldo
+// usado como entrada já estava superestimado). Price: a parcela é constante,
+// então dá pra inverter a própria fórmula de anuidade (valor presente das
+// parcelas restantes) a partir do valor de parcela atual — funciona mesmo
+// depois de uma amortização anterior ter mudado esse valor. SAC: usa a
+// amortização constante original (valor_total/num_parcelas) — só válido pra a
+// primeira amortização da dívida (amortizações SAC encadeadas são um caso
+// mais raro, fora do escopo desta correção, mesma classe de simplificação já
+// aceita pra SAC desde a Tarefa 8).
+function calcularSaldoDevedorAtual(divida: Divida, parcelasRestantes: number): number {
+  const taxa = divida.taxaJuros ?? 0;
+
+  if (divida.sistemaAmortizacao === 'sac') {
+    const amortizacaoConstante = divida.numParcelas > 0 ? divida.valorTotal / divida.numParcelas : 0;
+    return amortizacaoConstante * parcelasRestantes;
+  }
+
+  if (taxa === 0) return divida.valorParcela * parcelasRestantes;
+  return (divida.valorParcela * (1 - (1 + taxa) ** -parcelasRestantes)) / taxa;
+}
+
+// Compartilhado entre avisoConfirmacao (preview, antes do "sim") e o handler
+// (depois do "sim") — mesma entrada, mesmo cálculo determinístico, nenhum
+// estado guardado entre as duas chamadas (loop de tool calling não tem
+// memória de conversa entre mensagens ainda, ver achados da Tarefa 12).
+function resolverResultadoAmortizacao(db: DbClient, args: ArgsAmortizarDivida): ResolucaoAmortizacao {
+  const resolucaoConta = resolverContaId(db, args.conta_id, args.conta_apelido);
+  if (!resolucaoConta.ok) return { ok: false, mensagem: resolucaoConta.mensagem };
+
+  const resolucaoDivida = resolverDividaId(db, resolucaoConta.id, args.tipo_divida as TipoDivida, args.divida_descricao);
+  if (!resolucaoDivida.ok) return { ok: false, mensagem: resolucaoDivida.mensagem };
+
+  const divida = obterDivida(db, resolucaoDivida.id);
+  if (!divida) return { ok: false, mensagem: 'Não encontrei essa dívida.' };
+
+  const pendentes = listarParcelasPendentes(db, divida.id);
+  if (pendentes.length === 0) {
+    return { ok: false, mensagem: 'Essa dívida não tem parcela pendente pra amortizar.' };
+  }
+
+  const informado = args.modo === 'reduzir_parcelas' ? args.num_parcelas_informado : args.valor_parcela_informado;
+  if (informado !== undefined) {
+    return {
+      ok: true,
+      divida,
+      origem: 'informado',
+      resultado:
+        args.modo === 'reduzir_parcelas' ? { novoNumParcelas: informado } : { novoValorParcela: informado },
+    };
+  }
+
+  if (!divida.sistemaAmortizacao) {
+    const campo = args.modo === 'reduzir_parcelas' ? 'num_parcelas_informado' : 'valor_parcela_informado';
+    return {
+      ok: false,
+      mensagem: `Essa dívida não tem sistema de amortização (price/sac) cadastrado, então não dá pra estimar automaticamente. Me diga o valor real informado pelo banco (${campo}) e eu aplico.`,
+    };
+  }
+
+  const saldoDevedor = calcularSaldoDevedorAtual(divida, pendentes.length);
+  const calculo = calcularAmortizacao({
+    sistema: divida.sistemaAmortizacao,
+    saldoDevedor,
+    taxaJuros: divida.taxaJuros ?? 0,
+    parcelasRestantes: pendentes.length,
+    valorAmortizado: args.valor,
+    modo: args.modo,
+  });
+
+  return {
+    ok: true,
+    divida,
+    origem: 'estimado',
+    resultado:
+      calculo.modo === 'reduzir_parcelas'
+        ? { novoNumParcelas: calculo.novoNumeroParcelas }
+        : { novoValorParcela: calculo.novoValorParcela },
+  };
+}
+
+function formatarAvisoIndexador(divida: Divida): string {
+  return divida.indexador !== 'fixo'
+    ? ` Essa dívida é indexada a ${divida.indexador.toUpperCase()} — a taxa cadastrada pode estar desatualizada, confirme a taxa atual antes de aplicar.`
+    : '';
+}
+
+export function criarToolAmortizarDivida(db: DbClient): ToolDefinition {
+  return {
+    name: 'amortizar_divida',
+    description:
+      'Amortização extraordinária: paga um valor extra que abate parte do saldo devedor sem quitar a dívida inteira (diferente de quitar_divida, que encerra tudo de uma vez). Identifica a dívida por conta + tipo_divida (nunca por id — divida_descricao só quando houver mais de uma do mesmo tipo na mesma conta). modo é sempre informado pelo usuário: "reduzir_parcelas" (menos parcelas, mesmo valor) ou "reduzir_valor" (mesma quantidade, valor menor). Se o usuário já souber o valor real informado pelo banco, preencha num_parcelas_informado (modo reduzir_parcelas) ou valor_parcela_informado (modo reduzir_valor) — esse valor real SEMPRE prevalece sobre qualquer estimativa. Se o usuário não souber ainda, chame mesmo assim sem esses campos: quando a dívida tem sistema_amortizacao cadastrado, o sistema estima automaticamente por Price/SAC e aplica a estimativa (mostrada antes de confirmar); quando não tem, a ferramenta avisa que precisa do valor real do banco em vez de aplicar um chute. Nunca calcule esse valor você mesmo — a ferramenta sempre faz essa conta. Ação de alto impacto — só executa após confirmação.',
+    schema: schemaAmortizarDivida,
+    requerConfirmacao: true,
+    avisoConfirmacao: (args) => {
+      const resolucao = resolverResultadoAmortizacao(db, args as ArgsAmortizarDivida);
+      if (!resolucao.ok) return resolucao.mensagem;
+
+      const parteIndexador = formatarAvisoIndexador(resolucao.divida);
+      const parteValor =
+        'novoNumParcelas' in resolucao.resultado
+          ? `${resolucao.divida.parcelasPagas + resolucao.resultado.novoNumParcelas} parcelas no total (${resolucao.resultado.novoNumParcelas} restantes de R$ ${resolucao.divida.valorParcela.toFixed(2)} cada)`
+          : `parcelas restantes de R$ ${resolucao.resultado.novoValorParcela.toFixed(2)} cada`;
+
+      if (resolucao.origem === 'informado') {
+        return `Vou aplicar o valor real informado por você (sem estimar): ${parteValor}.${parteIndexador}`;
+      }
+      return `Estimativa calculada (sistema ${resolucao.divida.sistemaAmortizacao}): ${parteValor}. É uma estimativa — se o banco informar valor diferente, chame de novo com o valor real.${parteIndexador}`;
+    },
+    handler: async (args) => {
+      const parsedArgs = args as ArgsAmortizarDivida;
+      const resolucao = resolverResultadoAmortizacao(db, parsedArgs);
+      if (!resolucao.ok) return resolucao.mensagem;
+
+      const dividaAtualizada = amortizarDivida(db, resolucao.divida.id, parsedArgs.modo, resolucao.resultado);
+
+      const parteIndexador = formatarAvisoIndexador(resolucao.divida);
+      const parteOrigem = resolucao.origem === 'informado' ? 'valor informado por você' : `estimativa, sistema ${resolucao.divida.sistemaAmortizacao}`;
+      const parteDescricao = dividaAtualizada.descricao ? ` "${dividaAtualizada.descricao}"` : '';
+      const parcelasRestantes = dividaAtualizada.numParcelas - dividaAtualizada.parcelasPagas;
+
+      const parteResultado =
+        parsedArgs.modo === 'reduzir_parcelas'
+          ? `agora são ${dividaAtualizada.numParcelas} parcelas no total (${parcelasRestantes} restantes de R$ ${dividaAtualizada.valorParcela.toFixed(2)} cada)`
+          : `parcelas restantes agora valem R$ ${dividaAtualizada.valorParcela.toFixed(2)}`;
+
+      return `Dívida${parteDescricao} amortizada em R$ ${parsedArgs.valor.toFixed(2)} (${parteOrigem}): ${parteResultado}.${parteIndexador}`;
     },
   };
 }
