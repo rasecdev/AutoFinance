@@ -519,7 +519,7 @@
 **Verification:**
 - [x] `npm test` cobre criação e edição (incluindo mudança de status, resolução por substring, e os casos de erro) — 313 testes no total, 15 novos
 - [x] `npm run build`/`lint` sem erro
-- [ ] Manual: cadastrar e editar uma despesa fixa real via Telegram de Homologação
+- [x] Manual: cadastrar e editar uma despesa fixa real via Telegram de Homologação — verificado (deploy direto na VM, `feat/despesas-fixas`): criação, edição de valor, edição de dia, pausa e erro "não encontrei" pra descrição inexistente, tudo conferido em `interacoes_ia`/`despesas_fixas`
 
 **Dependencies:** Tarefa 4 (precisa de `contas`/`cartoes` existirem)
 
