@@ -708,6 +708,103 @@ describe('tool amortizar_divida', () => {
     expect(aviso).not.toContain('Estimativa');
   });
 
+  it('avisoConfirmacao avisa quando o valor informado diverge muito da estimativa (achado real do usuário: "isso é o esperado?")', () => {
+    criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 1000,
+      numParcelas: 4,
+      taxaJuros: 0,
+      sistemaAmortizacao: 'price',
+      dataInicio: '2026-09-01',
+    });
+
+    // Estimativa real pra esses parâmetros seria 2 parcelas restantes — informar
+    // 4 (nenhuma redução) diverge 100%, bem acima do limite de 15%.
+    const tool = criarToolAmortizarDivida(db);
+    const args = tool.schema.parse({
+      conta_apelido: 'Principal',
+      tipo_divida: 'financiamento',
+      valor: 500,
+      modo: 'reduzir_parcelas',
+      num_parcelas_informado: 4,
+    });
+
+    const aviso = tool.avisoConfirmacao?.(args);
+
+    expect(aviso).toContain('diverge bastante');
+    expect(aviso).toContain('100%');
+    expect(aviso).toContain('2 parcelas');
+    expect(aviso).toContain('taxa_juros ou o sistema_amortizacao');
+  });
+
+  it('avisoConfirmacao não avisa divergência quando o valor informado bate com a estimativa', () => {
+    criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 1000,
+      numParcelas: 4,
+      taxaJuros: 0,
+      sistemaAmortizacao: 'price',
+      dataInicio: '2026-09-01',
+    });
+
+    const tool = criarToolAmortizarDivida(db);
+    const args = tool.schema.parse({
+      conta_apelido: 'Principal',
+      tipo_divida: 'financiamento',
+      valor: 500,
+      modo: 'reduzir_parcelas',
+      num_parcelas_informado: 2,
+    });
+
+    const aviso = tool.avisoConfirmacao?.(args);
+
+    expect(aviso).not.toContain('diverge');
+  });
+
+  it('avisoConfirmacao não avisa divergência quando a dívida não tem sistema_amortizacao (nada pra comparar)', () => {
+    criarDivida(db, { contaId, tipo: 'emprestimo', valorTotal: 1000, numParcelas: 4, dataInicio: '2026-09-01' });
+
+    const tool = criarToolAmortizarDivida(db);
+    const args = tool.schema.parse({
+      conta_apelido: 'Principal',
+      tipo_divida: 'emprestimo',
+      valor: 500,
+      modo: 'reduzir_parcelas',
+      num_parcelas_informado: 4,
+    });
+
+    const aviso = tool.avisoConfirmacao?.(args);
+
+    expect(aviso).not.toContain('diverge');
+  });
+
+  it('handler também ecoa o aviso de divergência no resultado final', async () => {
+    criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 1000,
+      numParcelas: 4,
+      taxaJuros: 0,
+      sistemaAmortizacao: 'price',
+      dataInicio: '2026-09-01',
+    });
+
+    const tool = criarToolAmortizarDivida(db);
+    const args = tool.schema.parse({
+      conta_apelido: 'Principal',
+      tipo_divida: 'financiamento',
+      valor: 500,
+      modo: 'reduzir_parcelas',
+      num_parcelas_informado: 4,
+    });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).toContain('diverge bastante');
+  });
+
   it('avisoConfirmacao pede o valor real quando a dívida não tem sistema_amortizacao e nada foi informado', () => {
     criarDivida(db, { contaId, tipo: 'emprestimo', valorTotal: 1000, numParcelas: 4, dataInicio: '2026-09-01' });
 

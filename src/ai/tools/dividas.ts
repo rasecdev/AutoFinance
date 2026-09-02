@@ -8,6 +8,7 @@ import {
   obterDivida,
   quitarDivida,
   type Divida,
+  type ModoAmortizacaoDivida,
   type ResultadoAplicarAmortizacao,
   type TipoDivida,
 } from '../../db/repositories/dividas.js';
@@ -329,7 +330,13 @@ type ArgsAmortizarDivida = z.infer<typeof schemaAmortizarDivida>;
 
 type ResolucaoAmortizacao =
   | { ok: false; mensagem: string }
-  | { ok: true; divida: Divida; origem: 'informado' | 'estimado'; resultado: ResultadoAplicarAmortizacao };
+  | {
+      ok: true;
+      divida: Divida;
+      origem: 'informado' | 'estimado';
+      resultado: ResultadoAplicarAmortizacao;
+      avisoDivergencia?: string;
+    };
 
 // Saldo devedor real (principal ainda em aberto), não a soma nominal das
 // parcelas pendentes — essa soma já embute juros futuros e infla o saldo
@@ -354,6 +361,61 @@ function calcularSaldoDevedorAtual(divida: Divida, parcelasRestantes: number): n
   return (divida.valorParcela * (1 - (1 + taxa) ** -parcelasRestantes)) / taxa;
 }
 
+function estimarResultado(
+  divida: Divida & { sistemaAmortizacao: NonNullable<Divida['sistemaAmortizacao']> },
+  parcelasRestantes: number,
+  valor: number,
+  modo: ModoAmortizacaoDivida,
+): ResultadoAplicarAmortizacao {
+  const saldoDevedor = calcularSaldoDevedorAtual(divida, parcelasRestantes);
+  const calculo = calcularAmortizacao({
+    sistema: divida.sistemaAmortizacao,
+    saldoDevedor,
+    taxaJuros: divida.taxaJuros ?? 0,
+    parcelasRestantes,
+    valorAmortizado: valor,
+    modo,
+  });
+  return calculo.modo === 'reduzir_parcelas'
+    ? { novoNumParcelas: calculo.novoNumeroParcelas }
+    : { novoValorParcela: calculo.novoValorParcela };
+}
+
+// "Tirar a prova": quando o usuário informa o valor real do banco (que sempre
+// prevalece) mas a dívida também tem sistema_amortizacao cadastrado, compara
+// contra o que o sistema teria estimado — uma divergência grande é sinal de
+// que taxa_juros/sistema_amortizacao podem estar desatualizados ou errados
+// (PLANO.md, "Cálculo de amortização real"), não um erro em si, então nunca
+// bloqueia a aplicação, só avisa.
+const LIMITE_DIVERGENCIA = 0.15;
+
+function calcularAvisoDivergencia(
+  divida: Divida,
+  pendentesCount: number,
+  valor: number,
+  modo: ModoAmortizacaoDivida,
+  resultadoInformado: ResultadoAplicarAmortizacao,
+): string | undefined {
+  if (!divida.sistemaAmortizacao) return undefined;
+
+  const estimado = estimarResultado(
+    divida as Divida & { sistemaAmortizacao: NonNullable<Divida['sistemaAmortizacao']> },
+    pendentesCount,
+    valor,
+    modo,
+  );
+
+  const valorInformado = 'novoNumParcelas' in resultadoInformado ? resultadoInformado.novoNumParcelas : resultadoInformado.novoValorParcela;
+  const valorEstimado = 'novoNumParcelas' in estimado ? estimado.novoNumParcelas : estimado.novoValorParcela;
+  if (valorEstimado <= 0) return undefined;
+
+  const divergenciaRelativa = Math.abs(valorInformado - valorEstimado) / valorEstimado;
+  if (divergenciaRelativa <= LIMITE_DIVERGENCIA) return undefined;
+
+  const parteEstimado = 'novoNumParcelas' in estimado ? `${valorEstimado} parcelas` : `R$ ${valorEstimado.toFixed(2)} de parcela`;
+  return ` Isso diverge bastante (${(divergenciaRelativa * 100).toFixed(0)}%) da estimativa que o sistema calcularia (${parteEstimado}, sistema ${divida.sistemaAmortizacao}) — pode ser sinal de que a taxa_juros ou o sistema_amortizacao cadastrados estão desatualizados, vale conferir.`;
+}
+
 // Compartilhado entre avisoConfirmacao (preview, antes do "sim") e o handler
 // (depois do "sim") — mesma entrada, mesmo cálculo determinístico, nenhum
 // estado guardado entre as duas chamadas (loop de tool calling não tem
@@ -375,13 +437,11 @@ function resolverResultadoAmortizacao(db: DbClient, args: ArgsAmortizarDivida): 
 
   const informado = args.modo === 'reduzir_parcelas' ? args.num_parcelas_informado : args.valor_parcela_informado;
   if (informado !== undefined) {
-    return {
-      ok: true,
-      divida,
-      origem: 'informado',
-      resultado:
-        args.modo === 'reduzir_parcelas' ? { novoNumParcelas: informado } : { novoValorParcela: informado },
-    };
+    const resultado: ResultadoAplicarAmortizacao =
+      args.modo === 'reduzir_parcelas' ? { novoNumParcelas: informado } : { novoValorParcela: informado };
+    const avisoDivergencia = calcularAvisoDivergencia(divida, pendentes.length, args.valor, args.modo, resultado);
+
+    return { ok: true, divida, origem: 'informado', resultado, avisoDivergencia };
   }
 
   if (!divida.sistemaAmortizacao) {
@@ -392,25 +452,14 @@ function resolverResultadoAmortizacao(db: DbClient, args: ArgsAmortizarDivida): 
     };
   }
 
-  const saldoDevedor = calcularSaldoDevedorAtual(divida, pendentes.length);
-  const calculo = calcularAmortizacao({
-    sistema: divida.sistemaAmortizacao,
-    saldoDevedor,
-    taxaJuros: divida.taxaJuros ?? 0,
-    parcelasRestantes: pendentes.length,
-    valorAmortizado: args.valor,
-    modo: args.modo,
-  });
+  const resultado = estimarResultado(
+    divida as Divida & { sistemaAmortizacao: NonNullable<Divida['sistemaAmortizacao']> },
+    pendentes.length,
+    args.valor,
+    args.modo,
+  );
 
-  return {
-    ok: true,
-    divida,
-    origem: 'estimado',
-    resultado:
-      calculo.modo === 'reduzir_parcelas'
-        ? { novoNumParcelas: calculo.novoNumeroParcelas }
-        : { novoValorParcela: calculo.novoValorParcela },
-  };
+  return { ok: true, divida, origem: 'estimado', resultado };
 }
 
 function formatarAvisoIndexador(divida: Divida): string {
@@ -437,7 +486,8 @@ export function criarToolAmortizarDivida(db: DbClient): ToolDefinition {
           : `parcelas restantes de R$ ${resolucao.resultado.novoValorParcela.toFixed(2)} cada`;
 
       if (resolucao.origem === 'informado') {
-        return `Vou aplicar o valor real informado por você (sem estimar): ${parteValor}.${parteIndexador}`;
+        const parteDivergencia = resolucao.avisoDivergencia ?? '';
+        return `Vou aplicar o valor real informado por você (sem estimar): ${parteValor}.${parteDivergencia}${parteIndexador}`;
       }
       return `Estimativa calculada (sistema ${resolucao.divida.sistemaAmortizacao}): ${parteValor}. É uma estimativa — se o banco informar valor diferente, chame de novo com o valor real.${parteIndexador}`;
     },
@@ -457,8 +507,9 @@ export function criarToolAmortizarDivida(db: DbClient): ToolDefinition {
         parsedArgs.modo === 'reduzir_parcelas'
           ? `agora são ${dividaAtualizada.numParcelas} parcelas no total (${parcelasRestantes} restantes de R$ ${dividaAtualizada.valorParcela.toFixed(2)} cada)`
           : `parcelas restantes agora valem R$ ${dividaAtualizada.valorParcela.toFixed(2)}`;
+      const parteDivergencia = resolucao.avisoDivergencia ?? '';
 
-      return `Dívida${parteDescricao} amortizada em R$ ${parsedArgs.valor.toFixed(2)} (${parteOrigem}): ${parteResultado}.${parteIndexador}`;
+      return `Dívida${parteDescricao} amortizada em R$ ${parsedArgs.valor.toFixed(2)} (${parteOrigem}): ${parteResultado}.${parteDivergencia}${parteIndexador}`;
     },
   };
 }
