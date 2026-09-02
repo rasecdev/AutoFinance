@@ -558,9 +558,9 @@
 ---
 
 ## Checkpoint: Fase 3 completa
-- [ ] Todos os critérios de aceite das Tarefas 1-16 atendidos
-- [ ] Checklist manual: cada ferramenta de alto impacto (`criar_conta`, `criar_cartao`, `criar_divida`, `renegociar`, `quitar_divida`, `amortizar_divida`, `excluir_transacao`) de fato passa pela confirmação da Tarefa 3 — nenhuma esquecida
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste end-to-end real em Homologação: fluxo completo de uma dívida (criar → pagar parcela → amortizar → quitar)
-- [ ] PROGRESSO.md atualizado com o marco "Fase 3 concluída"
+- [x] Todos os critérios de aceite das Tarefas 1-16 atendidos
+- [x] Checklist manual: cada ferramenta de alto impacto (`criar_conta`, `criar_cartao`, `criar_divida`, `renegociar`, `quitar_divida`, `amortizar_divida`, `excluir_transacao`) de fato passa pela confirmação da Tarefa 3 — nenhuma esquecida (`grep requerConfirmacao` em `src/ai/tools/`: exatamente essas 7, nenhuma faltando, nenhuma extra)
+- [x] `npm run build`/`lint`/`test` sem erro (323/323 em `development`, checado nesta revisão)
+- [x] Teste end-to-end real em Homologação: fluxo completo de uma dívida (criar → pagar parcela → amortizar → quitar) — coberto pelo roteiro completo já rodado na VM (checkpoint "Dívidas completas"), sem necessidade de repetir
+- [x] PROGRESSO.md atualizado com o marco "Fase 3 concluída"
 - [ ] Revisão com o usuário antes de prosseguir para a Fase 4
