@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { registerRoutes } from '../../src/bot/router.js';
 
 function criarBotFake() {
-  return { on: vi.fn() } as unknown as Bot & { on: ReturnType<typeof vi.fn> };
+  return { on: vi.fn(), command: vi.fn() } as unknown as Bot & {
+    on: ReturnType<typeof vi.fn>;
+    command: ReturnType<typeof vi.fn>;
+  };
 }
 
 describe('registerRoutes', () => {
@@ -12,8 +15,9 @@ describe('registerRoutes', () => {
     const handlerTexto = vi.fn();
     const handlerMidia = vi.fn();
     const handlerNaoSuportado = vi.fn();
+    const handlerFeedback = vi.fn();
 
-    registerRoutes(bot, handlerTexto, handlerMidia, handlerNaoSuportado);
+    registerRoutes(bot, handlerTexto, handlerMidia, handlerNaoSuportado, handlerFeedback);
 
     expect(bot.on).toHaveBeenCalledWith('message:text', handlerTexto);
   });
@@ -23,8 +27,9 @@ describe('registerRoutes', () => {
     const handlerTexto = vi.fn();
     const handlerMidia = vi.fn();
     const handlerNaoSuportado = vi.fn();
+    const handlerFeedback = vi.fn();
 
-    registerRoutes(bot, handlerTexto, handlerMidia, handlerNaoSuportado);
+    registerRoutes(bot, handlerTexto, handlerMidia, handlerNaoSuportado, handlerFeedback);
 
     expect(bot.on).toHaveBeenCalledWith(['message:photo', 'message:document'], handlerMidia);
   });
@@ -34,9 +39,22 @@ describe('registerRoutes', () => {
     const handlerTexto = vi.fn();
     const handlerMidia = vi.fn();
     const handlerNaoSuportado = vi.fn();
+    const handlerFeedback = vi.fn();
 
-    registerRoutes(bot, handlerTexto, handlerMidia, handlerNaoSuportado);
+    registerRoutes(bot, handlerTexto, handlerMidia, handlerNaoSuportado, handlerFeedback);
 
     expect(bot.on).toHaveBeenCalledWith('message', handlerNaoSuportado);
+  });
+
+  it('registra o handler de feedback para o comando /errado', () => {
+    const bot = criarBotFake();
+    const handlerTexto = vi.fn();
+    const handlerMidia = vi.fn();
+    const handlerNaoSuportado = vi.fn();
+    const handlerFeedback = vi.fn();
+
+    registerRoutes(bot, handlerTexto, handlerMidia, handlerNaoSuportado, handlerFeedback);
+
+    expect(bot.command).toHaveBeenCalledWith('errado', handlerFeedback);
   });
 });

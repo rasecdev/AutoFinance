@@ -532,17 +532,17 @@
 
 ---
 
-### Tarefa 16: Feedback de avaliação (`avaliacao_usuario`)
+### Tarefa 16: Feedback de avaliação (`avaliacao_usuario`) ✅
 
-**Descrição:** Mecanismo de marcar uma resposta do bot como incorreta (reação ou comando respondendo à mensagem, ex: `/errado`) que grava `interacoes_ia.avaliacao_usuario = 'incorreto'` no registro correspondente (via `trace_id`, guardado numa correlação mensagem-do-Telegram → `trace_id` em memória ou reaproveitando o `message_id` da resposta). Não é uma ferramenta exposta à IA — é ação direta do bot/router.
+**Implementado:** comando `/errado` (não é ferramenta exposta à IA — interceptado por `bot.command('errado', ...)`, registrado antes do `bot.on('message:text', ...)` genérico em `router.ts`/`bot.ts`, mesmo sem passar pelo `gerarResposta`). Correlação mensagem-do-Telegram → `trace_id`: `src/bot/rastroRespostas.ts` (`Map<messageId, traceId>` em memória, mesmo padrão de `confirmacao.ts`/`contextoRecente.ts`) — `handlerTexto` (`src/bot/handlers/texto.ts`) agora captura o `message_id` retornado por `ctx.reply(...)` e chama `definirRastroResposta` logo após gravar a interação com sucesso. `src/bot/handlers/feedback.ts` (`createHandlerFeedback`): exige que o usuário responda (reply do Telegram) à mensagem do bot que quer marcar — sem reply, pede pra refazer assim; com reply, resolve o `trace_id` via `obterTraceIdPorMensagem(reply_to_message.message_id)` e chama `atualizarAvaliacaoInteracao` (novo, `src/db/repositories/interacoesIa.ts` — `UPDATE interacoes_ia SET avaliacao_usuario = ? WHERE trace_id = ?`); sem rastro encontrado (processo reiniciado, ou reply numa mensagem que não é do bot), avisa em vez de falhar silenciosamente.
 
 **Acceptance criteria:**
-- [ ] Existe uma forma de, a partir de uma resposta do bot já enviada, localizar o `trace_id` da interação correspondente
-- [ ] Comando/reação de feedback atualiza `interacoes_ia.avaliacao_usuario` sem exigir você saber o `trace_id` manualmente
+- [x] Existe uma forma de, a partir de uma resposta do bot já enviada, localizar o `trace_id` da interação correspondente
+- [x] Comando/reação de feedback atualiza `interacoes_ia.avaliacao_usuario` sem exigir você saber o `trace_id` manualmente
 
 **Verification:**
-- [ ] `npm test` cobre a atualização de `avaliacao_usuario` a partir do mecanismo escolhido
-- [ ] `npm run build` sem erro
+- [x] `npm test` cobre a atualização de `avaliacao_usuario`, o rastreamento message_id→trace_id, e os casos de erro (sem reply, rastro não encontrado) — 323 testes no total, 10 novos
+- [x] `npm run build`/`lint` sem erro
 - [ ] Manual: marcar uma resposta real como incorreta via Telegram de Homologação e conferir `interacoes_ia.avaliacao_usuario` no banco
 
 **Dependencies:** Tarefa 2
