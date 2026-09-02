@@ -88,11 +88,11 @@ Tarefas detalhadas em `tasks/todo.md`.
 - [x] Tarefa 11: `pagar_parcela`, `pagar_fatura`
 - [x] Tarefa 12: `quitar_divida`
 - [x] Tarefa 13: `amortizar_divida`
-- [ ] Tarefa 14: `consultar_fatura`, `consultar_dividas_ativas`, `resumo_dividas`
+- [x] Tarefa 14: `consultar_fatura`, `consultar_dividas_ativas`, `resumo_dividas`
 
 ### Checkpoint: Dívidas completas
-- [ ] Testar manualmente em Homologação: criar dívida (com e sem `sistema_amortizacao`), pagar parcela, amortizar com estimativa (confirmar e divergir), quitar antecipado, renegociar
-- [ ] `npm test` passa
+- [x] Testar manualmente em Homologação: criar dívida (com e sem `sistema_amortizacao`), pagar parcela, amortizar com estimativa (confirmar e divergir), quitar antecipado, renegociar — feito incrementalmente nas Tarefas 9-14 (mesmo padrão da Fase B), ver PROGRESSO.md
+- [x] `npm test` passa (298/298 em `development`, checado nesta revisão)
 - [ ] Revisão com o usuário antes de prosseguir
 
 ### Fase D: Despesas fixas e feedback
