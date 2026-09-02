@@ -89,3 +89,13 @@ export function obterProximaParcelaPendente(db: DbClient, dividaId: number): Par
 export function marcarParcelaPaga(db: DbClient, id: number, dataPagamento: string): void {
   db.prepare("UPDATE parcelas SET status = 'paga', data_pagamento = ? WHERE id = ?").run(dataPagamento, id);
 }
+
+// Usado por quitar_divida: parcelas ainda pendentes de uma quitação antecipada.
+export function listarParcelasPendentes(db: DbClient, dividaId: number): Parcela[] {
+  const linhas = db
+    .prepare(
+      `SELECT ${COLUNAS_PARCELA} FROM parcelas WHERE divida_id = ? AND status = 'pendente' ORDER BY numero_parcela`,
+    )
+    .all(dividaId) as LinhaParcela[];
+  return linhas.map(paraParcela);
+}

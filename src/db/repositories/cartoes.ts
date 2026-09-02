@@ -60,12 +60,16 @@ export function buscarCartaoPorNome(db: DbClient, nome: string): Cartao[] {
 // edição grande demais pra busca aproximada), é nome parcial. Contenção de
 // substring cobre esse caso sem risco de "adivinhar": mais de um resultado
 // cai na mesma lógica de ambiguidade já usada pra nome exato.
+// Bidirecional — mesmo raciocínio de buscarContaPorApelidoParcial: cobre tanto
+// o nome conter o texto informado quanto o texto informado conter o nome real
+// mais uma palavra genérica (ex: "Cartão Nubank" pro nome "Nubank").
 export function buscarCartaoPorNomeParcial(db: DbClient, textoParcial: string): Cartao[] {
   const linhas = db
     .prepare(
-      "SELECT id, conta_id, nome, limite, dia_fechamento, dia_vencimento FROM cartoes WHERE LOWER(nome) LIKE '%' || LOWER(?) || '%'",
+      `SELECT id, conta_id, nome, limite, dia_fechamento, dia_vencimento FROM cartoes
+       WHERE LOWER(nome) LIKE '%' || LOWER(?) || '%' OR LOWER(?) LIKE '%' || LOWER(nome) || '%'`,
     )
-    .all(textoParcial) as LinhaCartao[];
+    .all(textoParcial, textoParcial) as LinhaCartao[];
 
   return linhas.map(paraCartao);
 }

@@ -3,11 +3,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { criarToolCriarDivida, criarToolRenegociar } from '../../../src/ai/tools/dividas.js';
+import { criarToolCriarDivida, criarToolQuitarDivida, criarToolRenegociar } from '../../../src/ai/tools/dividas.js';
 import type { DbClient } from '../../../src/db/client.js';
 import { criarCartao } from '../../../src/db/repositories/cartoes.js';
 import { criarConta } from '../../../src/db/repositories/contas.js';
-import { criarDivida } from '../../../src/db/repositories/dividas.js';
+import { criarDivida, obterDivida } from '../../../src/db/repositories/dividas.js';
 import { migrate } from '../../../src/db/migrate.js';
 
 const CHAVE_TESTE = 'chave-teste-tools-dividas';
@@ -150,6 +150,22 @@ describe('tool criar_divida', () => {
     const resultado = await tool.handler(args, { chatId: 1 });
 
     expect(resultado).toContain('Não encontrei');
+  });
+
+  it('recusa taxa_juros como porcentagem crua (ex: 2 em vez de 0.02) — achado real de teste manual', () => {
+    const tool = criarToolCriarDivida(db);
+
+    expect(() =>
+      tool.schema.parse({
+        conta_id: contaId,
+        tipo: 'financiamento',
+        valor_total: 12000,
+        num_parcelas: 12,
+        taxa_juros: 2,
+        sistema_amortizacao: 'price',
+        data_inicio: '2026-09-01',
+      }),
+    ).toThrow(/decimal mensal/);
   });
 });
 
@@ -477,5 +493,103 @@ describe('tool renegociar', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('tool quitar_divida', () => {
+  it('exige confirmação (alto impacto)', () => {
+    const tool = criarToolQuitarDivida(db);
+    expect(tool.requerConfirmacao).toBe(true);
+  });
+
+  it('paga todas as parcelas pendentes de uma vez e marca a dívida como quitado', async () => {
+    const { divida } = criarDivida(db, {
+      contaId,
+      tipo: 'emprestimo',
+      valorTotal: 1000,
+      numParcelas: 4,
+      dataInicio: '2026-09-01',
+    });
+
+    const tool = criarToolQuitarDivida(db);
+    const args = tool.schema.parse({
+      conta_apelido: 'Principal',
+      tipo_divida: 'emprestimo',
+      data_pagamento: '2026-09-10',
+    });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    const atualizada = obterDivida(db, divida.id);
+    expect(atualizada?.status).toBe('quitado');
+    expect(atualizada?.parcelasPagas).toBe(4);
+    const parcelasPendentes = db
+      .prepare("SELECT COUNT(*) AS total FROM parcelas WHERE divida_id = ? AND status = 'pendente'")
+      .get(divida.id) as { total: number };
+    expect(parcelasPendentes.total).toBe(0);
+    expect(resultado).toContain('4 parcela(s)');
+    expect(resultado).toContain('R$ 1000.00');
+    expect(resultado).toContain('2026-09-10');
+    expect(resultado).not.toMatch(/\bid\b/i);
+  });
+
+  it('preserva parcelas já pagas — só quita as pendentes', async () => {
+    const { divida } = criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 1200,
+      numParcelas: 12,
+      dataInicio: '2026-01-01',
+    });
+    db.prepare("UPDATE parcelas SET status = 'paga', data_pagamento = '2026-02-01' WHERE numero_parcela = 1").run();
+    db.prepare('UPDATE dividas SET parcelas_pagas = 1 WHERE id = ?').run(divida.id);
+
+    const tool = criarToolQuitarDivida(db);
+    const args = tool.schema.parse({ conta_apelido: 'Principal', tipo_divida: 'financiamento' });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    const atualizada = obterDivida(db, divida.id);
+    expect(atualizada?.status).toBe('quitado');
+    expect(atualizada?.parcelasPagas).toBe(12);
+    expect(resultado).toContain('11 parcela(s)');
+  });
+
+  it('sem data_pagamento informada, usa a data de hoje', async () => {
+    criarDivida(db, { contaId, tipo: 'outro', valorTotal: 500, numParcelas: 2, dataInicio: '2026-09-01' });
+
+    const tool = criarToolQuitarDivida(db);
+    const args = tool.schema.parse({ conta_apelido: 'Principal', tipo_divida: 'outro' });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    const hoje = new Date();
+    const hojeISO = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+    expect(resultado).toContain(hojeISO);
+  });
+
+  it('dívida já quitada não é mais um alvo válido — mesma regra de conta+tipo das demais ferramentas', async () => {
+    criarDivida(db, { contaId, tipo: 'emprestimo', valorTotal: 500, numParcelas: 1, dataInicio: '2026-09-01' });
+    const primeira = criarToolQuitarDivida(db);
+    await primeira.handler(
+      primeira.schema.parse({ conta_apelido: 'Principal', tipo_divida: 'emprestimo' }),
+      { chatId: 1 },
+    );
+
+    const tool = criarToolQuitarDivida(db);
+    const args = tool.schema.parse({ conta_apelido: 'Principal', tipo_divida: 'emprestimo' });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).toContain('Não encontrei');
+  });
+
+  it('avisa quando não há dívida do tipo informado nessa conta', async () => {
+    const tool = criarToolQuitarDivida(db);
+    const args = tool.schema.parse({ conta_apelido: 'Principal', tipo_divida: 'financiamento' });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).toContain('Não encontrei');
   });
 });

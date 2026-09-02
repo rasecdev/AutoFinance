@@ -1,5 +1,5 @@
 import type { DbClient } from '../client.js';
-import { criarParcela, type Parcela } from './parcelas.js';
+import { criarParcela, listarParcelasPendentes, marcarParcelaPaga, type Parcela } from './parcelas.js';
 
 export type TipoDivida = 'emprestimo' | 'financiamento' | 'consignado' | 'outro';
 export type SistemaAmortizacao = 'price' | 'sac';
@@ -165,6 +165,32 @@ export function incrementarParcelasPagas(db: DbClient, dividaId: number): Divida
   }
 
   return atualizada;
+}
+
+// Quitação antecipada: paga de uma vez todas as parcelas ainda pendentes (marca
+// cada uma como "paga", nunca "cancelada" — diferente de amortizar_divida, aqui
+// o valor total é de fato quitado, não eliminado, então o histórico de parcelas
+// deve refletir que foram pagas). Dívida já quitada/renegociada não é alvo válido.
+export function quitarDivida(
+  db: DbClient,
+  dividaId: number,
+  dataPagamento: string,
+): { divida: Divida; parcelasPagas: Parcela[] } {
+  return db.transaction(() => {
+    const pendentes = listarParcelasPendentes(db, dividaId);
+    for (const parcela of pendentes) {
+      marcarParcelaPaga(db, parcela.id, dataPagamento);
+    }
+
+    db.prepare("UPDATE dividas SET parcelas_pagas = num_parcelas, status = 'quitado' WHERE id = ?").run(dividaId);
+
+    const atualizada = obterDivida(db, dividaId);
+    if (!atualizada) {
+      throw new Error(`dívida ${dividaId} não encontrada após quitação`);
+    }
+
+    return { divida: atualizada, parcelasPagas: pendentes.map((parcela) => ({ ...parcela, status: 'paga' as const, dataPagamento })) };
+  })();
 }
 
 export function criarDivida(db: DbClient, divida: NovaDivida): { divida: Divida; parcelas: Parcela[] } {

@@ -9,9 +9,11 @@ import {
   criarDivida,
   gerarValoresParcelas,
   marcarDividaRenegociada,
+  quitarDivida,
 } from '../../src/db/repositories/dividas.js';
 import { migrate } from '../../src/db/migrate.js';
 import { criarConta } from '../../src/db/repositories/contas.js';
+import { marcarParcelaPaga, obterParcelaPorNumero } from '../../src/db/repositories/parcelas.js';
 
 const CHAVE_TESTE = 'chave-teste-dividas';
 
@@ -183,6 +185,43 @@ describe('buscarDividasPorContaETipo', () => {
 
     expect(encontradas).toHaveLength(1);
     expect(encontradas[0]?.valorTotal).toBe(8000);
+  });
+});
+
+describe('quitarDivida', () => {
+  it('paga todas as parcelas pendentes e marca a dívida como quitado', () => {
+    const { divida } = criarDivida(db, {
+      contaId,
+      tipo: 'emprestimo',
+      valorTotal: 1000,
+      numParcelas: 4,
+      dataInicio: '2026-09-01',
+    });
+
+    const { divida: atualizada, parcelasPagas } = quitarDivida(db, divida.id, '2026-09-15');
+
+    expect(atualizada.status).toBe('quitado');
+    expect(atualizada.parcelasPagas).toBe(4);
+    expect(parcelasPagas).toHaveLength(4);
+    expect(parcelasPagas.every((p) => p.status === 'paga' && p.dataPagamento === '2026-09-15')).toBe(true);
+  });
+
+  it('não mexe em parcelas já pagas — só quita as pendentes', () => {
+    const { divida } = criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 1200,
+      numParcelas: 4,
+      dataInicio: '2026-09-01',
+    });
+    const parcela1 = obterParcelaPorNumero(db, divida.id, 1);
+    if (parcela1) marcarParcelaPaga(db, parcela1.id, '2026-10-01');
+
+    const { divida: atualizada, parcelasPagas } = quitarDivida(db, divida.id, '2026-09-15');
+
+    expect(parcelasPagas).toHaveLength(3);
+    expect(atualizada.parcelasPagas).toBe(4);
+    expect(obterParcelaPorNumero(db, divida.id, 1)?.dataPagamento).toBe('2026-10-01');
   });
 });
 
