@@ -117,4 +117,11 @@ describe('buscarCartaoPorNomeParcial', () => {
   it('retorna array vazio quando nenhum nome contém o texto', () => {
     expect(buscarCartaoPorNomeParcial(db, 'xablau')).toEqual([]);
   });
+
+  it('encontra quando o texto informado contém o nome real mais uma palavra genérica (achado real de teste manual)', () => {
+    const conta = criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Principal' });
+    const cartao = criarCartao(db, { contaId: conta.id, nome: 'Nubank', limite: 5000, diaFechamento: 5, diaVencimento: 10 });
+
+    expect(buscarCartaoPorNomeParcial(db, 'Cartão Nubank')).toEqual([cartao]);
+  });
 });

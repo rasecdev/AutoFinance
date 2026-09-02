@@ -100,4 +100,10 @@ describe('buscarContaPorApelidoParcial', () => {
 
     expect(buscarContaPorApelidoParcial(db, 'xablau')).toEqual([]);
   });
+
+  it('encontra quando o texto informado contém o apelido real mais uma palavra genérica (achado real de teste manual)', () => {
+    const conta = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Principal' });
+
+    expect(buscarContaPorApelidoParcial(db, 'Conta Principal')).toEqual([conta]);
+  });
 });
