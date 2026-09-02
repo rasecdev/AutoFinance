@@ -39,11 +39,11 @@ Migração: chat_id + tokens em interacoes_ia, tabela resumos_conversa (Tarefa 1
 ### Fase E: Persistência de histórico
 
 - [x] Tarefa 17: Migração (`chat_id`, `tokens_prompt`, `tokens_completion` em `interacoes_ia`; tabela `resumos_conversa`) + repositório de leitura (últimas N interações por chat, soma de tokens desde o último resumo)
-- [ ] Tarefa 18: Repositório `resumos_conversa` (criar resumo, obter o mais recente por chat)
+- [x] Tarefa 18: Repositório `resumos_conversa` (criar resumo, obter o mais recente por chat)
 
 ### Checkpoint: Fundação de memória
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Migração roda limpo em banco novo e em banco existente (sem perda de dado)
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Migração roda limpo em banco novo e em banco existente (sem perda de dado)
 - [ ] Revisão com o usuário antes de prosseguir
 
 ### Fase F: Injeção de contexto na conversa
