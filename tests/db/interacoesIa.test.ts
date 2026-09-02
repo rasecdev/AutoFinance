@@ -9,7 +9,12 @@ import { definirPendencia, obterPendencia } from '../../src/bot/confirmacao.js';
 import { createHandlerTexto } from '../../src/bot/handlers/texto.js';
 import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
-import { atualizarAvaliacaoInteracao, registrarInteracaoIa } from '../../src/db/repositories/interacoesIa.js';
+import {
+  atualizarAvaliacaoInteracao,
+  buscarUltimasInteracoesPorChat,
+  registrarInteracaoIa,
+  somarTokensChat,
+} from '../../src/db/repositories/interacoesIa.js';
 import { obterTraceIdPorMensagem } from '../../src/bot/rastroRespostas.js';
 import { createLogger } from '../../src/logging/logger.js';
 
@@ -120,6 +125,120 @@ describe('atualizarAvaliacaoInteracao', () => {
 
   it('retorna false quando o trace_id não existe', () => {
     expect(atualizarAvaliacaoInteracao(db, 'trace-inexistente', 'incorreto')).toBe(false);
+  });
+});
+
+describe('buscarUltimasInteracoesPorChat (Fase 4, Tarefa 17)', () => {
+  it('retorna as últimas N interações de um chat em ordem cronológica', () => {
+    for (let i = 1; i <= 5; i += 1) {
+      registrarInteracaoIa(db, {
+        traceId: `trace-${i}`,
+        fluxo: 'conversa_texto',
+        modelo: 'openai/gpt-4o-mini',
+        mensagemUsuario: `mensagem ${i}`,
+        respostaModelo: `resposta ${i}`,
+        resultado: 'sucesso',
+        chatId: 100,
+      });
+    }
+
+    const ultimas = buscarUltimasInteracoesPorChat(db, 100, 3);
+
+    expect(ultimas.map((i) => i.traceId)).toEqual(['trace-3', 'trace-4', 'trace-5']);
+  });
+
+  it('ignora interações de outros chats', () => {
+    registrarInteracaoIa(db, {
+      traceId: 'trace-chat-100',
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      resultado: 'sucesso',
+      chatId: 100,
+    });
+    registrarInteracaoIa(db, {
+      traceId: 'trace-chat-200',
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      resultado: 'sucesso',
+      chatId: 200,
+    });
+
+    const ultimas = buscarUltimasInteracoesPorChat(db, 100, 10);
+
+    expect(ultimas.map((i) => i.traceId)).toEqual(['trace-chat-100']);
+  });
+
+  it('retorna só as interações depois de um trace_id quando informado', () => {
+    registrarInteracaoIa(db, {
+      traceId: 'trace-antiga',
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      resultado: 'sucesso',
+      chatId: 100,
+    });
+    registrarInteracaoIa(db, {
+      traceId: 'trace-nova',
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      resultado: 'sucesso',
+      chatId: 100,
+    });
+
+    const ultimas = buscarUltimasInteracoesPorChat(db, 100, 10, 'trace-antiga');
+
+    expect(ultimas.map((i) => i.traceId)).toEqual(['trace-nova']);
+  });
+});
+
+describe('somarTokensChat (Fase 4, Tarefa 17)', () => {
+  it('soma tokens_prompt + tokens_completion de todas as interações do chat', () => {
+    registrarInteracaoIa(db, {
+      traceId: 'trace-1',
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      resultado: 'sucesso',
+      chatId: 100,
+      tokensPrompt: 50,
+      tokensCompletion: 20,
+    });
+    registrarInteracaoIa(db, {
+      traceId: 'trace-2',
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      resultado: 'sucesso',
+      chatId: 100,
+      tokensPrompt: 30,
+      tokensCompletion: 10,
+    });
+
+    expect(somarTokensChat(db, 100)).toBe(110);
+  });
+
+  it('soma só a partir de um trace_id quando informado', () => {
+    registrarInteracaoIa(db, {
+      traceId: 'trace-antiga',
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      resultado: 'sucesso',
+      chatId: 100,
+      tokensPrompt: 50,
+      tokensCompletion: 20,
+    });
+    registrarInteracaoIa(db, {
+      traceId: 'trace-nova',
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      resultado: 'sucesso',
+      chatId: 100,
+      tokensPrompt: 30,
+      tokensCompletion: 10,
+    });
+
+    expect(somarTokensChat(db, 100, 'trace-antiga')).toBe(40);
+  });
+
+  it('retorna 0 quando o chat não tem interações', () => {
+    expect(somarTokensChat(db, 999)).toBe(0);
   });
 });
 
