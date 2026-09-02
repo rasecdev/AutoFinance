@@ -44,7 +44,7 @@ Migração: chat_id + tokens em interacoes_ia, tabela resumos_conversa (Tarefa 1
 ### Checkpoint: Fundação de memória
 - [x] `npm run build`/`lint`/`test` sem erro
 - [x] Migração roda limpo em banco novo e em banco existente (sem perda de dado)
-- [ ] Revisão com o usuário antes de prosseguir
+- [x] Revisão com o usuário antes de prosseguir
 
 ### Fase F: Injeção de contexto na conversa
 
