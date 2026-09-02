@@ -143,6 +143,64 @@ export function buscarDividasPorContaETipo(db: DbClient, contaId: number, tipo: 
   return linhas.map(paraDivida);
 }
 
+export function listarDividasAtivas(db: DbClient, contaId?: number): Divida[] {
+  const linhas = (
+    contaId !== undefined
+      ? db.prepare(`SELECT ${COLUNAS_DIVIDA} FROM dividas WHERE status = 'ativo' AND conta_id = ? ORDER BY data_inicio`).all(contaId)
+      : db.prepare(`SELECT ${COLUNAS_DIVIDA} FROM dividas WHERE status = 'ativo' ORDER BY data_inicio`).all()
+  ) as LinhaDivida[];
+  return linhas.map(paraDivida);
+}
+
+export type ParcelaPendenteComDivida = {
+  parcela: Parcela;
+  dividaTipo: TipoDivida;
+  dividaDescricao: string | null;
+  contaId: number;
+};
+
+type LinhaParcelaComDivida = {
+  id: number;
+  divida_id: number;
+  numero_parcela: number;
+  valor: number;
+  data_vencimento: string;
+  status: Parcela['status'];
+  data_pagamento: string | null;
+  divida_tipo: TipoDivida;
+  divida_descricao: string | null;
+  conta_id: number;
+};
+
+// Usado por resumo_dividas: todas as parcelas ainda pendentes de dívidas
+// ativas, já ordenadas por vencimento (mais próxima primeiro) — dá pra tirar
+// tanto o saldo devedor total (soma) quanto as próximas a vencer (primeiras N)
+// de uma única consulta.
+export function listarParcelasPendentesDividasAtivas(db: DbClient, contaId?: number): ParcelaPendenteComDivida[] {
+  const sql = `SELECT p.id, p.divida_id, p.numero_parcela, p.valor, p.data_vencimento, p.status, p.data_pagamento,
+                      d.tipo AS divida_tipo, d.descricao AS divida_descricao, d.conta_id AS conta_id
+               FROM parcelas p
+               JOIN dividas d ON d.id = p.divida_id
+               WHERE d.status = 'ativo' AND p.status = 'pendente'${contaId !== undefined ? ' AND d.conta_id = ?' : ''}
+               ORDER BY p.data_vencimento`;
+  const linhas = (contaId !== undefined ? db.prepare(sql).all(contaId) : db.prepare(sql).all()) as LinhaParcelaComDivida[];
+
+  return linhas.map((linha) => ({
+    parcela: {
+      id: linha.id,
+      dividaId: linha.divida_id,
+      numeroParcela: linha.numero_parcela,
+      valor: linha.valor,
+      dataVencimento: linha.data_vencimento,
+      status: linha.status,
+      dataPagamento: linha.data_pagamento,
+    },
+    dividaTipo: linha.divida_tipo,
+    dividaDescricao: linha.divida_descricao,
+    contaId: linha.conta_id,
+  }));
+}
+
 export function marcarDividaRenegociada(db: DbClient, id: number): void {
   db.prepare("UPDATE dividas SET status = 'renegociado' WHERE id = ?").run(id);
 }
