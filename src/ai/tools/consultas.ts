@@ -81,7 +81,7 @@ export function criarToolListarTransacoes(db: DbClient): ToolDefinition {
   return {
     name: 'listar_transacoes',
     description:
-      'Lista transações ativas e transferências entre contas, com filtros opcionais por conta (id ou apelido), categoria e período (data_inicio/data_fim, formato AAAA-MM-DD). Sem período informado, usa o mês atual. Transferência não tem categoria — ao filtrar por categoria, só transações aparecem. Assim que o usuário citar o nome/apelido da conta, chame esta ferramenta diretamente com esse nome em conta_apelido — mesmo que pareça um tipo de conta (ex: "PJ", "PF"), é só um nome; não peça confirmação extra.',
+      'Lista transações (receita/despesa do dia a dia) ativas e transferências entre contas, com filtros opcionais por conta (id ou apelido), categoria e período (data_inicio/data_fim, formato AAAA-MM-DD). Sem período informado, usa o mês atual. Transferência não tem categoria — ao filtrar por categoria, só transações aparecem. NUNCA use esta ferramenta pra dívida, financiamento, empréstimo ou consignado — isso é consultar_dividas_ativas/resumo_dividas, um domínio totalmente diferente. Assim que o usuário citar o nome/apelido da conta, chame esta ferramenta diretamente com esse nome em conta_apelido — mesmo que pareça um tipo de conta (ex: "PJ", "PF"), é só um nome; não peça confirmação extra.',
     schema: schemaListarTransacoes,
     handler: async (args) => {
       const {

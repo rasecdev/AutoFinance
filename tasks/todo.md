@@ -472,19 +472,21 @@
 
 ---
 
-### Tarefa 14: `consultar_fatura`, `consultar_dividas_ativas`, `resumo_dividas`
+### Tarefa 14: `consultar_fatura`, `consultar_dividas_ativas`, `resumo_dividas` ✅
 
-**Descrição:** Ferramentas de leitura sobre `faturas`/`dividas`/`parcelas`. Sem confirmação.
+**Implementado:** `src/ai/tools/consultasDividas.ts` (novo) com as três ferramentas, nenhuma com `requerConfirmacao`. `consultar_fatura` identifica por cartão + `mes_referencia` (mesmo normalizador de mês da Tarefa 11 — "AAAA-MM" ou só o mês, o código completa o ano). `consultar_dividas_ativas` e `resumo_dividas` aceitam conta opcional (sem conta, agrega de todas). Dois repositórios novos em `src/db/repositories/dividas.ts`: `listarDividasAtivas` (filtra `status = 'ativo'`, nunca lista quitada/renegociada) e `listarParcelasPendentesDividasAtivas` (join `parcelas`+`dividas`, ordenado por vencimento — usado pra tirar tanto o saldo devedor total (soma) quanto as próximas 5 parcelas a vencer de uma única consulta, sem duplicar query). "Saldo devedor total" é a soma nominal das parcelas pendentes (já com juros embutidos) — mesma métrica simples usada em `resumo_mensal`, não o principal real (esse conceito mais preciso só existe hoje dentro de `amortizar_divida`, calculado sob demanda); mensagem deixa isso explícito ("soma das parcelas pendentes") pra não confundir com o saldo devedor real usado na amortização.
 
 **Acceptance criteria:**
-- [ ] `consultar_fatura` retorna a fatura de um cartão/mês específico
-- [ ] `consultar_dividas_ativas` lista só dívidas com `status = 'ativo'`
-- [ ] `resumo_dividas` agrega saldo devedor total e próximas parcelas a vencer
+- [x] `consultar_fatura` retorna a fatura de um cartão/mês específico
+- [x] `consultar_dividas_ativas` lista só dívidas com `status = 'ativo'`
+- [x] `resumo_dividas` agrega saldo devedor total e próximas parcelas a vencer
 
-**Verification:**
-- [ ] `npm test` cobre as três consultas
-- [ ] `npm run build` sem erro
-- [ ] Manual: consultar fatura, dívidas ativas e resumo de dívidas via Telegram de Homologação
+**Achados reais do teste manual, corrigidos na hora:**
+1. **`Liste as dívidas ativas` chamava `listar_transacoes` (Tarefa 6) em vez de `consultar_dividas_ativas`** — mesmo a ferramenta certa estando registrada (confirmado via script isolado listando as 18 tools enviadas ao modelo). Causa provável: o usuário disse "Liste" e `listar_transacoes` é a única outra ferramenta cujo nome começa com "listar_" — o modelo parece ter pesado o casamento lexical do verbo mais que o domínio da descrição. Corrigido reforçando as duas descrições com desambiguação explícita e negativa: `consultar_dividas_ativas` agora diz "dívida/financiamento/empréstimo NUNCA é listar_transacoes"; `listar_transacoes` (`src/ai/tools/consultas.ts`) ganhou a negativa simétrica "NUNCA use esta ferramenta pra dívida, financiamento, empréstimo ou consignado".
+2. **`resumo_dividas`/`consultar_dividas_ativas` perguntavam pela conta antes de chamar**, mesmo o campo sendo opcional (mesma classe de hesitação já corrigida em `registrar_transferencia`, Tarefa 7) — descrição reforçada com "nunca pergunte pela conta antes de chamar, chame direto".
+- [x] `npm test` cobre as três consultas, mais os dois achados (298 testes no total, 23 novos)
+- [x] `npm run build`/`lint` sem erro
+- [x] Manual: consultar fatura, dívidas ativas e resumo de dívidas via Telegram de Homologação (VM parada, bot local) — as três funcionando corretamente após as correções de desambiguação, com e sem conta informada
 
 **Dependencies:** Tarefa 9
 
