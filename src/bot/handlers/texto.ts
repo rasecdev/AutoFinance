@@ -21,6 +21,11 @@ import {
   criarToolRenegociar,
 } from '../../ai/tools/dividas.js';
 import { criarToolPagarFatura, criarToolPagarParcela } from '../../ai/tools/pagamentos.js';
+import {
+  criarToolConsultarDividasAtivas,
+  criarToolConsultarFatura,
+  criarToolResumoDividas,
+} from '../../ai/tools/consultasDividas.js';
 import type { DbClient } from '../../db/client.js';
 import { registrarInteracaoIa } from '../../db/repositories/interacoesIa.js';
 import { registrarUsoTokens } from '../../db/repositories/usoTokens.js';
@@ -46,6 +51,9 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
     criarToolPagarFatura(db),
     criarToolQuitarDivida(db),
     criarToolAmortizarDivida(db),
+    criarToolConsultarFatura(db),
+    criarToolConsultarDividasAtivas(db),
+    criarToolResumoDividas(db),
   ];
 
   return async function handlerTexto(ctx: Context): Promise<void> {

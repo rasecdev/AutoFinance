@@ -9,6 +9,8 @@ import {
   buscarDividasPorContaETipo,
   criarDivida,
   gerarValoresParcelas,
+  listarDividasAtivas,
+  listarParcelasPendentesDividasAtivas,
   marcarDividaRenegociada,
   quitarDivida,
 } from '../../src/db/repositories/dividas.js';
@@ -293,6 +295,78 @@ describe('amortizarDivida', () => {
 
     const paga = db.prepare('SELECT valor FROM parcelas WHERE divida_id = ? AND numero_parcela = 1').get(divida.id) as { valor: number };
     expect(paga.valor).toBe(250);
+  });
+});
+
+describe('listarDividasAtivas', () => {
+  it('retorna só dívidas com status ativo, exclui quitadas e renegociadas', () => {
+    const { divida: ativa } = criarDivida(db, { contaId, tipo: 'emprestimo', valorTotal: 1000, numParcelas: 4, dataInicio: '2026-09-01' });
+    const { divida: quitada } = criarDivida(db, { contaId, tipo: 'financiamento', valorTotal: 500, numParcelas: 1, dataInicio: '2026-09-01' });
+    quitarDivida(db, quitada.id, '2026-09-05');
+    const { divida: renegociada } = criarDivida(db, { contaId, tipo: 'consignado', valorTotal: 800, numParcelas: 2, dataInicio: '2026-09-01' });
+    marcarDividaRenegociada(db, renegociada.id);
+
+    const resultado = listarDividasAtivas(db);
+
+    expect(resultado.map((d) => d.id)).toEqual([ativa.id]);
+  });
+
+  it('filtra por conta quando informada', () => {
+    criarDivida(db, { contaId, tipo: 'emprestimo', valorTotal: 1000, numParcelas: 4, dataInicio: '2026-09-01' });
+    const outraContaId = criarConta(db, { bancoNome: 'Bradesco', tipo: 'PF', apelido: 'Outra' }).id;
+    criarDivida(db, { contaId: outraContaId, tipo: 'financiamento', valorTotal: 2000, numParcelas: 4, dataInicio: '2026-09-01' });
+
+    const resultado = listarDividasAtivas(db, contaId);
+
+    expect(resultado).toHaveLength(1);
+    expect(resultado[0]?.tipo).toBe('emprestimo');
+  });
+
+  it('sem dívida nenhuma, retorna vazio', () => {
+    expect(listarDividasAtivas(db)).toEqual([]);
+  });
+});
+
+describe('listarParcelasPendentesDividasAtivas', () => {
+  it('retorna as parcelas pendentes ordenadas por data de vencimento, com contexto da dívida', () => {
+    criarDivida(db, { contaId, tipo: 'emprestimo', valorTotal: 400, numParcelas: 4, dataInicio: '2026-07-01', descricao: 'Cedo' });
+    criarDivida(db, { contaId, tipo: 'financiamento', valorTotal: 400, numParcelas: 4, dataInicio: '2026-09-01', descricao: 'Tarde' });
+
+    const resultado = listarParcelasPendentesDividasAtivas(db);
+
+    expect(resultado).toHaveLength(8);
+    expect(resultado[0]?.dividaDescricao).toBe('Cedo');
+    expect(resultado.every((item, i) => i === 0 || item.parcela.dataVencimento >= resultado[i - 1]!.parcela.dataVencimento)).toBe(true);
+  });
+
+  it('exclui parcelas de dívidas quitadas ou renegociadas', () => {
+    const { divida: quitada } = criarDivida(db, { contaId, tipo: 'emprestimo', valorTotal: 400, numParcelas: 4, dataInicio: '2026-09-01' });
+    quitarDivida(db, quitada.id, '2026-09-05');
+    criarDivida(db, { contaId, tipo: 'financiamento', valorTotal: 400, numParcelas: 4, dataInicio: '2026-09-01' });
+
+    const resultado = listarParcelasPendentesDividasAtivas(db);
+
+    expect(resultado).toHaveLength(4);
+  });
+
+  it('exclui parcelas já pagas', () => {
+    const { divida } = criarDivida(db, { contaId, tipo: 'emprestimo', valorTotal: 400, numParcelas: 4, dataInicio: '2026-09-01' });
+    db.prepare("UPDATE parcelas SET status = 'paga' WHERE divida_id = ? AND numero_parcela = 1").run(divida.id);
+
+    const resultado = listarParcelasPendentesDividasAtivas(db);
+
+    expect(resultado).toHaveLength(3);
+  });
+
+  it('filtra por conta quando informada', () => {
+    criarDivida(db, { contaId, tipo: 'emprestimo', valorTotal: 400, numParcelas: 4, dataInicio: '2026-09-01' });
+    const outraContaId = criarConta(db, { bancoNome: 'Bradesco', tipo: 'PF', apelido: 'Outra' }).id;
+    criarDivida(db, { contaId: outraContaId, tipo: 'financiamento', valorTotal: 400, numParcelas: 4, dataInicio: '2026-09-01' });
+
+    const resultado = listarParcelasPendentesDividasAtivas(db, contaId);
+
+    expect(resultado).toHaveLength(4);
+    expect(resultado.every((item) => item.contaId === contaId)).toBe(true);
   });
 });
 
