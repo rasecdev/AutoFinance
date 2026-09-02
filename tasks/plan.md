@@ -87,7 +87,7 @@ Tarefas detalhadas em `tasks/todo.md`.
 - [x] Tarefa 10: `renegociar`
 - [x] Tarefa 11: `pagar_parcela`, `pagar_fatura`
 - [x] Tarefa 12: `quitar_divida`
-- [ ] Tarefa 13: `amortizar_divida`
+- [x] Tarefa 13: `amortizar_divida`
 - [ ] Tarefa 14: `consultar_fatura`, `consultar_dividas_ativas`, `resumo_dividas`
 
 ### Checkpoint: Dívidas completas
