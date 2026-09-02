@@ -38,7 +38,7 @@ Migração: chat_id + tokens em interacoes_ia, tabela resumos_conversa (Tarefa 1
 
 ### Fase E: Persistência de histórico
 
-- [ ] Tarefa 17: Migração (`chat_id`, `tokens_prompt`, `tokens_completion` em `interacoes_ia`; tabela `resumos_conversa`) + repositório de leitura (últimas N interações por chat, soma de tokens desde o último resumo)
+- [x] Tarefa 17: Migração (`chat_id`, `tokens_prompt`, `tokens_completion` em `interacoes_ia`; tabela `resumos_conversa`) + repositório de leitura (últimas N interações por chat, soma de tokens desde o último resumo)
 - [ ] Tarefa 18: Repositório `resumos_conversa` (criar resumo, obter o mais recente por chat)
 
 ### Checkpoint: Fundação de memória
