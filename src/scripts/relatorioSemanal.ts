@@ -7,6 +7,7 @@ import { agregarFinanceiroPeriodo } from '../relatorios/financeiro.js';
 import { formatarRelatorio } from '../relatorios/formatar.js';
 import { calcularJanelaAnterior, calcularJanelaPeriodo } from '../relatorios/janela.js';
 import { agregarUsoIaPeriodo } from '../relatorios/usoIa.js';
+import { dormirAte } from './dormirAte.js';
 
 // Próximo domingo às 23h a partir de `agora` — se já é domingo e ainda não
 // passou das 23h, dispara hoje; se já passou das 23h (ou não é domingo),
@@ -62,7 +63,7 @@ async function main(): Promise<void> {
   if (!process.argv.includes('--agora')) {
     const proximoDisparo = calcularProximoDomingoAs23h(new Date());
     logger.info({ proximoDisparo: proximoDisparo.toISOString() }, 'aguardando próximo relatório semanal');
-    await new Promise((resolve) => setTimeout(resolve, proximoDisparo.getTime() - Date.now()));
+    await dormirAte(proximoDisparo.getTime());
   }
 
   const texto = montarRelatorioSemanal(db);
