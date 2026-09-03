@@ -1,4 +1,5 @@
 import type { DbClient } from '../db/client.js';
+import { listarBenchmarks } from '../db/repositories/benchmarksModelos.js';
 import { contarInteracoesAvaliadasIncorretas } from '../db/repositories/interacoesIa.js';
 import { obterUltimosSnapshots } from '../db/repositories/modelosOpenrouterHistorico.js';
 import { listarModelosReferenciaAtivos } from '../db/repositories/modelosReferenciaComparacao.js';
@@ -19,6 +20,15 @@ export type CandidatoReferencia = {
   custoEstimado: number;
 };
 
+export type MetricaModeloEmUso = {
+  fluxo: string;
+  modelo: string;
+  custoEstimado: number;
+  metrica: string;
+  valor: number;
+  fonteUrl: string;
+};
+
 export type AgregacaoUsoIa = {
   porFluxoModelo: TotalPorFluxoModelo[];
   totalTokensPrompt: number;
@@ -26,6 +36,7 @@ export type AgregacaoUsoIa = {
   totalCustoEstimado: number;
   interacoesIncorretas: number;
   metrica1: CandidatoReferencia[];
+  metrica3: MetricaModeloEmUso[];
 };
 
 // uso_tokens/interacoes_ia gravam data_hora como timestamp UTC completo
@@ -77,6 +88,36 @@ function calcularMetrica1(
   return candidatos;
 }
 
+// listarBenchmarks já ordena por id DESC — a primeira ocorrência de cada
+// nome de métrica é a mais recente (curadoria pode registrar a mesma métrica
+// de novo depois, ex: revisão trimestral).
+function calcularMetrica3(
+  db: DbClient,
+  porFluxoModelo: TotalPorFluxoModelo[],
+): MetricaModeloEmUso[] {
+  const resultado: MetricaModeloEmUso[] = [];
+
+  for (const item of porFluxoModelo) {
+    const metricasVistas = new Set<string>();
+
+    for (const benchmark of listarBenchmarks(db, item.fluxo, item.modelo)) {
+      if (metricasVistas.has(benchmark.metrica)) continue;
+      metricasVistas.add(benchmark.metrica);
+
+      resultado.push({
+        fluxo: item.fluxo,
+        modelo: item.modelo,
+        custoEstimado: item.custoEstimado,
+        metrica: benchmark.metrica,
+        valor: benchmark.valor,
+        fonteUrl: benchmark.fonteUrl,
+      });
+    }
+  }
+
+  return resultado;
+}
+
 export function agregarUsoIaPeriodo(db: DbClient, periodo: PeriodoRelatorio): AgregacaoUsoIa {
   const janela = paraJanelaTimestamp(periodo);
   const registros = listarUsoTokensPeriodo(db, janela).filter((registro) => registro.origem === 'uso_real');
@@ -106,12 +147,15 @@ export function agregarUsoIaPeriodo(db: DbClient, periodo: PeriodoRelatorio): Ag
     totalCustoEstimado += registro.custoEstimado;
   }
 
+  const porFluxoModelo = [...porFluxoModeloMap.values()];
+
   return {
-    porFluxoModelo: [...porFluxoModeloMap.values()],
+    porFluxoModelo,
     totalTokensPrompt,
     totalTokensCompletion,
     totalCustoEstimado,
     interacoesIncorretas: contarInteracoesAvaliadasIncorretas(db, janela),
     metrica1: calcularMetrica1(db, totalTokensPrompt, totalTokensCompletion),
+    metrica3: calcularMetrica3(db, porFluxoModelo),
   };
 }
