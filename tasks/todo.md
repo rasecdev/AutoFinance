@@ -41,7 +41,36 @@
 
 ## Fase N: Curadoria e execução
 
-### Tarefa 32: Tool `criar_caso_teste_benchmark`
+### Tarefa 32: Comando `/certo`
+
+**Achado real ao planejar a Tarefa 33 original** (antes de escrever qualquer código dela): nada no código hoje jamais grava `avaliacao_usuario = 'correto'` em `interacoes_ia` — `atualizarAvaliacaoInteracao` só é chamada por `handlerFeedback`/`/errado`, sem nenhuma contraparte positiva. O PLANO.md pressupõe "interações já marcadas `avaliacao_usuario = correto`" como gabarito pronto de usar, mas isso nunca existiu de fato. Sem essa tarefa, a Tarefa 33 (curadoria) não teria nenhum dado real pra resolver.
+
+**Descrição:** `src/bot/handlers/feedback.ts`: `createHandlerFeedback(db, logger, avaliacao: AvaliacaoUsuario)` — generaliza o handler existente pra aceitar a avaliação como parâmetro (mensagens de aviso/confirmação ajustadas conforme `avaliacao`), reaproveitando o mesmo rastro de `trace_id` por `message_id` (`rastroRespostas.ts`) já usado por `/errado`. `src/bot/router.ts`: novo `COMANDO_CERTO` (mesmo padrão case-insensitive de `COMANDO_ERRADO`), roteando pra uma segunda instância do handler. `src/index.ts`: instancia `createHandlerFeedback(db, logger, 'correto')` além da já existente `'incorreto'`, passa as duas pro roteador.
+
+**Acceptance criteria:**
+- [ ] `/certo`, respondendo (reply) a uma mensagem do bot, marca a interação correspondente como `avaliacao_usuario = 'correto'`
+- [ ] Mesmas mensagens de erro de `/errado` (sem reply, rastro não encontrado), adaptadas pro contexto de `/certo`
+- [ ] `/errado` continua funcionando exatamente como antes (nenhuma regressão)
+
+**Verification:**
+- [ ] `npm test` cobre: `/certo` marca como correto, mesmos casos de erro de `/errado` adaptados, roteamento reconhece `/certo` case-insensitive sem quebrar o roteamento de `/errado`
+- [ ] `npm run build`/`lint` sem erro
+- [ ] Manual em Homologação: responder a uma mensagem do bot com `/certo`, conferir `avaliacao_usuario = 'correto'` na interação
+
+**Dependencies:** None
+
+**Files likely touched:**
+- `src/bot/handlers/feedback.ts`
+- `src/bot/router.ts`
+- `src/index.ts`
+- `tests/bot/feedback.test.ts`
+- `tests/bot/router.test.ts`
+
+**Estimated scope:** Medium (5 arquivos)
+
+---
+
+### Tarefa 33: Tool `criar_caso_teste_benchmark`
 
 **Descrição:** Nova função em `src/db/repositories/interacoesIa.ts`: `buscarUltimaInteracaoCorreta(db, chatId)` — última linha com `avaliacao_usuario = 'correto'` naquele chat, retornando `traceId`, `mensagemUsuario` e `toolCalls` (parse do JSON já gravado em `tool_calls`). `src/ai/tools/benchmark.ts` (novo): `criarToolCriarCasoTesteBenchmark(db)` — `criar_caso_teste_benchmark()`, sem parâmetro (mesmo princípio de "editar essa transação" — regra 8 do system prompt: resolve pra última coisa relevante sem pedir id). Resolve a última interação correta do chat, usa `mensagemUsuario` como `entrada` e `toolCalls` como `saidaEsperada`, grava com `origem: 'derivado_correcao'`. Sem interação correta ainda registrada nesse chat, devolve mensagem clara em vez de erro/exceção. Registrada em `texto.ts` junto das outras ferramentas.
 
@@ -53,9 +82,9 @@
 **Verification:**
 - [ ] `npm test` cobre: promoção da última interação correta, chat sem interação correta, múltiplos chats não se misturam, interação sem `tool_calls` (mensagem só de texto, sem chamada de ferramenta) tratada corretamente
 - [ ] `npm run build`/`lint` sem erro
-- [ ] Manual em Homologação: marcar uma resposta recente como correta (feedback já existente, Fase 4), pedir "salva isso como caso de teste", conferir linha nova em `casos_teste_benchmark`
+- [ ] Manual em Homologação: marcar uma resposta recente como correta (`/certo`, Tarefa 32), pedir "salva isso como caso de teste", conferir linha nova em `casos_teste_benchmark`
 
-**Dependencies:** Tarefa 31
+**Dependencies:** Tarefa 31, Tarefa 32
 
 **Files likely touched:**
 - `src/db/repositories/interacoesIa.ts`
@@ -68,7 +97,7 @@
 
 ---
 
-### Tarefa 33: Motor de execução do benchmark interno
+### Tarefa 34: Motor de execução do benchmark interno
 
 **Descrição:** `src/ai/tools/conversaTools.ts` (novo): `montarToolsConversa(db): ToolDefinition[]` — extrai o array de ferramentas hoje montado inline em `createHandlerTexto` (`texto.ts`), sem mudar nenhuma ferramenta em si, só torna reaproveitável. `texto.ts` passa a chamar essa função. `src/ai/benchmark.ts` (novo): `executarBenchmarkFluxo(client, db, fluxo, modelosCandidatos: string[])` — pra cada modelo candidato, pra cada caso de `listarCasosTeste(db, fluxo)`, faz **uma chamada de completion não-executora** (system prompt + `montarToolsConversa(db)` + `entrada` do caso como única mensagem, `tool_choice: 'auto'`, sem loop, **nunca chama `tool.handler`**), extrai `tool_calls` da resposta, compara com `saidaEsperada` (comparação estrutural: mesmo conjunto de `{nome, argumentos}`, chaves de `argumentos` normalizadas antes de comparar — evita falso negativo por ordem de chave no JSON). Acumula acerto/total por modelo (acurácia), registra o custo de cada chamada via `registrarUsoTokens` com `origem: 'benchmark_interno'` (nunca `'uso_real'` — Tarefa 27 já filtra isso fora do relatório). Retorna, por modelo candidato: `{ modelo, acuracia, totalCasos, custoTotal }` — não grava em `benchmarks_modelos` ainda (isso é a Tarefa 34, que decide o rótulo/metrica e expõe no chat).
 
@@ -96,9 +125,9 @@
 
 ---
 
-### Tarefa 34: Tool `rodar_benchmark_interno(fluxo, modelos_candidatos)`
+### Tarefa 35: Tool `rodar_benchmark_interno(fluxo, modelos_candidatos)`
 
-**Descrição:** `src/ai/tools/benchmark.ts` (extende a Tarefa 32): `criarToolRodarBenchmarkInterno(client, db)` — `rodar_benchmark_interno(fluxo, modelos_candidatos: string[])`, `requerConfirmacao: true` (custa dinheiro real — N casos × M modelos, uma chamada cada), `avisoConfirmacao` mostra quantas chamadas reais a rodada vai fazer (`casos.length * modelosCandidatos.length`) antes da confirmação. Ao confirmar, chama `executarBenchmarkFluxo` (Tarefa 33) e, pra cada modelo candidato, grava o resultado via `registrarBenchmark(db, { fluxo, modelIdOpenrouter: modelo, metrica: 'acuracia_tool_calling', valor: acuracia, fonteUrl: 'interno' })`. Resposta final lista acurácia e custo por modelo candidato. Registrada em `texto.ts`.
+**Descrição:** `src/ai/tools/benchmark.ts` (extende a Tarefa 33): `criarToolRodarBenchmarkInterno(client, db)` — `rodar_benchmark_interno(fluxo, modelos_candidatos: string[])`, `requerConfirmacao: true` (custa dinheiro real — N casos × M modelos, uma chamada cada), `avisoConfirmacao` mostra quantas chamadas reais a rodada vai fazer (`casos.length * modelosCandidatos.length`) antes da confirmação. Ao confirmar, chama `executarBenchmarkFluxo` (Tarefa 34) e, pra cada modelo candidato, grava o resultado via `registrarBenchmark(db, { fluxo, modelIdOpenrouter: modelo, metrica: 'acuracia_tool_calling', valor: acuracia, fonteUrl: 'interno' })`. Resposta final lista acurácia e custo por modelo candidato. Registrada em `texto.ts`.
 
 **Acceptance criteria:**
 - [ ] Exige confirmação antes de rodar, mostrando quantas chamadas reais serão feitas
@@ -108,9 +137,9 @@
 **Verification:**
 - [ ] `npm test` cobre: pedido de confirmação com contagem certa de chamadas, gravação de um resultado por modelo candidato após confirmar, `fonte_url = 'interno'` sempre
 - [ ] `npm run build`/`lint` sem erro
-- [ ] Manual em Homologação: com pelo menos 1 caso de teste já curado (Tarefa 32), pedir "roda o benchmark de tool calling comparando openai/gpt-4o-mini e qwen/qwen3-32b", confirmar, conferir `benchmarks_modelos` com 2 linhas novas e custo do teste em `uso_tokens` (`origem = benchmark_interno`)
+- [ ] Manual em Homologação: com pelo menos 1 caso de teste já curado (Tarefa 33), pedir "roda o benchmark de tool calling comparando openai/gpt-4o-mini e qwen/qwen3-32b", confirmar, conferir `benchmarks_modelos` com 2 linhas novas e custo do teste em `uso_tokens` (`origem = benchmark_interno`)
 
-**Dependencies:** Tarefa 31, Tarefa 33
+**Dependencies:** Tarefa 31, Tarefa 34
 
 **Files likely touched:**
 - `src/ai/tools/benchmark.ts`
@@ -122,8 +151,8 @@
 ---
 
 ## Checkpoint: Benchmark interno funcional
-- [ ] Todos os critérios de aceite das Tarefas 31-34 atendidos
+- [ ] Todos os critérios de aceite das Tarefas 31-35 atendidos
 - [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: curar pelo menos 1 caso real de tool calling, rodar o benchmark comparando pelo menos 2 modelos, confirmar resultado em `benchmarks_modelos` com valor plausível e custo do teste visível em `uso_tokens` (`origem = benchmark_interno`)
+- [ ] Teste manual em Homologação: marcar uma resposta como correta (`/certo`), curar pelo menos 1 caso real de tool calling, rodar o benchmark comparando pelo menos 2 modelos, confirmar resultado em `benchmarks_modelos` com valor plausível e custo do teste visível em `uso_tokens` (`origem = benchmark_interno`)
 - [ ] PROGRESSO.md atualizado com o marco "Fase 6 (parte 2) concluída"
 - [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)

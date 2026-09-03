@@ -13,6 +13,7 @@ Mecanismo pra rodar modelos candidatos contra caso real do projeto e comparar ac
 - **Comparação é sempre feita pelo código, nunca pela IA julgando a si mesma** (já decidido no PLANO.md) — implementado como comparação estrutural de `tool_calls`: mesmo conjunto de `{nome, argumentos}` que `saida_esperada`, argumentos comparados por igualdade profunda (chaves normalizadas antes de comparar, pra não dar falso negativo por ordem de chave no JSON).
 - **Caso de teste = entrada avulsa, sem histórico de conversa.** `casos_teste_benchmark.entrada` é só a mensagem do usuário (texto), enviada isolada (sem `montarHistorico`) pro modelo candidato — simplificação consciente e coerente com o já aceito "amostra pequena e direcional, nunca medição estatística robusta" do PLANO.md. Casos que dependiam de contexto de turnos anteriores (ex: "edita essa transação" sem id) não são bons candidatos a caso de teste isolado — a curadoria (Tarefa 32) deve preferir promover interações que já eram autocontidas.
 - **Curadoria via chat, não script/VM.** Curar um caso é ação pontual, de baixa frequência, iniciada por você reconhecendo "essa resposta foi um bom exemplo, quero guardar" — cabe no mesmo padrão de "editar essa transação" (resolve pra última coisa relevante na conversa, sem pedir id): nova tool `criar_caso_teste_benchmark` resolve pra última interação avaliada como `correto` no chat atual, sem precisar de trace_id explícito (que nunca é mostrado a você hoje).
+- **Achado real ao planejar a Tarefa 32 original: nada no código hoje jamais grava `avaliacao_usuario = 'correto'`.** `atualizarAvaliacaoInteracao` (Fase 3/4) e o comando `/errado` (`handlerFeedback`) só cobrem o caminho negativo — não existe contraparte positiva. O PLANO.md pressupõe "interações já marcadas `avaliacao_usuario = correto`" como gabarito pronto, mas essa marcação nunca é feita por nenhum fluxo hoje. **Nova Tarefa 32 inserida antes da curadoria**: comando `/certo`, espelhando `/errado` (`createHandlerFeedback` generalizado pra aceitar a avaliação como parâmetro, reaproveitando o mesmo rastro de `trace_id` por `message_id` já existente) — sem isso a Tarefa 33 (curadoria) não teria nenhum dado real pra resolver. Tarefas seguintes renumeradas (33-35).
 - **Rodar o benchmark é ação que gasta dinheiro real (N casos × M modelos candidatos, uma chamada cada) — exige confirmação síncrona**, mesmo não gravando nenhum dado financeiro (é uma ação de "alto impacto" por custo, não por mutação de dado — mesmo espírito da regra de confirmação já usada em ações financeiras). `avisoConfirmacao` mostra quantas chamadas reais a rodada vai fazer antes de você confirmar.
 - **Custo do teste é uso real de IA, mas nunca conta como uso operacional do bot** — `registrarUsoTokens` já tem o enum `origem: 'uso_real' | 'benchmark_interno'` desde a Fase 1/5, nunca usado até agora. O motor grava com `origem: 'benchmark_interno'`, que a Tarefa 27 (Fase 6 parte 1) já filtra explicitamente pra fora do relatório de uso de IA — o custo do benchmark não some (fica rastreável em `uso_tokens`), só não polui a métrica de "uso real" do relatório periódico.
 - **Resultado grava em `benchmarks_modelos` com `fonte_url = "interno"`** — mesma tabela que algum dia vai receber benchmark externo pesquisado manualmente (BFCL etc., sem mecanismo de código, é curadoria direta na tabela), mas essa curadoria externa fica fora do escopo desta rodada (Métricas 2/3 do relatório, que leriam essa tabela, também ficam pra rodada futura — só a fundação de dado entra agora).
@@ -21,11 +22,13 @@ Mecanismo pra rodar modelos candidatos contra caso real do projeto e comparar ac
 ```
 Tabelas casos_teste_benchmark + benchmarks_modelos (Tarefa 31)
     │
-    ├── Tool criar_caso_teste_benchmark — curadoria (Tarefa 32)
+    ├── Comando /certo — contraparte de /errado (Tarefa 32)
+    │       │
+    │       └── Tool criar_caso_teste_benchmark — curadoria (Tarefa 33)
     │
-    └── montarToolsConversa compartilhado + motor de execução (Tarefa 33)
+    └── montarToolsConversa compartilhado + motor de execução (Tarefa 34)
             │
-            └── Tool rodar_benchmark_interno — expõe no chat, grava resultado (Tarefa 34)
+            └── Tool rodar_benchmark_interno — expõe no chat, grava resultado (Tarefa 35)
 ```
 
 ## Task List
@@ -39,13 +42,14 @@ Tabelas casos_teste_benchmark + benchmarks_modelos (Tarefa 31)
 
 ### Fase N: Curadoria e execução
 
-- [ ] Tarefa 32: Tool `criar_caso_teste_benchmark` — promove a última interação avaliada como correta na conversa em caso de teste
-- [ ] Tarefa 33: `montarToolsConversa` compartilhado + motor de execução do benchmark (não-executor, compara tool_calls, calcula acurácia e custo)
-- [ ] Tarefa 34: Tool `rodar_benchmark_interno(fluxo, modelos_candidatos)` — expõe o motor no chat, exige confirmação, grava resultado em `benchmarks_modelos`
+- [ ] Tarefa 32: Comando `/certo` — marca a última resposta do bot como correta (contraparte de `/errado`)
+- [ ] Tarefa 33: Tool `criar_caso_teste_benchmark` — promove a última interação avaliada como correta na conversa em caso de teste
+- [ ] Tarefa 34: `montarToolsConversa` compartilhado + motor de execução do benchmark (não-executor, compara tool_calls, calcula acurácia e custo)
+- [ ] Tarefa 35: Tool `rodar_benchmark_interno(fluxo, modelos_candidatos)` — expõe o motor no chat, exige confirmação, grava resultado em `benchmarks_modelos`
 
 ### Checkpoint: Benchmark interno funcional
 - [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: curar pelo menos 1 caso real de tool calling (`criar_caso_teste_benchmark`), rodar `rodar_benchmark_interno` comparando pelo menos 2 modelos, confirmar resultado em `benchmarks_modelos` com valor plausível e custo do teste visível em `uso_tokens` (`origem = benchmark_interno`)
+- [ ] Teste manual em Homologação: marcar uma resposta como correta (`/certo`), curar pelo menos 1 caso real de tool calling (`criar_caso_teste_benchmark`), rodar `rodar_benchmark_interno` comparando pelo menos 2 modelos, confirmar resultado em `benchmarks_modelos` com valor plausível e custo do teste visível em `uso_tokens` (`origem = benchmark_interno`)
 - [ ] PROGRESSO.md atualizado com o marco "Fase 6 (parte 2) concluída"
 - [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
 
