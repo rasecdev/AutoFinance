@@ -43,7 +43,7 @@ Agregação financeira do período (Tarefa 26)
 ### Fase L: Relatório sob demanda e automação
 
 - [x] Tarefa 28: Tool `relatorio(periodo)` — monta e formata o relatório diário/semanal/mensal sob demanda (texto puro, sem IA), registrada em `texto.ts`
-- [ ] Tarefa 29: Job semanal automático (push via Telegram, mesmo padrão operacional de `backup`/`monitorarPrecos`) — reaproveita a mesma formatação da Tarefa 28, com comparação vs. semana anterior
+- [x] Tarefa 29: Job semanal automático (push via Telegram, mesmo padrão operacional de `backup`/`monitorarPrecos`) — reaproveita a mesma formatação da Tarefa 28, com comparação vs. semana anterior
 - [ ] Tarefa 30: Job mensal automático + resumo narrativo via IA (fluxo dedicado `relatorio_mensal`, roteado via `roteamento_tarefas` como qualquer outro fluxo — números sempre pré-calculados e injetados no prompt, nunca gerados pelo modelo)
 
 ### Checkpoint: Fase 6 (parte 1) completa
