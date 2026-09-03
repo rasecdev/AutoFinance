@@ -1,67 +1,64 @@
-# Plano de Implementação: Fase 6 (parte 1) — Relatórios automáticos (diário/semanal/mensal)
+# Plano de Implementação: Fase 6 (parte 2) — Benchmark interno (tool calling)
 
 ## Overview
 
-Fase 6 do PLANO.md é um conjunto solto de refinamentos (relatórios, benchmark de qualidade, categorização assistida, projeção de fluxo de caixa, consulta dinâmica, transcrição de áudio, etc.) — grande demais e sem prioridade única. A pedido do usuário, esta rodada cobre só **relatórios automáticos (diário/semanal/mensal)**, a peça de maior uso real imediato: resumo de gastos e consumo de IA por período, sem precisar perguntar pro bot toda vez. Os demais itens da Fase 6 ficam pra rodadas futuras, sob demanda.
+Mecanismo pra rodar modelos candidatos contra caso real do projeto e comparar acurácia, no dado real do fluxo — decidido como próxima rodada da Fase 6 logo após terminar os relatórios automáticos (parte 1, concluída). Design completo já existe no PLANO.md, seção "Relatórios" > "Benchmark interno, pros fluxos sem benchmark de terceiro aplicável" (linhas ~260-291) e tabela "Cobertura de benchmark por fluxo" (linhas ~135-151) — esta rodada implementa esse desenho, não redesenha.
 
-Escopo conforme PLANO.md > "Relatórios (diário, semanal, mensal) e metas" (linhas 202-331), recortado pras seções 1 ("Uso do ecossistema de IA") e 2 ("Financeiro do período") — metas (seção 3), limite de cartão (seção 4), projeção de fluxo de caixa (5), patrimônio líquido (6), simulador (7) e consulta dinâmica (8) ficam fora desta rodada (nenhuma dessas tem CRUD/tool implementado ainda; `metas` é tabela vazia desde a Fase 1, sem uso).
+**Escopo recortado pra só o fluxo de tool calling (`conversa_texto`)** — o PLANO.md cobre 3 fluxos (categorização, extração de fatura, tool calling), mas hoje só tool calling tem gabarito real disponível: categorização assistida (`cache_categorizacao`) e leitura de fatura por e-mail (Fase 7) ainda não foram implementadas em nenhuma fase, então não têm dado real pra alimentar um caso de teste ainda. `avaliacao_usuario = 'correto'` em `interacoes_ia` (Fase 3) já é gabarito real pronto pra tool calling — os outros dois fluxos entram quando as features das quais dependem existirem.
 
 ## Architecture Decisions
 
-- **Diário é sob demanda (tool exposta à IA), semanal e mensal são push automático** — decisão explícita já registrada no PLANO.md ("demanda" pro diário, evita ruído de notificação repetitiva; semanal/mensal continuam automáticos). Job semanal/mensal segue o mesmo padrão operacional já validado nas Fases 1/5 (`docker-compose`, serviço dedicado com `while true` + `sleep`, sem lib de agendamento nova) — mas com um agendamento por dia da semana/dia do mês, não um intervalo fixo simples como backup/monitor-precos (ver Tarefa 29/30).
-- **Diário e semanal são template de texto puro, sem IA** — é aritmética sobre dado já coletado (`transacoes`, `uso_tokens`, `interacoes_ia`), custo zero de token. **Só o mensal usa IA**, e só pra costurar um resumo narrativo em cima de números já calculados pelo código — o modelo nunca soma, nunca calcula percentual, nunca gera o dado em si (mesma regra já usada no resumo de contexto da Fase 4: modelo nunca inventa número sobre dinheiro real).
-- **Métrica 1 (comparação token-a-token com modelos de referência) entra nesta rodada** — é só aritmética sobre dado já existente (`uso_tokens` × preço de `modelos_openrouter_historico`, ambos já implementados na Fase 5), sem chamada de IA extra. Nova tabela pequena `modelos_referencia_comparacao` (2-4 linhas, curadoria manual — mesmo padrão de tabela "começa vazia, você popula depois" já usado em `roteamento_tarefas`).
-- **Métricas 2 e 3 (comparação por benchmark) ficam fora desta rodada** — dependem de `benchmarks_modelos`, que não existe em nenhuma fase implementada ainda (confirmado na Fase 5, registrado como limitação conhecida). O relatório já é desenhado no PLANO.md pra degradar graciosamente sem essas métricas ("se não existir benchmark, a linha simplesmente não aparece") — não é preciso código condicional novo pra "desligar" isso, só não construímos a leitura de uma tabela que não existe.
-- **"Problemas encontrados no período" usa só `interacoes_ia.avaliacao_usuario = 'incorreto'`** — o PLANO.md também pede contagem de `erros_execucao`, mas essa tabela não existe em nenhuma migração ainda (não foi criada em nenhuma fase até aqui). Fica de fora desta rodada; se/quando `erros_execucao` for implementada (provável Fase 6 futura, junto de tratamento de erro mais amplo), o relatório ganha essa contagem sem precisar mudar a estrutura já construída aqui.
-- **Sem tabela de metas nesta rodada** — `metas` existe desde a Fase 1 mas está vazia e sem nenhuma tool de CRUD; a seção 3 do PLANO.md (progresso de meta, alerta em tempo real) depende de metas existirem primeiro. Fica fora do escopo, não bloqueia o relatório financeiro/de IA funcionar sem isso.
-- **Motor de agregação como funções puras e testáveis, separado do texto final** — mesmo padrão já usado no projeto (`src/finance/amortizacao.ts` isolado de qualquer I/O): `src/relatorios/` reúne funções que recebem `db` + período e devolvem dado estruturado (números, não string), e módulos separados formatam esse dado em texto. Facilita testar a aritmética sem precisar montar string, e reusa a mesma agregação entre diário/semanal/mensal (só muda a janela de tempo e se compara com o período anterior).
-- **Ordem de implementação**: agregação financeira e de uso de IA primeiro (fundação, sem elas nenhum relatório existe), depois a tool `relatorio(periodo)` sob demanda (valor mais imediato, cobre diário sozinho), depois os jobs automáticos de semanal/mensal (reaproveitam a mesma agregação e formatação, só trocam o gatilho e adicionam comparação com período anterior + resumo narrativo no mensal).
+- **Execução do benchmark NUNCA executa a ferramenta de verdade.** `gerarResposta` (produção) chama `tool.handler` de fato — reusar isso pro benchmark rodaria `criar_transacao`/`pagar_fatura`/etc. de verdade contra o banco a cada rodada de teste, poluindo dado real com efeito colateral. O motor de benchmark faz uma chamada de completion **não-executora**: envia o mesmo prompt de sistema + mesma lista de ferramentas + mensagem do caso, e só **inspeciona** `tool_calls` da resposta (nome + argumentos), nunca chama `handler`. Sem isso, o benchmark seria destrutivo por desenho.
+- **Lista de ferramentas compartilhada entre produção e benchmark.** Hoje o array de tools é montado inline dentro de `createHandlerTexto` (`texto.ts`), não é reaproveitável. Extrai pra `montarToolsConversa(db): ToolDefinition[]` (novo, `src/ai/tools/conversaTools.ts`), usado por `texto.ts` e pelo motor de benchmark — garante que o benchmark testa contra exatamente o mesmo schema/conjunto de ferramentas que a produção usa, não uma cópia que pode divergir com o tempo.
+- **Comparação é sempre feita pelo código, nunca pela IA julgando a si mesma** (já decidido no PLANO.md) — implementado como comparação estrutural de `tool_calls`: mesmo conjunto de `{nome, argumentos}` que `saida_esperada`, argumentos comparados por igualdade profunda (chaves normalizadas antes de comparar, pra não dar falso negativo por ordem de chave no JSON).
+- **Caso de teste = entrada avulsa, sem histórico de conversa.** `casos_teste_benchmark.entrada` é só a mensagem do usuário (texto), enviada isolada (sem `montarHistorico`) pro modelo candidato — simplificação consciente e coerente com o já aceito "amostra pequena e direcional, nunca medição estatística robusta" do PLANO.md. Casos que dependiam de contexto de turnos anteriores (ex: "edita essa transação" sem id) não são bons candidatos a caso de teste isolado — a curadoria (Tarefa 32) deve preferir promover interações que já eram autocontidas.
+- **Curadoria via chat, não script/VM.** Curar um caso é ação pontual, de baixa frequência, iniciada por você reconhecendo "essa resposta foi um bom exemplo, quero guardar" — cabe no mesmo padrão de "editar essa transação" (resolve pra última coisa relevante na conversa, sem pedir id): nova tool `criar_caso_teste_benchmark` resolve pra última interação avaliada como `correto` no chat atual, sem precisar de trace_id explícito (que nunca é mostrado a você hoje).
+- **Rodar o benchmark é ação que gasta dinheiro real (N casos × M modelos candidatos, uma chamada cada) — exige confirmação síncrona**, mesmo não gravando nenhum dado financeiro (é uma ação de "alto impacto" por custo, não por mutação de dado — mesmo espírito da regra de confirmação já usada em ações financeiras). `avisoConfirmacao` mostra quantas chamadas reais a rodada vai fazer antes de você confirmar.
+- **Custo do teste é uso real de IA, mas nunca conta como uso operacional do bot** — `registrarUsoTokens` já tem o enum `origem: 'uso_real' | 'benchmark_interno'` desde a Fase 1/5, nunca usado até agora. O motor grava com `origem: 'benchmark_interno'`, que a Tarefa 27 (Fase 6 parte 1) já filtra explicitamente pra fora do relatório de uso de IA — o custo do benchmark não some (fica rastreável em `uso_tokens`), só não polui a métrica de "uso real" do relatório periódico.
+- **Resultado grava em `benchmarks_modelos` com `fonte_url = "interno"`** — mesma tabela que algum dia vai receber benchmark externo pesquisado manualmente (BFCL etc., sem mecanismo de código, é curadoria direta na tabela), mas essa curadoria externa fica fora do escopo desta rodada (Métricas 2/3 do relatório, que leriam essa tabela, também ficam pra rodada futura — só a fundação de dado entra agora).
+- **Ordem de implementação**: tabelas primeiro (nada funciona sem elas), depois curadoria de caso (sem caso, não tem o que rodar), depois o motor de execução (compara sem gravar ainda), por último a tool que expõe o motor no chat com confirmação e grava o resultado.
 
 ```
-Agregação financeira do período (Tarefa 26)
+Tabelas casos_teste_benchmark + benchmarks_modelos (Tarefa 31)
     │
-    ├── Agregação de uso de IA do período + Métrica 1 (Tarefa 27)
-    │       │
-    │       └── Tool relatorio(periodo) — diário sob demanda (Tarefa 28)
-    │               │
-    │               ├── Job semanal automático (Tarefa 29)
-    │               │
-    │               └── Job mensal automático + resumo via IA (Tarefa 30)
+    ├── Tool criar_caso_teste_benchmark — curadoria (Tarefa 32)
+    │
+    └── montarToolsConversa compartilhado + motor de execução (Tarefa 33)
+            │
+            └── Tool rodar_benchmark_interno — expõe no chat, grava resultado (Tarefa 34)
 ```
 
 ## Task List
 
-### Fase K: Motor de agregação
+### Fase M: Fundação de dados
 
-- [x] Tarefa 26: Agregação financeira do período (transações por categoria, saldo consolidado, comparação com período anterior)
-- [x] Tarefa 27: Agregação de uso de IA do período (tokens/custo por fluxo+modelo, `origem = uso_real`, tendência vs. período anterior, Métrica 1 com `modelos_referencia_comparacao` novo) + contagem de `avaliacao_usuario = 'incorreto'`
+- [ ] Tarefa 31: Tabelas `casos_teste_benchmark` e `benchmarks_modelos` + repositórios
 
-### Checkpoint: Agregação testada
-- [x] `npm run build`/`lint`/`test` sem erro (412/412 em `development`, checado nesta revisão)
-- [x] Revisão com o usuário antes de prosseguir
+### Checkpoint: Fundação testada
+- [ ] `npm run build`/`lint`/`test` sem erro
 
-### Fase L: Relatório sob demanda e automação
+### Fase N: Curadoria e execução
 
-- [x] Tarefa 28: Tool `relatorio(periodo)` — monta e formata o relatório diário/semanal/mensal sob demanda (texto puro, sem IA), registrada em `texto.ts`
-- [x] Tarefa 29: Job semanal automático (push via Telegram, mesmo padrão operacional de `backup`/`monitorarPrecos`) — reaproveita a mesma formatação da Tarefa 28, com comparação vs. semana anterior
-- [x] Tarefa 30: Job mensal automático + resumo narrativo via IA (fluxo dedicado `relatorio_mensal`, roteado via `roteamento_tarefas` como qualquer outro fluxo — números sempre pré-calculados e injetados no prompt, nunca gerados pelo modelo)
+- [ ] Tarefa 32: Tool `criar_caso_teste_benchmark` — promove a última interação avaliada como correta na conversa em caso de teste
+- [ ] Tarefa 33: `montarToolsConversa` compartilhado + motor de execução do benchmark (não-executor, compara tool_calls, calcula acurácia e custo)
+- [ ] Tarefa 34: Tool `rodar_benchmark_interno(fluxo, modelos_candidatos)` — expõe o motor no chat, exige confirmação, grava resultado em `benchmarks_modelos`
 
-### Checkpoint: Fase 6 (parte 1) completa
-- [x] Todos os critérios de aceite das Tarefas 26-30 atendidos
-- [x] `npm run build`/`lint`/`test` sem erro (452/452 em `development`)
-- [x] Teste manual em Homologação: `relatorio(periodo=dia)` sob demanda (Tarefa 28), disparo manual do job semanal e do job mensal (via `--agora`) confirmando mensagem recebida no Telegram com números batendo com o banco — achado real de bug crítico de `setTimeout` durante esse teste, corrigido e reverificado (ver histórico do PROGRESSO.md)
-- [x] PROGRESSO.md atualizado com o marco "Fase 6 (parte 1) concluída"
-- [x] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
+### Checkpoint: Benchmark interno funcional
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação: curar pelo menos 1 caso real de tool calling (`criar_caso_teste_benchmark`), rodar `rodar_benchmark_interno` comparando pelo menos 2 modelos, confirmar resultado em `benchmarks_modelos` com valor plausível e custo do teste visível em `uso_tokens` (`origem = benchmark_interno`)
+- [ ] PROGRESSO.md atualizado com o marco "Fase 6 (parte 2) concluída"
+- [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
 
 ## Risks and Mitigations
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Job semanal/mensal com agendamento por dia da semana/mês (não intervalo fixo) é mais complexo que o `sleep N` já usado em backup/monitor-precos | Médio | Calcular o próximo horário-alvo (ex: próximo domingo 23h) e dormir até lá, reavaliando a cada execução — sem lib de cron nova, só aritmética de data no próprio script |
-| Relatório mensal usando IA pra narrar pode "vazar" para inventar número se o prompt não for explícito o bastante | Alto (Misinformation sobre dinheiro real) | Mesma regra já aplicada em `resumir_contexto` (Fase 4): todo número que aparece no texto final vem pré-calculado e injetado no prompt como dado estruturado; prompt do fluxo instruído a nunca calcular, só narrar |
-| Escopo da Fase 6 é grande — risco de a "parte 1" crescer pra cobrir metas/limite de cartão/consulta dinâmica no meio do caminho | Médio | Escopo desta rodada fechado explicitamente nesta revisão (só seções 1 e 2 do PLANO.md); qualquer necessidade de metas/cartão/etc. vira nova rodada, não expande esta |
+| Reaproveitar `gerarResposta` pro benchmark executaria ferramenta de verdade (efeito colateral real no banco a cada rodada de teste) | Alto (dado de teste poluindo dado real) | Motor de benchmark nunca chama `tool.handler` — só inspeciona `tool_calls` da resposta do modelo candidato, chamada de completion isolada sem loop de execução |
+| Comparação de argumentos por igualdade ingênua (`JSON.stringify` direto) dá falso negativo por ordem de chave diferente no JSON | Médio (acurácia medida errado) | Normalizar (ordenar chaves) antes de comparar — testado explicitamente com um caso de mesma resposta em ordens de chave diferentes |
+| Rodar contra muitos modelos/casos sem querer gera custo real inesperado | Baixo (PLANO.md já estima centavos a poucos dólares por rodada, mas ainda é dinheiro real) | Confirmação síncrona obrigatória antes de rodar, com contagem de chamadas reais que vão ser feitas |
+| Caso de teste curado a partir de uma interação que dependia de contexto de turnos anteriores (ex: "edita essa" sem id) fica sem sentido isolado, dando falso negativo pra todo modelo testado | Médio (benchmark mede errado, não o modelo) | Documentado como limitação conhecida na curadoria — não impede curar, mas registrado que casos autocontidos são preferíveis |
 
 ## Open Questions
 
-- Horário exato do job semanal (PLANO.md sugere "domingo à noite") e mensal ("último dia do mês") — validar na prática durante a Tarefa 29/30, sem bloquear o desenho.
-- Quais 2-4 modelos entram em `modelos_referencia_comparacao` inicialmente — decisão do usuário, populada manualmente depois da Tarefa 27 (tabela nasce vazia, mesmo padrão de `roteamento_tarefas`).
+- Nome exato da métrica gravada em `benchmarks_modelos.metrica` pro resultado do benchmark interno de tool calling (ex: `acuracia_tool_calling`) — decidido na Tarefa 33, sem impacto de desenho, só nomenclatura.
+- Métricas 2/3 do relatório (ler `benchmarks_modelos` no relatório semanal/mensal) ficam pra quando houver dado real acumulado o suficiente pra fazer sentido mostrar — não é tarefa desta rodada.
