@@ -9,6 +9,7 @@ const usoIaVazio = {
   totalCustoEstimado: 0,
   interacoesIncorretas: 0,
   metrica1: [],
+  metrica3: [],
 };
 
 describe('formatarRelatorio', () => {
@@ -70,6 +71,7 @@ describe('formatarRelatorio', () => {
         totalCustoEstimado: 0.01,
         interacoesIncorretas: 2,
         metrica1: [{ nomeExibicao: 'Claude Haiku', modelo: 'anthropic/claude-haiku-4.5', custoEstimado: 0.02 }],
+        metrica3: [],
       },
     });
 
@@ -97,9 +99,49 @@ describe('formatarRelatorio', () => {
         totalCustoEstimado: 0.01,
         interacoesIncorretas: 0,
         metrica1: [],
+        metrica3: [],
       },
     });
 
     expect(texto).not.toContain('incorretas');
+  });
+
+  it('mostra a Métrica 3 (benchmark do modelo real em uso) quando presente', () => {
+    const texto = formatarRelatorio({
+      inicio: '2026-03-15',
+      fim: '2026-03-15',
+      financeiro: financeiroVazio,
+      usoIa: {
+        porFluxoModelo: [
+          { fluxo: 'conversa_texto', modelo: 'openai/gpt-4o-mini', tokensPrompt: 100, tokensCompletion: 20, custoEstimado: 0.002341 },
+        ],
+        totalTokensPrompt: 100,
+        totalTokensCompletion: 20,
+        totalCustoEstimado: 0.002341,
+        interacoesIncorretas: 0,
+        metrica1: [],
+        metrica3: [
+          {
+            fluxo: 'conversa_texto',
+            modelo: 'openai/gpt-4o-mini',
+            custoEstimado: 0.002341,
+            metrica: 'acuracia_tool_calling',
+            valor: 1,
+            fonteUrl: 'interno',
+          },
+        ],
+      },
+    });
+
+    expect(texto).toContain('Benchmark do modelo real em uso');
+    expect(texto).toContain('conversa_texto (openai/gpt-4o-mini)');
+    expect(texto).toContain('acuracia_tool_calling: 1');
+    expect(texto).toContain('fonte: interno');
+  });
+
+  it('não mostra a seção da Métrica 3 quando vazia', () => {
+    const texto = formatarRelatorio({ inicio: '2026-03-15', fim: '2026-03-15', financeiro: financeiroVazio, usoIa: usoIaVazio });
+
+    expect(texto).not.toContain('Benchmark do modelo real em uso');
   });
 });
