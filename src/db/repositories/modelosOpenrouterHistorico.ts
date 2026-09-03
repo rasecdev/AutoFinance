@@ -65,3 +65,18 @@ export function obterUltimosSnapshots(db: DbClient, modelo: string, limite: numb
 
   return linhas.map(mapearLinha);
 }
+
+// Usado pra buscar candidato mais barato no catálogo inteiro: o snapshot mais
+// recente de cada modelo distinto (não só os já roteados).
+export function obterUltimoSnapshotPorModelo(db: DbClient): SnapshotModelo[] {
+  const linhas = db
+    .prepare(
+      `SELECT m.* FROM modelos_openrouter_historico m
+       INNER JOIN (
+         SELECT modelo, MAX(id) AS max_id FROM modelos_openrouter_historico GROUP BY modelo
+       ) mais_recente ON m.modelo = mais_recente.modelo AND m.id = mais_recente.max_id`,
+    )
+    .all() as LinhaSnapshotModelo[];
+
+  return linhas.map(mapearLinha);
+}
