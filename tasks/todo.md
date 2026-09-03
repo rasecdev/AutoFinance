@@ -41,18 +41,20 @@
 
 ## Fase I: Monitoramento de preço e alerta
 
-### Tarefa 23: Repositório `modelos_openrouter_historico` + script de snapshot semanal
+### Tarefa 23: Repositório `modelos_openrouter_historico` + script de snapshot semanal ✅
+
+**Implementado:** conforme descrito abaixo, sem desvios do planejado. `GET /api/v1/models` confirmado público (sem autenticação) direto contra a API real durante o desenvolvimento. `scripts/monitorarPrecos.ts` só chama `loadEnv()`/`getDb()`/`main()` quando executado diretamente (`process.argv[1] === fileURLToPath(import.meta.url)`) — sem esse guard, importar o módulo pra testar `buscarCatalogoOpenRouter`/`paraSnapshots` dispararia `loadEnv()` real no processo de teste (sem env configurado, quebraria a suíte).
 
 **Descrição:** `src/db/repositories/modelosOpenrouterHistorico.ts` (novo): `registrarSnapshotModelo(db, { modelo, precoPrompt, precoCompletion, capacidades, dataSnapshot })` (insert) e `obterUltimosSnapshots(db, modelo, limite)` (últimos N snapshots de um modelo, mais recente primeiro — base pra comparação de preço da Tarefa 24). `scripts/monitorarPrecos.ts` (novo, mesmo padrão de `scripts/backup.ts`): busca `GET https://openrouter.ai/api/v1/models` (endpoint público, sem autenticação), grava um snapshot por modelo do catálogo (`capacidades` como JSON — inclui pelo menos `supported_parameters`, usado na Tarefa 24 pra checar `requisitos`).
 
 **Acceptance criteria:**
-- [ ] Rodar o script grava um snapshot por modelo do catálogo em `modelos_openrouter_historico`
-- [ ] Falha de rede/API não derruba o processo com stack trace cru — erro logado, `process.exitCode = 1` (mesmo padrão de `backup.ts`)
+- [x] Rodar o script grava um snapshot por modelo do catálogo em `modelos_openrouter_historico`
+- [x] Falha de rede/API não derruba o processo com stack trace cru — erro logado, `process.exitCode = 1` (mesmo padrão de `backup.ts`)
 
 **Verification:**
-- [ ] `npm test` cobre o repositório (registrar, consultar últimos N) com fetch mockado no teste do script (sem chamada de rede real em teste automatizado)
-- [ ] `npm run build`/`lint` sem erro
-- [ ] Manual em Homologação: rodar `node dist/scripts/monitorarPrecos.js` manualmente (`docker compose exec`), conferir `modelos_openrouter_historico` populado no banco
+- [x] `npm test` cobre o repositório (registrar, consultar últimos N, transação em lote) com fetch mockado no teste do script (sem chamada de rede real em teste automatizado) — 376/376 em `development`
+- [x] `npm run build`/`lint` sem erro
+- [x] Manual em Homologação: rodar `node dist/scripts/monitorarPrecos.js` manualmente (`docker compose exec`), conferir `modelos_openrouter_historico` populado no banco — confirmado (424 modelos gravados, preço e `capacidades`/`supported_parameters` corretos)
 
 **Dependencies:** None (tabela já existe desde a Fase 1)
 
