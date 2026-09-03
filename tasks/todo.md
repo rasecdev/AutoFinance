@@ -66,19 +66,21 @@
 
 ## Fase L: Relatório sob demanda e automação
 
-### Tarefa 28: Tool `relatorio(periodo)`
+### Tarefa 28: Tool `relatorio(periodo)` ✅
+
+**Implementado:** conforme descrito, mais um achado real corrigido na hora — `src/relatorios/janela.ts` novo (`calcularJanelaPeriodo`), não previsto no arquivo original mas necessário pra centralizar o cálculo de janela (reaproveitado pelas Tarefas 29-30). **Achado real de bug de timezone, corrigido nesta tarefa:** `agregarUsoIaPeriodo` (Tarefa 27) convertia a data local (`AAAA-MM-DD`) pra janela UTC só concatenando `T00:00:00.000Z`/`T23:59:59.999Z` — funciona só se o processo rodar em UTC; em qualquer fuso ≠ UTC (ex: horário de Brasília, UTC-3), um registro feito às 23h local (já é madrugada do dia seguinte em UTC) ficava fora da janela do dia "de ontem" em UTC, mesmo sendo hoje pro usuário. Corrigido construindo os limites via componentes de data locais (`new Date(ano, mes, dia, ...)`) e convertendo com `toISOString()` — funciona em qualquer fuso, inclusive contêiner de produção sem `TZ` configurado (default UTC).
 
 **Descrição:** `src/relatorios/formatar.ts` (novo): `formatarRelatorio({ financeiro, usoIa, inicio, fim })` monta o texto final (template puro, sem IA) a partir do dado estruturado das Tarefas 26-27. `src/ai/tools/relatorios.ts` (novo): `criarToolRelatorio(db)` — `relatorio(periodo)` aceita `'dia' | 'semana' | 'mes'`, calcula a janela `inicio`/`fim` a partir da data atual (código resolve a data, nunca o modelo — mesmo "Princípio de data determinística" já usado em toda ferramenta com data), chama as duas agregações e formata. Registrada em `texto.ts` junto das outras ferramentas.
 
 **Acceptance criteria:**
-- [ ] `relatorio(periodo='dia')` retorna o relatório do dia atual, sob demanda
-- [ ] `relatorio(periodo='semana')`/`relatorio(periodo='mes')` funcionam sob demanda também (mesmo motor, chamado manualmente — a automação em si é só nas Tarefas 29-30)
-- [ ] Relatório nunca aparece vazio de forma confusa — período sem nenhuma transação/uso de IA mostra "nada registrado", não erro nem string vazia
+- [x] `relatorio(periodo='dia')` retorna o relatório do dia atual, sob demanda
+- [x] `relatorio(periodo='semana')`/`relatorio(periodo='mes')` funcionam sob demanda também (mesmo motor, chamado manualmente — a automação em si é só nas Tarefas 29-30)
+- [x] Relatório nunca aparece vazio de forma confusa — período sem nenhuma transação/uso de IA mostra "nada registrado", não erro nem string vazia
 
 **Verification:**
-- [ ] `npm test` cobre: cálculo de janela por período, formatação com dado presente/ausente, registro da tool em `texto.ts`
-- [ ] `npm run build`/`lint` sem erro
-- [ ] Manual em Homologação: pedir "me manda o relatório de hoje" pro bot, conferir que os números batem com o banco
+- [x] `npm test` cobre: cálculo de janela por período (dia/semana com borda segunda-domingo/mês com ano bissexto), formatação com dado presente/ausente, tool com dado real do banco, regressão específica do bug de timezone (registro perto da virada do dia incluído/excluído corretamente) — 431/431 em `development`
+- [x] `npm run build`/`lint` sem erro
+- [x] Manual em Homologação: pedir "me manda o relatório de hoje" pro bot, conferir que os números batem com o banco — confirmado (`relatorio(periodo='dia')` chamada corretamente, "2026-09-03", "nenhuma transação registrada hoje" e "Saldo consolidado: R$ -35,00" batendo com `contas`/`transacoes`)
 
 **Dependencies:** Tarefa 26, Tarefa 27
 
