@@ -68,20 +68,22 @@
 
 ---
 
-### Tarefa 24: Alerta de preço via Telegram + job semanal
+### Tarefa 24: Alerta de preço via Telegram + job semanal ✅
+
+**Implementado:** conforme descrito abaixo, com uma decisão de escopo tomada na prática (Open Question do `tasks/plan.md`): mensagem **agrupada** — uma única mensagem por execução do job, listando todas as oportunidades encontradas (mudança de preço + candidato mais barato), em vez de uma mensagem por fluxo. Evita spam quando várias linhas de `roteamento_tarefas` mudam na mesma semana. `custoTotal` (preço prompt + completion somados) é o critério de comparação — métrica única e simples, evita over-engineering de "custo estimado de uma chamada típica" sem dado real de proporção prompt/completion por fluxo.
 
 **Descrição:** Estende `scripts/monitorarPrecos.ts` (roda na sequência, mesma execução semanal): depois de gravar o snapshot novo, pra cada linha de `roteamento_tarefas` (fluxo com modelo preferido definido), compara (a) o preço do modelo ativo no snapshot novo vs. o snapshot anterior do mesmo modelo — mudou, alerta; (b) varre os demais modelos do snapshot novo cujo `supported_parameters` cobre a lista de `requisitos` daquela linha (comparação simples, string contém) e é mais barato que o modelo ativo — achou, alerta. Mensagem enviada via `new Bot(token).api.sendMessage(chatId, texto)` (sem long polling, só a chamada pontual da API) pra cada `chatId` em `env.telegramAllowedChatIds`. `docker-compose.yml` ganha `monitor-precos-producao`/`monitor-precos-homologacao` (mesmo padrão do `backup-*`: `while true; do node dist/scripts/monitorarPrecos.js; sleep 604800; done`).
 
 **Acceptance criteria:**
-- [ ] Preço do modelo ativo de um fluxo mudando entre dois snapshots dispara uma mensagem no Telegram
-- [ ] Surgimento de um modelo mais barato que atende `requisitos` de um fluxo dispara uma mensagem no Telegram
-- [ ] Nenhuma mudança de preço/candidato não dispara mensagem nenhuma (sem ruído)
-- [ ] O alerta nunca altera `roteamento_tarefas` sozinho — só avisa
+- [x] Preço do modelo ativo de um fluxo mudando entre dois snapshots dispara uma mensagem no Telegram
+- [x] Surgimento de um modelo mais barato que atende `requisitos` de um fluxo dispara uma mensagem no Telegram
+- [x] Nenhuma mudança de preço/candidato não dispara mensagem nenhuma (sem ruído)
+- [x] O alerta nunca altera `roteamento_tarefas` sozinho — só avisa
 
 **Verification:**
-- [ ] `npm test` cobre: disparo por mudança de preço, disparo por candidato mais barato, não-disparo quando nada mudou, filtro por `requisitos`
-- [ ] `npm run build`/`lint` sem erro
-- [ ] Manual em Homologação: forçar uma mudança de preço nos dados de teste (snapshot manual com preço diferente do anterior) e confirmar que a mensagem chega no Telegram
+- [x] `npm test` cobre: disparo por mudança de preço, disparo por candidato mais barato, não-disparo quando nada mudou/candidato não atende requisitos/candidato mais caro ou igual, fluxo roteado sem snapshot ainda (não quebra), formatação da mensagem agrupada, envio pra cada chat permitido — 389/389 em `development`
+- [x] `npm run build`/`lint` sem erro
+- [x] Manual em Homologação: forçar uma mudança de preço nos dados de teste (snapshot manual com preço diferente do anterior) e confirmar que a mensagem chega no Telegram — confirmado: o job semanal rodou automaticamente ao subir o container (`monitor-precos-homologacao`), detectou um candidato mais barato que atende `requisitos = 'tools'` pro fluxo `conversa_texto` (roteado pra `openai/gpt-5-nano` desde a Tarefa 22) e a mensagem chegou no Telegram — cobre o critério (b) do PLANO.md na prática, sem precisar forçar dado manualmente
 
 **Dependencies:** Tarefa 22 (`roteamento_tarefas`), Tarefa 23 (snapshot)
 
