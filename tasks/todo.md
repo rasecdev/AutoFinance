@@ -4,19 +4,21 @@
 
 ## Fase K: Motor de agregação
 
-### Tarefa 26: Agregação financeira do período
+### Tarefa 26: Agregação financeira do período ✅
+
+**Implementado:** conforme descrito abaixo, sem desvios do planejado. `agregarFinanceiroPeriodo` reaproveita `listarTransacoesAtivas` (já filtra `status = 'ativa'` e período), `listarContas`/`calcularSaldoTransacoesConta`/`calcularSaldoTransferenciasConta` (mesma fórmula de `consultar_saldo`, Fase 3) pro saldo consolidado. Transferências não contam como receita/despesa naturalmente — vivem em tabela própria, `listarTransacoesAtivas` nunca as toca.
 
 **Descrição:** `src/relatorios/financeiro.ts` (novo): `agregarFinanceiroPeriodo(db, { inicio, fim })` retorna dado estruturado (não string) — total de receita/despesa do período por categoria (só `transacoes.status = 'ativa'`), saldo consolidado atual de todas as contas (reaproveita a mesma lógica de `consultar_saldo`, sem duplicar). `agregarFinanceiroPeriodo` não sabe o que é "diário/semanal/mensal" — só recebe `inicio`/`fim`, quem decide a janela é o chamador (Tarefa 28+). Comparação com o período anterior fica pro chamador (chama a função duas vezes, com duas janelas, e compara os totais) — sem lógica de "período anterior" dentro da agregação em si.
 
 **Acceptance criteria:**
-- [ ] Retorna total de receita e despesa do período, quebrado por categoria
-- [ ] Retorna saldo consolidado de todas as contas
-- [ ] Ignora transação excluída (`status = 'excluida'`)
-- [ ] Transferências não contam como receita/despesa (mesmo princípio já usado no extrato — Fase 3)
+- [x] Retorna total de receita e despesa do período, quebrado por categoria
+- [x] Retorna saldo consolidado de todas as contas
+- [x] Ignora transação excluída (`status = 'excluida'`)
+- [x] Transferências não contam como receita/despesa (mesmo princípio já usado no extrato — Fase 3)
 
 **Verification:**
-- [ ] `npm test` cobre: período com/sem transação, múltiplas categorias, exclusão de transação excluída, transferência não contabilizada, saldo consolidado com múltiplas contas
-- [ ] `npm run build`/`lint` sem erro
+- [x] `npm test` cobre: período com/sem transação, múltiplas categorias, transação fora do período, exclusão de transação excluída, transferência não contabilizada (mas refletida no saldo), saldo consolidado com múltiplas contas — 399/399 em `development`
+- [x] `npm run build`/`lint` sem erro
 
 **Dependencies:** None
 
