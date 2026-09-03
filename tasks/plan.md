@@ -1,83 +1,77 @@
-# Plano de Implementação: Fase 4 — Contexto e memória de conversa
+# Plano de Implementação: Fase 5 — Roteamento de IA por fluxo + monitoramento de preços
 
 ## Overview
 
-Fase 3 deixou uma limitação conhecida e deliberadamente adiada: cada chamada ao modelo monta `messages` com apenas `system prompt + mensagem atual do usuário` (`src/ai/openrouter.ts`) — nada do histórico da conversa entra no prompt. Isso já funciona para comandos isolados ("quanto gastei em março?"), mas quebra continuidade entre turnos: pergunta de seguimento ("e comparado ao mês passado?"), confirmação pendente, desambiguação em curso, cadastro em várias perguntas. Fase 4 resolve isso com o mecanismo descrito no PLANO.md (linhas 501-519, 582): janela curta verbatim + resumo cumulativo disparado por acúmulo de tokens, mais o comando `/modelo` para trocar o modelo ativo por comparação prática.
+Até a Fase 4, o modelo usado em cada fluxo é uma constante hardcoded no código (`MODELO_PADRAO` em `conversa_texto`, `MODELO_RESUMO` em `resumir_contexto`), e trocar de modelo só acontece manualmente editando código (ou, por chat, via `/modelo` da Fase 4 — mas isso é só pra comparação pontual, não decisão permanente). Fase 5 torna essa escolha dinâmica e monitorada: a tabela `roteamento_tarefas` (já existe no schema desde a Fase 1, sem uso até agora) passa a ser a fonte real do modelo preferido por fluxo, um job semanal registra snapshot de preço/capacidade de todo o catálogo do OpenRouter em `modelos_openrouter_historico` (também já existe, sem uso), e alerta via Telegram quando o preço do modelo ativo muda ou surge um candidato mais barato — sem nunca trocar o modelo sozinho, só avisando pra você decidir.
 
-Escopo conforme PLANO.md > "Fases" > "Fase 4 — Contexto e memória de conversa" (linhas 501-519) e "Papel do chat depois da automação" (linha 582, racional de por que continuidade entre turnos é necessária independente do volume de lançamento manual).
+Escopo conforme PLANO.md > "Fases" > "Fase 5 — Roteamento de IA por fluxo e monitoramento de preços" (linhas 521-534), cruzado com "Roteamento de IA por fluxo (peça central do design)" (linhas 113-179, tabela de fluxos/exigências e seção "Cache").
 
 ## Architecture Decisions
 
-- **Fonte da conversa é `interacoes_ia`, sem tabela de mensagens duplicada** (decisão explícita do PLANO.md linha 507): o histórico completo já é gravado ali a cada chamada (`mensagem_usuario`/`resposta_modelo`/`trace_id`/`data_hora`). Falta apenas **associar cada linha a um chat** — hoje `interacoes_ia` não tem `chat_id`, então é impossível reconstruir "últimos N turnos de um chat" a partir da tabela como está. Migração nova adiciona `chat_id` e, para o gatilho de tokens (ver abaixo), `tokens_prompt`/`tokens_completion` diretamente em `interacoes_ia` — mais simples que fazer join com `uso_tokens` (que não tem `trace_id` nem `chat_id` hoje, e registra por fluxo/modelo agregado, não por interação).
-- **Nova tabela `resumos_conversa`** exatamente como especificada no PLANO.md linha 518: `id, chat_id, resumo_texto, cobre_ate_trace_id, tokens_janela_no_gatilho, criado_em`. Usa `chat_id` em vez de `usuario_id` citado no PLANO.md — o projeto não tem (nem precisa, por ora) conceito de usuário além do `chat_id` do Telegram (confirmado: nenhuma tabela `usuarios`, todo estado por chat já usa `chat_id` — `confirmacao.ts`, `contextoRecente.ts`). Sem migração pra usuário multiusuário nesta fase (PLANO.md deixa isso pra "se algum dia for necessário", Fase 6).
-- **Janela curta + resumo cumulativo, montado antes de cada chamada** (`src/ai/openrouter.ts` ou módulo novo `src/ai/contexto.ts`): busca o resumo mais recente de `resumos_conversa` pro chat (se existir) + as últimas N interações de `interacoes_ia` daquele chat que vieram **depois** do `cobre_ate_trace_id` do resumo (ou as últimas N, se não houver resumo ainda). Resumo entra como bloco fixo logo após o system prompt; janela curta entra como pares `user`/`assistant` verbatim na ordem cronológica, antes da mensagem atual.
-- **Gatilho por tokens acumulados, não por contagem de mensagens** (PLANO.md linha 510): soma `tokens_prompt + tokens_completion` das interações do chat desde o último resumo (ou desde o início, se não houver); ao ultrapassar um limite configurável (constante, ex. `LIMITE_TOKENS_JANELA = 6000`, ajustável sem migração), dispara `resumir_contexto` **depois** de responder ao usuário (não bloqueia a resposta atual — mesmo raciocínio de não adicionar latência perceptível a cada mensagem).
-- **`resumir_contexto` é um fluxo de IA dedicado, modelo próprio, resumo cumulativo** (PLANO.md linhas 511-513): chamada separada (não a mesma do `gerarResposta` da conversa), prompt específico que recebe resumo anterior (se houver) + as mensagens novas da janela, instruído a reter decisões/valores/pendências e descartar o literal de lançamento de dado já persistido no banco transacional. Sem `roteamento_tarefas` implementado ainda (isso é Fase 5, confirmado inexistente no código apesar da tabela já existir no schema) — o modelo do resumo é uma constante própria (`MODELO_RESUMO`), separada de `MODELO_PADRAO`, só documentando a intenção de "modelo mais barato" sem depender de infraestrutura de roteamento que ainda não existe.
-- **`registrar_uso_tokens` já existente cobre a chamada de resumo também** — `resumir_contexto` roda como mais uma chamada rastreada em `uso_tokens` (fluxo `'resumir_contexto'`, distinto de `'conversa_texto'`), e sua própria interação é registrada em `interacoes_ia` do mesmo jeito que qualquer outra chamada de IA (mesmo padrão de observabilidade já estabelecido na Fase 3, sem mecanismo novo).
-- **Cache não é implementado nesta fase** — o PLANO.md liga o desenho do resumo ao prompt caching (linha 514: resumo como prefixo estável), mas caching nativo de provedor é item da Fase 5 ("Habilitar prompt caching nativo do provedor onde disponível"). Aqui só a **estrutura** do prompt já fica pronta pra caching futuro (resumo fixo primeiro, janela variável depois) — sem `cache_control` ainda, sem dependência bloqueante.
-- **`/modelo <nome>` é troca em memória, por chat, sem persistência** (mesmo padrão já usado em `contextoRecente.ts`/`confirmacao.ts` — `Map<chatId, string>`): comando explícito do PLANO.md linha 502 ("pra comparação prática"), não uma feature de configuração permanente. Sem argumento, responde qual o modelo ativo naquele chat (padrão ou sobrescrito). Segue o mesmo padrão de registro de rota já usado por `/errado` (`router.ts`, regex case-insensitive + `bot.on('message:text').filter(...)`, registrado antes do handler genérico). Não valida o nome do modelo contra a lista do OpenRouter (isso exigiria uma chamada de API só pra validar) — se o nome for inválido, o próprio OpenRouter retorna erro na próxima chamada, tratado pelo `catch` já existente em `handlerTexto` (mesmo padrão de erro de qualquer chamada de IA).
-- **Ordem de implementação**: schema e leitura de histórico primeiro (nada do resto funciona sem `chat_id` gravado e sem conseguir consultar "últimas N interações"), depois montagem do prompt com janela+resumo, depois o próprio mecanismo de resumir (que depende da montagem existir pra ter o que resumir), depois o gatilho automático, depois `/modelo` (isolado, sem dependência do resto).
+- **`roteamento_tarefas`/`modelos_openrouter_historico` não exigem migração nova** — as duas tabelas já existem desde `0001_schema_inicial.sql` (Fase 1), sem repositório nem código usando-as até agora (mesmo achado documentado no plano da Fase 3: "já estão no schema, mas seguem sem uso"). Só entram repositórios novos e código que finalmente lê/escreve nelas.
+- **Só 2 dos ~10 fluxos da tabela de roteamento do PLANO.md existem de fato hoje** (`conversa_texto` e `resumir_contexto`, da Fase 3/4) — os demais (leitura de comprovante, categorização, relatório mensal, posts do LinkedIn, etc.) são de fases futuras (1-parcial/2/6/7) e não têm código pra rotear ainda. Esta fase aplica o roteamento de fato só a esses 2 fluxos existentes; os demais ganham a linha em `roteamento_tarefas` naturalmente quando cada fluxo for implementado (nenhum trabalho antecipado sem uso real).
+- **`roteamento_tarefas` sem linha pra um fluxo não é erro, é "usar o padrão ainda"**: mesmo padrão já usado em `/modelo` (Fase 4) — `obterModeloRoteamento(db, fluxo)` cai pra uma constante hardcoded (`MODELO_PADRAO`/`MODELO_RESUMO`) quando não há linha na tabela pro fluxo. Isso evita depender de seed/migração de dado pra não quebrar o comportamento atual no dia do deploy — a tabela começa vazia e só passa a ter efeito quando alguém (você, manualmente, ou o alerta de preço da Tarefa 24 no futuro) inserir uma linha.
+- **Precedência quando `/modelo` (override por chat, Fase 4) e `roteamento_tarefas` (preferência por fluxo) coexistem**: override do chat sempre vence — é uma decisão explícita e pontual de comparação feita na conversa, `roteamento_tarefas` é só o padrão de fábrica daquele fluxo quando ninguém pediu algo diferente. Nenhuma mudança de precedência é necessária no código — `obterModeloAtivo(chatId)` (Fase 4) já é consultado primeiro em `texto.ts`; `roteamento_tarefas` só entra como a nova fonte do valor *padrão* que `obterModeloAtivo` cai de volta quando não há override.
+- **`requisitos` (`roteamento_tarefas`) como lista simples de capacidades, não um schema estruturado**: a coluna já existe como `TEXT` livre desde a Fase 1. Decisão de formato pra esta fase: string separada por vírgula (ex: `"tools"` pro fluxo `conversa_texto`, que exige tool calling) comparada contra o campo `supported_parameters` que a própria API `GET /api/v1/models` do OpenRouter retorna por modelo (contém `"tools"` quando o modelo suporta function calling) — dado real da API, não uma inferência aproximada.
+- **Snapshot semanal cobre o catálogo inteiro do OpenRouter, não só os modelos já roteados** — necessário pra alerta (b) ("surge modelo mais barato que atende os requisitos") comparar contra candidatos que hoje não estão em uso; `GET /api/v1/models` é um único request público (sem autenticação), então cobrir o catálogo inteiro não multiplica chamadas de API.
+- **Job semanal segue o mesmo padrão operacional já usado pelo backup** (`docker-compose.yml`, serviço dedicado com `while true; do node dist/scripts/X.js; sleep 604800; done`) — sem introduzir biblioteca de agendamento (`node-cron` etc.) nem infraestrutura nova, mesmo racional de simplicidade operacional já validado pelo backup diário.
+- **Alerta nunca troca modelo sozinho** (PLANO.md, item de Segurança implícito no próprio design da Fase 5) — só envia mensagem via Telegram (Bot API, `chat.api.sendMessage`, sem long polling — script roda e termina) pros chats permitidos (`env.telegramAllowedChatIds`); a troca em `roteamento_tarefas` continua manual.
+- **`benchmarks_modelos` fica fora do escopo desta fase** — PLANO.md prevê o alerta de preço incluindo benchmark "quando já existir" (linha 527), mas `benchmarks_modelos` não é implementada em nenhuma fase até aqui (curadoria manual trimestral, ainda não desenhada como tarefa concreta) — com a tabela inexistente/vazia, a menção a benchmark no corpo do alerta fica sempre vazia por enquanto; a mensagem de alerta é escrita de um jeito que não referencia a tabela ainda, evitando código morto. Revisitar quando `benchmarks_modelos` entrar em alguma fase futura.
+- **Prompt caching nativo (Anthropic) isolado numa tarefa própria, por último** — não depende do roteamento estar completo (funciona pra qualquer modelo Anthropic ativo, venha de `/modelo`, `roteamento_tarefas` ou constante padrão), mas faz mais sentido depois que o sistema já suporta múltiplos modelos de verdade. Escopo conforme PLANO.md ("Cache", linha 156): `cache_control: {type: 'ephemeral', ttl: '1h'}` explícito na mensagem de system prompt quando o modelo ativo do fluxo é Anthropic (`anthropic/*`) — TTL de 1h em vez do padrão de 5min, porque bot pessoal de uso esporádico esvaziaria o cache padrão entre mensagens. OpenAI/Gemini cacheiam automaticamente (nenhuma mudança de código necessária) — só logar `cached_tokens`/`cache_write_tokens` da resposta (quando presentes) pra confirmar que o cache está de fato sendo usado, em vez de assumir.
 
 ```
-Migração: chat_id + tokens em interacoes_ia, tabela resumos_conversa (Tarefa 17)
+roteamento_tarefas: repositório + aplicar em conversa_texto/resumir_contexto (Tarefa 22)
     │
-    ├── Repositório: últimas N interações por chat, soma de tokens desde o resumo (Tarefa 17)
-    │
-    └── Repositório resumos_conversa: criar, obter último por chat (Tarefa 18)
+    └── modelos_openrouter_historico: repositório + script de snapshot semanal (Tarefa 23)
             │
-            └── Montagem do prompt com resumo (prefixo) + janela curta (sufixo) (Tarefa 19)
-                    │
-                    ├── Fluxo `resumir_contexto` (chamada dedicada, resumo cumulativo) (Tarefa 20)
-                    │       │
-                    │       └── Gatilho automático por tokens acumulados (Tarefa 20)
-                    │
-                    └── Comando `/modelo <nome>` (Tarefa 21, paralelizável com 20)
+            └── Alerta de preço via Telegram (compara snapshots, usa requisitos de roteamento_tarefas) + job semanal no docker-compose (Tarefa 24)
+
+Prompt caching nativo (Anthropic cache_control + log de cached_tokens) (Tarefa 25, paralelizável com 22-24)
 ```
 
 ## Task List
 
-### Fase E: Persistência de histórico
+### Fase H: Roteamento por fluxo
 
-- [x] Tarefa 17: Migração (`chat_id`, `tokens_prompt`, `tokens_completion` em `interacoes_ia`; tabela `resumos_conversa`) + repositório de leitura (últimas N interações por chat, soma de tokens desde o último resumo)
-- [x] Tarefa 18: Repositório `resumos_conversa` (criar resumo, obter o mais recente por chat)
+- [ ] Tarefa 22: Repositório `roteamento_tarefas` (obter modelo preferido por fluxo, com fallback pra constante atual quando não há linha) + aplicar em `conversa_texto` e `resumir_contexto`
 
-### Checkpoint: Fundação de memória
-- [x] `npm run build`/`lint`/`test` sem erro
-- [x] Migração roda limpo em banco novo e em banco existente (sem perda de dado)
-- [x] Revisão com o usuário antes de prosseguir
+### Checkpoint: Roteamento aplicado
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Testar manualmente em Homologação: inserir uma linha em `roteamento_tarefas` pro fluxo `conversa_texto` com um modelo diferente do padrão, confirmar que a próxima conversa usa esse modelo (sem `/modelo` sobrescrever)
+- [ ] Revisão com o usuário antes de prosseguir
 
-### Fase F: Injeção de contexto na conversa
+### Fase I: Monitoramento de preço e alerta
 
-- [x] Tarefa 19: Montagem do prompt com resumo (bloco fixo) + janela curta verbatim (sufixo); `chat_id`/tokens passam a ser gravados em `interacoes_ia` em toda chamada
-- [x] Tarefa 20: Fluxo `resumir_contexto` (chamada dedicada de IA, resumo cumulativo a partir do resumo anterior + mensagens novas) e gatilho automático por tokens acumulados após responder ao usuário
+- [ ] Tarefa 23: Repositório `modelos_openrouter_historico` (registrar snapshot, consultar snapshots de um modelo) + `scripts/monitorarPrecos.ts` que busca `GET /api/v1/models` do OpenRouter e grava snapshot do catálogo inteiro
+- [ ] Tarefa 24: Comparação de preço (modelo ativo mudou de preço; modelo mais barato que atende `requisitos` surgiu) + envio de alerta via Telegram + serviço semanal no `docker-compose.yml` (mesmo padrão do backup)
 
-### Checkpoint: Memória funcional
-- [x] Testar manualmente em Homologação: pergunta de seguimento sem repetir contexto ("e comparado ao mês passado?"), e uma conversa longa o bastante pra disparar o resumo automático — conferir `resumos_conversa` no banco (feito incrementalmente nas Tarefas 19-20, incluindo o achado de calibração de `LIMITE_TOKENS_JANELA`, ver PROGRESSO.md)
-- [x] `npm test` passa (346/346 em `development`)
-- [x] Revisão com o usuário antes de prosseguir
+### Checkpoint: Monitoramento de preço funcional
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Rodar `scripts/monitorarPrecos.ts` manualmente em Homologação, confirmar snapshot gravado em `modelos_openrouter_historico`
+- [ ] Testar o alerta manualmente (forçar uma mudança de preço/candidato mais barato nos dados de teste), confirmar mensagem recebida no Telegram
+- [ ] Revisão com o usuário antes de prosseguir
 
-### Fase G: Troca de modelo
+### Fase J: Prompt caching
 
-- [x] Tarefa 21: Comando `/modelo <nome>` (troca em memória por chat) e `/modelo` sem argumento (mostra o modelo ativo)
+- [ ] Tarefa 25: `cache_control: {type: 'ephemeral', ttl: '1h'}` explícito quando o modelo ativo for Anthropic + log de `cached_tokens`/`cache_write_tokens` da resposta
 
-### Checkpoint: Fase 4 completa
-- [x] Todos os critérios de aceite das Tarefas 17-21 atendidos
-- [x] `npm run build`/`lint`/`test` sem erro (356/356 em `development`, checado nesta revisão)
-- [x] Teste manual em Homologação: trocar de modelo via `/modelo`, confirmar que a próxima resposta usa o modelo novo (`interacoes_ia.modelo`) — confirmado (`modelo = 'openai/gpt-5-nano'` depois de `/modelo openai/gpt-5-nano`), incluindo o achado real de nome de exibição vs. slug corrigido na Tarefa 21
-- [x] PROGRESSO.md atualizado com o marco "Fase 4 concluída"
-- [x] Revisão com o usuário antes de prosseguir para a Fase 5
+### Checkpoint: Fase 5 completa
+- [ ] Todos os critérios de aceite das Tarefas 22-25 atendidos
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação confirmando cache ativo (`cached_tokens` > 0) numa conversa com modelo Anthropic roteado via `/modelo`
+- [ ] PROGRESSO.md atualizado com o marco "Fase 5 concluída"
+- [ ] Revisão com o usuário antes de prosseguir para a Fase 6
 
 ## Risks and Mitigations
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Resumo gerado por IA perde informação relevante (decisão/pendência) que não estava explícita o bastante nas mensagens originais | Médio — pode causar resposta incoerente num turno de seguimento | Prompt do `resumir_contexto` explicitamente instruído a priorizar decisões/valores/pendências (PLANO.md linha 513); dado transacional real nunca depende do resumo (sempre no banco), só a continuidade conversacional depende dele |
-| Gatilho de tokens dispara resumo com frequência maior que o esperado (limite mal calibrado) e gera custo/latência extra perceptível | Baixo-Médio | Resumo roda depois de responder ao usuário (não bloqueia a resposta atual); limite é uma constante ajustável sem migração; validar na prática em Homologação antes de considerar a Fase concluída |
-| `chat_id` novo em `interacoes_ia` fica `NULL` em linhas históricas (Fase 3) — janela de contexto ficaria incompleta pra conversas antigas | Baixo | Aceitável: memória de conversa só precisa funcionar a partir de quando a coluna existir; não é objetivo retroagir/preencher `chat_id` de interações passadas |
-| Comando `/modelo` aceita nome de modelo inválido sem validação prévia | Baixo | Erro da chamada de IA cai no mesmo tratamento de erro já existente (`catch` em `handlerTexto`); usuário recebe mensagem de erro e pode tentar `/modelo` de novo com outro nome |
+| `GET /api/v1/models` do OpenRouter mudar de formato ou ficar instável (endpoint público, sem contrato garantido) | Médio — job semanal falha silenciosamente | Script loga erro explícito (mesmo padrão do `backup.ts`) e não quebra o resto do sistema (job isolado, não bloqueia o bot principal); alerta de preço só dispara quando há snapshot novo pra comparar, nunca com dado velho como se fosse atual |
+| Comparação de `requisitos` (string simples) contra `supported_parameters` do catálogo pode gerar falso-negativo (modelo capaz mas com `supported_parameters` reportado de forma diferente pelo provedor) | Baixo | Aceitável pra esta fase — alerta é só um aviso pra decisão humana, nunca troca sozinho; falso-negativo custa um candidato não sugerido, não uma troca errada |
+| `cache_control` com TTL de 1h explícito custa 25% a mais na escrita do cache (Anthropic) — pode não compensar se o chat troca de modelo com frequência via `/modelo` | Baixo | Só se aplica quando o modelo ativo é de fato Anthropic; decisão de trocar de modelo continua sendo do usuário, que já vê o comportamento via `/modelo` antes de fixar uma rotina |
+| Job semanal rodando num container `while true` sem supervisão além do `restart: unless-stopped` do Docker — mesmo padrão do backup, já validado em produção | Baixo | Reaproveita padrão operacional já em uso há semanas sem incidente (backup diário) |
 
 ## Open Questions
 
-- Valor exato do limite de tokens que dispara o resumo (PLANO.md sugere ~6-8k como ponto de partida, "a validar na prática") — decidir/ajustar durante a Tarefa 20, conforme comportamento real em Homologação.
-- Quantidade exata de turnos (N) na janela curta verbatim (PLANO.md sugere 10-15) — mesma lógica, validar na prática durante a Tarefa 19.
-- `MODELO_RESUMO` (modelo dedicado e mais barato pro fluxo `resumir_contexto`) — escolher um candidato concreto na Tarefa 20; sem roteamento (`roteamento_tarefas`) ainda implementado, fica como constante isolada até a Fase 5.
+- Lista de capacidades que `requisitos` deve cobrir além de `"tools"` (o único fluxo ativo que exige algo específico hoje é `conversa_texto`) — expandir conforme fluxos novos entrarem em fases futuras, não antecipar categorias sem uso real.
+- Frequência/formato exato da mensagem de alerta (uma mensagem por fluxo com mudança, ou um resumo semanal agrupado) — decidir na prática durante a Tarefa 24, conforme o volume real de mudanças observado.
