@@ -58,13 +58,13 @@ Migração: chat_id + tokens em interacoes_ia, tabela resumos_conversa (Tarefa 1
 
 ### Fase G: Troca de modelo
 
-- [ ] Tarefa 21: Comando `/modelo <nome>` (troca em memória por chat) e `/modelo` sem argumento (mostra o modelo ativo)
+- [x] Tarefa 21: Comando `/modelo <nome>` (troca em memória por chat) e `/modelo` sem argumento (mostra o modelo ativo)
 
 ### Checkpoint: Fase 4 completa
-- [ ] Todos os critérios de aceite das Tarefas 17-21 atendidos
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: trocar de modelo via `/modelo`, confirmar que a próxima resposta usa o modelo novo (`interacoes_ia.modelo`)
-- [ ] PROGRESSO.md atualizado com o marco "Fase 4 concluída"
+- [x] Todos os critérios de aceite das Tarefas 17-21 atendidos
+- [x] `npm run build`/`lint`/`test` sem erro (356/356 em `development`, checado nesta revisão)
+- [x] Teste manual em Homologação: trocar de modelo via `/modelo`, confirmar que a próxima resposta usa o modelo novo (`interacoes_ia.modelo`) — confirmado (`modelo = 'openai/gpt-5-nano'` depois de `/modelo openai/gpt-5-nano`), incluindo o achado real de nome de exibição vs. slug corrigido na Tarefa 21
+- [x] PROGRESSO.md atualizado com o marco "Fase 4 concluída"
 - [ ] Revisão com o usuário antes de prosseguir para a Fase 5
 
 ## Risks and Mitigations
