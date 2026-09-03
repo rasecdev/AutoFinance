@@ -35,7 +35,7 @@
 ---
 
 ## Checkpoint: Fundação testada
-- [ ] `npm run build`/`lint`/`test` sem erro
+- [x] `npm run build`/`lint`/`test` sem erro (460/460 em `development`, confirmado após a Tarefa 31)
 
 ---
 
@@ -162,5 +162,5 @@
 - [x] Todos os critérios de aceite das Tarefas 31-35 atendidos
 - [x] `npm run build`/`lint`/`test` sem erro (488/488 em `development`)
 - [x] Teste manual em Homologação: marcar uma resposta como correta (`/certo`), curar pelo menos 1 caso real de tool calling, rodar o benchmark comparando pelo menos 2 modelos, confirmar resultado em `benchmarks_modelos` com valor plausível e custo do teste visível em `uso_tokens` (`origem = benchmark_interno`)
-- [ ] PROGRESSO.md atualizado com o marco "Fase 6 (parte 2) concluída"
+- [x] PROGRESSO.md atualizado com o marco "Fase 6 (parte 2) concluída"
 - [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
