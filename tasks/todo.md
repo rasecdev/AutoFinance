@@ -41,20 +41,22 @@
 
 ## Fase N: Curadoria e execução
 
-### Tarefa 32: Comando `/certo`
+### Tarefa 32: Comando `/certo` ✅
+
+**Implementado:** conforme descrito, sem desvios do planejado. `createHandlerFeedback(db, logger, avaliacao)` generalizado, mensagens ajustadas por parâmetro (pequena imperfeição de concordância de gênero aceita conscientemente — "responda... como incorreto" em vez de "incorreta" — não vale a complexidade de mapear forma feminina/masculina pra um enum de 2 valores). `router.ts` ganha `COMANDO_CERTO` e `handlerFeedbackCorreto`, registrado entre `/errado` e `/modelo`. `bot.ts`/`index.ts` passam a instanciar e encadear os dois handlers de feedback.
 
 **Achado real ao planejar a Tarefa 33 original** (antes de escrever qualquer código dela): nada no código hoje jamais grava `avaliacao_usuario = 'correto'` em `interacoes_ia` — `atualizarAvaliacaoInteracao` só é chamada por `handlerFeedback`/`/errado`, sem nenhuma contraparte positiva. O PLANO.md pressupõe "interações já marcadas `avaliacao_usuario = correto`" como gabarito pronto de usar, mas isso nunca existiu de fato. Sem essa tarefa, a Tarefa 33 (curadoria) não teria nenhum dado real pra resolver.
 
 **Descrição:** `src/bot/handlers/feedback.ts`: `createHandlerFeedback(db, logger, avaliacao: AvaliacaoUsuario)` — generaliza o handler existente pra aceitar a avaliação como parâmetro (mensagens de aviso/confirmação ajustadas conforme `avaliacao`), reaproveitando o mesmo rastro de `trace_id` por `message_id` (`rastroRespostas.ts`) já usado por `/errado`. `src/bot/router.ts`: novo `COMANDO_CERTO` (mesmo padrão case-insensitive de `COMANDO_ERRADO`), roteando pra uma segunda instância do handler. `src/index.ts`: instancia `createHandlerFeedback(db, logger, 'correto')` além da já existente `'incorreto'`, passa as duas pro roteador.
 
 **Acceptance criteria:**
-- [ ] `/certo`, respondendo (reply) a uma mensagem do bot, marca a interação correspondente como `avaliacao_usuario = 'correto'`
-- [ ] Mesmas mensagens de erro de `/errado` (sem reply, rastro não encontrado), adaptadas pro contexto de `/certo`
-- [ ] `/errado` continua funcionando exatamente como antes (nenhuma regressão)
+- [x] `/certo`, respondendo (reply) a uma mensagem do bot, marca a interação correspondente como `avaliacao_usuario = 'correto'`
+- [x] Mesmas mensagens de erro de `/errado` (sem reply, rastro não encontrado), adaptadas pro contexto de `/certo`
+- [x] `/errado` continua funcionando exatamente como antes (nenhuma regressão)
 
 **Verification:**
-- [ ] `npm test` cobre: `/certo` marca como correto, mesmos casos de erro de `/errado` adaptados, roteamento reconhece `/certo` case-insensitive sem quebrar o roteamento de `/errado`
-- [ ] `npm run build`/`lint` sem erro
+- [x] `npm test` cobre: `/certo` marca como correto, mesmos casos de erro de `/errado` adaptados, roteamento reconhece `/certo` case-insensitive sem quebrar o roteamento de `/errado` — 464/464 em `development`
+- [x] `npm run build`/`lint` sem erro
 - [ ] Manual em Homologação: responder a uma mensagem do bot com `/certo`, conferir `avaliacao_usuario = 'correto'` na interação
 
 **Dependencies:** None
