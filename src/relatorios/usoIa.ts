@@ -28,13 +28,27 @@ export type AgregacaoUsoIa = {
   metrica1: CandidatoReferencia[];
 };
 
-// uso_tokens/interacoes_ia gravam data_hora como timestamp completo (ISO),
-// diferente de transacoes.data (data pura) — PeriodoRelatorio sempre usa
-// AAAA-MM-DD, então aqui a janela vira o dia inteiro em UTC antes de comparar.
+// uso_tokens/interacoes_ia gravam data_hora como timestamp UTC completo
+// (new Date().toISOString()), diferente de transacoes.data (data pura) —
+// PeriodoRelatorio sempre usa AAAA-MM-DD no fuso local do processo (mesmo
+// fuso usado por calcularJanelaPeriodo). Achado real: só concatenar "T00:00:00.000Z"
+// na data local e tratar como se já fosse UTC quebra silenciosamente em
+// qualquer fuso ≠ UTC — meia-noite local não é meia-noite UTC. Construir os
+// limites via componentes locais (new Date(ano, mes, dia, ...)) e converter
+// com toISOString() dá o instante UTC correto, seja qual for o fuso do
+// processo (dev local ou container em produção, mesmo sem TZ configurado).
+function paraData(dataISO: string, hora: number, minuto: number, segundo: number, ms: number): Date {
+  const partes = dataISO.split('-').map(Number);
+  const ano = partes[0] ?? 0;
+  const mes = partes[1] ?? 1;
+  const dia = partes[2] ?? 1;
+  return new Date(ano, mes - 1, dia, hora, minuto, segundo, ms);
+}
+
 function paraJanelaTimestamp(periodo: PeriodoRelatorio): { inicio: string; fim: string } {
   return {
-    inicio: `${periodo.inicio}T00:00:00.000Z`,
-    fim: `${periodo.fim}T23:59:59.999Z`,
+    inicio: paraData(periodo.inicio, 0, 0, 0, 0).toISOString(),
+    fim: paraData(periodo.fim, 23, 59, 59, 999).toISOString(),
   };
 }
 
