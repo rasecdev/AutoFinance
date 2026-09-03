@@ -14,7 +14,7 @@ export function criarToolRelatorio(db: DbClient): ToolDefinition {
   return {
     name: 'relatorio',
     description:
-      'Relatório de gastos/receitas e uso de IA. periodo="dia" é o dia de hoje, "semana" é a semana atual (segunda a domingo), "mes" é o mês atual inteiro. Sempre disponível sob demanda — chame direto quando o usuário pedir um resumo/relatório, sem perguntar qual período, a menos que ele já não tenha dito.',
+      'Relatório completo: gastos/receitas consolidados de TODAS as contas juntas (não filtra por conta — pra resumo de uma conta específica, use resumo_mensal) mais o uso de IA (tokens e custo estimado) no mesmo período. periodo="dia" é o dia de hoje, "semana" é a semana atual (segunda a domingo), "mes" é o mês atual inteiro. Sempre disponível sob demanda — chame direto quando o usuário pedir um resumo/relatório geral, sem perguntar qual período (a menos que ele já não tenha dito) nem qual conta (este relatório é sempre consolidado). Repasse o texto retornado por completo na resposta final, incluindo a seção "Uso de IA" inteira — nunca resuma, corte ou omita nenhuma seção, mesmo que o pedido do usuário tenha mencionado só a parte financeira.',
     schema: schemaRelatorio,
     handler: async (args) => {
       const { periodo } = args as z.infer<typeof schemaRelatorio>;
