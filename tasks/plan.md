@@ -42,7 +42,7 @@ Prompt caching nativo (Anthropic cache_control + log de cached_tokens) (Tarefa 2
 
 ### Fase I: Monitoramento de preço e alerta
 
-- [ ] Tarefa 23: Repositório `modelos_openrouter_historico` (registrar snapshot, consultar snapshots de um modelo) + `scripts/monitorarPrecos.ts` que busca `GET /api/v1/models` do OpenRouter e grava snapshot do catálogo inteiro
+- [x] Tarefa 23: Repositório `modelos_openrouter_historico` (registrar snapshot, consultar snapshots de um modelo) + `scripts/monitorarPrecos.ts` que busca `GET /api/v1/models` do OpenRouter e grava snapshot do catálogo inteiro
 - [ ] Tarefa 24: Comparação de preço (modelo ativo mudou de preço; modelo mais barato que atende `requisitos` surgiu) + envio de alerta via Telegram + serviço semanal no `docker-compose.yml` (mesmo padrão do backup)
 
 ### Checkpoint: Monitoramento de preço funcional
