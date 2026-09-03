@@ -23,6 +23,8 @@ const TABELAS_ESPERADAS = [
   'interacoes_ia',
   'resumos_conversa',
   'modelos_referencia_comparacao',
+  'casos_teste_benchmark',
+  'benchmarks_modelos',
 ];
 
 const CHAVE_TESTE = 'chave-teste-migracao';
