@@ -127,19 +127,21 @@
 
 ## Fase G: Troca de modelo
 
-### Tarefa 21: Comando `/modelo <nome>`
+### Tarefa 21: Comando `/modelo <nome>` ✅
+
+**Implementado:** conforme descrito abaixo, sem desvios do planejado. `gerarResposta` ganhou um 6º parâmetro opcional `modelo` (default `MODELO_PADRAO`, mantém compatibilidade total com chamadas existentes) — as 3 ocorrências internas hardcoded de `MODELO_PADRAO` (na chamada à API e nos dois `return`) trocadas pela variável local. `resumir_contexto` (Tarefa 20) não é afetado — continua sempre em `MODELO_RESUMO`, chamada direta ao client, sem passar por `gerarResposta`.
 
 **Descrição:** `src/bot/modeloAtivo.ts` (novo): `Map<chatId, string>` em memória (mesmo padrão de `contextoRecente.ts`), `definirModeloAtivo`/`obterModeloAtivo` (retorna `MODELO_PADRAO` se não houver override). `src/bot/handlers/modelo.ts` (novo, `createHandlerModelo`): `/modelo <nome>` define o override e confirma; `/modelo` sem argumento responde qual o modelo ativo naquele chat. `router.ts` ganha uma nova rota (mesmo padrão do `/errado`: regex case-insensitive `/^\/modelo\b/i`, `bot.on('message:text').filter(...)`, registrada antes do `handlerTexto`). `handlerTexto`/`gerarResposta` passam a usar `obterModeloAtivo(chatId)` em vez do `MODELO_PADRAO` fixo na chamada principal (fluxo `resumir_contexto` da Tarefa 20 continua sempre no `MODELO_RESUMO`, não é afetado pelo override).
 
 **Acceptance criteria:**
-- [ ] `/modelo <nome>` troca o modelo usado nas próximas chamadas daquele chat, sem afetar outros chats
-- [ ] `/modelo` sem argumento informa o modelo ativo (padrão ou sobrescrito)
-- [ ] `interacoes_ia.modelo` reflete o modelo realmente usado após a troca
+- [x] `/modelo <nome>` troca o modelo usado nas próximas chamadas daquele chat, sem afetar outros chats
+- [x] `/modelo` sem argumento informa o modelo ativo (padrão ou sobrescrito)
+- [x] `interacoes_ia.modelo` reflete o modelo realmente usado após a troca
 
 **Verification:**
-- [ ] `npm test` cobre: troca de modelo, consulta sem argumento, isolamento entre chats diferentes
-- [ ] `npm run build`/`lint` sem erro
-- [ ] Manual em Homologação: `/modelo <algum modelo válido do OpenRouter>`, mandar uma mensagem e conferir em `interacoes_ia.modelo` que o modelo novo foi de fato usado
+- [x] `npm test` cobre: troca de modelo, consulta sem argumento, isolamento entre chats diferentes, matching case-insensitive do comando no router — 355/355 em `development`
+- [x] `npm run build`/`lint` sem erro
+- [x] Manual em Homologação: `/modelo <algum modelo válido do OpenRouter>`, mandar uma mensagem e conferir em `interacoes_ia.modelo` que o modelo novo foi de fato usado — confirmado (`interacoes_ia.modelo = 'openai/gpt-5-nano'` depois de `/modelo openai/gpt-5-nano`). **Achado real, corrigido na mesma sessão**: duas tentativas anteriores usaram o nome de exibição do modelo ("Qwen3 32B", "GPT-5 Nano") em vez do slug do OpenRouter, e a mensagem de erro genérica não deixava claro o motivo — corrigido com uma dica acionável tanto na confirmação do `/modelo` (avisa o formato esperado) quanto no erro (detecta status 400 e sugere conferir com `/modelo`)
 
 **Dependencies:** Tarefa 2 (uso_tokens/interacoes_ia já gravam `modelo` desde a Fase 3)
 

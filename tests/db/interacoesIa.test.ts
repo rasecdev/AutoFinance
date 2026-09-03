@@ -345,6 +345,21 @@ describe('handlerTexto (OpenRouter mockado, sem chamada real)', () => {
     expect(linhas).toHaveLength(1);
     expect(linhas[0]).toMatchObject({ resultado: 'erro', mensagem_usuario: 'oi' });
   });
+
+  it('dá uma dica acionável quando o erro é de modelo inválido (status 400, achado real de teste manual)', async () => {
+    const erroModeloInvalido = Object.assign(new Error('400 GPT-5 Nano is not a valid model ID'), {
+      status: 400,
+    });
+    const client = criarClienteOpenAiFalso(erroModeloInvalido);
+    const logger = createLogger({ write() {} });
+    const handler = createHandlerTexto(client, db, logger);
+    const ctx = criarContextoFake('oi');
+
+    await handler(ctx);
+
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('/modelo'));
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('slug'));
+  });
 });
 
 describe('handlerTexto — pendência de confirmação (Tarefa 3)', () => {
