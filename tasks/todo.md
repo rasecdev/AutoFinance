@@ -9,13 +9,13 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Pra cada `{fluxo, modelo}` já presente em `AgregacaoUsoIa.porFluxoModelo` (uso real do período), busca `listarBenchmarks(db, fluxo, modelo)`. Quando houver ao menos uma linha, expõe no retorno de `agregarUsoIaPeriodo` uma nova métrica (`metrica3: MetricaModeloEmUso[]`) com `{fluxo, modelo, custoEstimado (já calculado em porFluxoModelo), metrica: nome, valor, fonteUrl}` usando a linha mais recente de cada `metrica` nomeada encontrada. Sem benchmark pra aquele `{fluxo, modelo}`, não entra no array (degradação graciosa).
 
 **Acceptance criteria:**
-- [ ] `metrica3` tem uma entrada por `{fluxo, modelo, metrica}` onde existe benchmark cadastrado
-- [ ] `{fluxo, modelo}` sem benchmark cadastrado não aparece em `metrica3`
-- [ ] Múltiplas métricas nomeadas pro mesmo `{fluxo, modelo}` geram uma entrada por métrica
+- [x] `metrica3` tem uma entrada por `{fluxo, modelo, metrica}` onde existe benchmark cadastrado
+- [x] `{fluxo, modelo}` sem benchmark cadastrado não aparece em `metrica3`
+- [x] Múltiplas métricas nomeadas pro mesmo `{fluxo, modelo}` geram uma entrada por métrica
 
 **Verification:**
-- [ ] `npm test -- tests/relatorios/usoIa.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/relatorios/usoIa.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** None (usa `listarBenchmarks`, já existente desde a Tarefa 31)
 
@@ -32,12 +32,12 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Na seção "Uso de IA" do texto do relatório, depois da Métrica 1 existente, adiciona uma linha por entrada de `metrica3`: custo real do período naquele fluxo junto com o valor do benchmark do modelo em uso (ex: `- conversa_texto (openai/gpt-4o-mini): US$ 0,002341 no período — acuracia_tool_calling: 100% (fonte: interno)`). Sem nenhuma entrada em `metrica3`, a seção inteira não aparece (mesma regra de degradação graciosa da Métrica 1).
 
 **Acceptance criteria:**
-- [ ] Relatório com `metrica3` não vazio mostra a nova seção com custo real + valor de benchmark por linha
-- [ ] Relatório com `metrica3` vazio não mostra a seção (sem texto vazio nem cabeçalho solto)
+- [x] Relatório com `metrica3` não vazio mostra a nova seção com custo real + valor de benchmark por linha
+- [x] Relatório com `metrica3` vazio não mostra a seção (sem texto vazio nem cabeçalho solto)
 
 **Verification:**
-- [ ] `npm test -- tests/relatorios/formatar.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/relatorios/formatar.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 36
 
@@ -48,7 +48,7 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Estimated scope:** Small (1 arquivo de código + teste)
 
 ## Checkpoint: Métrica 3 funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
+- [x] `npm run build`/`lint`/`test` sem erro (493/493 em `development`)
 - [ ] Teste manual em Homologação: pedir `relatorio` (período com uso real de `conversa_texto`) via Telegram real e confirmar que a seção da Métrica 3 aparece com o benchmark real (`acuracia_tool_calling`) já cadastrado na Tarefa 35
 
 ## Fase P: Métrica 2

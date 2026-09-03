@@ -71,6 +71,15 @@ function formatarSecaoUsoIa(usoIa: AgregacaoUsoIa): string[] {
     }
   }
 
+  if (usoIa.metrica3.length > 0) {
+    linhas.push('Benchmark do modelo real em uso, por fluxo:');
+    for (const item of usoIa.metrica3) {
+      linhas.push(
+        `- ${item.fluxo} (${item.modelo}): ${formatarCustoUsd(item.custoEstimado)} no período — ${item.metrica}: ${item.valor} (fonte: ${item.fonteUrl})`,
+      );
+    }
+  }
+
   return linhas;
 }
 
