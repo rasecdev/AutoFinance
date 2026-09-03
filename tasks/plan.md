@@ -44,11 +44,11 @@ Agregação financeira do período (Tarefa 26)
 
 - [x] Tarefa 28: Tool `relatorio(periodo)` — monta e formata o relatório diário/semanal/mensal sob demanda (texto puro, sem IA), registrada em `texto.ts`
 - [x] Tarefa 29: Job semanal automático (push via Telegram, mesmo padrão operacional de `backup`/`monitorarPrecos`) — reaproveita a mesma formatação da Tarefa 28, com comparação vs. semana anterior
-- [ ] Tarefa 30: Job mensal automático + resumo narrativo via IA (fluxo dedicado `relatorio_mensal`, roteado via `roteamento_tarefas` como qualquer outro fluxo — números sempre pré-calculados e injetados no prompt, nunca gerados pelo modelo)
+- [x] Tarefa 30: Job mensal automático + resumo narrativo via IA (fluxo dedicado `relatorio_mensal`, roteado via `roteamento_tarefas` como qualquer outro fluxo — números sempre pré-calculados e injetados no prompt, nunca gerados pelo modelo)
 
 ### Checkpoint: Fase 6 (parte 1) completa
-- [ ] Todos os critérios de aceite das Tarefas 26-30 atendidos
-- [ ] `npm run build`/`lint`/`test` sem erro
+- [x] Todos os critérios de aceite das Tarefas 26-30 atendidos
+- [x] `npm run build`/`lint`/`test` sem erro (449/449 em `development`)
 - [ ] Teste manual em Homologação: `relatorio(periodo=dia)` sob demanda, e pelo menos um disparo manual do job semanal/mensal confirmando mensagem recebida no Telegram com números batendo com o banco
 - [ ] PROGRESSO.md atualizado com o marco "Fase 6 (parte 1) concluída"
 - [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)

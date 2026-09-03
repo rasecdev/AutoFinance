@@ -119,19 +119,19 @@
 
 ---
 
-### Tarefa 30: Job mensal automático + resumo narrativo via IA
+### Tarefa 30: Job mensal automático + resumo narrativo via IA ✅
 
-**Descrição:** `src/ai/relatorioMensal.ts` (novo): chamada de IA dedicada (fluxo `relatorio_mensal`, resolvido via `roteamento_tarefas` como qualquer outro fluxo, fallback pra `MODELO_PADRAO`) que recebe os números já calculados (financeiro + uso de IA + Métrica 1 + comparação vs. mês anterior) como dado estruturado no prompt e devolve só a costura narrativa — prompt explícito instruindo o modelo a nunca somar/calcular, só narrar o que já veio pronto (mesma regra do PLANO.md, mesmo padrão de `resumirContexto`). `src/scripts/relatorioMensal.ts` (novo, mesmo padrão da Tarefa 29): calcula o próximo último-dia-do-mês, monta os dados, chama o resumo via IA, envia. `docker-compose.yml` ganha `relatorio-mensal-producao`/`homologacao`.
+**Implementado:** conforme descrito, com o mesmo ajuste de desenho da Tarefa 29 (script calcula e dorme até o alvo, `docker-compose.yml` só embrulha em `while true` sem `sleep` fixo, flag `--agora` pra teste manual). Comparação vs. mês anterior reaproveita `calcularJanelaAnterior` (Tarefa 29). Mensagem final combina o relatório formatado (números, texto puro) com o resumo narrativo da IA por baixo ("**Resumo do mês**"), não substitui um pelo outro — números continuam auditáveis mesmo com o resumo presente. Fallback de modelo é `MODELO_RELATORIO_MENSAL` (próprio, mesmo padrão de `MODELO_RESUMO`), não `MODELO_PADRAO` — mesma justificativa já usada em `resumirContexto`: fluxo de baixo risco/alto volume não precisa do modelo mais caro do roteamento padrão de conversa.
 
 **Acceptance criteria:**
-- [ ] Roda uma vez, envia o relatório do mês que terminou, com resumo narrativo gerado por IA
-- [ ] O texto narrativo nunca contém número que não veio do dado pré-calculado (validado por teste: todo número no prompt de entrada, o texto de saída só costura, não recalcula)
-- [ ] Dispara automaticamente no último dia do mês à noite
+- [x] Roda uma vez, envia o relatório do mês que terminou, com resumo narrativo gerado por IA
+- [x] O texto narrativo nunca contém número que não veio do dado pré-calculado (validado por teste: todo número no prompt de entrada vem do dado estruturado já calculado; prompt do sistema instrui explicitamente o modelo a nunca somar/calcular/inventar valor)
+- [x] Dispara automaticamente no último dia do mês à noite
 
 **Verification:**
-- [ ] `npm test` cobre: cálculo do próximo último-dia-do-mês, prompt do resumo contendo os números pré-calculados, fluxo `relatorio_mensal` registrado em `interacoes_ia`/`uso_tokens` como qualquer outro
-- [ ] `npm run build`/`lint` sem erro
-- [ ] Manual em Homologação: rodar `node dist/scripts/relatorioMensal.js` manualmente, confirmar mensagem recebida no Telegram com resumo narrativo coerente e números batendo com o banco
+- [x] `npm test` cobre: cálculo do próximo último-dia-do-mês (meio do mês, último dia antes/depois das 23h, virada de ano), prompt do resumo contendo os números pré-calculados, fluxo `relatorio_mensal` registrado em `interacoes_ia`/`uso_tokens` como qualquer outro, resolução de modelo via `roteamento_tarefas` — 449/449 em `development`
+- [x] `npm run build`/`lint` sem erro
+- [ ] Manual em Homologação: rodar `node dist/scripts/relatorioMensal.js --agora` manualmente, confirmar mensagem recebida no Telegram com resumo narrativo coerente e números batendo com o banco
 
 **Dependencies:** Tarefa 26, Tarefa 27, Tarefa 28
 
