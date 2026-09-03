@@ -7,6 +7,7 @@ import {
   somarTokensChat,
   type InteracaoIa,
 } from '../db/repositories/interacoesIa.js';
+import { calcularCustoTokens } from '../db/repositories/modelosOpenrouterHistorico.js';
 import { obterModeloRoteamento } from '../db/repositories/roteamentoTarefas.js';
 import { criarResumoConversa, obterUltimoResumo } from '../db/repositories/resumosConversa.js';
 import { registrarUsoTokens } from '../db/repositories/usoTokens.js';
@@ -130,7 +131,7 @@ export async function verificarGatilhoResumo(db: DbClient, client: OpenAI, chatI
     modelo,
     tokensPrompt: resultado.tokensPrompt,
     tokensCompletion: resultado.tokensCompletion,
-    custoEstimado: 0,
+    custoEstimado: calcularCustoTokens(db, modelo, resultado.tokensPrompt, resultado.tokensCompletion),
     origem: 'uso_real',
   });
 }
