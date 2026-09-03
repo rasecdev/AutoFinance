@@ -4,18 +4,20 @@
 
 ## Fase M: Fundação de dados
 
-### Tarefa 31: Tabelas `casos_teste_benchmark` e `benchmarks_modelos` + repositórios
+### Tarefa 31: Tabelas `casos_teste_benchmark` e `benchmarks_modelos` + repositórios ✅
+
+**Implementado:** conforme descrito, sem desvios do planejado. `src/db/migrations/0006_casos_teste_benchmark.sql` e `0007_benchmarks_modelos.sql` (novas, nascem vazias). `src/db/repositories/casosTesteBenchmark.ts` (`criarCasoTeste`/`listarCasosTeste`, `saidaEsperada` serializada como JSON) e `src/db/repositories/benchmarksModelos.ts` (`registrarBenchmark`/`listarBenchmarks`, `dataPesquisa` gravada automaticamente, mesmo padrão de `registrarSnapshotModelo`).
 
 **Descrição:** Duas migrações novas. `src/db/migrations/000X_casos_teste_benchmark.sql`: `casos_teste_benchmark (id, fluxo, entrada, saida_esperada TEXT — JSON de `Array<{nome, argumentos}>`, origem TEXT CHECK IN ('curado', 'derivado_correcao'), criado_em)`. `src/db/migrations/000X_benchmarks_modelos.sql`: `benchmarks_modelos (id, fluxo, model_id_openrouter, metrica, valor REAL, fonte_url, data_pesquisa)` — schema já especificado no PLANO.md (linha 233), nasce vazia. `src/db/repositories/casosTesteBenchmark.ts` (novo): `criarCasoTeste(db, { fluxo, entrada, saidaEsperada, origem })`, `listarCasosTeste(db, fluxo)`. `src/db/repositories/benchmarksModelos.ts` (novo): `registrarBenchmark(db, { fluxo, modelIdOpenrouter, metrica, valor, fonteUrl })` (grava `data_pesquisa` internamente, mesmo padrão de `registrarSnapshotModelo`), `listarBenchmarks(db, fluxo, modelIdOpenrouter)`.
 
 **Acceptance criteria:**
-- [ ] `casos_teste_benchmark` e `benchmarks_modelos` existem, ambas nascem vazias
-- [ ] `criarCasoTeste`/`listarCasosTeste` funcionam, `saida_esperada` serializa/deserializa como JSON corretamente
-- [ ] `registrarBenchmark`/`listarBenchmarks` funcionam, `data_pesquisa` gravada automaticamente
+- [x] `casos_teste_benchmark` e `benchmarks_modelos` existem, ambas nascem vazias
+- [x] `criarCasoTeste`/`listarCasosTeste` funcionam, `saida_esperada` serializa/deserializa como JSON corretamente
+- [x] `registrarBenchmark`/`listarBenchmarks` funcionam, `data_pesquisa` gravada automaticamente
 
 **Verification:**
-- [ ] `npm test` cobre: criar/listar caso de teste (com JSON de tool_calls), criar/listar benchmark, filtro por fluxo/modelo não mistura dados
-- [ ] `npm run build`/`lint` sem erro
+- [x] `npm test` cobre: criar/listar caso de teste (com JSON de tool_calls), criar/listar benchmark, filtro por fluxo/modelo não mistura dados — 460/460 em `development`
+- [x] `npm run build`/`lint` sem erro
 
 **Dependencies:** None
 

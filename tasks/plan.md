@@ -32,10 +32,10 @@ Tabelas casos_teste_benchmark + benchmarks_modelos (Tarefa 31)
 
 ### Fase M: Fundação de dados
 
-- [ ] Tarefa 31: Tabelas `casos_teste_benchmark` e `benchmarks_modelos` + repositórios
+- [x] Tarefa 31: Tabelas `casos_teste_benchmark` e `benchmarks_modelos` + repositórios
 
 ### Checkpoint: Fundação testada
-- [ ] `npm run build`/`lint`/`test` sem erro
+- [x] `npm run build`/`lint`/`test` sem erro (460/460 em `development`)
 
 ### Fase N: Curadoria e execução
 
