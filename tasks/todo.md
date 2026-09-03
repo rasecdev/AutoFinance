@@ -156,5 +156,5 @@
 - [x] Todos os critérios de aceite das Tarefas 26-30 atendidos
 - [x] `npm run build`/`lint`/`test` sem erro
 - [x] Teste manual em Homologação: `relatorio(periodo=dia)` sob demanda (Tarefa 28), disparo manual do job semanal (Tarefa 29) e do job mensal (Tarefa 30) confirmando mensagem recebida no Telegram com números batendo com o banco
-- [ ] PROGRESSO.md atualizado com o marco "Fase 6 (parte 1) concluída"
-- [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
+- [x] PROGRESSO.md atualizado com o marco "Fase 6 (parte 1) concluída"
+- [x] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)

@@ -51,7 +51,7 @@ Agregação financeira do período (Tarefa 26)
 - [x] `npm run build`/`lint`/`test` sem erro (452/452 em `development`)
 - [x] Teste manual em Homologação: `relatorio(periodo=dia)` sob demanda (Tarefa 28), disparo manual do job semanal e do job mensal (via `--agora`) confirmando mensagem recebida no Telegram com números batendo com o banco — achado real de bug crítico de `setTimeout` durante esse teste, corrigido e reverificado (ver histórico do PROGRESSO.md)
 - [x] PROGRESSO.md atualizado com o marco "Fase 6 (parte 1) concluída"
-- [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
+- [x] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
 
 ## Risks and Mitigations
 
