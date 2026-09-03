@@ -5,6 +5,7 @@ import Database from 'better-sqlite3-multiple-ciphers';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
+import { registrarBenchmark } from '../../src/db/repositories/benchmarksModelos.js';
 import { atualizarAvaliacaoInteracao, registrarInteracaoIa } from '../../src/db/repositories/interacoesIa.js';
 import { registrarSnapshotModelo } from '../../src/db/repositories/modelosOpenrouterHistorico.js';
 import { criarModeloReferencia } from '../../src/db/repositories/modelosReferenciaComparacao.js';
@@ -49,6 +50,7 @@ describe('agregarUsoIaPeriodo', () => {
     expect(resultado.porFluxoModelo).toEqual([]);
     expect(resultado.interacoesIncorretas).toBe(0);
     expect(resultado.metrica1).toEqual([]);
+    expect(resultado.metrica3).toEqual([]);
   });
 
   it('soma tokens/custo por fluxo e modelo, só origem uso_real', () => {
@@ -184,5 +186,79 @@ describe('agregarUsoIaPeriodo', () => {
     ).run(inicioDoDiaSeguinte);
 
     expect(agregarUsoIaPeriodo(db, janela).totalTokensPrompt).toBe(0);
+  });
+
+  it('Métrica 3 mostra o benchmark do modelo real em uso naquele fluxo, quando cadastrado', () => {
+    registrarUsoTokens(db, {
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      tokensPrompt: 100,
+      tokensCompletion: 20,
+      custoEstimado: 0.002341,
+      origem: 'uso_real',
+    });
+    registrarBenchmark(db, {
+      fluxo: 'conversa_texto',
+      modelIdOpenrouter: 'openai/gpt-4o-mini',
+      metrica: 'acuracia_tool_calling',
+      valor: 1,
+      fonteUrl: 'interno',
+    });
+
+    const resultado = agregarUsoIaPeriodo(db, hoje());
+
+    expect(resultado.metrica3).toEqual([
+      {
+        fluxo: 'conversa_texto',
+        modelo: 'openai/gpt-4o-mini',
+        custoEstimado: expect.closeTo(0.002341, 6),
+        metrica: 'acuracia_tool_calling',
+        valor: 1,
+        fonteUrl: 'interno',
+      },
+    ]);
+  });
+
+  it('Métrica 3 fica vazia quando o modelo em uso não tem benchmark cadastrado pro fluxo', () => {
+    registrarUsoTokens(db, {
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      tokensPrompt: 100,
+      tokensCompletion: 20,
+      custoEstimado: 0.01,
+      origem: 'uso_real',
+    });
+
+    expect(agregarUsoIaPeriodo(db, hoje()).metrica3).toEqual([]);
+  });
+
+  it('Métrica 3 usa a linha mais recente de cada métrica nomeada, uma entrada por métrica', () => {
+    registrarUsoTokens(db, {
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      tokensPrompt: 100,
+      tokensCompletion: 20,
+      custoEstimado: 0.01,
+      origem: 'uso_real',
+    });
+    registrarBenchmark(db, {
+      fluxo: 'conversa_texto',
+      modelIdOpenrouter: 'openai/gpt-4o-mini',
+      metrica: 'acuracia_tool_calling',
+      valor: 0.5,
+      fonteUrl: 'interno-antigo',
+    });
+    registrarBenchmark(db, {
+      fluxo: 'conversa_texto',
+      modelIdOpenrouter: 'openai/gpt-4o-mini',
+      metrica: 'acuracia_tool_calling',
+      valor: 1,
+      fonteUrl: 'interno-novo',
+    });
+
+    const resultado = agregarUsoIaPeriodo(db, hoje());
+
+    expect(resultado.metrica3).toHaveLength(1);
+    expect(resultado.metrica3[0]).toMatchObject({ valor: 1, fonteUrl: 'interno-novo' });
   });
 });

@@ -27,11 +27,11 @@ agregarUsoIaPeriodo: lookup de benchmark por {fluxo, modelo real} (Tarefa 36)
 
 ### Fase O: Métrica 3
 
-- [ ] Tarefa 36: `agregarUsoIaPeriodo` busca benchmark do modelo real em uso por fluxo (`listarBenchmarks(db, fluxo, modelo)`) e expõe no retorno (`metrica3`)
-- [ ] Tarefa 37: `formatarRelatorio` exibe a Métrica 3 (custo real do fluxo + benchmark do modelo em uso, quando existir)
+- [x] Tarefa 36: `agregarUsoIaPeriodo` busca benchmark do modelo real em uso por fluxo (`listarBenchmarks(db, fluxo, modelo)`) e expõe no retorno (`metrica3`)
+- [x] Tarefa 37: `formatarRelatorio` exibe a Métrica 3 (custo real do fluxo + benchmark do modelo em uso, quando existir)
 
 ### Checkpoint: Métrica 3 funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
+- [x] `npm run build`/`lint`/`test` sem erro (493/493 em `development`)
 - [ ] Teste manual em Homologação: `relatorio(periodo=...)` num período com uso real de `conversa_texto` mostra a linha da Métrica 3 com o benchmark real já cadastrado (`acuracia_tool_calling`, Tarefa 35)
 
 ### Fase P: Métrica 2
