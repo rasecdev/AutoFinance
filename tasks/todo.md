@@ -101,20 +101,22 @@
 
 ---
 
-### Tarefa 34: Motor de execução do benchmark interno
+### Tarefa 34: Motor de execução do benchmark interno ✅
+
+**Implementado:** conforme descrito, sem desvios do planejado. `montarToolsConversa(db)` extraído pra `src/ai/tools/conversaTools.ts`, `texto.ts` passa a chamá-la. `executarBenchmarkFluxo` em `src/ai/benchmark.ts` (novo) — comparação estrutural com normalização de chave de argumento (`normalizarArgumentos`/`normalizarToolCalls`), nunca chama `tool.handler`.
 
 **Descrição:** `src/ai/tools/conversaTools.ts` (novo): `montarToolsConversa(db): ToolDefinition[]` — extrai o array de ferramentas hoje montado inline em `createHandlerTexto` (`texto.ts`), sem mudar nenhuma ferramenta em si, só torna reaproveitável. `texto.ts` passa a chamar essa função. `src/ai/benchmark.ts` (novo): `executarBenchmarkFluxo(client, db, fluxo, modelosCandidatos: string[])` — pra cada modelo candidato, pra cada caso de `listarCasosTeste(db, fluxo)`, faz **uma chamada de completion não-executora** (system prompt + `montarToolsConversa(db)` + `entrada` do caso como única mensagem, `tool_choice: 'auto'`, sem loop, **nunca chama `tool.handler`**), extrai `tool_calls` da resposta, compara com `saidaEsperada` (comparação estrutural: mesmo conjunto de `{nome, argumentos}`, chaves de `argumentos` normalizadas antes de comparar — evita falso negativo por ordem de chave no JSON). Acumula acerto/total por modelo (acurácia), registra o custo de cada chamada via `registrarUsoTokens` com `origem: 'benchmark_interno'` (nunca `'uso_real'` — Tarefa 27 já filtra isso fora do relatório). Retorna, por modelo candidato: `{ modelo, acuracia, totalCasos, custoTotal }` — não grava em `benchmarks_modelos` ainda (isso é a Tarefa 34, que decide o rótulo/metrica e expõe no chat).
 
 **Acceptance criteria:**
-- [ ] Nunca executa `tool.handler` de verdade — só inspeciona `tool_calls` da resposta do modelo candidato
-- [ ] Compara `tool_calls` do candidato com `saida_esperada` corretamente, incluindo quando a ordem das chaves do JSON de argumentos é diferente (mesmo conteúdo, ordem diferente = ainda considerado igual)
-- [ ] Calcula acurácia (acertos/total) por modelo candidato, sobre todos os casos do fluxo
-- [ ] Custo de cada chamada de teste é registrado em `uso_tokens` com `origem = 'benchmark_interno'`, nunca `'uso_real'`
-- [ ] Fluxo sem nenhum caso de teste cadastrado devolve resultado vazio/claro, sem lançar erro
+- [x] Nunca executa `tool.handler` de verdade — só inspeciona `tool_calls` da resposta do modelo candidato
+- [x] Compara `tool_calls` do candidato com `saida_esperada` corretamente, incluindo quando a ordem das chaves do JSON de argumentos é diferente (mesmo conteúdo, ordem diferente = ainda considerado igual)
+- [x] Calcula acurácia (acertos/total) por modelo candidato, sobre todos os casos do fluxo
+- [x] Custo de cada chamada de teste é registrado em `uso_tokens` com `origem = 'benchmark_interno'`, nunca `'uso_real'`
+- [x] Fluxo sem nenhum caso de teste cadastrado devolve resultado vazio/claro, sem lançar erro
 
 **Verification:**
-- [ ] `npm test` cobre: acerto exato, erro de tool (nome errado), erro de parâmetro, argumentos com chaves em ordem diferente ainda batendo, múltiplos casos/múltiplos modelos, registro em `uso_tokens` com a origem certa, fluxo sem caso de teste
-- [ ] `npm run build`/`lint` sem erro
+- [x] `npm test` cobre: acerto exato, erro de tool (nome errado), erro de parâmetro, argumentos com chaves em ordem diferente ainda batendo, múltiplos casos/múltiplos modelos, registro em `uso_tokens` com a origem certa, fluxo sem caso de teste — 483/483 em `development`
+- [x] `npm run build`/`lint` sem erro
 
 **Dependencies:** Tarefa 31
 
