@@ -32,6 +32,7 @@ import { criarToolCriarDespesaFixa, criarToolEditarDespesaFixa } from '../../ai/
 import { criarToolRelatorio } from '../../ai/tools/relatorios.js';
 import type { DbClient } from '../../db/client.js';
 import { registrarInteracaoIa } from '../../db/repositories/interacoesIa.js';
+import { calcularCustoTokens } from '../../db/repositories/modelosOpenrouterHistorico.js';
 import { registrarUsoTokens } from '../../db/repositories/usoTokens.js';
 import type { Logger } from '../../logging/logger.js';
 import { definirPendencia, ehConfirmacaoAfirmativa, obterPendencia, removerPendencia } from '../confirmacao.js';
@@ -135,14 +136,12 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
         tokensCompletion,
       });
 
-      // custo_estimado fica 0 até a Fase 5 (monitoramento de preço/roteamento)
-      // existir uma fonte real de preço por modelo pra calcular em cima.
       registrarUsoTokens(db, {
         fluxo: FLUXO,
         modelo,
         tokensPrompt,
         tokensCompletion,
-        custoEstimado: 0,
+        custoEstimado: calcularCustoTokens(db, modelo, tokensPrompt, tokensCompletion),
         origem: 'uso_real',
       });
 
