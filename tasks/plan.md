@@ -45,12 +45,12 @@ Tabelas casos_teste_benchmark + benchmarks_modelos (Tarefa 31)
 - [x] Tarefa 32: Comando `/certo` — marca a última resposta do bot como correta (contraparte de `/errado`)
 - [x] Tarefa 33: Tool `criar_caso_teste_benchmark` — promove a última interação avaliada como correta na conversa em caso de teste
 - [x] Tarefa 34: `montarToolsConversa` compartilhado + motor de execução do benchmark (não-executor, compara tool_calls, calcula acurácia e custo)
-- [ ] Tarefa 35: Tool `rodar_benchmark_interno(fluxo, modelos_candidatos)` — expõe o motor no chat, exige confirmação, grava resultado em `benchmarks_modelos`
+- [x] Tarefa 35: Tool `rodar_benchmark_interno(modelos_candidatos)` — expõe o motor no chat, exige confirmação, grava resultado em `benchmarks_modelos` (fluxo hardcoded `conversa_texto` — achado real: parâmetro livre deixava o modelo inventar um valor)
 
 ### Checkpoint: Benchmark interno funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: marcar uma resposta como correta (`/certo`), curar pelo menos 1 caso real de tool calling (`criar_caso_teste_benchmark`), rodar `rodar_benchmark_interno` comparando pelo menos 2 modelos, confirmar resultado em `benchmarks_modelos` com valor plausível e custo do teste visível em `uso_tokens` (`origem = benchmark_interno`)
-- [ ] PROGRESSO.md atualizado com o marco "Fase 6 (parte 2) concluída"
+- [x] `npm run build`/`lint`/`test` sem erro (488/488 em `development`)
+- [x] Teste manual em Homologação: marcar uma resposta como correta (`/certo`), curar pelo menos 1 caso real de tool calling (`criar_caso_teste_benchmark`), rodar `rodar_benchmark_interno` comparando pelo menos 2 modelos, confirmar resultado em `benchmarks_modelos` com valor plausível e custo do teste visível em `uso_tokens` (`origem = benchmark_interno`)
+- [x] PROGRESSO.md atualizado com o marco "Fase 6 (parte 2) concluída"
 - [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
 
 ## Risks and Mitigations
