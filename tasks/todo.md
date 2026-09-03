@@ -95,18 +95,18 @@
 
 ---
 
-### Tarefa 29: Job semanal automático
+### Tarefa 29: Job semanal automático ✅
 
-**Descrição:** `src/scripts/relatorioSemanal.ts` (novo, mesmo padrão de `backup.ts`/`monitorarPrecos.ts`, com guard de execução direta): calcula a janela da semana que terminou, reaproveita `agregarFinanceiroPeriodo`/`agregarUsoIaPeriodo`/`formatarRelatorio` das Tarefas 26-28, adiciona comparação com a semana anterior (chama as agregações de novo pra essa segunda janela), envia via Bot API pros chats permitidos (mesmo padrão de `enviarAlertas`, sem long polling). `docker-compose.yml` ganha `relatorio-semanal-producao`/`homologacao` — diferente do `sleep` fixo de backup/monitor-precos, o script calcula o próximo domingo às 23h e dorme até lá (sem lib de cron nova).
+**Implementado:** conforme descrito, com um ajuste de desenho: o script (não um wrapper de shell) é quem calcula e dorme até o próximo domingo 23h (`calcularProximoDomingoAs23h`), e sai após enviar — `docker-compose.yml` só embrulha num `while true; do node dist/scripts/relatorioSemanal.js; done` sem `sleep` fixo, já que cada execução recalcula o próximo alvo do zero ("reavaliando a cada execução", conforme a mitigação de risco do plan.md). Flag `--agora` adicionada pra pular a espera em teste manual, sem precisar esperar domingo de verdade. Comparação com a semana anterior reaproveita `calcularJanelaAnterior` (novo em `janela.ts`, generalizado pra dia/semana/mês pensando na Tarefa 30).
 
 **Acceptance criteria:**
-- [ ] Roda uma vez, envia o relatório da semana que terminou, com comparação vs. semana anterior
-- [ ] Dispara automaticamente todo domingo à noite (validado pelo cálculo de "dormir até o próximo horário-alvo", não só teste manual pontual)
+- [x] Roda uma vez, envia o relatório da semana que terminou, com comparação vs. semana anterior
+- [x] Dispara automaticamente todo domingo à noite (validado pelo cálculo de "dormir até o próximo horário-alvo", não só teste manual pontual)
 
 **Verification:**
-- [ ] `npm test` cobre: cálculo do próximo domingo 23h a partir de datas variadas (incluindo já ser domingo depois das 23h — deve calcular o domingo seguinte, não disparar de novo no mesmo dia), montagem do relatório com comparação
-- [ ] `npm run build`/`lint` sem erro
-- [ ] Manual em Homologação: rodar `node dist/scripts/relatorioSemanal.js` manualmente, confirmar mensagem recebida no Telegram com números batendo com o banco
+- [x] `npm test` cobre: cálculo do próximo domingo 23h a partir de datas variadas (incluindo já ser domingo depois das 23h — deve calcular o domingo seguinte, não disparar de novo no mesmo dia), montagem do relatório com comparação — 440/440 em `development`
+- [x] `npm run build`/`lint` sem erro
+- [ ] Manual em Homologação: rodar `node dist/scripts/relatorioSemanal.js --agora` manualmente, confirmar mensagem recebida no Telegram com números batendo com o banco
 
 **Dependencies:** Tarefa 26, Tarefa 27, Tarefa 28 (reaproveita a mesma formatação)
 

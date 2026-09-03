@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calcularJanelaPeriodo } from '../../src/relatorios/janela.js';
+import { calcularJanelaAnterior, calcularJanelaPeriodo } from '../../src/relatorios/janela.js';
 
 describe('calcularJanelaPeriodo', () => {
   it('dia: início e fim são a mesma data de referência', () => {
@@ -36,5 +36,35 @@ describe('calcularJanelaPeriodo', () => {
     const janela = calcularJanelaPeriodo('mes', new Date(2028, 1, 10)); // fevereiro de 2028 (bissexto)
 
     expect(janela).toEqual({ inicio: '2028-02-01', fim: '2028-02-29' });
+  });
+});
+
+describe('calcularJanelaAnterior', () => {
+  it('dia: desloca 1 dia pra trás', () => {
+    expect(calcularJanelaAnterior('dia', { inicio: '2026-03-15', fim: '2026-03-15' })).toEqual({
+      inicio: '2026-03-14',
+      fim: '2026-03-14',
+    });
+  });
+
+  it('semana: desloca 7 dias pra trás', () => {
+    expect(calcularJanelaAnterior('semana', { inicio: '2026-03-16', fim: '2026-03-22' })).toEqual({
+      inicio: '2026-03-09',
+      fim: '2026-03-15',
+    });
+  });
+
+  it('mes: mês anterior inteiro, mesmo virando ano', () => {
+    expect(calcularJanelaAnterior('mes', { inicio: '2026-01-01', fim: '2026-01-31' })).toEqual({
+      inicio: '2025-12-01',
+      fim: '2025-12-31',
+    });
+  });
+
+  it('mes: mês anterior com número de dias diferente (respeita ano bissexto)', () => {
+    expect(calcularJanelaAnterior('mes', { inicio: '2028-03-01', fim: '2028-03-31' })).toEqual({
+      inicio: '2028-02-01',
+      fim: '2028-02-29',
+    });
   });
 });

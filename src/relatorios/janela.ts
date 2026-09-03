@@ -39,3 +39,29 @@ export function calcularJanelaPeriodo(periodo: PeriodoNome, agora: Date = new Da
   const mesStr = String(mes + 1).padStart(2, '0');
   return { inicio: `${ano}-${mesStr}-01`, fim: `${ano}-${mesStr}-${String(ultimoDia).padStart(2, '0')}` };
 }
+
+function paraData(iso: string): Date {
+  const partes = iso.split('-').map(Number);
+  const ano = partes[0] ?? 0;
+  const mes = partes[1] ?? 1;
+  const dia = partes[2] ?? 1;
+  return new Date(ano, mes - 1, dia);
+}
+
+// Janela do período equivalente imediatamente anterior — usada pra comparação
+// (Tarefas 29/30). "mes" recalcula via calcularJanelaPeriodo (garante o mês
+// anterior inteiro, com o número certo de dias); "dia"/"semana" só deslocam
+// os mesmos limites pra trás (tamanho fixo).
+export function calcularJanelaAnterior(periodo: PeriodoNome, janela: PeriodoRelatorio): PeriodoRelatorio {
+  if (periodo === 'mes') {
+    const inicio = paraData(janela.inicio);
+    return calcularJanelaPeriodo('mes', new Date(inicio.getFullYear(), inicio.getMonth() - 1, 1));
+  }
+
+  const dias = periodo === 'semana' ? 7 : 1;
+  const inicio = paraData(janela.inicio);
+  const fim = paraData(janela.fim);
+  inicio.setDate(inicio.getDate() - dias);
+  fim.setDate(fim.getDate() - dias);
+  return { inicio: paraISODate(inicio), fim: paraISODate(fim) };
+}
