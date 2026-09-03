@@ -1,140 +1,148 @@
-# Tarefas: Fase 5 — Roteamento de IA por fluxo + monitoramento de preços
+# Tarefas: Fase 6 (parte 1) — Relatórios automáticos (diário/semanal/mensal)
 
 > Ver `tasks/plan.md` para o grafo de dependência completo e as decisões de arquitetura. Fluxo de trabalho (branch/PR/merge) conforme `CLAUDE.md`.
 
-## Fase H: Roteamento por fluxo
+## Fase K: Motor de agregação
 
-### Tarefa 22: Repositório `roteamento_tarefas` + aplicar nos fluxos existentes ✅
+### Tarefa 26: Agregação financeira do período
 
-**Implementado:** conforme descrito abaixo, sem desvios do planejado. `modeloAtivo.ts` (Fase 4) ganhou `resolverModeloConversa(db, chatId)` (override do chat > `roteamento_tarefas` > `MODELO_PADRAO`), substituindo o antigo `obterModeloAtivo` (que já embutia só o fallback pra `MODELO_PADRAO`) — `obterOverrideModelo` isola só a leitura do override, usado internamente e pelo `handlerModelo` (que passou a receber `db` pra exibir o modelo resolvido, não só o override cru). `resumirContexto.ts` resolve o modelo do fluxo `resumir_contexto` do mesmo jeito (`obterModeloRoteamento(db, 'resumir_contexto') ?? MODELO_RESUMO`), sem override de chat (esse fluxo não tem comando pra trocar por chat).
-
-**Descrição:** `src/db/repositories/roteamentoTarefas.ts` (novo): `obterModeloRoteamento(db, fluxo)` (retorna `modelo_preferido` da linha, ou `undefined` se não existir — sem lançar erro) e `definirRoteamento(db, fluxo, modeloPreferido, requisitos?)` (`INSERT ... ON CONFLICT(fluxo) DO UPDATE`, já que `fluxo` é `UNIQUE`). `texto.ts` passa a resolver o modelo de `conversa_texto` como `obterModeloAtivo(chatId) ?? obterModeloRoteamento(db, 'conversa_texto') ?? MODELO_PADRAO` (override do chat sempre vence, `roteamento_tarefas` é o padrão de fábrica); `resumirContexto.ts` resolve `MODELO_RESUMO` do mesmo jeito pro fluxo `resumir_contexto`, sem override de chat (esse fluxo não tem comando pra trocar por chat).
+**Descrição:** `src/relatorios/financeiro.ts` (novo): `agregarFinanceiroPeriodo(db, { inicio, fim })` retorna dado estruturado (não string) — total de receita/despesa do período por categoria (só `transacoes.status = 'ativa'`), saldo consolidado atual de todas as contas (reaproveita a mesma lógica de `consultar_saldo`, sem duplicar). `agregarFinanceiroPeriodo` não sabe o que é "diário/semanal/mensal" — só recebe `inicio`/`fim`, quem decide a janela é o chamador (Tarefa 28+). Comparação com o período anterior fica pro chamador (chama a função duas vezes, com duas janelas, e compara os totais) — sem lógica de "período anterior" dentro da agregação em si.
 
 **Acceptance criteria:**
-- [x] Existe uma linha em `roteamento_tarefas` pra um fluxo e o modelo dela é de fato usado na próxima chamada daquele fluxo
-- [x] Fluxo sem linha em `roteamento_tarefas` continua usando a constante padrão atual, sem quebrar nem exigir seed
-- [x] `/modelo` (override por chat, Fase 4) continua tendo precedência sobre `roteamento_tarefas` em `conversa_texto`
+- [ ] Retorna total de receita e despesa do período, quebrado por categoria
+- [ ] Retorna saldo consolidado de todas as contas
+- [ ] Ignora transação excluída (`status = 'excluida'`)
+- [ ] Transferências não contam como receita/despesa (mesmo princípio já usado no extrato — Fase 3)
 
 **Verification:**
-- [x] `npm test` cobre: leitura com/sem linha existente, definição/atualização (`ON CONFLICT`), precedência de `/modelo` sobre `roteamento_tarefas`, `resumir_contexto` usando `roteamento_tarefas` quando definido — 367/367 em `development`
-- [x] `npm run build`/`lint` sem erro
-- [x] Manual em Homologação: inserir uma linha em `roteamento_tarefas` pro fluxo `conversa_texto` com um modelo diferente do padrão (sem usar `/modelo`), confirmar em `interacoes_ia.modelo` que a próxima conversa usou esse modelo — confirmado (`modelo = 'openai/gpt-5-nano'` depois de inserir a linha direto no banco, sem `/modelo`)
+- [ ] `npm test` cobre: período com/sem transação, múltiplas categorias, exclusão de transação excluída, transferência não contabilizada, saldo consolidado com múltiplas contas
+- [ ] `npm run build`/`lint` sem erro
 
-**Dependencies:** None (tabela já existe desde a Fase 1)
-
-**Files likely touched:**
-- `src/db/repositories/roteamentoTarefas.ts` (novo)
-- `src/bot/handlers/texto.ts`
-- `src/ai/resumirContexto.ts`
-- `tests/db/roteamentoTarefas.test.ts` (novo)
-
-**Estimated scope:** Medium (4 arquivos)
-
----
-
-## Checkpoint: Roteamento aplicado
-- [x] `npm run build`/`lint`/`test` sem erro (367/367 em `development`, checado nesta revisão)
-- [x] Testar manualmente em Homologação: inserir uma linha em `roteamento_tarefas` pro fluxo `conversa_texto` com um modelo diferente do padrão, confirmar que a próxima conversa usa esse modelo (sem `/modelo` sobrescrever) — confirmado
-- [x] Revisão com o usuário antes de prosseguir
-
----
-
-## Fase I: Monitoramento de preço e alerta
-
-### Tarefa 23: Repositório `modelos_openrouter_historico` + script de snapshot semanal ✅
-
-**Implementado:** conforme descrito abaixo, sem desvios do planejado. `GET /api/v1/models` confirmado público (sem autenticação) direto contra a API real durante o desenvolvimento. `scripts/monitorarPrecos.ts` só chama `loadEnv()`/`getDb()`/`main()` quando executado diretamente (`process.argv[1] === fileURLToPath(import.meta.url)`) — sem esse guard, importar o módulo pra testar `buscarCatalogoOpenRouter`/`paraSnapshots` dispararia `loadEnv()` real no processo de teste (sem env configurado, quebraria a suíte).
-
-**Descrição:** `src/db/repositories/modelosOpenrouterHistorico.ts` (novo): `registrarSnapshotModelo(db, { modelo, precoPrompt, precoCompletion, capacidades, dataSnapshot })` (insert) e `obterUltimosSnapshots(db, modelo, limite)` (últimos N snapshots de um modelo, mais recente primeiro — base pra comparação de preço da Tarefa 24). `scripts/monitorarPrecos.ts` (novo, mesmo padrão de `scripts/backup.ts`): busca `GET https://openrouter.ai/api/v1/models` (endpoint público, sem autenticação), grava um snapshot por modelo do catálogo (`capacidades` como JSON — inclui pelo menos `supported_parameters`, usado na Tarefa 24 pra checar `requisitos`).
-
-**Acceptance criteria:**
-- [x] Rodar o script grava um snapshot por modelo do catálogo em `modelos_openrouter_historico`
-- [x] Falha de rede/API não derruba o processo com stack trace cru — erro logado, `process.exitCode = 1` (mesmo padrão de `backup.ts`)
-
-**Verification:**
-- [x] `npm test` cobre o repositório (registrar, consultar últimos N, transação em lote) com fetch mockado no teste do script (sem chamada de rede real em teste automatizado) — 376/376 em `development`
-- [x] `npm run build`/`lint` sem erro
-- [x] Manual em Homologação: rodar `node dist/scripts/monitorarPrecos.js` manualmente (`docker compose exec`), conferir `modelos_openrouter_historico` populado no banco — confirmado (424 modelos gravados, preço e `capacidades`/`supported_parameters` corretos)
-
-**Dependencies:** None (tabela já existe desde a Fase 1)
+**Dependencies:** None
 
 **Files likely touched:**
-- `src/db/repositories/modelosOpenrouterHistorico.ts` (novo)
-- `src/scripts/monitorarPrecos.ts` (novo)
-- `tests/db/modelosOpenrouterHistorico.test.ts` (novo)
-- `tests/scripts/monitorarPrecos.test.ts` (novo)
-
-**Estimated scope:** Medium (4 arquivos)
-
----
-
-### Tarefa 24: Alerta de preço via Telegram + job semanal ✅
-
-**Implementado:** conforme descrito abaixo, com uma decisão de escopo tomada na prática (Open Question do `tasks/plan.md`): mensagem **agrupada** — uma única mensagem por execução do job, listando todas as oportunidades encontradas (mudança de preço + candidato mais barato), em vez de uma mensagem por fluxo. Evita spam quando várias linhas de `roteamento_tarefas` mudam na mesma semana. `custoTotal` (preço prompt + completion somados) é o critério de comparação — métrica única e simples, evita over-engineering de "custo estimado de uma chamada típica" sem dado real de proporção prompt/completion por fluxo.
-
-**Descrição:** Estende `scripts/monitorarPrecos.ts` (roda na sequência, mesma execução semanal): depois de gravar o snapshot novo, pra cada linha de `roteamento_tarefas` (fluxo com modelo preferido definido), compara (a) o preço do modelo ativo no snapshot novo vs. o snapshot anterior do mesmo modelo — mudou, alerta; (b) varre os demais modelos do snapshot novo cujo `supported_parameters` cobre a lista de `requisitos` daquela linha (comparação simples, string contém) e é mais barato que o modelo ativo — achou, alerta. Mensagem enviada via `new Bot(token).api.sendMessage(chatId, texto)` (sem long polling, só a chamada pontual da API) pra cada `chatId` em `env.telegramAllowedChatIds`. `docker-compose.yml` ganha `monitor-precos-producao`/`monitor-precos-homologacao` (mesmo padrão do `backup-*`: `while true; do node dist/scripts/monitorarPrecos.js; sleep 604800; done`).
-
-**Acceptance criteria:**
-- [x] Preço do modelo ativo de um fluxo mudando entre dois snapshots dispara uma mensagem no Telegram
-- [x] Surgimento de um modelo mais barato que atende `requisitos` de um fluxo dispara uma mensagem no Telegram
-- [x] Nenhuma mudança de preço/candidato não dispara mensagem nenhuma (sem ruído)
-- [x] O alerta nunca altera `roteamento_tarefas` sozinho — só avisa
-
-**Verification:**
-- [x] `npm test` cobre: disparo por mudança de preço, disparo por candidato mais barato, não-disparo quando nada mudou/candidato não atende requisitos/candidato mais caro ou igual, fluxo roteado sem snapshot ainda (não quebra), formatação da mensagem agrupada, envio pra cada chat permitido — 389/389 em `development`
-- [x] `npm run build`/`lint` sem erro
-- [x] Manual em Homologação: forçar uma mudança de preço nos dados de teste (snapshot manual com preço diferente do anterior) e confirmar que a mensagem chega no Telegram — confirmado: o job semanal rodou automaticamente ao subir o container (`monitor-precos-homologacao`), detectou um candidato mais barato que atende `requisitos = 'tools'` pro fluxo `conversa_texto` (roteado pra `openai/gpt-5-nano` desde a Tarefa 22) e a mensagem chegou no Telegram — cobre o critério (b) do PLANO.md na prática, sem precisar forçar dado manualmente
-
-**Dependencies:** Tarefa 22 (`roteamento_tarefas`), Tarefa 23 (snapshot)
-
-**Files likely touched:**
-- `src/scripts/monitorarPrecos.ts`
-- `docker-compose.yml`
-- `tests/scripts/monitorarPrecos.test.ts`
-
-**Estimated scope:** Medium (3 arquivos)
-
----
-
-## Checkpoint: Monitoramento de preço funcional
-- [x] `npm run build`/`lint`/`test` sem erro (389/389 em `development`, checado nesta revisão)
-- [x] Rodar `scripts/monitorarPrecos.ts` manualmente em Homologação, confirmar snapshot gravado em `modelos_openrouter_historico` — confirmado na Tarefa 23 (424 modelos)
-- [x] Testar o alerta manualmente (forçar uma mudança de preço/candidato mais barato nos dados de teste), confirmar mensagem recebida no Telegram — confirmado na Tarefa 24 (job semanal rodou automaticamente, detectou candidato mais barato real no catálogo, mensagem recebida)
-- [x] Revisão com o usuário antes de prosseguir
-
----
-
-## Fase J: Prompt caching
-
-### Tarefa 25: Prompt caching nativo (Anthropic `cache_control`) ✅
-
-**Implementado:** conforme descrito abaixo, com um achado de formato confirmado via pesquisa antes de codar (não assumido): `cache_control` precisa ir no **bloco de conteúdo** (`content: [{ type: 'text', text, cache_control }]`), não como campo direto na mensagem — confirmado contra a documentação oficial do OpenRouter (`docs/guides/best-practices/prompt-caching`). Campos `cached_tokens`/`cache_write_tokens` já vêm tipados no SDK `openai` instalado, em `usage.prompt_tokens_details` — sem precisar de cast pro logging.
-
-**Descrição:** `gerarResposta` (`src/ai/openrouter.ts`): quando `modelo` começa com `anthropic/`, a mensagem de `system` (system prompt) passa a incluir `cache_control: { type: 'ephemeral', ttl: '1h' }` (campo de extensão do OpenRouter, fora do tipo padrão do SDK `openai` — via cast pontual, mesmo padrão já usado no projeto quando a lib não cobre um campo específico do provedor). Depois da chamada, se `completion.usage` trouxer `cached_tokens`/`cache_write_tokens` (ou os nomes equivalentes que o OpenRouter expõe), loga em `info` pra permitir verificação manual de que o cache está de fato ativo — sem gravar coluna nova no banco (só observabilidade via log, decisão de escopo mínimo).
-
-**Acceptance criteria:**
-- [x] Modelo Anthropic ativo (roteado ou via `/modelo`) envia `cache_control` no system prompt
-- [x] Modelo não-Anthropic não sofre nenhuma mudança de payload
-- [x] `cached_tokens`/`cache_write_tokens` da resposta (quando presentes) aparecem no log da interação
-
-**Verification:**
-- [x] `npm test` cobre: `cache_control` presente só quando `modelo` é `anthropic/*` (formato correto, bloco de conteúdo com `ttl: '1h'`), ausente pra outros provedores, acúmulo de `cachedTokens`/`cacheWriteTokens` quando presentes na resposta mockada, 0 quando ausentes — 393/393 em `development`
-- [x] `npm run build`/`lint` sem erro
-- [x] Manual em Homologação: `/modelo anthropic/claude-<algum modelo válido>`, conversa de dois turnos, conferir no log que `cached_tokens` aparece maior que 0 no segundo turno — confirmado com `anthropic/claude-haiku-4.5` (`cachedTokens: 19950` na 2ª mensagem, subindo de `9975` na 1ª). **Achado real, não é bug de código:** `anthropic/claude-3-haiku` (modelo antigo) tentado primeiro deu `cachedTokens`/`cacheWriteTokens` sempre 0 — investigado direto contra a API do OpenRouter (fora do bot): esse slug roteia só via Amazon Bedrock, que não suporta cache pra esse modelo específico; `claude-haiku-4.5` (mais novo) suporta cache mesmo via Bedrock. Formato do `cache_control` (bloco de conteúdo, `ttl: '1h'`) confirmado correto em teste isolado antes de suspeitar do modelo (1ª chamada gravou 6812-6886 tokens de cache, 2ª leu do cache, custo caiu ~19x)
-
-**Dependencies:** None (funciona independente do roteamento estar completo)
-
-**Files likely touched:**
-- `src/ai/openrouter.ts`
-- `tests/ai/openrouter.test.ts`
+- `src/relatorios/financeiro.ts` (novo)
+- `tests/relatorios/financeiro.test.ts` (novo)
 
 **Estimated scope:** Small (2 arquivos)
 
 ---
 
-## Checkpoint: Fase 5 completa
-- [x] Todos os critérios de aceite das Tarefas 22-25 atendidos
-- [x] `npm run build`/`lint`/`test` sem erro (393/393 em `development`, checado nesta revisão)
-- [x] Teste manual em Homologação confirmando cache ativo (`cached_tokens` > 0) numa conversa com modelo Anthropic roteado via `/modelo` — confirmado com `anthropic/claude-haiku-4.5` (`cachedTokens: 19950` na 2ª mensagem)
-- [x] PROGRESSO.md atualizado com o marco "Fase 5 concluída"
-- [x] Revisão com o usuário antes de prosseguir para a Fase 6
+### Tarefa 27: Agregação de uso de IA do período + Métrica 1
+
+**Descrição:** Nova migração adicionando `modelos_referencia_comparacao (id, nome_exibicao, model_id_openrouter, ativo)` — tabela pequena, nasce vazia (mesmo padrão de `roteamento_tarefas`: sem linha, sem essa parte do relatório). `src/relatorios/usoIa.ts` (novo): `agregarUsoIaPeriodo(db, { inicio, fim })` retorna tokens/custo do período por fluxo e por modelo (**só `uso_tokens.origem = 'uso_real'`**, filtro explícito — custo de benchmark interno nunca conta como uso real), contagem de `interacoes_ia.avaliacao_usuario = 'incorreto'` no período, e a Métrica 1 (recalcula o mesmo volume total de tokens do período usando o preço mais recente de cada modelo em `modelos_referencia_comparacao`, via `modelos_openrouter_historico` já existente — puro cálculo, sem chamada de IA).
+
+**Acceptance criteria:**
+- [ ] Retorna tokens/custo do período por fluxo e por modelo, só `origem = 'uso_real'`
+- [ ] Retorna contagem de interações marcadas `avaliacao_usuario = 'incorreto'` no período
+- [ ] Retorna a Métrica 1 (custo hipotético por modelo de referência) só quando `modelos_referencia_comparacao` tem linha ativa — vazio/ausente quando a tabela está vazia (degradação graciosa, sem erro)
+
+**Verification:**
+- [ ] `npm test` cobre: filtro `origem = uso_real` excluindo benchmark interno, agregação por fluxo/modelo, contagem de avaliação incorreta, Métrica 1 com e sem `modelos_referencia_comparacao` populada
+- [ ] `npm run build`/`lint` sem erro
+
+**Dependencies:** None (tabelas de uso já existem desde Fase 1/5)
+
+**Files likely touched:**
+- `src/db/migrations/000X_modelos_referencia_comparacao.sql` (novo)
+- `src/db/repositories/modelosReferenciaComparacao.ts` (novo)
+- `src/relatorios/usoIa.ts` (novo)
+- `tests/db/modelosReferenciaComparacao.test.ts` (novo)
+- `tests/relatorios/usoIa.test.ts` (novo)
+
+**Estimated scope:** Medium (5 arquivos)
+
+---
+
+## Checkpoint: Agregação testada
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Revisão com o usuário antes de prosseguir
+
+---
+
+## Fase L: Relatório sob demanda e automação
+
+### Tarefa 28: Tool `relatorio(periodo)`
+
+**Descrição:** `src/relatorios/formatar.ts` (novo): `formatarRelatorio({ financeiro, usoIa, inicio, fim })` monta o texto final (template puro, sem IA) a partir do dado estruturado das Tarefas 26-27. `src/ai/tools/relatorios.ts` (novo): `criarToolRelatorio(db)` — `relatorio(periodo)` aceita `'dia' | 'semana' | 'mes'`, calcula a janela `inicio`/`fim` a partir da data atual (código resolve a data, nunca o modelo — mesmo "Princípio de data determinística" já usado em toda ferramenta com data), chama as duas agregações e formata. Registrada em `texto.ts` junto das outras ferramentas.
+
+**Acceptance criteria:**
+- [ ] `relatorio(periodo='dia')` retorna o relatório do dia atual, sob demanda
+- [ ] `relatorio(periodo='semana')`/`relatorio(periodo='mes')` funcionam sob demanda também (mesmo motor, chamado manualmente — a automação em si é só nas Tarefas 29-30)
+- [ ] Relatório nunca aparece vazio de forma confusa — período sem nenhuma transação/uso de IA mostra "nada registrado", não erro nem string vazia
+
+**Verification:**
+- [ ] `npm test` cobre: cálculo de janela por período, formatação com dado presente/ausente, registro da tool em `texto.ts`
+- [ ] `npm run build`/`lint` sem erro
+- [ ] Manual em Homologação: pedir "me manda o relatório de hoje" pro bot, conferir que os números batem com o banco
+
+**Dependencies:** Tarefa 26, Tarefa 27
+
+**Files likely touched:**
+- `src/relatorios/formatar.ts` (novo)
+- `src/ai/tools/relatorios.ts` (novo)
+- `src/bot/handlers/texto.ts`
+- `tests/relatorios/formatar.test.ts` (novo)
+- `tests/ai/tools/relatorios.test.ts` (novo)
+
+**Estimated scope:** Medium (5 arquivos)
+
+---
+
+### Tarefa 29: Job semanal automático
+
+**Descrição:** `src/scripts/relatorioSemanal.ts` (novo, mesmo padrão de `backup.ts`/`monitorarPrecos.ts`, com guard de execução direta): calcula a janela da semana que terminou, reaproveita `agregarFinanceiroPeriodo`/`agregarUsoIaPeriodo`/`formatarRelatorio` das Tarefas 26-28, adiciona comparação com a semana anterior (chama as agregações de novo pra essa segunda janela), envia via Bot API pros chats permitidos (mesmo padrão de `enviarAlertas`, sem long polling). `docker-compose.yml` ganha `relatorio-semanal-producao`/`homologacao` — diferente do `sleep` fixo de backup/monitor-precos, o script calcula o próximo domingo às 23h e dorme até lá (sem lib de cron nova).
+
+**Acceptance criteria:**
+- [ ] Roda uma vez, envia o relatório da semana que terminou, com comparação vs. semana anterior
+- [ ] Dispara automaticamente todo domingo à noite (validado pelo cálculo de "dormir até o próximo horário-alvo", não só teste manual pontual)
+
+**Verification:**
+- [ ] `npm test` cobre: cálculo do próximo domingo 23h a partir de datas variadas (incluindo já ser domingo depois das 23h — deve calcular o domingo seguinte, não disparar de novo no mesmo dia), montagem do relatório com comparação
+- [ ] `npm run build`/`lint` sem erro
+- [ ] Manual em Homologação: rodar `node dist/scripts/relatorioSemanal.js` manualmente, confirmar mensagem recebida no Telegram com números batendo com o banco
+
+**Dependencies:** Tarefa 26, Tarefa 27, Tarefa 28 (reaproveita a mesma formatação)
+
+**Files likely touched:**
+- `src/scripts/relatorioSemanal.ts` (novo)
+- `docker-compose.yml`
+- `tests/scripts/relatorioSemanal.test.ts` (novo)
+
+**Estimated scope:** Medium (3 arquivos)
+
+---
+
+### Tarefa 30: Job mensal automático + resumo narrativo via IA
+
+**Descrição:** `src/ai/relatorioMensal.ts` (novo): chamada de IA dedicada (fluxo `relatorio_mensal`, resolvido via `roteamento_tarefas` como qualquer outro fluxo, fallback pra `MODELO_PADRAO`) que recebe os números já calculados (financeiro + uso de IA + Métrica 1 + comparação vs. mês anterior) como dado estruturado no prompt e devolve só a costura narrativa — prompt explícito instruindo o modelo a nunca somar/calcular, só narrar o que já veio pronto (mesma regra do PLANO.md, mesmo padrão de `resumirContexto`). `src/scripts/relatorioMensal.ts` (novo, mesmo padrão da Tarefa 29): calcula o próximo último-dia-do-mês, monta os dados, chama o resumo via IA, envia. `docker-compose.yml` ganha `relatorio-mensal-producao`/`homologacao`.
+
+**Acceptance criteria:**
+- [ ] Roda uma vez, envia o relatório do mês que terminou, com resumo narrativo gerado por IA
+- [ ] O texto narrativo nunca contém número que não veio do dado pré-calculado (validado por teste: todo número no prompt de entrada, o texto de saída só costura, não recalcula)
+- [ ] Dispara automaticamente no último dia do mês à noite
+
+**Verification:**
+- [ ] `npm test` cobre: cálculo do próximo último-dia-do-mês, prompt do resumo contendo os números pré-calculados, fluxo `relatorio_mensal` registrado em `interacoes_ia`/`uso_tokens` como qualquer outro
+- [ ] `npm run build`/`lint` sem erro
+- [ ] Manual em Homologação: rodar `node dist/scripts/relatorioMensal.js` manualmente, confirmar mensagem recebida no Telegram com resumo narrativo coerente e números batendo com o banco
+
+**Dependencies:** Tarefa 26, Tarefa 27, Tarefa 28
+
+**Files likely touched:**
+- `src/ai/relatorioMensal.ts` (novo)
+- `src/scripts/relatorioMensal.ts` (novo)
+- `docker-compose.yml`
+- `tests/ai/relatorioMensal.test.ts` (novo)
+- `tests/scripts/relatorioMensal.test.ts` (novo)
+
+**Estimated scope:** Medium (5 arquivos)
+
+---
+
+## Checkpoint: Fase 6 (parte 1) completa
+- [ ] Todos os critérios de aceite das Tarefas 26-30 atendidos
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação: `relatorio(periodo=dia)` sob demanda, e pelo menos um disparo manual do job semanal/mensal confirmando mensagem recebida no Telegram com números batendo com o banco
+- [ ] PROGRESSO.md atualizado com o marco "Fase 6 (parte 1) concluída"
+- [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
