@@ -3,6 +3,7 @@ import type { Context } from 'grammy';
 import type OpenAI from 'openai';
 import { montarHistorico } from '../../ai/contexto.js';
 import { gerarResposta, MODELO_PADRAO } from '../../ai/openrouter.js';
+import { verificarGatilhoResumo } from '../../ai/resumirContexto.js';
 import { criarToolCriarCartao, criarToolCriarConta } from '../../ai/tools/contas.js';
 import {
   criarToolConsultarSaldo,
@@ -129,6 +130,14 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
         resposta.trim().length > 0 ? resposta : 'Não entendi, pode reformular?',
       );
       definirRastroResposta(mensagemEnviada.message_id, traceId);
+
+      // Roda depois de a resposta já ter sido enviada — não adiciona latência
+      // perceptível à resposta atual (PLANO.md, mecanismo de resumo cumulativo).
+      try {
+        await verificarGatilhoResumo(db, client, chatId);
+      } catch (erroResumo) {
+        log.error({ err: erroResumo }, 'falha ao gerar resumo de contexto');
+      }
     } catch (erro) {
       registrarInteracaoIa(db, {
         traceId,
