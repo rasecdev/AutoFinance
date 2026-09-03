@@ -7,10 +7,10 @@ import {
   somarTokensChat,
   type InteracaoIa,
 } from '../db/repositories/interacoesIa.js';
-import { calcularCustoTokens } from '../db/repositories/modelosOpenrouterHistorico.js';
 import { obterModeloRoteamento } from '../db/repositories/roteamentoTarefas.js';
 import { criarResumoConversa, obterUltimoResumo } from '../db/repositories/resumosConversa.js';
 import { registrarUsoTokens } from '../db/repositories/usoTokens.js';
+import type { UsageComCusto } from './openrouter.js';
 
 // Modelo próprio e mais barato pro fluxo de resumo, isolado de MODELO_PADRAO —
 // usado como fallback quando roteamento_tarefas não tem linha pro fluxo ainda
@@ -39,6 +39,7 @@ export type ResultadoResumo = {
   resumoTexto: string;
   tokensPrompt: number;
   tokensCompletion: number;
+  custoReal: number;
 };
 
 function formatarInteracoesParaPrompt(interacoes: InteracaoIa[]): string {
@@ -70,6 +71,7 @@ export async function resumirContexto(
     resumoTexto: completion.choices[0]?.message?.content ?? '',
     tokensPrompt: completion.usage?.prompt_tokens ?? 0,
     tokensCompletion: completion.usage?.completion_tokens ?? 0,
+    custoReal: (completion.usage as UsageComCusto | undefined)?.cost ?? 0,
   };
 }
 
@@ -131,7 +133,7 @@ export async function verificarGatilhoResumo(db: DbClient, client: OpenAI, chatI
     modelo,
     tokensPrompt: resultado.tokensPrompt,
     tokensCompletion: resultado.tokensCompletion,
-    custoEstimado: calcularCustoTokens(db, modelo, resultado.tokensPrompt, resultado.tokensCompletion),
+    custoEstimado: resultado.custoReal,
     origem: 'uso_real',
   });
 }

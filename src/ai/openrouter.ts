@@ -33,6 +33,7 @@ export type RespostaGerada = {
   tokensCompletion: number;
   cachedTokens: number;
   cacheWriteTokens: number;
+  custoReal: number;
   duracaoMs: number;
   pendenciaConfirmacao?: PendenciaConfirmacao;
 };
@@ -56,6 +57,14 @@ function gerarPerguntaConfirmacao(tool: ToolDefinition, argumentos: unknown): st
 type BlocoTextoComCache = OpenAI.Chat.Completions.ChatCompletionContentPartText & {
   cache_control?: { type: 'ephemeral'; ttl?: '5m' | '1h' };
 };
+
+// "cost" é extensão do OpenRouter (não faz parte do tipo Usage padrão da
+// OpenAI) — custo real em créditos já cobrado pela chamada, 1 crédito = 1
+// USD, sempre presente na resposta (não precisa de usage.include nem
+// stream_options), já considerando desconto de cache/roteamento de provedor.
+// Mais confiável que estimar preço × token na mão (Fase 5): é o valor que
+// aparece de fato em openrouter.ai/settings/profile.
+export type UsageComCusto = OpenAI.CompletionUsage & { cost?: number };
 
 function montarMensagemSystem(modelo: string): OpenAI.Chat.Completions.ChatCompletionMessageParam {
   if (!modelo.startsWith('anthropic/')) {
@@ -93,6 +102,7 @@ export async function gerarResposta(
   let tokensCompletion = 0;
   let cachedTokens = 0;
   let cacheWriteTokens = 0;
+  let custoReal = 0;
 
   for (let iteracao = 0; iteracao < MAX_ITERACOES_TOOL_CALLING; iteracao++) {
     let completion = await client.chat.completions.create({
@@ -122,6 +132,7 @@ export async function gerarResposta(
     tokensCompletion += completion.usage?.completion_tokens ?? 0;
     cachedTokens += completion.usage?.prompt_tokens_details?.cached_tokens ?? 0;
     cacheWriteTokens += completion.usage?.prompt_tokens_details?.cache_write_tokens ?? 0;
+    custoReal += (completion.usage as UsageComCusto | undefined)?.cost ?? 0;
 
     const mensagem = completion.choices[0]?.message;
 
@@ -134,6 +145,7 @@ export async function gerarResposta(
         tokensCompletion,
         cachedTokens,
         cacheWriteTokens,
+        custoReal,
         duracaoMs: Date.now() - inicio,
       };
     }
@@ -154,6 +166,7 @@ export async function gerarResposta(
           tokensCompletion,
           cachedTokens,
           cacheWriteTokens,
+          custoReal,
           duracaoMs: Date.now() - inicio,
           pendenciaConfirmacao: { tool: resultado.tool, argumentos: resultado.argumentos },
         };

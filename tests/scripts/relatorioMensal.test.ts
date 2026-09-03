@@ -32,10 +32,10 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-function criarClienteFalso(resumoTexto: string) {
+function criarClienteFalso(resumoTexto: string, custo = 0) {
   const create = vi.fn().mockResolvedValue({
     choices: [{ message: { content: resumoTexto } }],
-    usage: { prompt_tokens: 80, completion_tokens: 30 },
+    usage: { prompt_tokens: 80, completion_tokens: 30, cost: custo },
   });
   return { client: { chat: { completions: { create } } } as unknown as OpenAI, create };
 }
@@ -99,7 +99,7 @@ describe('montarRelatorioMensal', () => {
   });
 
   it('registra a chamada em interacoes_ia e uso_tokens com o fluxo relatorio_mensal', async () => {
-    const { client } = criarClienteFalso('resumo gerado');
+    const { client } = criarClienteFalso('resumo gerado', 0.00033);
 
     await montarRelatorioMensal(db, client, new Date(2026, 2, 20, 12, 0));
 
@@ -109,6 +109,7 @@ describe('montarRelatorioMensal', () => {
 
     const usoTokens = lerUsoTokens().filter((u) => u.fluxo === 'relatorio_mensal');
     expect(usoTokens).toHaveLength(1);
+    expect(usoTokens[0]).toMatchObject({ custo_estimado: 0.00033 });
   });
 
   it('usa o modelo de roteamento_tarefas pro fluxo relatorio_mensal quando definido', async () => {

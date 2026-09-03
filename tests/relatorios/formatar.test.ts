@@ -77,6 +77,10 @@ describe('formatarRelatorio', () => {
     expect(texto).toContain('120 tokens');
     expect(texto).toContain('Respostas marcadas como incorretas no período: 2');
     expect(texto).toContain('Claude Haiku');
+    // Custo de IA vem em créditos OpenRouter (1 crédito = 1 USD) — nunca "R$"
+    // (achado real: usuário comparando com openrouter.ai/settings/profile, que é USD).
+    expect(texto).toContain('US$ 0.010000');
+    expect(texto).toContain('US$ 0.020000');
   });
 
   it('não mostra linha de incorretas quando é zero', () => {
