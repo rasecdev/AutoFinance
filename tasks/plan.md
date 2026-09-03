@@ -54,7 +54,7 @@ Migração: chat_id + tokens em interacoes_ia, tabela resumos_conversa (Tarefa 1
 ### Checkpoint: Memória funcional
 - [x] Testar manualmente em Homologação: pergunta de seguimento sem repetir contexto ("e comparado ao mês passado?"), e uma conversa longa o bastante pra disparar o resumo automático — conferir `resumos_conversa` no banco (feito incrementalmente nas Tarefas 19-20, incluindo o achado de calibração de `LIMITE_TOKENS_JANELA`, ver PROGRESSO.md)
 - [x] `npm test` passa (346/346 em `development`)
-- [ ] Revisão com o usuário antes de prosseguir
+- [x] Revisão com o usuário antes de prosseguir
 
 ### Fase G: Troca de modelo
 
