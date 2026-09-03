@@ -45,7 +45,7 @@ function criarContextoFake(replyToMessageId?: number) {
 describe('handlerFeedback (/errado)', () => {
   it('pede pra responder à mensagem do bot quando não é um reply', async () => {
     const logger = createLogger({ write() {} });
-    const handler = createHandlerFeedback(db, logger);
+    const handler = createHandlerFeedback(db, logger, 'incorreto');
     const ctx = criarContextoFake(undefined);
 
     await handler(ctx);
@@ -55,7 +55,7 @@ describe('handlerFeedback (/errado)', () => {
 
   it('avisa quando não encontra o rastro da mensagem respondida', async () => {
     const logger = createLogger({ write() {} });
-    const handler = createHandlerFeedback(db, logger);
+    const handler = createHandlerFeedback(db, logger, 'incorreto');
     const ctx = criarContextoFake(999999);
 
     await handler(ctx);
@@ -75,7 +75,7 @@ describe('handlerFeedback (/errado)', () => {
     definirRastroResposta(42, 'trace-feedback-1');
 
     const logger = createLogger({ write() {} });
-    const handler = createHandlerFeedback(db, logger);
+    const handler = createHandlerFeedback(db, logger, 'incorreto');
     const ctx = criarContextoFake(42);
 
     await handler(ctx);
@@ -83,5 +83,49 @@ describe('handlerFeedback (/errado)', () => {
     expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Marcado como incorreto'));
     const linhas = lerInteracoes();
     expect(linhas[0]).toMatchObject({ avaliacao_usuario: 'incorreto' });
+  });
+});
+
+describe('handlerFeedback (/certo)', () => {
+  it('pede pra responder à mensagem do bot quando não é um reply', async () => {
+    const logger = createLogger({ write() {} });
+    const handler = createHandlerFeedback(db, logger, 'correto');
+    const ctx = criarContextoFake(undefined);
+
+    await handler(ctx);
+
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('responda (reply)'));
+  });
+
+  it('avisa quando não encontra o rastro da mensagem respondida', async () => {
+    const logger = createLogger({ write() {} });
+    const handler = createHandlerFeedback(db, logger, 'correto');
+    const ctx = criarContextoFake(999999);
+
+    await handler(ctx);
+
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Não encontrei'));
+  });
+
+  it('marca a interação como correta quando o rastro existe', async () => {
+    registrarInteracaoIa(db, {
+      traceId: 'trace-feedback-2',
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      mensagemUsuario: 'registra 30 reais de uber',
+      respostaModelo: 'registrado',
+      resultado: 'sucesso',
+    });
+    definirRastroResposta(43, 'trace-feedback-2');
+
+    const logger = createLogger({ write() {} });
+    const handler = createHandlerFeedback(db, logger, 'correto');
+    const ctx = criarContextoFake(43);
+
+    await handler(ctx);
+
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Marcado como correto'));
+    const linhas = lerInteracoes();
+    expect(linhas[0]).toMatchObject({ avaliacao_usuario: 'correto' });
   });
 });
