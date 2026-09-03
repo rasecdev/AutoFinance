@@ -5,7 +5,7 @@ import Database from 'better-sqlite3-multiple-ciphers';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
-import { definirRoteamento, obterModeloRoteamento } from '../../src/db/repositories/roteamentoTarefas.js';
+import { definirRoteamento, listarRoteamentos, obterModeloRoteamento } from '../../src/db/repositories/roteamentoTarefas.js';
 
 const CHAVE_TESTE = 'chave-teste-roteamento-tarefas';
 
@@ -60,5 +60,25 @@ describe('obterModeloRoteamento / definirRoteamento', () => {
       requisitos: string | null;
     };
     expect(linha.requisitos).toBeNull();
+  });
+});
+
+describe('listarRoteamentos', () => {
+  it('retorna array vazio quando não há nenhuma linha', () => {
+    expect(listarRoteamentos(db)).toEqual([]);
+  });
+
+  it('lista todas as linhas com os campos mapeados', () => {
+    definirRoteamento(db, 'conversa_texto', 'openai/gpt-4o', 'tools');
+    definirRoteamento(db, 'resumir_contexto', 'openai/gpt-4o-mini');
+
+    const roteamentos = listarRoteamentos(db);
+
+    expect(roteamentos).toEqual(
+      expect.arrayContaining([
+        { fluxo: 'conversa_texto', modeloPreferido: 'openai/gpt-4o', requisitos: 'tools' },
+        { fluxo: 'resumir_contexto', modeloPreferido: 'openai/gpt-4o-mini', requisitos: null },
+      ]),
+    );
   });
 });
