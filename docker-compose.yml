@@ -61,6 +61,22 @@ services:
     command: sh -c "while true; do node dist/scripts/relatorioSemanal.js; done"
     restart: unless-stopped
 
+  relatorio-mensal-producao:
+    build: .
+    env_file: .env.producao
+    volumes:
+      - producao-db:/app/data
+    command: sh -c "while true; do node dist/scripts/relatorioMensal.js; done"
+    restart: unless-stopped
+
+  relatorio-mensal-homologacao:
+    build: .
+    env_file: .env.homologacao
+    volumes:
+      - homologacao-db:/app/data
+    command: sh -c "while true; do node dist/scripts/relatorioMensal.js; done"
+    restart: unless-stopped
+
 volumes:
   producao-db:
   homologacao-db:
