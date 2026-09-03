@@ -132,6 +132,36 @@ export function somarTokensChat(db: DbClient, chatId: number, desdeTraceId?: str
   return resultado.total;
 }
 
+export type InteracaoCorreta = {
+  traceId: string;
+  mensagemUsuario: string | null;
+  toolCalls: Array<{ nome: string; argumentos: unknown }> | null;
+};
+
+// Usado pela curadoria de caso de teste do benchmark interno (Fase 6, parte 2):
+// promove a última interação que o usuário marcou como correta (/certo) numa
+// entrada de casos_teste_benchmark, sem precisar de trace_id explícito.
+export function buscarUltimaInteracaoCorreta(db: DbClient, chatId: number): InteracaoCorreta | undefined {
+  const linha = db
+    .prepare(
+      `SELECT trace_id, mensagem_usuario, tool_calls FROM interacoes_ia
+       WHERE chat_id = ? AND avaliacao_usuario = 'correto'
+       ORDER BY id DESC
+       LIMIT 1`,
+    )
+    .get(chatId) as { trace_id: string; mensagem_usuario: string | null; tool_calls: string | null } | undefined;
+
+  if (!linha) return undefined;
+
+  return {
+    traceId: linha.trace_id,
+    mensagemUsuario: linha.mensagem_usuario,
+    toolCalls: linha.tool_calls
+      ? (JSON.parse(linha.tool_calls) as Array<{ nome: string; argumentos: unknown }>)
+      : null,
+  };
+}
+
 export function contarInteracoesAvaliadasIncorretas(
   db: DbClient,
   periodo: { inicio: string; fim: string },

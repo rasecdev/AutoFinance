@@ -72,18 +72,20 @@
 
 ---
 
-### Tarefa 33: Tool `criar_caso_teste_benchmark`
+### Tarefa 33: Tool `criar_caso_teste_benchmark` ✅
+
+**Implementado:** conforme descrito, sem desvios do planejado. `buscarUltimaInteracaoCorreta(db, chatId)` nova em `interacoesIa.ts`. `criarToolCriarCasoTesteBenchmark(db)` em `src/ai/tools/benchmark.ts` (novo), registrada em `texto.ts`.
 
 **Descrição:** Nova função em `src/db/repositories/interacoesIa.ts`: `buscarUltimaInteracaoCorreta(db, chatId)` — última linha com `avaliacao_usuario = 'correto'` naquele chat, retornando `traceId`, `mensagemUsuario` e `toolCalls` (parse do JSON já gravado em `tool_calls`). `src/ai/tools/benchmark.ts` (novo): `criarToolCriarCasoTesteBenchmark(db)` — `criar_caso_teste_benchmark()`, sem parâmetro (mesmo princípio de "editar essa transação" — regra 8 do system prompt: resolve pra última coisa relevante sem pedir id). Resolve a última interação correta do chat, usa `mensagemUsuario` como `entrada` e `toolCalls` como `saidaEsperada`, grava com `origem: 'derivado_correcao'`. Sem interação correta ainda registrada nesse chat, devolve mensagem clara em vez de erro/exceção. Registrada em `texto.ts` junto das outras ferramentas.
 
 **Acceptance criteria:**
-- [ ] `criar_caso_teste_benchmark()` promove a última interação `avaliacao_usuario = 'correto'` do chat em `casos_teste_benchmark`, com `origem = 'derivado_correcao'`
-- [ ] Sem nenhuma interação correta no chat, devolve mensagem informativa (não lança erro)
-- [ ] Não confunde interação correta de chats diferentes
+- [x] `criar_caso_teste_benchmark()` promove a última interação `avaliacao_usuario = 'correto'` do chat em `casos_teste_benchmark`, com `origem = 'derivado_correcao'`
+- [x] Sem nenhuma interação correta no chat, devolve mensagem informativa (não lança erro)
+- [x] Não confunde interação correta de chats diferentes
 
 **Verification:**
-- [ ] `npm test` cobre: promoção da última interação correta, chat sem interação correta, múltiplos chats não se misturam, interação sem `tool_calls` (mensagem só de texto, sem chamada de ferramenta) tratada corretamente
-- [ ] `npm run build`/`lint` sem erro
+- [x] `npm test` cobre: promoção da última interação correta, chat sem interação correta, múltiplos chats não se misturam, interação sem `tool_calls` (mensagem só de texto, sem chamada de ferramenta) tratada corretamente — 474/474 em `development`
+- [x] `npm run build`/`lint` sem erro
 - [ ] Manual em Homologação: marcar uma resposta recente como correta (`/certo`, Tarefa 32), pedir "salva isso como caso de teste", conferir linha nova em `casos_teste_benchmark`
 
 **Dependencies:** Tarefa 31, Tarefa 32
