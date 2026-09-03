@@ -50,6 +50,7 @@ describe('agregarUsoIaPeriodo', () => {
     expect(resultado.porFluxoModelo).toEqual([]);
     expect(resultado.interacoesIncorretas).toBe(0);
     expect(resultado.metrica1).toEqual([]);
+    expect(resultado.metrica2).toEqual([]);
     expect(resultado.metrica3).toEqual([]);
   });
 
@@ -260,5 +261,101 @@ describe('agregarUsoIaPeriodo', () => {
 
     expect(resultado.metrica3).toHaveLength(1);
     expect(resultado.metrica3[0]).toMatchObject({ valor: 1, fonteUrl: 'interno-novo' });
+  });
+
+  it('calcula a Métrica 2 quando modelo em uso e candidato têm benchmark da mesma métrica no mesmo fluxo', () => {
+    registrarUsoTokens(db, {
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      tokensPrompt: 1000,
+      tokensCompletion: 500,
+      custoEstimado: 0.01,
+      origem: 'uso_real',
+    });
+    registrarBenchmark(db, {
+      fluxo: 'conversa_texto',
+      modelIdOpenrouter: 'openai/gpt-4o-mini',
+      metrica: 'acuracia_tool_calling',
+      valor: 0.6,
+      fonteUrl: 'interno',
+    });
+    criarModeloReferencia(db, 'Claude Haiku', 'anthropic/claude-haiku-4.5');
+    registrarSnapshotModelo(db, {
+      modelo: 'anthropic/claude-haiku-4.5',
+      precoPrompt: 0.000001,
+      precoCompletion: 0.000005,
+    });
+    registrarBenchmark(db, {
+      fluxo: 'conversa_texto',
+      modelIdOpenrouter: 'anthropic/claude-haiku-4.5',
+      metrica: 'acuracia_tool_calling',
+      valor: 0.3,
+      fonteUrl: 'bfcl',
+    });
+
+    const resultado = agregarUsoIaPeriodo(db, hoje());
+
+    const custoHipotetico = 1000 * 0.000001 + 500 * 0.000005;
+    expect(resultado.metrica2).toEqual([
+      {
+        fluxo: 'conversa_texto',
+        nomeExibicao: 'Claude Haiku',
+        modelo: 'anthropic/claude-haiku-4.5',
+        metrica: 'acuracia_tool_calling',
+        custoAjustado: expect.closeTo(custoHipotetico * (0.6 / 0.3), 8),
+      },
+    ]);
+  });
+
+  it('Métrica 2 fica vazia quando o candidato não tem benchmark da mesma métrica nomeada', () => {
+    registrarUsoTokens(db, {
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      tokensPrompt: 1000,
+      tokensCompletion: 500,
+      custoEstimado: 0.01,
+      origem: 'uso_real',
+    });
+    registrarBenchmark(db, {
+      fluxo: 'conversa_texto',
+      modelIdOpenrouter: 'openai/gpt-4o-mini',
+      metrica: 'acuracia_tool_calling',
+      valor: 0.6,
+      fonteUrl: 'interno',
+    });
+    criarModeloReferencia(db, 'Claude Haiku', 'anthropic/claude-haiku-4.5');
+    registrarSnapshotModelo(db, {
+      modelo: 'anthropic/claude-haiku-4.5',
+      precoPrompt: 0.000001,
+      precoCompletion: 0.000005,
+    });
+
+    expect(agregarUsoIaPeriodo(db, hoje()).metrica2).toEqual([]);
+  });
+
+  it('Métrica 2 fica vazia quando o modelo em uso não tem nenhum benchmark cadastrado', () => {
+    registrarUsoTokens(db, {
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      tokensPrompt: 1000,
+      tokensCompletion: 500,
+      custoEstimado: 0.01,
+      origem: 'uso_real',
+    });
+    criarModeloReferencia(db, 'Claude Haiku', 'anthropic/claude-haiku-4.5');
+    registrarSnapshotModelo(db, {
+      modelo: 'anthropic/claude-haiku-4.5',
+      precoPrompt: 0.000001,
+      precoCompletion: 0.000005,
+    });
+    registrarBenchmark(db, {
+      fluxo: 'conversa_texto',
+      modelIdOpenrouter: 'anthropic/claude-haiku-4.5',
+      metrica: 'acuracia_tool_calling',
+      valor: 0.3,
+      fonteUrl: 'bfcl',
+    });
+
+    expect(agregarUsoIaPeriodo(db, hoje()).metrica2).toEqual([]);
   });
 });

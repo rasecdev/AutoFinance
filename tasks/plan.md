@@ -36,11 +36,11 @@ agregarUsoIaPeriodo: lookup de benchmark por {fluxo, modelo real} (Tarefa 36)
 
 ### Fase P: Métrica 2
 
-- [ ] Tarefa 38: `agregarUsoIaPeriodo` calcula o fator de acurácia relativo por fluxo/candidato (quando modelo real em uso e candidato têm benchmark da mesma métrica nomeada no mesmo fluxo) e expõe no retorno (`metrica2`)
-- [ ] Tarefa 39: `formatarRelatorio` exibe a Métrica 2 (custo ajustado pelo fator, rotulado como estimativa) junto da Métrica 1 existente, sem substituí-la
+- [x] Tarefa 38: `agregarUsoIaPeriodo` calcula o fator de acurácia relativo por fluxo/candidato (quando modelo real em uso e candidato têm benchmark da mesma métrica nomeada no mesmo fluxo) e expõe no retorno (`metrica2`)
+- [x] Tarefa 39: `formatarRelatorio` exibe a Métrica 2 (custo ajustado pelo fator, rotulado como estimativa) junto da Métrica 1 existente, sem substituí-la
 
 ### Checkpoint: Métrica 2 funcional (Fase 6 parte 3 concluída)
-- [ ] `npm run build`/`lint`/`test` sem erro
+- [x] `npm run build`/`lint`/`test` sem erro
 - [ ] Teste manual em Homologação: `relatorio(periodo=...)` no mesmo período mostra a Métrica 2 ajustada pro(s) candidato(s) que têm benchmark comparável (`acuracia_tool_calling`) contra o modelo real em uso em `conversa_texto`
 - [ ] PROGRESSO.md atualizado com o marco "Fase 6 (parte 3) concluída"
 - [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
