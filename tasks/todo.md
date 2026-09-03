@@ -104,9 +104,9 @@
 - [x] Dispara automaticamente todo domingo à noite (validado pelo cálculo de "dormir até o próximo horário-alvo", não só teste manual pontual)
 
 **Verification:**
-- [x] `npm test` cobre: cálculo do próximo domingo 23h a partir de datas variadas (incluindo já ser domingo depois das 23h — deve calcular o domingo seguinte, não disparar de novo no mesmo dia), montagem do relatório com comparação — 440/440 em `development`
+- [x] `npm test` cobre: cálculo do próximo domingo 23h a partir de datas variadas (incluindo já ser domingo depois das 23h — deve calcular o domingo seguinte, não disparar de novo no mesmo dia), montagem do relatório com comparação — 452/452 em `development`
 - [x] `npm run build`/`lint` sem erro
-- [ ] Manual em Homologação: rodar `node dist/scripts/relatorioSemanal.js --agora` manualmente, confirmar mensagem recebida no Telegram com números batendo com o banco
+- [x] Manual em Homologação: `node dist/scripts/relatorioSemanal.js --agora`, mensagem recebida no Telegram com números batendo com o banco
 
 **Dependencies:** Tarefa 26, Tarefa 27, Tarefa 28 (reaproveita a mesma formatação)
 
@@ -129,9 +129,11 @@
 - [x] Dispara automaticamente no último dia do mês à noite
 
 **Verification:**
-- [x] `npm test` cobre: cálculo do próximo último-dia-do-mês (meio do mês, último dia antes/depois das 23h, virada de ano), prompt do resumo contendo os números pré-calculados, fluxo `relatorio_mensal` registrado em `interacoes_ia`/`uso_tokens` como qualquer outro, resolução de modelo via `roteamento_tarefas` — 449/449 em `development`
+- [x] `npm test` cobre: cálculo do próximo último-dia-do-mês (meio do mês, último dia antes/depois das 23h, virada de ano), prompt do resumo contendo os números pré-calculados, fluxo `relatorio_mensal` registrado em `interacoes_ia`/`uso_tokens` como qualquer outro, resolução de modelo via `roteamento_tarefas` — 452/452 em `development`
 - [x] `npm run build`/`lint` sem erro
-- [ ] Manual em Homologação: rodar `node dist/scripts/relatorioMensal.js --agora` manualmente, confirmar mensagem recebida no Telegram com resumo narrativo coerente e números batendo com o banco
+- [x] Manual em Homologação: `node dist/scripts/relatorioMensal.js --agora`, mensagem recebida no Telegram com resumo narrativo e números batendo com o banco. **Achado real de bug crítico durante esse teste, corrigido antes de fechar o checkpoint** — ver nota abaixo.
+
+**Achado real de bug (bug fix, não coberto no PR original desta tarefa):** `setTimeout` do Node aceita no máximo `2^31-1` ms (~24,8 dias) de delay — acima disso o valor estoura o inteiro de 32 bits e o Node dispara o timer quase imediatamente em vez de esperar. O relatório semanal nunca bate nesse limite (no máximo 7 dias), mas o mensal sim (até ~31 dias) — descoberto ao testar `relatorio-mensal-homologacao` na VM: o container entrou num loop de reenvio (34 mensagens/chamadas de IA reais em poucos segundos) porque cada iteração do `while true` do `docker-compose.yml` calculava "dormir até o fim do mês" e o Node disparava na hora. Corrigido com `src/scripts/dormirAte.ts` (novo, `PR a criar`) — encadeia múltiplos `setTimeout` quando o delay excede o limite — usado por `relatorioSemanal.ts` e `relatorioMensal.ts`. Serviço parado manualmente na VM assim que percebido, sem impacto real além do custo mínimo de 34 chamadas ao modelo mais barato do roteamento (`gpt-4o-mini`) em Homologação.
 
 **Dependencies:** Tarefa 26, Tarefa 27, Tarefa 28
 
@@ -146,9 +148,13 @@
 
 ---
 
+### Correção pós-Tarefa 30: `setTimeout` estoura em agendamento > ~24,8 dias ✅
+
+**Achado:** descrito na nota da Tarefa 30 acima. `src/scripts/dormirAte.ts` (novo) encadeia `setTimeout`s de no máximo `2^31-1` ms até alcançar o instante alvo; adotado em `relatorioSemanal.ts` e `relatorioMensal.ts` no lugar do `setTimeout` cru. Testado com fake timers (`vi.useFakeTimers`) cobrindo: instante já passado, delay que cabe num timeout só, delay que excede o limite (regressão específica do bug). 452/452 em `development`. `npm run build`/`lint` sem erro. Reimplantado em Homologação (rebuild + restart do serviço mensal) e reconfirmado manualmente sem loop.
+
 ## Checkpoint: Fase 6 (parte 1) completa
-- [ ] Todos os critérios de aceite das Tarefas 26-30 atendidos
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: `relatorio(periodo=dia)` sob demanda, e pelo menos um disparo manual do job semanal/mensal confirmando mensagem recebida no Telegram com números batendo com o banco
+- [x] Todos os critérios de aceite das Tarefas 26-30 atendidos
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Teste manual em Homologação: `relatorio(periodo=dia)` sob demanda (Tarefa 28), disparo manual do job semanal (Tarefa 29) e do job mensal (Tarefa 30) confirmando mensagem recebida no Telegram com números batendo com o banco
 - [ ] PROGRESSO.md atualizado com o marco "Fase 6 (parte 1) concluída"
 - [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
