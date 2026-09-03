@@ -34,7 +34,7 @@ import { registrarInteracaoIa } from '../../db/repositories/interacoesIa.js';
 import { registrarUsoTokens } from '../../db/repositories/usoTokens.js';
 import type { Logger } from '../../logging/logger.js';
 import { definirPendencia, ehConfirmacaoAfirmativa, obterPendencia, removerPendencia } from '../confirmacao.js';
-import { obterModeloAtivo } from '../modeloAtivo.js';
+import { resolverModeloConversa } from '../modeloAtivo.js';
 import { definirRastroResposta } from '../rastroRespostas.js';
 
 const FLUXO = 'conversa_texto';
@@ -105,7 +105,7 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
     try {
       const historico = montarHistorico(db, chatId);
       const { modelo, resposta, toolCalls, tokensPrompt, tokensCompletion, duracaoMs, pendenciaConfirmacao } =
-        await gerarResposta(client, mensagemUsuario, tools, { chatId }, historico, obterModeloAtivo(chatId));
+        await gerarResposta(client, mensagemUsuario, tools, { chatId }, historico, resolverModeloConversa(db, chatId));
 
       if (pendenciaConfirmacao) {
         definirPendencia(chatId, pendenciaConfirmacao);
