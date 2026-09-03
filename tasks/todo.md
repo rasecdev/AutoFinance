@@ -105,7 +105,7 @@
 **Verification:**
 - [x] `npm test` cobre: geração de resumo cumulativo (com e sem resumo anterior), disparo do gatilho ao ultrapassar o limite, não-disparo abaixo do limite, isolamento entre chats, registro em `interacoes_ia`/`uso_tokens` com o fluxo `resumir_contexto` — 346/346 em `development`
 - [x] `npm run build`/`lint` sem erro
-- [ ] Manual em Homologação: conversa longa o bastante pra ultrapassar o limite de tokens, conferir `resumos_conversa` populado e que uma pergunta de seguimento depois do resumo ainda funciona corretamente
+- [x] Manual em Homologação: conversa longa o bastante pra ultrapassar o limite de tokens, conferir `resumos_conversa` populado e que uma pergunta de seguimento depois do resumo ainda funciona corretamente — verificado via Telegram real, deploy direto na VM (branch da tarefa, antes do merge): mecanismo disparou corretamente (`resumos_conversa` populado, resumo cumulativo fundindo o anterior com as mensagens novas, `interacoes_ia`/`uso_tokens` registrando o fluxo `resumir_contexto` separado de `conversa_texto`). **Achado de calibração, corrigido na hora**: `LIMITE_TOKENS_JANELA` original (6000, ponto de partida do PLANO.md) disparava o resumo em praticamente toda mensagem — uma única chamada de conversa já custa ~11-18k tokens sozinha (system prompt + ~20 definições de ferramentas dominam o custo fixo), nunca deixando a janela curta acumular turno nenhum antes de resumir. Ajustado pra 25000 (decisão do usuário) — permite acumular 1-2 trocas reais antes do gatilho, redeployado e testado de novo na mesma sessão
 
 **Dependencies:** Tarefa 19
 

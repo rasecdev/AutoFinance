@@ -14,8 +14,14 @@ import { registrarUsoTokens } from '../db/repositories/usoTokens.js';
 // e mais barato pro fluxo de resumo, isolado de MODELO_PADRAO por enquanto.
 export const MODELO_RESUMO = 'openai/gpt-4o-mini';
 
-// PLANO.md sugere ~6-8k tokens como ponto de partida ("a validar na prática").
-export const LIMITE_TOKENS_JANELA = 6000;
+// PLANO.md sugeria ~6-8k tokens como ponto de partida ("a validar na
+// prática") — validado e ajustado pra cima na Tarefa 20: uma única chamada
+// de conversa já custa ~11-18k tokens sozinha (system prompt + as ~20
+// definições de ferramentas dominam o custo fixo por mensagem), então 6-8k
+// disparava o resumo em praticamente toda mensagem, sem deixar a janela
+// curta acumular turno nenhum antes de resumir. 25000 permite acumular
+// pelo menos 1-2 trocas reais antes do gatilho.
+export const LIMITE_TOKENS_JANELA = 25000;
 
 export const FLUXO_RESUMIR_CONTEXTO = 'resumir_contexto';
 
