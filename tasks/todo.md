@@ -91,18 +91,20 @@
 
 ---
 
-### Tarefa 20: Fluxo `resumir_contexto` + gatilho automático
+### Tarefa 20: Fluxo `resumir_contexto` + gatilho automático ✅
+
+**Implementado:** conforme descrito abaixo, sem desvios do planejado. `LIMITE_TOKENS_JANELA = 6000` como constante ajustável (ponto de partida do PLANO.md); `MODELO_RESUMO` isolado do `MODELO_PADRAO`, ainda sem `roteamento_tarefas` (Fase 5). `verificarGatilhoResumo` roda em `texto.ts` logo depois de `ctx.reply(...)`, dentro de um `try/catch` próprio — uma falha ao gerar o resumo é logada mas nunca derruba a resposta já enviada ao usuário.
 
 **Descrição:** `src/ai/resumirContexto.ts` (novo): `resumirContexto(client, { resumoAnterior, mensagensNovas })` — chamada de IA dedicada (`MODELO_RESUMO`, constante própria), prompt específico instruído a reter decisões/valores/pendências e descartar o literal de lançamento de dado já persistido no banco; registra a chamada em `uso_tokens` (fluxo `'resumir_contexto'`) e em `interacoes_ia` do mesmo jeito que qualquer outra chamada. Em `handlerTexto`, depois de responder ao usuário: soma tokens do chat desde o último resumo (repositório da Tarefa 17); se ultrapassar `LIMITE_TOKENS_JANELA` (constante, ex. 6000), dispara `resumirContexto` com o resumo anterior (se houver) + as interações da janela, e grava o resultado via `criarResumoConversa` com `cobreAteTraceId` apontando pro `trace_id` mais recente incluído no resumo.
 
 **Acceptance criteria:**
-- [ ] Existe uma chamada de IA isolada que gera resumo cumulativo (resumo anterior + mensagens novas, nunca reprocessando a conversa inteira)
-- [ ] O disparo do resumo acontece depois de a resposta já ter sido enviada ao usuário (não adiciona latência perceptível à resposta atual)
-- [ ] Resumo novo substitui efetivamente a janela antiga nas chamadas seguintes (Tarefa 19 volta a buscar o resumo mais recente)
+- [x] Existe uma chamada de IA isolada que gera resumo cumulativo (resumo anterior + mensagens novas, nunca reprocessando a conversa inteira)
+- [x] O disparo do resumo acontece depois de a resposta já ter sido enviada ao usuário (não adiciona latência perceptível à resposta atual)
+- [x] Resumo novo substitui efetivamente a janela antiga nas chamadas seguintes (Tarefa 19 volta a buscar o resumo mais recente)
 
 **Verification:**
-- [ ] `npm test` cobre: geração de resumo cumulativo (com e sem resumo anterior), disparo do gatilho ao ultrapassar o limite, não-disparo abaixo do limite
-- [ ] `npm run build`/`lint` sem erro
+- [x] `npm test` cobre: geração de resumo cumulativo (com e sem resumo anterior), disparo do gatilho ao ultrapassar o limite, não-disparo abaixo do limite, isolamento entre chats, registro em `interacoes_ia`/`uso_tokens` com o fluxo `resumir_contexto` — 346/346 em `development`
+- [x] `npm run build`/`lint` sem erro
 - [ ] Manual em Homologação: conversa longa o bastante pra ultrapassar o limite de tokens, conferir `resumos_conversa` populado e que uma pergunta de seguimento depois do resumo ainda funciona corretamente
 
 **Dependencies:** Tarefa 19
