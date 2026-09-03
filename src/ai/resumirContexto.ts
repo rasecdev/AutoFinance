@@ -7,11 +7,13 @@ import {
   somarTokensChat,
   type InteracaoIa,
 } from '../db/repositories/interacoesIa.js';
+import { obterModeloRoteamento } from '../db/repositories/roteamentoTarefas.js';
 import { criarResumoConversa, obterUltimoResumo } from '../db/repositories/resumosConversa.js';
 import { registrarUsoTokens } from '../db/repositories/usoTokens.js';
 
-// Sem roteamento por fluxo ainda (roteamento_tarefas é Fase 5) — modelo próprio
-// e mais barato pro fluxo de resumo, isolado de MODELO_PADRAO por enquanto.
+// Modelo próprio e mais barato pro fluxo de resumo, isolado de MODELO_PADRAO —
+// usado como fallback quando roteamento_tarefas não tem linha pro fluxo ainda
+// (Fase 5, Tarefa 22, mesmo padrão de fallback já usado em resolverModeloConversa).
 export const MODELO_RESUMO = 'openai/gpt-4o-mini';
 
 // PLANO.md sugeria ~6-8k tokens como ponto de partida ("a validar na
@@ -47,6 +49,7 @@ function formatarInteracoesParaPrompt(interacoes: InteracaoIa[]): string {
 export async function resumirContexto(
   client: OpenAI,
   params: { resumoAnterior?: string; mensagensNovas: InteracaoIa[] },
+  modelo: string = MODELO_RESUMO,
 ): Promise<ResultadoResumo> {
   const partes: string[] = [];
   if (params.resumoAnterior) {
@@ -55,7 +58,7 @@ export async function resumirContexto(
   partes.push(`Mensagens novas:\n${formatarInteracoesParaPrompt(params.mensagensNovas)}`);
 
   const completion = await client.chat.completions.create({
-    model: MODELO_RESUMO,
+    model: modelo,
     messages: [
       { role: 'system', content: PROMPT_RESUMO },
       { role: 'user', content: partes.join('\n\n') },
@@ -88,10 +91,16 @@ export async function verificarGatilhoResumo(db: DbClient, client: OpenAI, chatI
     return;
   }
 
-  const resultado = await resumirContexto(client, {
-    resumoAnterior: resumoAtual?.resumoTexto,
-    mensagensNovas: interacoesJanela,
-  });
+  const modelo = obterModeloRoteamento(db, FLUXO_RESUMIR_CONTEXTO) ?? MODELO_RESUMO;
+
+  const resultado = await resumirContexto(
+    client,
+    {
+      resumoAnterior: resumoAtual?.resumoTexto,
+      mensagensNovas: interacoesJanela,
+    },
+    modelo,
+  );
 
   const ultimaInteracao = interacoesJanela[interacoesJanela.length - 1];
   if (!ultimaInteracao) {
@@ -108,7 +117,7 @@ export async function verificarGatilhoResumo(db: DbClient, client: OpenAI, chatI
   registrarInteracaoIa(db, {
     traceId: randomUUID(),
     fluxo: FLUXO_RESUMIR_CONTEXTO,
-    modelo: MODELO_RESUMO,
+    modelo,
     respostaModelo: resultado.resumoTexto,
     resultado: 'sucesso',
     chatId,
@@ -118,7 +127,7 @@ export async function verificarGatilhoResumo(db: DbClient, client: OpenAI, chatI
 
   registrarUsoTokens(db, {
     fluxo: FLUXO_RESUMIR_CONTEXTO,
-    modelo: MODELO_RESUMO,
+    modelo,
     tokensPrompt: resultado.tokensPrompt,
     tokensCompletion: resultado.tokensCompletion,
     custoEstimado: 0,

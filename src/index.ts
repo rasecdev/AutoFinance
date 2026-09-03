@@ -24,7 +24,7 @@ const handlerTexto = createHandlerTexto(openRouterClient, db, logger);
 const handlerMidia = createHandlerMidia(logger);
 const handlerNaoSuportado = createHandlerNaoSuportado(logger);
 const handlerFeedback = createHandlerFeedback(db, logger);
-const handlerModelo = createHandlerModelo();
+const handlerModelo = createHandlerModelo(db);
 
 const bot = createBot(
   env,

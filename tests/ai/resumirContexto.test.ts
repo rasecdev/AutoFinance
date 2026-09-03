@@ -14,6 +14,7 @@ import {
 import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
 import { registrarInteracaoIa } from '../../src/db/repositories/interacoesIa.js';
+import { definirRoteamento } from '../../src/db/repositories/roteamentoTarefas.js';
 import { criarResumoConversa, obterUltimoResumo } from '../../src/db/repositories/resumosConversa.js';
 
 const CHAVE_TESTE = 'chave-teste-resumir-contexto';
@@ -177,5 +178,26 @@ describe('verificarGatilhoResumo', () => {
 
     expect(create).not.toHaveBeenCalled();
     expect(obterUltimoResumo(db, 200)).toBeUndefined();
+  });
+
+  it('usa o modelo de roteamento_tarefas pro fluxo resumir_contexto quando definido (Fase 5, Tarefa 22)', async () => {
+    const { client, create } = criarClienteFalso('resumo gerado');
+    definirRoteamento(db, 'resumir_contexto', 'qwen/qwen3-32b');
+    registrarInteracaoComTokens(100, 'trace-1', LIMITE_TOKENS_JANELA + 1);
+
+    await verificarGatilhoResumo(db, client, 100);
+
+    expect(create.mock.calls[0]?.[0]?.model).toBe('qwen/qwen3-32b');
+    const interacoes = lerInteracoes().filter((i) => i.fluxo === FLUXO_RESUMIR_CONTEXTO);
+    expect(interacoes[0]).toMatchObject({ modelo: 'qwen/qwen3-32b' });
+  });
+
+  it('cai pra MODELO_RESUMO quando roteamento_tarefas não tem linha pro fluxo', async () => {
+    const { client, create } = criarClienteFalso('resumo gerado');
+    registrarInteracaoComTokens(100, 'trace-1', LIMITE_TOKENS_JANELA + 1);
+
+    await verificarGatilhoResumo(db, client, 100);
+
+    expect(create.mock.calls[0]?.[0]?.model).toBe(MODELO_RESUMO);
   });
 });
