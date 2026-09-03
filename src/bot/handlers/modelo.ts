@@ -18,6 +18,8 @@ export function createHandlerModelo() {
     }
 
     definirModeloAtivo(chatId, nomeModelo);
-    await ctx.reply(`Modelo trocado para "${nomeModelo}" neste chat.`);
+    await ctx.reply(
+      `Modelo trocado para "${nomeModelo}" neste chat. Use o slug do OpenRouter (ex: "openai/gpt-4o-mini", "qwen/qwen3-32b"), não o nome de exibição — se a próxima mensagem falhar, o nome pode estar errado.`,
+    );
   };
 }
