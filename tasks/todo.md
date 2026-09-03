@@ -49,7 +49,7 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 
 ## Checkpoint: Métrica 3 funcional
 - [x] `npm run build`/`lint`/`test` sem erro (493/493 em `development`)
-- [ ] Teste manual em Homologação: pedir `relatorio` (período com uso real de `conversa_texto`) via Telegram real e confirmar que a seção da Métrica 3 aparece com o benchmark real (`acuracia_tool_calling`) já cadastrado na Tarefa 35
+- [x] Teste manual em Homologação: pedir `relatorio` (período com uso real de `conversa_texto`) via Telegram real e confirmar que a seção da Métrica 3 aparece com o benchmark real (`acuracia_tool_calling`) já cadastrado na Tarefa 35
 
 ## Fase P: Métrica 2
 
@@ -98,6 +98,6 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 
 ## Checkpoint: Métrica 2 funcional (Fase 6 parte 3 concluída)
 - [x] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: `relatorio(periodo=...)` no mesmo período mostra a Métrica 2 ajustada pro(s) candidato(s) comparáveis contra o modelo real em uso em `conversa_texto`
-- [ ] PROGRESSO.md atualizado com o marco "Fase 6 (parte 3) concluída"
+- [x] Teste manual em Homologação: `relatorio(periodo=...)` no mesmo período mostra a Métrica 2 ajustada pro(s) candidato(s) comparáveis contra o modelo real em uso em `conversa_texto`
+- [x] PROGRESSO.md atualizado com o marco "Fase 6 (parte 3) concluída"
 - [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
