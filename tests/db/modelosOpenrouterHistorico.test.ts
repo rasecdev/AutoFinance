@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
 import {
+  calcularCustoTokens,
   obterUltimoSnapshotPorModelo,
   obterUltimosSnapshots,
   registrarSnapshotCatalogo,
@@ -106,5 +107,20 @@ describe('obterUltimoSnapshotPorModelo', () => {
 
   it('retorna array vazio quando não há nenhum snapshot', () => {
     expect(obterUltimoSnapshotPorModelo(db)).toEqual([]);
+  });
+});
+
+describe('calcularCustoTokens', () => {
+  it('calcula o custo usando o snapshot de preço mais recente do modelo', () => {
+    registrarSnapshotModelo(db, { modelo: 'openai/gpt-4o-mini', precoPrompt: 0.001, precoCompletion: 0.002 });
+    registrarSnapshotModelo(db, { modelo: 'openai/gpt-4o-mini', precoPrompt: 0.01, precoCompletion: 0.02 });
+
+    const custo = calcularCustoTokens(db, 'openai/gpt-4o-mini', 100, 50);
+
+    expect(custo).toBeCloseTo(100 * 0.01 + 50 * 0.02);
+  });
+
+  it('retorna 0 quando não há snapshot pro modelo (degradação graciosa)', () => {
+    expect(calcularCustoTokens(db, 'modelo/inexistente', 100, 50)).toBe(0);
   });
 });
