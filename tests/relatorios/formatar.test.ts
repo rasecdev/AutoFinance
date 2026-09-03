@@ -9,6 +9,7 @@ const usoIaVazio = {
   totalCustoEstimado: 0,
   interacoesIncorretas: 0,
   metrica1: [],
+  metrica2: [],
   metrica3: [],
 };
 
@@ -71,6 +72,7 @@ describe('formatarRelatorio', () => {
         totalCustoEstimado: 0.01,
         interacoesIncorretas: 2,
         metrica1: [{ nomeExibicao: 'Claude Haiku', modelo: 'anthropic/claude-haiku-4.5', custoEstimado: 0.02 }],
+        metrica2: [],
         metrica3: [],
       },
     });
@@ -99,6 +101,7 @@ describe('formatarRelatorio', () => {
         totalCustoEstimado: 0.01,
         interacoesIncorretas: 0,
         metrica1: [],
+        metrica2: [],
         metrica3: [],
       },
     });
@@ -120,6 +123,7 @@ describe('formatarRelatorio', () => {
         totalCustoEstimado: 0.002341,
         interacoesIncorretas: 0,
         metrica1: [],
+        metrica2: [],
         metrica3: [
           {
             fluxo: 'conversa_texto',
@@ -143,5 +147,60 @@ describe('formatarRelatorio', () => {
     const texto = formatarRelatorio({ inicio: '2026-03-15', fim: '2026-03-15', financeiro: financeiroVazio, usoIa: usoIaVazio });
 
     expect(texto).not.toContain('Benchmark do modelo real em uso');
+  });
+
+  it('mostra a Métrica 2 (custo ajustado) junto da linha de Métrica 1 do mesmo candidato', () => {
+    const texto = formatarRelatorio({
+      inicio: '2026-03-15',
+      fim: '2026-03-15',
+      financeiro: financeiroVazio,
+      usoIa: {
+        porFluxoModelo: [
+          { fluxo: 'conversa_texto', modelo: 'openai/gpt-4o-mini', tokensPrompt: 100, tokensCompletion: 20, custoEstimado: 0.01 },
+        ],
+        totalTokensPrompt: 100,
+        totalTokensCompletion: 20,
+        totalCustoEstimado: 0.01,
+        interacoesIncorretas: 0,
+        metrica1: [{ nomeExibicao: 'Claude Haiku', modelo: 'anthropic/claude-haiku-4.5', custoEstimado: 0.02 }],
+        metrica2: [
+          {
+            fluxo: 'conversa_texto',
+            nomeExibicao: 'Claude Haiku',
+            modelo: 'anthropic/claude-haiku-4.5',
+            metrica: 'acuracia_tool_calling',
+            custoAjustado: 0.04,
+          },
+        ],
+        metrica3: [],
+      },
+    });
+
+    expect(texto).toContain('Claude Haiku');
+    expect(texto).toContain('ajustado por acuracia_tool_calling em conversa_texto');
+    expect(texto).toContain('US$ 0.040000');
+    expect(texto).toContain('estimativa');
+  });
+
+  it('não mostra linha ajustada quando não há Métrica 2 pro candidato', () => {
+    const texto = formatarRelatorio({
+      inicio: '2026-03-15',
+      fim: '2026-03-15',
+      financeiro: financeiroVazio,
+      usoIa: {
+        porFluxoModelo: [
+          { fluxo: 'conversa_texto', modelo: 'openai/gpt-4o-mini', tokensPrompt: 100, tokensCompletion: 20, custoEstimado: 0.01 },
+        ],
+        totalTokensPrompt: 100,
+        totalTokensCompletion: 20,
+        totalCustoEstimado: 0.01,
+        interacoesIncorretas: 0,
+        metrica1: [{ nomeExibicao: 'Claude Haiku', modelo: 'anthropic/claude-haiku-4.5', custoEstimado: 0.02 }],
+        metrica2: [],
+        metrica3: [],
+      },
+    });
+
+    expect(texto).not.toContain('ajustado por');
   });
 });

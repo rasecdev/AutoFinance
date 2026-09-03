@@ -58,13 +58,13 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Reaproveitando o lookup da Tarefa 36 (benchmark do modelo real em uso por fluxo), calcula pra cada candidato de referência (mesmo conjunto de `metrica1`) que tenha benchmark da **mesma métrica nomeada** pro **mesmo fluxo**: `fator = valorModeloEmUso / valorCandidato`, `custoAjustado = (tokensDoFluxoNoPeríodo × precoDoCandidato) × fator`. Expõe no retorno (`metrica2: MetricaAjustadaPorFluxo[]`) com `{fluxo, nomeExibicaoCandidato, modelo, metrica: nome, custoAjustado}`. Sem par comparável (mesma métrica nos dois lados), não gera entrada pra aquele `{fluxo, candidato}` — cai de volta pra só Métrica 1 (já existente, inalterada).
 
 **Acceptance criteria:**
-- [ ] Fluxo/candidato com benchmark da mesma métrica nos dois lados gera entrada em `metrica2` com o fator aplicado corretamente
-- [ ] Fluxo/candidato sem benchmark comparável (métrica nomeada diferente, ou só um lado tem benchmark) não gera entrada
-- [ ] `metrica1` continua exatamente como está hoje (não alterada por esta tarefa)
+- [x] Fluxo/candidato com benchmark da mesma métrica nos dois lados gera entrada em `metrica2` com o fator aplicado corretamente
+- [x] Fluxo/candidato sem benchmark comparável (métrica nomeada diferente, ou só um lado tem benchmark) não gera entrada
+- [x] `metrica1` continua exatamente como está hoje (não alterada por esta tarefa)
 
 **Verification:**
-- [ ] `npm test -- tests/relatorios/usoIa.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/relatorios/usoIa.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 36
 
@@ -81,12 +81,12 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Na seção "Uso de IA", junto da comparação hipotética da Métrica 1 já existente, adiciona (quando houver `metrica2` pro candidato) o custo ajustado pelo fator de acurácia, rotulado como estimativa (ex: `- Claude Sonnet 4.5: US$ 0,004102 (ajustado por acuracia_tool_calling — estimativa)`, ao lado da linha já existente da Métrica 1 pro mesmo candidato). Sem `metrica2` pro candidato/fluxo, mostra só a linha da Métrica 1 já existente (sem alteração).
 
 **Acceptance criteria:**
-- [ ] Candidato com `metrica2` disponível mostra a linha ajustada além da linha de Métrica 1
-- [ ] Candidato sem `metrica2` mostra só a linha de Métrica 1 (comportamento atual preservado)
+- [x] Candidato com `metrica2` disponível mostra a linha ajustada além da linha de Métrica 1
+- [x] Candidato sem `metrica2` mostra só a linha de Métrica 1 (comportamento atual preservado)
 
 **Verification:**
-- [ ] `npm test -- tests/relatorios/formatar.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/relatorios/formatar.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 38, Tarefa 37 (mesma seção do relatório)
 
@@ -97,7 +97,7 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Estimated scope:** Small (1 arquivo de código + teste)
 
 ## Checkpoint: Métrica 2 funcional (Fase 6 parte 3 concluída)
-- [ ] `npm run build`/`lint`/`test` sem erro
+- [x] `npm run build`/`lint`/`test` sem erro
 - [ ] Teste manual em Homologação: `relatorio(periodo=...)` no mesmo período mostra a Métrica 2 ajustada pro(s) candidato(s) comparáveis contra o modelo real em uso em `conversa_texto`
 - [ ] PROGRESSO.md atualizado com o marco "Fase 6 (parte 3) concluída"
 - [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)

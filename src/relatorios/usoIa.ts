@@ -29,6 +29,14 @@ export type MetricaModeloEmUso = {
   fonteUrl: string;
 };
 
+export type CandidatoAjustadoPorFluxo = {
+  fluxo: string;
+  nomeExibicao: string;
+  modelo: string;
+  metrica: string;
+  custoAjustado: number;
+};
+
 export type AgregacaoUsoIa = {
   porFluxoModelo: TotalPorFluxoModelo[];
   totalTokensPrompt: number;
@@ -36,6 +44,7 @@ export type AgregacaoUsoIa = {
   totalCustoEstimado: number;
   interacoesIncorretas: number;
   metrica1: CandidatoReferencia[];
+  metrica2: CandidatoAjustadoPorFluxo[];
   metrica3: MetricaModeloEmUso[];
 };
 
@@ -63,6 +72,13 @@ function paraJanelaTimestamp(periodo: PeriodoRelatorio): { inicio: string; fim: 
   };
 }
 
+type PrecoModelo = { precoPrompt: number; precoCompletion: number };
+
+function obterPrecoMaisRecente(db: DbClient, modelo: string): PrecoModelo | undefined {
+  const [snapshotMaisRecente] = obterUltimosSnapshots(db, modelo, 1);
+  return snapshotMaisRecente;
+}
+
 function calcularMetrica1(
   db: DbClient,
   totalTokensPrompt: number,
@@ -71,12 +87,10 @@ function calcularMetrica1(
   const candidatos: CandidatoReferencia[] = [];
 
   for (const referencia of listarModelosReferenciaAtivos(db)) {
-    const [snapshotMaisRecente] = obterUltimosSnapshots(db, referencia.modelIdOpenrouter, 1);
-    if (!snapshotMaisRecente) continue;
+    const preco = obterPrecoMaisRecente(db, referencia.modelIdOpenrouter);
+    if (!preco) continue;
 
-    const custoEstimado =
-      totalTokensPrompt * snapshotMaisRecente.precoPrompt +
-      totalTokensCompletion * snapshotMaisRecente.precoCompletion;
+    const custoEstimado = totalTokensPrompt * preco.precoPrompt + totalTokensCompletion * preco.precoCompletion;
 
     candidatos.push({
       nomeExibicao: referencia.nomeExibicao,
@@ -91,27 +105,66 @@ function calcularMetrica1(
 // listarBenchmarks já ordena por id DESC — a primeira ocorrência de cada
 // nome de métrica é a mais recente (curadoria pode registrar a mesma métrica
 // de novo depois, ex: revisão trimestral).
-function calcularMetrica3(
-  db: DbClient,
-  porFluxoModelo: TotalPorFluxoModelo[],
-): MetricaModeloEmUso[] {
+function metricasMaisRecentesPorNome(db: DbClient, fluxo: string, modelo: string): Map<string, { valor: number; fonteUrl: string }> {
+  const mapa = new Map<string, { valor: number; fonteUrl: string }>();
+
+  for (const benchmark of listarBenchmarks(db, fluxo, modelo)) {
+    if (mapa.has(benchmark.metrica)) continue;
+    mapa.set(benchmark.metrica, { valor: benchmark.valor, fonteUrl: benchmark.fonteUrl });
+  }
+
+  return mapa;
+}
+
+function calcularMetrica3(db: DbClient, porFluxoModelo: TotalPorFluxoModelo[]): MetricaModeloEmUso[] {
   const resultado: MetricaModeloEmUso[] = [];
 
   for (const item of porFluxoModelo) {
-    const metricasVistas = new Set<string>();
+    for (const [metrica, { valor, fonteUrl }] of metricasMaisRecentesPorNome(db, item.fluxo, item.modelo)) {
+      resultado.push({ fluxo: item.fluxo, modelo: item.modelo, custoEstimado: item.custoEstimado, metrica, valor, fonteUrl });
+    }
+  }
 
-    for (const benchmark of listarBenchmarks(db, item.fluxo, item.modelo)) {
-      if (metricasVistas.has(benchmark.metrica)) continue;
-      metricasVistas.add(benchmark.metrica);
+  return resultado;
+}
 
-      resultado.push({
-        fluxo: item.fluxo,
-        modelo: item.modelo,
-        custoEstimado: item.custoEstimado,
-        metrica: benchmark.metrica,
-        valor: benchmark.valor,
-        fonteUrl: benchmark.fonteUrl,
-      });
+// Métrica 2 só existe quando o modelo real em uso E o candidato de referência
+// têm benchmark da MESMA métrica nomeada pro MESMO fluxo (decisão explícita
+// do usuário, pra evitar multiplicar custo por um "fator" cuja natureza varia
+// por linha de benchmark — percentual de acurácia, índice composto, redução
+// de tokens — sem base pra comparar entre si).
+function calcularMetrica2(
+  db: DbClient,
+  porFluxoModelo: TotalPorFluxoModelo[],
+  candidatosReferencia: CandidatoReferencia[],
+): CandidatoAjustadoPorFluxo[] {
+  const resultado: CandidatoAjustadoPorFluxo[] = [];
+
+  for (const item of porFluxoModelo) {
+    const metricasModeloEmUso = metricasMaisRecentesPorNome(db, item.fluxo, item.modelo);
+    if (metricasModeloEmUso.size === 0) continue;
+
+    for (const candidato of candidatosReferencia) {
+      const preco = obterPrecoMaisRecente(db, candidato.modelo);
+      if (!preco) continue;
+
+      const metricasCandidato = metricasMaisRecentesPorNome(db, item.fluxo, candidato.modelo);
+
+      for (const [metrica, { valor: valorModeloEmUso }] of metricasModeloEmUso) {
+        const valorCandidato = metricasCandidato.get(metrica)?.valor;
+        if (valorCandidato === undefined || valorCandidato === 0) continue;
+
+        const custoHipotetico = item.tokensPrompt * preco.precoPrompt + item.tokensCompletion * preco.precoCompletion;
+        const fator = valorModeloEmUso / valorCandidato;
+
+        resultado.push({
+          fluxo: item.fluxo,
+          nomeExibicao: candidato.nomeExibicao,
+          modelo: candidato.modelo,
+          metrica,
+          custoAjustado: custoHipotetico * fator,
+        });
+      }
     }
   }
 
@@ -148,6 +201,7 @@ export function agregarUsoIaPeriodo(db: DbClient, periodo: PeriodoRelatorio): Ag
   }
 
   const porFluxoModelo = [...porFluxoModeloMap.values()];
+  const metrica1 = calcularMetrica1(db, totalTokensPrompt, totalTokensCompletion);
 
   return {
     porFluxoModelo,
@@ -155,7 +209,8 @@ export function agregarUsoIaPeriodo(db: DbClient, periodo: PeriodoRelatorio): Ag
     totalTokensCompletion,
     totalCustoEstimado,
     interacoesIncorretas: contarInteracoesAvaliadasIncorretas(db, janela),
-    metrica1: calcularMetrica1(db, totalTokensPrompt, totalTokensCompletion),
+    metrica1,
+    metrica2: calcularMetrica2(db, porFluxoModelo, metrica1),
     metrica3: calcularMetrica3(db, porFluxoModelo),
   };
 }
