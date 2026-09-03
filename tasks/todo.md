@@ -120,7 +120,7 @@
 **Verification:**
 - [x] `npm test` cobre: `cache_control` presente só quando `modelo` é `anthropic/*` (formato correto, bloco de conteúdo com `ttl: '1h'`), ausente pra outros provedores, acúmulo de `cachedTokens`/`cacheWriteTokens` quando presentes na resposta mockada, 0 quando ausentes — 393/393 em `development`
 - [x] `npm run build`/`lint` sem erro
-- [ ] Manual em Homologação: `/modelo anthropic/claude-<algum modelo válido>`, conversa de dois turnos, conferir no log que `cached_tokens` aparece maior que 0 no segundo turno
+- [x] Manual em Homologação: `/modelo anthropic/claude-<algum modelo válido>`, conversa de dois turnos, conferir no log que `cached_tokens` aparece maior que 0 no segundo turno — confirmado com `anthropic/claude-haiku-4.5` (`cachedTokens: 19950` na 2ª mensagem, subindo de `9975` na 1ª). **Achado real, não é bug de código:** `anthropic/claude-3-haiku` (modelo antigo) tentado primeiro deu `cachedTokens`/`cacheWriteTokens` sempre 0 — investigado direto contra a API do OpenRouter (fora do bot): esse slug roteia só via Amazon Bedrock, que não suporta cache pra esse modelo específico; `claude-haiku-4.5` (mais novo) suporta cache mesmo via Bedrock. Formato do `cache_control` (bloco de conteúdo, `ttl: '1h'`) confirmado correto em teste isolado antes de suspeitar do modelo (1ª chamada gravou 6812-6886 tokens de cache, 2ª leu do cache, custo caiu ~19x)
 
 **Dependencies:** None (funciona independente do roteamento estar completo)
 
