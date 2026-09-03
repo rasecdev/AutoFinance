@@ -49,11 +49,11 @@ Migração: chat_id + tokens em interacoes_ia, tabela resumos_conversa (Tarefa 1
 ### Fase F: Injeção de contexto na conversa
 
 - [x] Tarefa 19: Montagem do prompt com resumo (bloco fixo) + janela curta verbatim (sufixo); `chat_id`/tokens passam a ser gravados em `interacoes_ia` em toda chamada
-- [ ] Tarefa 20: Fluxo `resumir_contexto` (chamada dedicada de IA, resumo cumulativo a partir do resumo anterior + mensagens novas) e gatilho automático por tokens acumulados após responder ao usuário
+- [x] Tarefa 20: Fluxo `resumir_contexto` (chamada dedicada de IA, resumo cumulativo a partir do resumo anterior + mensagens novas) e gatilho automático por tokens acumulados após responder ao usuário
 
 ### Checkpoint: Memória funcional
-- [ ] Testar manualmente em Homologação: pergunta de seguimento sem repetir contexto ("e comparado ao mês passado?"), e uma conversa longa o bastante pra disparar o resumo automático — conferir `resumos_conversa` no banco
-- [ ] `npm test` passa
+- [x] Testar manualmente em Homologação: pergunta de seguimento sem repetir contexto ("e comparado ao mês passado?"), e uma conversa longa o bastante pra disparar o resumo automático — conferir `resumos_conversa` no banco (feito incrementalmente nas Tarefas 19-20, incluindo o achado de calibração de `LIMITE_TOKENS_JANELA`, ver PROGRESSO.md)
+- [x] `npm test` passa (346/346 em `development`)
 - [ ] Revisão com o usuário antes de prosseguir
 
 ### Fase G: Troca de modelo
