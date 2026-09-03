@@ -16,8 +16,13 @@ const CHAVE_TESTE = 'chave-teste-relatorios-uso-ia';
 let dir: string;
 let db: DbClient;
 
+// Data local (não UTC) — mesmo componente usado por calcularJanelaPeriodo e
+// por agregarUsoIaPeriodo pra converter a janela em timestamp UTC. Usar
+// toISOString().slice(0,10) aqui (UTC) quebraria o teste perto da meia-noite
+// em fusos negativos (achado real corrigido na Tarefa 28, ver usoIa.ts).
 function hoje(): { inicio: string; fim: string } {
-  const iso = new Date().toISOString().slice(0, 10);
+  const agora = new Date();
+  const iso = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}-${String(agora.getDate()).padStart(2, '0')}`;
   return { inicio: iso, fim: iso };
 }
 
@@ -152,5 +157,32 @@ describe('agregarUsoIaPeriodo', () => {
     criarModeloReferencia(db, 'Claude Haiku', 'anthropic/claude-haiku-4.5');
 
     expect(agregarUsoIaPeriodo(db, hoje()).metrica1).toEqual([]);
+  });
+
+  it('inclui registro de um dia inteiro, independente do fuso do processo (achado real de bug de timezone)', () => {
+    // Janela local do dia 1, do primeiro ao último instante local desse dia,
+    // convertida pra Date local (sem depender do fuso real da máquina que
+    // roda o teste) — o meio-dia local desse mesmo dia sempre cai dentro.
+    const janela = { inicio: '2026-06-01', fim: '2026-06-01' };
+    const meioDiaLocal = new Date(2026, 5, 1, 12, 0, 0, 0).toISOString();
+
+    db.prepare(
+      `INSERT INTO uso_tokens (fluxo, modelo, tokens_prompt, tokens_completion, custo_estimado, origem, data_hora)
+       VALUES ('conversa_texto', 'openai/gpt-4o-mini', 10, 5, 0.001, 'uso_real', ?)`,
+    ).run(meioDiaLocal);
+
+    expect(agregarUsoIaPeriodo(db, janela).totalTokensPrompt).toBe(10);
+  });
+
+  it('exclui registro do dia seguinte, mesmo perto da virada', () => {
+    const janela = { inicio: '2026-06-01', fim: '2026-06-01' };
+    const inicioDoDiaSeguinte = new Date(2026, 5, 2, 0, 0, 0, 1).toISOString();
+
+    db.prepare(
+      `INSERT INTO uso_tokens (fluxo, modelo, tokens_prompt, tokens_completion, custo_estimado, origem, data_hora)
+       VALUES ('conversa_texto', 'openai/gpt-4o-mini', 10, 5, 0.001, 'uso_real', ?)`,
+    ).run(inicioDoDiaSeguinte);
+
+    expect(agregarUsoIaPeriodo(db, janela).totalTokensPrompt).toBe(0);
   });
 });
