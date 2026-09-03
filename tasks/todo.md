@@ -1,166 +1,132 @@
-# Tarefas: Fase 4 — Contexto e memória de conversa
+# Tarefas: Fase 5 — Roteamento de IA por fluxo + monitoramento de preços
 
 > Ver `tasks/plan.md` para o grafo de dependência completo e as decisões de arquitetura. Fluxo de trabalho (branch/PR/merge) conforme `CLAUDE.md`.
 
-## Fase E: Persistência de histórico
+## Fase H: Roteamento por fluxo
 
-### Tarefa 17: Migração de histórico por chat + repositório de leitura ✅
+### Tarefa 22: Repositório `roteamento_tarefas` + aplicar nos fluxos existentes
 
-**Implementado:** conforme descrito abaixo, sem desvios do planejado.
-
-**Descrição:** Nova migração adicionando `chat_id`, `tokens_prompt`, `tokens_completion` em `interacoes_ia` (colunas nullable, sem preencher histórico antigo) e a tabela `resumos_conversa` (`id, chat_id, resumo_texto, cobre_ate_trace_id, tokens_janela_no_gatilho, criado_em`, conforme PLANO.md linha 518). Estender `src/db/repositories/interacoesIa.ts` com funções de leitura: buscar últimas N interações de um `chat_id` (ordenadas cronologicamente, com filtro opcional "depois de um `trace_id`"), e somar `tokens_prompt + tokens_completion` de um chat desde um `trace_id` (ou desde o início, se omitido). `registrarInteracaoIa` passa a aceitar `chatId`, `tokensPrompt`, `tokensCompletion` opcionais.
+**Descrição:** `src/db/repositories/roteamentoTarefas.ts` (novo): `obterModeloRoteamento(db, fluxo)` (retorna `modelo_preferido` da linha, ou `undefined` se não existir — sem lançar erro) e `definirRoteamento(db, fluxo, modeloPreferido, requisitos?)` (`INSERT ... ON CONFLICT(fluxo) DO UPDATE`, já que `fluxo` é `UNIQUE`). `texto.ts` passa a resolver o modelo de `conversa_texto` como `obterModeloAtivo(chatId) ?? obterModeloRoteamento(db, 'conversa_texto') ?? MODELO_PADRAO` (override do chat sempre vence, `roteamento_tarefas` é o padrão de fábrica); `resumirContexto.ts` resolve `MODELO_RESUMO` do mesmo jeito pro fluxo `resumir_contexto`, sem override de chat (esse fluxo não tem comando pra trocar por chat).
 
 **Acceptance criteria:**
-- [x] Migração roda limpo em banco novo (`migrate()` do zero) e em banco já existente com dados da Fase 3 (linhas antigas de `interacoes_ia` ficam com `chat_id`/tokens `NULL`, sem erro)
-- [x] Existe uma função que retorna as últimas N interações de um `chat_id`, em ordem cronológica
-- [x] Existe uma função que soma tokens (`tokens_prompt + tokens_completion`) de um `chat_id`, opcionalmente a partir de um `trace_id`
+- [ ] Existe uma linha em `roteamento_tarefas` pra um fluxo e o modelo dela é de fato usado na próxima chamada daquele fluxo
+- [ ] Fluxo sem linha em `roteamento_tarefas` continua usando a constante padrão atual, sem quebrar nem exigir seed
+- [ ] `/modelo` (override por chat, Fase 4) continua tendo precedência sobre `roteamento_tarefas` em `conversa_texto`
 
 **Verification:**
-- [x] `npm test` cobre a migração (idempotência/coluna nova) e as duas funções de leitura novas — 330/330 (1 falha em `dividas.test.ts` isolada por timeout de hook, confirmada flaky ao rodar o arquivo sozinho, sem relação com esta tarefa)
-- [x] `npm run build`/`lint` sem erro
+- [ ] `npm test` cobre: leitura com/sem linha existente, definição/atualização (`ON CONFLICT`), precedência de `/modelo` sobre `roteamento_tarefas`, `resumir_contexto` usando `roteamento_tarefas` quando definido
+- [ ] `npm run build`/`lint` sem erro
+- [ ] Manual em Homologação: inserir uma linha em `roteamento_tarefas` pro fluxo `conversa_texto` com um modelo diferente do padrão (sem usar `/modelo`), confirmar em `interacoes_ia.modelo` que a próxima conversa usou esse modelo
 
-**Dependencies:** None
-
-**Files likely touched:**
-- `src/db/migrations/000X_historico_conversa.sql` (novo)
-- `src/db/repositories/interacoesIa.ts`
-- `tests/db/interacoesIa.test.ts`
-
-**Estimated scope:** Small (2-3 arquivos)
-
----
-
-### Tarefa 18: Repositório `resumos_conversa` ✅
-
-**Implementado:** conforme descrito abaixo, sem desvios do planejado.
-
-**Descrição:** `src/db/repositories/resumosConversa.ts` (novo): `criarResumoConversa(db, { chatId, resumoTexto, cobreAteTraceId, tokensJanelaNoGatilho })` (insert) e `obterUltimoResumo(db, chatId)` (último resumo daquele chat, por `criado_em` desc, ou `undefined` se nunca houve um).
-
-**Acceptance criteria:**
-- [x] É possível criar um resumo associado a um chat e recuperar o mais recente
-- [x] Um chat sem resumo nenhum retorna `undefined` (não lança erro)
-
-**Verification:**
-- [x] `npm test` cobre criação e recuperação do último resumo, incluindo o caso "nenhum resumo ainda" — 334 testes no total (4 novos), 4 falhas de timeout de hook em arquivos não relacionados durante a rodada completa, confirmadas flaky (passam isoladamente, mesmo padrão de sobrecarga sob paralelismo já visto na Tarefa 17)
-- [x] `npm run build`/`lint` sem erro
-
-**Dependencies:** Tarefa 17 (schema de `resumos_conversa`)
+**Dependencies:** None (tabela já existe desde a Fase 1)
 
 **Files likely touched:**
-- `src/db/repositories/resumosConversa.ts` (novo)
-- `tests/db/resumosConversa.test.ts` (novo)
-
-**Estimated scope:** Small (2 arquivos)
-
----
-
-## Checkpoint: Fundação de memória
-- [x] `npm run build`/`lint`/`test` sem erro
-- [x] Migração roda limpo em banco novo e em banco existente (sem perda de dado)
-- [x] Revisão com o usuário antes de prosseguir
-
----
-
-## Fase F: Injeção de contexto na conversa
-
-### Tarefa 19: Montagem do prompt com resumo + janela curta ✅
-
-**Implementado:** conforme descrito abaixo, sem desvios do planejado. `montarHistorico` monta um `system` extra com o resumo (se existir) seguido dos pares `user`/`assistant` das interações do chat depois do `cobre_ate_trace_id` do resumo (ou as últimas `LIMITE_TURNOS_JANELA = 12`, sem resumo). `gerarResposta` ganhou um 5º parâmetro opcional `historico` (default `[]`, mantém 100% de compatibilidade com chamadas existentes), injetado entre o system prompt e a mensagem atual.
-
-**Descrição:** Novo módulo `src/ai/contexto.ts`: `montarHistorico(db, chatId)` retorna o array de mensagens (`role: 'assistant'`/`'user'`) a injetar entre o system prompt e a mensagem atual — busca `obterUltimoResumo`, injeta como uma mensagem `system` adicional (bloco fixo, resumo da conversa até aqui) se existir, e busca as últimas N interações do chat **depois** do `cobre_ate_trace_id` do resumo (ou as últimas N, se não houver resumo) como pares `user`/`assistant` verbatim. `gerarResposta` (`src/ai/openrouter.ts`) passa a aceitar `chatId` e usar `montarHistorico` pra montar `mensagens` antes da chamada. `handlerTexto` passa a chamar `registrarInteracaoIa` com `chatId` e os tokens retornados pela chamada (hoje descartados — conferir se `gerarResposta` já retorna `usage`, senão expor).
-
-**Acceptance criteria:**
-- [x] Uma segunda mensagem no mesmo chat inclui as mensagens anteriores daquele chat no prompt enviado ao modelo
-- [x] Chat sem histórico anterior (primeira mensagem) monta o prompt exatamente como hoje (system + mensagem atual, sem quebrar o comportamento existente)
-- [x] `interacoes_ia.chat_id`/`tokens_prompt`/`tokens_completion` são gravados em toda chamada nova
-
-**Verification:**
-- [x] `npm test` cobre: histórico vazio (comportamento inalterado), histórico com resumo, histórico sem resumo (só janela), isolamento entre chats, injeção real de ponta a ponta via `handlerTexto` (duas mensagens seguidas no mesmo chat) — 340/340 em `development`
-- [x] `npm run build`/`lint` sem erro
-- [x] Manual em Homologação: perguntar algo, depois fazer uma pergunta de seguimento ("e comparado ao mês passado?") e confirmar que o bot responde corretamente usando o contexto do turno anterior — verificado via Telegram real, deploy direto na VM (branch da tarefa, antes do merge): "Quanto gastei em março na conta Testes?" → "e na conta Poupança?" respondido corretamente como continuação de março, sem o usuário repetir o mês; `chat_id`/`tokens_prompt`/`tokens_completion` conferidos em `interacoes_ia`
-
-**Dependencies:** Tarefa 17, Tarefa 18
-
-**Files likely touched:**
-- `src/ai/contexto.ts` (novo)
-- `src/ai/openrouter.ts`
+- `src/db/repositories/roteamentoTarefas.ts` (novo)
 - `src/bot/handlers/texto.ts`
-- `tests/ai/contexto.test.ts` (novo)
+- `src/ai/resumirContexto.ts`
+- `tests/db/roteamentoTarefas.test.ts` (novo)
 
 **Estimated scope:** Medium (4 arquivos)
 
 ---
 
-### Tarefa 20: Fluxo `resumir_contexto` + gatilho automático ✅
+## Checkpoint: Roteamento aplicado
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Testar manualmente em Homologação: inserir uma linha em `roteamento_tarefas` pro fluxo `conversa_texto` com um modelo diferente do padrão, confirmar que a próxima conversa usa esse modelo (sem `/modelo` sobrescrever)
+- [ ] Revisão com o usuário antes de prosseguir
 
-**Implementado:** conforme descrito abaixo, sem desvios do planejado. `LIMITE_TOKENS_JANELA = 6000` como constante ajustável (ponto de partida do PLANO.md); `MODELO_RESUMO` isolado do `MODELO_PADRAO`, ainda sem `roteamento_tarefas` (Fase 5). `verificarGatilhoResumo` roda em `texto.ts` logo depois de `ctx.reply(...)`, dentro de um `try/catch` próprio — uma falha ao gerar o resumo é logada mas nunca derruba a resposta já enviada ao usuário.
+---
 
-**Descrição:** `src/ai/resumirContexto.ts` (novo): `resumirContexto(client, { resumoAnterior, mensagensNovas })` — chamada de IA dedicada (`MODELO_RESUMO`, constante própria), prompt específico instruído a reter decisões/valores/pendências e descartar o literal de lançamento de dado já persistido no banco; registra a chamada em `uso_tokens` (fluxo `'resumir_contexto'`) e em `interacoes_ia` do mesmo jeito que qualquer outra chamada. Em `handlerTexto`, depois de responder ao usuário: soma tokens do chat desde o último resumo (repositório da Tarefa 17); se ultrapassar `LIMITE_TOKENS_JANELA` (constante, ex. 6000), dispara `resumirContexto` com o resumo anterior (se houver) + as interações da janela, e grava o resultado via `criarResumoConversa` com `cobreAteTraceId` apontando pro `trace_id` mais recente incluído no resumo.
+## Fase I: Monitoramento de preço e alerta
+
+### Tarefa 23: Repositório `modelos_openrouter_historico` + script de snapshot semanal
+
+**Descrição:** `src/db/repositories/modelosOpenrouterHistorico.ts` (novo): `registrarSnapshotModelo(db, { modelo, precoPrompt, precoCompletion, capacidades, dataSnapshot })` (insert) e `obterUltimosSnapshots(db, modelo, limite)` (últimos N snapshots de um modelo, mais recente primeiro — base pra comparação de preço da Tarefa 24). `scripts/monitorarPrecos.ts` (novo, mesmo padrão de `scripts/backup.ts`): busca `GET https://openrouter.ai/api/v1/models` (endpoint público, sem autenticação), grava um snapshot por modelo do catálogo (`capacidades` como JSON — inclui pelo menos `supported_parameters`, usado na Tarefa 24 pra checar `requisitos`).
 
 **Acceptance criteria:**
-- [x] Existe uma chamada de IA isolada que gera resumo cumulativo (resumo anterior + mensagens novas, nunca reprocessando a conversa inteira)
-- [x] O disparo do resumo acontece depois de a resposta já ter sido enviada ao usuário (não adiciona latência perceptível à resposta atual)
-- [x] Resumo novo substitui efetivamente a janela antiga nas chamadas seguintes (Tarefa 19 volta a buscar o resumo mais recente)
+- [ ] Rodar o script grava um snapshot por modelo do catálogo em `modelos_openrouter_historico`
+- [ ] Falha de rede/API não derruba o processo com stack trace cru — erro logado, `process.exitCode = 1` (mesmo padrão de `backup.ts`)
 
 **Verification:**
-- [x] `npm test` cobre: geração de resumo cumulativo (com e sem resumo anterior), disparo do gatilho ao ultrapassar o limite, não-disparo abaixo do limite, isolamento entre chats, registro em `interacoes_ia`/`uso_tokens` com o fluxo `resumir_contexto` — 346/346 em `development`
-- [x] `npm run build`/`lint` sem erro
-- [x] Manual em Homologação: conversa longa o bastante pra ultrapassar o limite de tokens, conferir `resumos_conversa` populado e que uma pergunta de seguimento depois do resumo ainda funciona corretamente — verificado via Telegram real, deploy direto na VM (branch da tarefa, antes do merge): mecanismo disparou corretamente (`resumos_conversa` populado, resumo cumulativo fundindo o anterior com as mensagens novas, `interacoes_ia`/`uso_tokens` registrando o fluxo `resumir_contexto` separado de `conversa_texto`). **Achado de calibração, corrigido na hora**: `LIMITE_TOKENS_JANELA` original (6000, ponto de partida do PLANO.md) disparava o resumo em praticamente toda mensagem — uma única chamada de conversa já custa ~11-18k tokens sozinha (system prompt + ~20 definições de ferramentas dominam o custo fixo), nunca deixando a janela curta acumular turno nenhum antes de resumir. Ajustado pra 25000 (decisão do usuário) — permite acumular 1-2 trocas reais antes do gatilho, redeployado e testado de novo na mesma sessão
+- [ ] `npm test` cobre o repositório (registrar, consultar últimos N) com fetch mockado no teste do script (sem chamada de rede real em teste automatizado)
+- [ ] `npm run build`/`lint` sem erro
+- [ ] Manual em Homologação: rodar `node dist/scripts/monitorarPrecos.js` manualmente (`docker compose exec`), conferir `modelos_openrouter_historico` populado no banco
 
-**Dependencies:** Tarefa 19
+**Dependencies:** None (tabela já existe desde a Fase 1)
 
 **Files likely touched:**
-- `src/ai/resumirContexto.ts` (novo)
-- `src/bot/handlers/texto.ts`
-- `tests/ai/resumirContexto.test.ts` (novo)
+- `src/db/repositories/modelosOpenrouterHistorico.ts` (novo)
+- `src/scripts/monitorarPrecos.ts` (novo)
+- `tests/db/modelosOpenrouterHistorico.test.ts` (novo)
+- `tests/scripts/monitorarPrecos.test.ts` (novo)
+
+**Estimated scope:** Medium (4 arquivos)
+
+---
+
+### Tarefa 24: Alerta de preço via Telegram + job semanal
+
+**Descrição:** Estende `scripts/monitorarPrecos.ts` (roda na sequência, mesma execução semanal): depois de gravar o snapshot novo, pra cada linha de `roteamento_tarefas` (fluxo com modelo preferido definido), compara (a) o preço do modelo ativo no snapshot novo vs. o snapshot anterior do mesmo modelo — mudou, alerta; (b) varre os demais modelos do snapshot novo cujo `supported_parameters` cobre a lista de `requisitos` daquela linha (comparação simples, string contém) e é mais barato que o modelo ativo — achou, alerta. Mensagem enviada via `new Bot(token).api.sendMessage(chatId, texto)` (sem long polling, só a chamada pontual da API) pra cada `chatId` em `env.telegramAllowedChatIds`. `docker-compose.yml` ganha `monitor-precos-producao`/`monitor-precos-homologacao` (mesmo padrão do `backup-*`: `while true; do node dist/scripts/monitorarPrecos.js; sleep 604800; done`).
+
+**Acceptance criteria:**
+- [ ] Preço do modelo ativo de um fluxo mudando entre dois snapshots dispara uma mensagem no Telegram
+- [ ] Surgimento de um modelo mais barato que atende `requisitos` de um fluxo dispara uma mensagem no Telegram
+- [ ] Nenhuma mudança de preço/candidato não dispara mensagem nenhuma (sem ruído)
+- [ ] O alerta nunca altera `roteamento_tarefas` sozinho — só avisa
+
+**Verification:**
+- [ ] `npm test` cobre: disparo por mudança de preço, disparo por candidato mais barato, não-disparo quando nada mudou, filtro por `requisitos`
+- [ ] `npm run build`/`lint` sem erro
+- [ ] Manual em Homologação: forçar uma mudança de preço nos dados de teste (snapshot manual com preço diferente do anterior) e confirmar que a mensagem chega no Telegram
+
+**Dependencies:** Tarefa 22 (`roteamento_tarefas`), Tarefa 23 (snapshot)
+
+**Files likely touched:**
+- `src/scripts/monitorarPrecos.ts`
+- `docker-compose.yml`
+- `tests/scripts/monitorarPrecos.test.ts`
 
 **Estimated scope:** Medium (3 arquivos)
 
 ---
 
-## Checkpoint: Memória funcional
-- [x] Testar manualmente em Homologação: pergunta de seguimento sem repetir contexto ("e comparado ao mês passado?"), e uma conversa longa o bastante pra disparar o resumo automático — conferir `resumos_conversa` no banco (feito incrementalmente nas Tarefas 19-20, incluindo o achado de calibração de `LIMITE_TOKENS_JANELA`, ver PROGRESSO.md)
-- [x] `npm test` passa (346/346 em `development`)
-- [x] Revisão com o usuário antes de prosseguir
+## Checkpoint: Monitoramento de preço funcional
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Rodar `scripts/monitorarPrecos.ts` manualmente em Homologação, confirmar snapshot gravado em `modelos_openrouter_historico`
+- [ ] Testar o alerta manualmente (forçar uma mudança de preço/candidato mais barato nos dados de teste), confirmar mensagem recebida no Telegram
+- [ ] Revisão com o usuário antes de prosseguir
 
 ---
 
-## Fase G: Troca de modelo
+## Fase J: Prompt caching
 
-### Tarefa 21: Comando `/modelo <nome>` ✅
+### Tarefa 25: Prompt caching nativo (Anthropic `cache_control`)
 
-**Implementado:** conforme descrito abaixo, sem desvios do planejado. `gerarResposta` ganhou um 6º parâmetro opcional `modelo` (default `MODELO_PADRAO`, mantém compatibilidade total com chamadas existentes) — as 3 ocorrências internas hardcoded de `MODELO_PADRAO` (na chamada à API e nos dois `return`) trocadas pela variável local. `resumir_contexto` (Tarefa 20) não é afetado — continua sempre em `MODELO_RESUMO`, chamada direta ao client, sem passar por `gerarResposta`.
-
-**Descrição:** `src/bot/modeloAtivo.ts` (novo): `Map<chatId, string>` em memória (mesmo padrão de `contextoRecente.ts`), `definirModeloAtivo`/`obterModeloAtivo` (retorna `MODELO_PADRAO` se não houver override). `src/bot/handlers/modelo.ts` (novo, `createHandlerModelo`): `/modelo <nome>` define o override e confirma; `/modelo` sem argumento responde qual o modelo ativo naquele chat. `router.ts` ganha uma nova rota (mesmo padrão do `/errado`: regex case-insensitive `/^\/modelo\b/i`, `bot.on('message:text').filter(...)`, registrada antes do `handlerTexto`). `handlerTexto`/`gerarResposta` passam a usar `obterModeloAtivo(chatId)` em vez do `MODELO_PADRAO` fixo na chamada principal (fluxo `resumir_contexto` da Tarefa 20 continua sempre no `MODELO_RESUMO`, não é afetado pelo override).
+**Descrição:** `gerarResposta` (`src/ai/openrouter.ts`): quando `modelo` começa com `anthropic/`, a mensagem de `system` (system prompt) passa a incluir `cache_control: { type: 'ephemeral', ttl: '1h' }` (campo de extensão do OpenRouter, fora do tipo padrão do SDK `openai` — via cast pontual, mesmo padrão já usado no projeto quando a lib não cobre um campo específico do provedor). Depois da chamada, se `completion.usage` trouxer `cached_tokens`/`cache_write_tokens` (ou os nomes equivalentes que o OpenRouter expõe), loga em `info` pra permitir verificação manual de que o cache está de fato ativo — sem gravar coluna nova no banco (só observabilidade via log, decisão de escopo mínimo).
 
 **Acceptance criteria:**
-- [x] `/modelo <nome>` troca o modelo usado nas próximas chamadas daquele chat, sem afetar outros chats
-- [x] `/modelo` sem argumento informa o modelo ativo (padrão ou sobrescrito)
-- [x] `interacoes_ia.modelo` reflete o modelo realmente usado após a troca
+- [ ] Modelo Anthropic ativo (roteado ou via `/modelo`) envia `cache_control` no system prompt
+- [ ] Modelo não-Anthropic não sofre nenhuma mudança de payload
+- [ ] `cached_tokens`/`cache_write_tokens` da resposta (quando presentes) aparecem no log da interação
 
 **Verification:**
-- [x] `npm test` cobre: troca de modelo, consulta sem argumento, isolamento entre chats diferentes, matching case-insensitive do comando no router — 355/355 em `development`
-- [x] `npm run build`/`lint` sem erro
-- [x] Manual em Homologação: `/modelo <algum modelo válido do OpenRouter>`, mandar uma mensagem e conferir em `interacoes_ia.modelo` que o modelo novo foi de fato usado — confirmado (`interacoes_ia.modelo = 'openai/gpt-5-nano'` depois de `/modelo openai/gpt-5-nano`). **Achado real, corrigido na mesma sessão**: duas tentativas anteriores usaram o nome de exibição do modelo ("Qwen3 32B", "GPT-5 Nano") em vez do slug do OpenRouter, e a mensagem de erro genérica não deixava claro o motivo — corrigido com uma dica acionável tanto na confirmação do `/modelo` (avisa o formato esperado) quanto no erro (detecta status 400 e sugere conferir com `/modelo`)
+- [ ] `npm test` cobre: `cache_control` presente só quando `modelo` é `anthropic/*`, ausente pra outros provedores, log de cache tokens quando presentes na resposta mockada
+- [ ] `npm run build`/`lint` sem erro
+- [ ] Manual em Homologação: `/modelo anthropic/claude-<algum modelo válido>`, conversa de dois turnos, conferir no log que `cached_tokens` aparece maior que 0 no segundo turno
 
-**Dependencies:** Tarefa 2 (uso_tokens/interacoes_ia já gravam `modelo` desde a Fase 3)
+**Dependencies:** None (funciona independente do roteamento estar completo)
 
 **Files likely touched:**
-- `src/bot/modeloAtivo.ts` (novo)
-- `src/bot/handlers/modelo.ts` (novo)
-- `src/bot/router.ts`
-- `src/bot/bot.ts`
-- `src/index.ts`
-- `tests/bot/modeloAtivo.test.ts` (novo)
-- `tests/bot/modelo.test.ts` (novo)
+- `src/ai/openrouter.ts`
+- `tests/ai/openrouter.test.ts`
 
-**Estimated scope:** Medium (5 arquivos, mesmo padrão do `/errado` na Tarefa 16)
+**Estimated scope:** Small (2 arquivos)
 
 ---
 
-## Checkpoint: Fase 4 completa
-- [x] Todos os critérios de aceite das Tarefas 17-21 atendidos
-- [x] `npm run build`/`lint`/`test` sem erro (356/356 em `development`, checado nesta revisão)
-- [x] Teste manual em Homologação: trocar de modelo via `/modelo`, confirmar que a próxima resposta usa o modelo novo (`interacoes_ia.modelo`) — confirmado (`modelo = 'openai/gpt-5-nano'` depois de `/modelo openai/gpt-5-nano`), incluindo o achado real de nome de exibição vs. slug corrigido na Tarefa 21
-- [x] PROGRESSO.md atualizado com o marco "Fase 4 concluída"
-- [x] Revisão com o usuário antes de prosseguir para a Fase 5
+## Checkpoint: Fase 5 completa
+- [ ] Todos os critérios de aceite das Tarefas 22-25 atendidos
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação confirmando cache ativo (`cached_tokens` > 0) numa conversa com modelo Anthropic roteado via `/modelo`
+- [ ] PROGRESSO.md atualizado com o marco "Fase 5 concluída"
+- [ ] Revisão com o usuário antes de prosseguir para a Fase 6
