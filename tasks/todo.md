@@ -141,7 +141,7 @@
 **Verification:**
 - [x] `npm test` cobre: troca de modelo, consulta sem argumento, isolamento entre chats diferentes, matching case-insensitive do comando no router — 355/355 em `development`
 - [x] `npm run build`/`lint` sem erro
-- [ ] Manual em Homologação: `/modelo <algum modelo válido do OpenRouter>`, mandar uma mensagem e conferir em `interacoes_ia.modelo` que o modelo novo foi de fato usado
+- [x] Manual em Homologação: `/modelo <algum modelo válido do OpenRouter>`, mandar uma mensagem e conferir em `interacoes_ia.modelo` que o modelo novo foi de fato usado — confirmado (`interacoes_ia.modelo = 'openai/gpt-5-nano'` depois de `/modelo openai/gpt-5-nano`). **Achado real, corrigido na mesma sessão**: duas tentativas anteriores usaram o nome de exibição do modelo ("Qwen3 32B", "GPT-5 Nano") em vez do slug do OpenRouter, e a mensagem de erro genérica não deixava claro o motivo — corrigido com uma dica acionável tanto na confirmação do `/modelo` (avisa o formato esperado) quanto no erro (detecta status 400 e sugere conferir com `/modelo`)
 
 **Dependencies:** Tarefa 2 (uso_tokens/interacoes_ia já gravam `modelo` desde a Fase 3)
 
