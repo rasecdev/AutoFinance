@@ -32,7 +32,7 @@ agregarUsoIaPeriodo: lookup de benchmark por {fluxo, modelo real} (Tarefa 36)
 
 ### Checkpoint: Métrica 3 funcional
 - [x] `npm run build`/`lint`/`test` sem erro (493/493 em `development`)
-- [ ] Teste manual em Homologação: `relatorio(periodo=...)` num período com uso real de `conversa_texto` mostra a linha da Métrica 3 com o benchmark real já cadastrado (`acuracia_tool_calling`, Tarefa 35)
+- [x] Teste manual em Homologação: `relatorio(periodo=...)` num período com uso real de `conversa_texto` mostra a linha da Métrica 3 com o benchmark real já cadastrado (`acuracia_tool_calling`, Tarefa 35)
 
 ### Fase P: Métrica 2
 
@@ -41,8 +41,8 @@ agregarUsoIaPeriodo: lookup de benchmark por {fluxo, modelo real} (Tarefa 36)
 
 ### Checkpoint: Métrica 2 funcional (Fase 6 parte 3 concluída)
 - [x] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: `relatorio(periodo=...)` no mesmo período mostra a Métrica 2 ajustada pro(s) candidato(s) que têm benchmark comparável (`acuracia_tool_calling`) contra o modelo real em uso em `conversa_texto`
-- [ ] PROGRESSO.md atualizado com o marco "Fase 6 (parte 3) concluída"
+- [x] Teste manual em Homologação: `relatorio(periodo=...)` no mesmo período mostra a Métrica 2 ajustada pro(s) candidato(s) que têm benchmark comparável (`acuracia_tool_calling`) contra o modelo real em uso em `conversa_texto`
+- [x] PROGRESSO.md atualizado com o marco "Fase 6 (parte 3) concluída"
 - [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
 
 ## Risks and Mitigations
