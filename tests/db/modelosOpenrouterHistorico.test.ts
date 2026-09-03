@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
 import {
+  obterUltimoSnapshotPorModelo,
   obterUltimosSnapshots,
   registrarSnapshotCatalogo,
   registrarSnapshotModelo,
@@ -87,5 +88,23 @@ describe('registrarSnapshotCatalogo', () => {
 
     const linhas = db.prepare('SELECT * FROM modelos_openrouter_historico').all();
     expect(linhas).toHaveLength(2);
+  });
+});
+
+describe('obterUltimoSnapshotPorModelo', () => {
+  it('retorna só o snapshot mais recente de cada modelo distinto', () => {
+    registrarSnapshotModelo(db, { modelo: 'openai/gpt-4o-mini', precoPrompt: 1, precoCompletion: 1 });
+    registrarSnapshotModelo(db, { modelo: 'openai/gpt-4o-mini', precoPrompt: 2, precoCompletion: 2 });
+    registrarSnapshotModelo(db, { modelo: 'qwen/qwen3-32b', precoPrompt: 3, precoCompletion: 3 });
+
+    const ultimos = obterUltimoSnapshotPorModelo(db);
+
+    expect(ultimos).toHaveLength(2);
+    expect(ultimos.find((s) => s.modelo === 'openai/gpt-4o-mini')?.precoPrompt).toBe(2);
+    expect(ultimos.find((s) => s.modelo === 'qwen/qwen3-32b')?.precoPrompt).toBe(3);
+  });
+
+  it('retorna array vazio quando não há nenhum snapshot', () => {
+    expect(obterUltimoSnapshotPorModelo(db)).toEqual([]);
   });
 });

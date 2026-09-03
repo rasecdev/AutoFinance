@@ -1,5 +1,25 @@
 import type { DbClient } from '../client.js';
 
+export type RoteamentoTarefa = {
+  fluxo: string;
+  modeloPreferido: string;
+  requisitos: string | null;
+};
+
+export function listarRoteamentos(db: DbClient): RoteamentoTarefa[] {
+  const linhas = db.prepare('SELECT fluxo, modelo_preferido, requisitos FROM roteamento_tarefas').all() as Array<{
+    fluxo: string;
+    modelo_preferido: string;
+    requisitos: string | null;
+  }>;
+
+  return linhas.map((linha) => ({
+    fluxo: linha.fluxo,
+    modeloPreferido: linha.modelo_preferido,
+    requisitos: linha.requisitos,
+  }));
+}
+
 export function obterModeloRoteamento(db: DbClient, fluxo: string): string | undefined {
   const linha = db
     .prepare('SELECT modelo_preferido FROM roteamento_tarefas WHERE fluxo = ?')
