@@ -1,68 +1,58 @@
-# Plano de Implementação: Fase 6 (parte 2) — Benchmark interno (tool calling)
+# Plano de Implementação: Fase 6 (parte 3) — Métricas 2 e 3 do relatório de uso de IA
 
 ## Overview
 
-Mecanismo pra rodar modelos candidatos contra caso real do projeto e comparar acurácia, no dado real do fluxo — decidido como próxima rodada da Fase 6 logo após terminar os relatórios automáticos (parte 1, concluída). Design completo já existe no PLANO.md, seção "Relatórios" > "Benchmark interno, pros fluxos sem benchmark de terceiro aplicável" (linhas ~260-291) e tabela "Cobertura de benchmark por fluxo" (linhas ~135-151) — esta rodada implementa esse desenho, não redesenha.
-
-**Escopo recortado pra só o fluxo de tool calling (`conversa_texto`)** — o PLANO.md cobre 3 fluxos (categorização, extração de fatura, tool calling), mas hoje só tool calling tem gabarito real disponível: categorização assistida (`cache_categorizacao`) e leitura de fatura por e-mail (Fase 7) ainda não foram implementadas em nenhuma fase, então não têm dado real pra alimentar um caso de teste ainda. `avaliacao_usuario = 'correto'` em `interacoes_ia` (Fase 3) já é gabarito real pronto pra tool calling — os outros dois fluxos entram quando as features das quais dependem existirem.
+O relatório (`relatorio(periodo)`) já tem a Métrica 1 (custo hipotético do volume de tokens do período, recalculado no preço de modelos de referência) implementada e funcionando. Esta rodada implementa as Métricas 2 e 3 já desenhadas no PLANO.md ("Relatórios (diário, semanal, mensal) e metas", linhas ~215-227), que passam a **ler** `benchmarks_modelos` — tabela que só tem dado real hoje pra `fluxo = conversa_texto` (`metrica = acuracia_tool_calling`, gravada pela Tarefa 35, Fase 6 parte 2), suficiente pra verificar esta rodada de ponta a ponta.
 
 ## Architecture Decisions
 
-- **Execução do benchmark NUNCA executa a ferramenta de verdade.** `gerarResposta` (produção) chama `tool.handler` de fato — reusar isso pro benchmark rodaria `criar_transacao`/`pagar_fatura`/etc. de verdade contra o banco a cada rodada de teste, poluindo dado real com efeito colateral. O motor de benchmark faz uma chamada de completion **não-executora**: envia o mesmo prompt de sistema + mesma lista de ferramentas + mensagem do caso, e só **inspeciona** `tool_calls` da resposta (nome + argumentos), nunca chama `handler`. Sem isso, o benchmark seria destrutivo por desenho.
-- **Lista de ferramentas compartilhada entre produção e benchmark.** Hoje o array de tools é montado inline dentro de `createHandlerTexto` (`texto.ts`), não é reaproveitável. Extrai pra `montarToolsConversa(db): ToolDefinition[]` (novo, `src/ai/tools/conversaTools.ts`), usado por `texto.ts` e pelo motor de benchmark — garante que o benchmark testa contra exatamente o mesmo schema/conjunto de ferramentas que a produção usa, não uma cópia que pode divergir com o tempo.
-- **Comparação é sempre feita pelo código, nunca pela IA julgando a si mesma** (já decidido no PLANO.md) — implementado como comparação estrutural de `tool_calls`: mesmo conjunto de `{nome, argumentos}` que `saida_esperada`, argumentos comparados por igualdade profunda (chaves normalizadas antes de comparar, pra não dar falso negativo por ordem de chave no JSON).
-- **Caso de teste = entrada avulsa, sem histórico de conversa.** `casos_teste_benchmark.entrada` é só a mensagem do usuário (texto), enviada isolada (sem `montarHistorico`) pro modelo candidato — simplificação consciente e coerente com o já aceito "amostra pequena e direcional, nunca medição estatística robusta" do PLANO.md. Casos que dependiam de contexto de turnos anteriores (ex: "edita essa transação" sem id) não são bons candidatos a caso de teste isolado — a curadoria (Tarefa 32) deve preferir promover interações que já eram autocontidas.
-- **Curadoria via chat, não script/VM.** Curar um caso é ação pontual, de baixa frequência, iniciada por você reconhecendo "essa resposta foi um bom exemplo, quero guardar" — cabe no mesmo padrão de "editar essa transação" (resolve pra última coisa relevante na conversa, sem pedir id): nova tool `criar_caso_teste_benchmark` resolve pra última interação avaliada como `correto` no chat atual, sem precisar de trace_id explícito (que nunca é mostrado a você hoje).
-- **Achado real ao planejar a Tarefa 32 original: nada no código hoje jamais grava `avaliacao_usuario = 'correto'`.** `atualizarAvaliacaoInteracao` (Fase 3/4) e o comando `/errado` (`handlerFeedback`) só cobrem o caminho negativo — não existe contraparte positiva. O PLANO.md pressupõe "interações já marcadas `avaliacao_usuario = correto`" como gabarito pronto, mas essa marcação nunca é feita por nenhum fluxo hoje. **Nova Tarefa 32 inserida antes da curadoria**: comando `/certo`, espelhando `/errado` (`createHandlerFeedback` generalizado pra aceitar a avaliação como parâmetro, reaproveitando o mesmo rastro de `trace_id` por `message_id` já existente) — sem isso a Tarefa 33 (curadoria) não teria nenhum dado real pra resolver. Tarefas seguintes renumeradas (33-35).
-- **Rodar o benchmark é ação que gasta dinheiro real (N casos × M modelos candidatos, uma chamada cada) — exige confirmação síncrona**, mesmo não gravando nenhum dado financeiro (é uma ação de "alto impacto" por custo, não por mutação de dado — mesmo espírito da regra de confirmação já usada em ações financeiras). `avisoConfirmacao` mostra quantas chamadas reais a rodada vai fazer antes de você confirmar.
-- **Custo do teste é uso real de IA, mas nunca conta como uso operacional do bot** — `registrarUsoTokens` já tem o enum `origem: 'uso_real' | 'benchmark_interno'` desde a Fase 1/5, nunca usado até agora. O motor grava com `origem: 'benchmark_interno'`, que a Tarefa 27 (Fase 6 parte 1) já filtra explicitamente pra fora do relatório de uso de IA — o custo do benchmark não some (fica rastreável em `uso_tokens`), só não polui a métrica de "uso real" do relatório periódico.
-- **Resultado grava em `benchmarks_modelos` com `fonte_url = "interno"`** — mesma tabela que algum dia vai receber benchmark externo pesquisado manualmente (BFCL etc., sem mecanismo de código, é curadoria direta na tabela), mas essa curadoria externa fica fora do escopo desta rodada (Métricas 2/3 do relatório, que leriam essa tabela, também ficam pra rodada futura — só a fundação de dado entra agora).
-- **Ordem de implementação**: tabelas primeiro (nada funciona sem elas), depois curadoria de caso (sem caso, não tem o que rodar), depois o motor de execução (compara sem gravar ainda), por último a tool que expõe o motor no chat com confirmação e grava o resultado.
+- **Fonte do "modelo real em uso por fluxo" é `uso_tokens` do próprio período, não `roteamento_tarefas`.** O PLANO.md fala em "o modelo que o roteamento escolheu de verdade" — mas o dado mais direto e sempre coerente com o que o relatório já mostra é `AgregacaoUsoIa.porFluxoModelo` (já calculado pela Tarefa em uso, filtrado `origem = uso_real`): é literalmente o par fluxo/modelo que gerou custo real naquele período, sem depender de `roteamento_tarefas` estar sincronizado com a lógica de roteamento de verdade (tabela que pode ficar desatualizada sem ninguém notar). Evita introduzir uma segunda fonte de verdade pra "modelo ativo".
+- **Métrica 3 (custo real + benchmark do modelo em uso, lado a lado, sem fórmula):** pra cada `{fluxo, modelo}` em `porFluxoModelo`, busca `listarBenchmarks(db, fluxo, modelo)` — se houver alguma linha, mostra o custo real do período **junto com** a métrica mais recente daquele benchmark (ex: "conversa_texto: US$ 0,002341, modelo openai/gpt-4o-mini (acuracia_tool_calling: 100%, segundo interno)"). Sem benchmark cadastrado pro modelo daquele fluxo, a linha simplesmente não aparece — degradação graciosa já usada na Métrica 1.
+- **Métrica 2 (fator de acurácia relativo, só quando comparável):** decisão explícita do usuário pra resolver a ambiguidade de "fator" ter naturezas diferentes por linha de benchmark (percentual de acurácia vs. "34% menos tokens" vs. índice composto 0-100) — Métrica 2 só existe quando o modelo real em uso **e** o candidato de referência (mesmo conjunto da Métrica 1) têm benchmark da **mesma métrica nomeada** (ex: `acuracia_tool_calling`) pro **mesmo fluxo**. Fator = `valor do modelo real em uso ÷ valor do candidato`; custo ajustado = custo hipotético do candidato pra aquele fluxo (tokens reais do fluxo × preço do candidato) × fator. Interpretação: se o candidato é menos preciso que o modelo real em uso pra essa tarefa, custaria proporcionalmente mais alcançar o mesmo resultado (ajuste pra cima); se for mais preciso, ajuste pra baixo. Sem as duas pontas comparáveis (mesma métrica, mesmo fluxo), Métrica 2 não aparece pra aquele fluxo/candidato — mostra só a Métrica 1 (já existente, não é removida nem alterada).
+- **Métrica 2 é por fluxo, não mais só global.** A Métrica 1 atual soma tokens de todos os fluxos e recalcula custo hipotético global — comportamento existente, mantido como está (não redesenha). Métrica 2 precisa de tokens **por fluxo** (pra multiplicar pelo preço do candidato e aplicar o fator daquele fluxo específico) — usa o total de tokens por fluxo já disponível em `porFluxoModelo` (soma entre todos os modelos que rodaram aquele fluxo no período), não introduz agregação nova.
+- **Nenhuma chamada de IA nova, nenhuma tabela nova.** Todo o trabalho é leitura (`listarBenchmarks`, já existe desde a Tarefa 31) + aritmética determinística sobre dado já coletado — mesmo espírito da Métrica 1 e da regra "relatório nunca dispara benchmark, só lê".
+- **Ordem de implementação**: Métrica 3 primeiro (mais simples, sem fórmula, só lookup + exibição lado a lado) — serve de base pro "modelo real em uso por fluxo" que a Métrica 2 também precisa. Métrica 2 depois, reaproveitando esse lookup.
 
 ```
-Tabelas casos_teste_benchmark + benchmarks_modelos (Tarefa 31)
+agregarUsoIaPeriodo: lookup de benchmark por {fluxo, modelo real} (Tarefa 36)
     │
-    ├── Comando /certo — contraparte de /errado (Tarefa 32)
-    │       │
-    │       └── Tool criar_caso_teste_benchmark — curadoria (Tarefa 33)
-    │
-    └── montarToolsConversa compartilhado + motor de execução (Tarefa 34)
+    └── formatarRelatorio: exibe Métrica 3 (Tarefa 37)
             │
-            └── Tool rodar_benchmark_interno — expõe no chat, grava resultado (Tarefa 35)
+            └── agregarUsoIaPeriodo: calcula Métrica 2 (fator de acurácia, quando comparável) (Tarefa 38)
+                    │
+                    └── formatarRelatorio: exibe Métrica 2 (Tarefa 39)
 ```
 
 ## Task List
 
-### Fase M: Fundação de dados
+### Fase O: Métrica 3
 
-- [x] Tarefa 31: Tabelas `casos_teste_benchmark` e `benchmarks_modelos` + repositórios
+- [ ] Tarefa 36: `agregarUsoIaPeriodo` busca benchmark do modelo real em uso por fluxo (`listarBenchmarks(db, fluxo, modelo)`) e expõe no retorno (`metrica3`)
+- [ ] Tarefa 37: `formatarRelatorio` exibe a Métrica 3 (custo real do fluxo + benchmark do modelo em uso, quando existir)
 
-### Checkpoint: Fundação testada
-- [x] `npm run build`/`lint`/`test` sem erro (460/460 em `development`)
+### Checkpoint: Métrica 3 funcional
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação: `relatorio(periodo=...)` num período com uso real de `conversa_texto` mostra a linha da Métrica 3 com o benchmark real já cadastrado (`acuracia_tool_calling`, Tarefa 35)
 
-### Fase N: Curadoria e execução
+### Fase P: Métrica 2
 
-- [x] Tarefa 32: Comando `/certo` — marca a última resposta do bot como correta (contraparte de `/errado`)
-- [x] Tarefa 33: Tool `criar_caso_teste_benchmark` — promove a última interação avaliada como correta na conversa em caso de teste
-- [x] Tarefa 34: `montarToolsConversa` compartilhado + motor de execução do benchmark (não-executor, compara tool_calls, calcula acurácia e custo)
-- [x] Tarefa 35: Tool `rodar_benchmark_interno(modelos_candidatos)` — expõe o motor no chat, exige confirmação, grava resultado em `benchmarks_modelos` (fluxo hardcoded `conversa_texto` — achado real: parâmetro livre deixava o modelo inventar um valor)
+- [ ] Tarefa 38: `agregarUsoIaPeriodo` calcula o fator de acurácia relativo por fluxo/candidato (quando modelo real em uso e candidato têm benchmark da mesma métrica nomeada no mesmo fluxo) e expõe no retorno (`metrica2`)
+- [ ] Tarefa 39: `formatarRelatorio` exibe a Métrica 2 (custo ajustado pelo fator, rotulado como estimativa) junto da Métrica 1 existente, sem substituí-la
 
-### Checkpoint: Benchmark interno funcional
-- [x] `npm run build`/`lint`/`test` sem erro (488/488 em `development`)
-- [x] Teste manual em Homologação: marcar uma resposta como correta (`/certo`), curar pelo menos 1 caso real de tool calling (`criar_caso_teste_benchmark`), rodar `rodar_benchmark_interno` comparando pelo menos 2 modelos, confirmar resultado em `benchmarks_modelos` com valor plausível e custo do teste visível em `uso_tokens` (`origem = benchmark_interno`)
-- [x] PROGRESSO.md atualizado com o marco "Fase 6 (parte 2) concluída"
+### Checkpoint: Métrica 2 funcional (Fase 6 parte 3 concluída)
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação: `relatorio(periodo=...)` no mesmo período mostra a Métrica 2 ajustada pro(s) candidato(s) que têm benchmark comparável (`acuracia_tool_calling`) contra o modelo real em uso em `conversa_texto`
+- [ ] PROGRESSO.md atualizado com o marco "Fase 6 (parte 3) concluída"
 - [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
 
 ## Risks and Mitigations
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Reaproveitar `gerarResposta` pro benchmark executaria ferramenta de verdade (efeito colateral real no banco a cada rodada de teste) | Alto (dado de teste poluindo dado real) | Motor de benchmark nunca chama `tool.handler` — só inspeciona `tool_calls` da resposta do modelo candidato, chamada de completion isolada sem loop de execução |
-| Comparação de argumentos por igualdade ingênua (`JSON.stringify` direto) dá falso negativo por ordem de chave diferente no JSON | Médio (acurácia medida errado) | Normalizar (ordenar chaves) antes de comparar — testado explicitamente com um caso de mesma resposta em ordens de chave diferentes |
-| Rodar contra muitos modelos/casos sem querer gera custo real inesperado | Baixo (PLANO.md já estima centavos a poucos dólares por rodada, mas ainda é dinheiro real) | Confirmação síncrona obrigatória antes de rodar, com contagem de chamadas reais que vão ser feitas |
-| Caso de teste curado a partir de uma interação que dependia de contexto de turnos anteriores (ex: "edita essa" sem id) fica sem sentido isolado, dando falso negativo pra todo modelo testado | Médio (benchmark mede errado, não o modelo) | Documentado como limitação conhecida na curadoria — não impede curar, mas registrado que casos autocontidos são preferíveis |
+| Hoje só existe benchmark real pra 1 fluxo (`conversa_texto`) e 2 modelos (`openai/gpt-4o-mini`, `qwen/qwen3-32b`) — teste manual de ponta a ponta fica restrito a esse caso | Baixo (esperado, documentado desde o plano da Fase 6 parte 2) | Teste manual usa exatamente esse dado real já existente; degradação graciosa cobre os demais fluxos sem benchmark |
+| Fator de Métrica 2 pode ficar > 1 ou muito distante de 1 se as métricas comparadas não forem realmente equivalentes (ex: acurácia medida em datasets diferentes) | Médio (número "estimativa" mal interpretado como medição precisa) | Rótulo explícito de "estimativa" no texto do relatório (já é a convenção da Métrica 1); só ativa quando a métrica nomeada é idêntica nos dois lados (mesmo dataset/metodologia por construção, já que ambos vêm de rodadas do mesmo benchmark interno) |
+| Múltiplas linhas de benchmark pro mesmo `{fluxo, modelo, metrica}` (curadoria rodada de novo) podem dar ambiguidade sobre qual valor usar | Baixo | `listarBenchmarks` já ordena por `id DESC` — usa a primeira ocorrência de cada métrica (mais recente), mesmo padrão de "dado curado, não histórico” |
 
 ## Open Questions
 
-- Nome exato da métrica gravada em `benchmarks_modelos.metrica` pro resultado do benchmark interno de tool calling (ex: `acuracia_tool_calling`) — decidido na Tarefa 33, sem impacto de desenho, só nomenclatura.
-- Métricas 2/3 do relatório (ler `benchmarks_modelos` no relatório semanal/mensal) ficam pra quando houver dado real acumulado o suficiente pra fazer sentido mostrar — não é tarefa desta rodada.
+- Nenhuma pendente — fórmula da Métrica 2 confirmada explicitamente com o usuário (fator = acurácia do modelo real em uso ÷ acurácia do candidato, só quando a métrica nomeada é a mesma nos dois lados).
