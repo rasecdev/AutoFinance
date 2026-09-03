@@ -11,6 +11,7 @@ import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
 import {
   atualizarAvaliacaoInteracao,
+  buscarUltimaInteracaoCorreta,
   buscarUltimasInteracoesPorChat,
   contarInteracoesAvaliadasIncorretas,
   registrarInteracaoIa,
@@ -281,6 +282,107 @@ describe('contarInteracoesAvaliadasIncorretas (Fase 6, Tarefa 27)', () => {
     const umaHoraAntes = new Date(agora.getTime() - 3600_000).toISOString();
 
     expect(contarInteracoesAvaliadasIncorretas(db, { inicio: duasHorasAntes, fim: umaHoraAntes })).toBe(0);
+  });
+});
+
+describe('buscarUltimaInteracaoCorreta (Fase 6, Tarefa 33)', () => {
+  it('retorna undefined quando não há nenhuma interação correta no chat', () => {
+    expect(buscarUltimaInteracaoCorreta(db, 100)).toBeUndefined();
+  });
+
+  it('retorna a última interação marcada como correta, com mensagem e tool_calls', () => {
+    registrarInteracaoIa(db, {
+      traceId: 'trace-1',
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      mensagemUsuario: 'registra 30 reais de uber em transporte',
+      toolCalls: [{ nome: 'registrar_transacao', argumentos: { valor: 30, categoria: 'transporte' } }],
+      resultado: 'sucesso',
+      chatId: 100,
+    });
+    atualizarAvaliacaoInteracao(db, 'trace-1', 'correto');
+
+    const interacao = buscarUltimaInteracaoCorreta(db, 100);
+
+    expect(interacao).toEqual({
+      traceId: 'trace-1',
+      mensagemUsuario: 'registra 30 reais de uber em transporte',
+      toolCalls: [{ nome: 'registrar_transacao', argumentos: { valor: 30, categoria: 'transporte' } }],
+    });
+  });
+
+  it('ignora interação incorreta ou sem avaliação, só considera correta', () => {
+    registrarInteracaoIa(db, {
+      traceId: 'trace-1',
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      mensagemUsuario: 'sem avaliação',
+      resultado: 'sucesso',
+      chatId: 100,
+    });
+    registrarInteracaoIa(db, {
+      traceId: 'trace-2',
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      mensagemUsuario: 'marcada errada',
+      resultado: 'sucesso',
+      chatId: 100,
+    });
+    atualizarAvaliacaoInteracao(db, 'trace-2', 'incorreto');
+
+    expect(buscarUltimaInteracaoCorreta(db, 100)).toBeUndefined();
+  });
+
+  it('retorna toolCalls null quando a interação correta não chamou nenhuma ferramenta', () => {
+    registrarInteracaoIa(db, {
+      traceId: 'trace-1',
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      mensagemUsuario: 'oi',
+      respostaModelo: 'olá! como posso ajudar?',
+      resultado: 'sucesso',
+      chatId: 100,
+    });
+    atualizarAvaliacaoInteracao(db, 'trace-1', 'correto');
+
+    expect(buscarUltimaInteracaoCorreta(db, 100)?.toolCalls).toBeNull();
+  });
+
+  it('não mistura interação correta de chats diferentes', () => {
+    registrarInteracaoIa(db, {
+      traceId: 'trace-1',
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      mensagemUsuario: 'chat 100',
+      resultado: 'sucesso',
+      chatId: 100,
+    });
+    atualizarAvaliacaoInteracao(db, 'trace-1', 'correto');
+
+    expect(buscarUltimaInteracaoCorreta(db, 200)).toBeUndefined();
+  });
+
+  it('retorna a mais recente quando há mais de uma interação correta', () => {
+    registrarInteracaoIa(db, {
+      traceId: 'trace-1',
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      mensagemUsuario: 'primeira',
+      resultado: 'sucesso',
+      chatId: 100,
+    });
+    registrarInteracaoIa(db, {
+      traceId: 'trace-2',
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      mensagemUsuario: 'segunda',
+      resultado: 'sucesso',
+      chatId: 100,
+    });
+    atualizarAvaliacaoInteracao(db, 'trace-1', 'correto');
+    atualizarAvaliacaoInteracao(db, 'trace-2', 'correto');
+
+    expect(buscarUltimaInteracaoCorreta(db, 100)?.mensagemUsuario).toBe('segunda');
   });
 });
 
