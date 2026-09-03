@@ -39,6 +39,15 @@ import { definirRastroResposta } from '../rastroRespostas.js';
 
 const FLUXO = 'conversa_texto';
 
+// Achado real de teste manual: /modelo não valida o nome contra a lista do
+// OpenRouter (decisão do PLANO.md, item da Tarefa 21) — quando o usuário digita
+// o nome de exibição em vez do slug (ex: "GPT-5 Nano" em vez de "openai/gpt-5-nano"),
+// o erro genérico de "tente de novo" não deixa claro o motivo. A API do OpenRouter
+// devolve 400 nesse caso — detectar isso especificamente pra dar uma dica acionável.
+function ehErroModeloInvalido(erro: unknown): boolean {
+  return typeof erro === 'object' && erro !== null && 'status' in erro && erro.status === 400;
+}
+
 export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger) {
   const tools = [
     criarToolCriarConta(db),
@@ -150,7 +159,11 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
       });
 
       log.error({ err: erro }, 'falha ao chamar OpenRouter');
-      await ctx.reply('Não consegui processar sua mensagem agora, tente de novo em instantes.');
+      await ctx.reply(
+        ehErroModeloInvalido(erro)
+          ? 'Não consegui usar o modelo configurado nesse chat — o OpenRouter recusou, provavelmente porque o nome não é um slug válido. Confira com /modelo, ou troque de novo usando o slug do OpenRouter (ex: "openai/gpt-4o-mini", "qwen/qwen3-32b"), não o nome de exibição.'
+          : 'Não consegui processar sua mensagem agora, tente de novo em instantes.',
+      );
     }
   };
 }
