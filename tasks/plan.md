@@ -48,7 +48,7 @@ Migração: chat_id + tokens em interacoes_ia, tabela resumos_conversa (Tarefa 1
 
 ### Fase F: Injeção de contexto na conversa
 
-- [ ] Tarefa 19: Montagem do prompt com resumo (bloco fixo) + janela curta verbatim (sufixo); `chat_id`/tokens passam a ser gravados em `interacoes_ia` em toda chamada
+- [x] Tarefa 19: Montagem do prompt com resumo (bloco fixo) + janela curta verbatim (sufixo); `chat_id`/tokens passam a ser gravados em `interacoes_ia` em toda chamada
 - [ ] Tarefa 20: Fluxo `resumir_contexto` (chamada dedicada de IA, resumo cumulativo a partir do resumo anterior + mensagens novas) e gatilho automático por tokens acumulados após responder ao usuário
 
 ### Checkpoint: Memória funcional
