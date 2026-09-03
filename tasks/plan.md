@@ -38,7 +38,7 @@ Prompt caching nativo (Anthropic cache_control + log de cached_tokens) (Tarefa 2
 ### Checkpoint: Roteamento aplicado
 - [x] `npm run build`/`lint`/`test` sem erro (367/367 em `development`, checado nesta revisão)
 - [x] Testar manualmente em Homologação: inserir uma linha em `roteamento_tarefas` pro fluxo `conversa_texto` com um modelo diferente do padrão, confirmar que a próxima conversa usa esse modelo (sem `/modelo` sobrescrever) — confirmado
-- [ ] Revisão com o usuário antes de prosseguir
+- [x] Revisão com o usuário antes de prosseguir
 
 ### Fase I: Monitoramento de preço e alerta
 
