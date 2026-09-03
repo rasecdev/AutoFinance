@@ -23,7 +23,8 @@ const openRouterClient = createOpenRouterClient(env.openrouterApiKey);
 const handlerTexto = createHandlerTexto(openRouterClient, db, logger);
 const handlerMidia = createHandlerMidia(logger);
 const handlerNaoSuportado = createHandlerNaoSuportado(logger);
-const handlerFeedback = createHandlerFeedback(db, logger);
+const handlerFeedback = createHandlerFeedback(db, logger, 'incorreto');
+const handlerFeedbackCorreto = createHandlerFeedback(db, logger, 'correto');
 const handlerModelo = createHandlerModelo(db);
 
 const bot = createBot(
@@ -33,6 +34,7 @@ const bot = createBot(
   handlerMidia,
   handlerNaoSuportado,
   handlerFeedback,
+  handlerFeedbackCorreto,
   handlerModelo,
 );
 
