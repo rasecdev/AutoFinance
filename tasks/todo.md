@@ -106,18 +106,20 @@
 
 ## Fase J: Prompt caching
 
-### Tarefa 25: Prompt caching nativo (Anthropic `cache_control`)
+### Tarefa 25: Prompt caching nativo (Anthropic `cache_control`) ✅
+
+**Implementado:** conforme descrito abaixo, com um achado de formato confirmado via pesquisa antes de codar (não assumido): `cache_control` precisa ir no **bloco de conteúdo** (`content: [{ type: 'text', text, cache_control }]`), não como campo direto na mensagem — confirmado contra a documentação oficial do OpenRouter (`docs/guides/best-practices/prompt-caching`). Campos `cached_tokens`/`cache_write_tokens` já vêm tipados no SDK `openai` instalado, em `usage.prompt_tokens_details` — sem precisar de cast pro logging.
 
 **Descrição:** `gerarResposta` (`src/ai/openrouter.ts`): quando `modelo` começa com `anthropic/`, a mensagem de `system` (system prompt) passa a incluir `cache_control: { type: 'ephemeral', ttl: '1h' }` (campo de extensão do OpenRouter, fora do tipo padrão do SDK `openai` — via cast pontual, mesmo padrão já usado no projeto quando a lib não cobre um campo específico do provedor). Depois da chamada, se `completion.usage` trouxer `cached_tokens`/`cache_write_tokens` (ou os nomes equivalentes que o OpenRouter expõe), loga em `info` pra permitir verificação manual de que o cache está de fato ativo — sem gravar coluna nova no banco (só observabilidade via log, decisão de escopo mínimo).
 
 **Acceptance criteria:**
-- [ ] Modelo Anthropic ativo (roteado ou via `/modelo`) envia `cache_control` no system prompt
-- [ ] Modelo não-Anthropic não sofre nenhuma mudança de payload
-- [ ] `cached_tokens`/`cache_write_tokens` da resposta (quando presentes) aparecem no log da interação
+- [x] Modelo Anthropic ativo (roteado ou via `/modelo`) envia `cache_control` no system prompt
+- [x] Modelo não-Anthropic não sofre nenhuma mudança de payload
+- [x] `cached_tokens`/`cache_write_tokens` da resposta (quando presentes) aparecem no log da interação
 
 **Verification:**
-- [ ] `npm test` cobre: `cache_control` presente só quando `modelo` é `anthropic/*`, ausente pra outros provedores, log de cache tokens quando presentes na resposta mockada
-- [ ] `npm run build`/`lint` sem erro
+- [x] `npm test` cobre: `cache_control` presente só quando `modelo` é `anthropic/*` (formato correto, bloco de conteúdo com `ttl: '1h'`), ausente pra outros provedores, acúmulo de `cachedTokens`/`cacheWriteTokens` quando presentes na resposta mockada, 0 quando ausentes — 393/393 em `development`
+- [x] `npm run build`/`lint` sem erro
 - [ ] Manual em Homologação: `/modelo anthropic/claude-<algum modelo válido>`, conversa de dois turnos, conferir no log que `cached_tokens` aparece maior que 0 no segundo turno
 
 **Dependencies:** None (funciona independente do roteamento estar completo)
