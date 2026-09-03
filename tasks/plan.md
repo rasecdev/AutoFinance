@@ -34,10 +34,10 @@ Agregação financeira do período (Tarefa 26)
 ### Fase K: Motor de agregação
 
 - [x] Tarefa 26: Agregação financeira do período (transações por categoria, saldo consolidado, comparação com período anterior)
-- [ ] Tarefa 27: Agregação de uso de IA do período (tokens/custo por fluxo+modelo, `origem = uso_real`, tendência vs. período anterior, Métrica 1 com `modelos_referencia_comparacao` novo) + contagem de `avaliacao_usuario = 'incorreto'`
+- [x] Tarefa 27: Agregação de uso de IA do período (tokens/custo por fluxo+modelo, `origem = uso_real`, tendência vs. período anterior, Métrica 1 com `modelos_referencia_comparacao` novo) + contagem de `avaliacao_usuario = 'incorreto'`
 
 ### Checkpoint: Agregação testada
-- [ ] `npm run build`/`lint`/`test` sem erro
+- [x] `npm run build`/`lint`/`test` sem erro (412/412 em `development`, checado nesta revisão)
 - [ ] Revisão com o usuário antes de prosseguir
 
 ### Fase L: Relatório sob demanda e automação

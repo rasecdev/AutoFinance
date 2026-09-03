@@ -59,7 +59,7 @@
 ---
 
 ## Checkpoint: Agregação testada
-- [ ] `npm run build`/`lint`/`test` sem erro
+- [x] `npm run build`/`lint`/`test` sem erro (412/412 em `development`, checado nesta revisão)
 - [ ] Revisão com o usuário antes de prosseguir
 
 ---
