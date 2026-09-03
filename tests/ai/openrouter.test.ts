@@ -58,6 +58,8 @@ describe('gerarResposta — sem ferramentas (compatibilidade)', () => {
       toolCalls: [],
       tokensPrompt: 0,
       tokensCompletion: 0,
+      cachedTokens: 0,
+      cacheWriteTokens: 0,
       duracaoMs: expect.any(Number),
     });
   });
@@ -72,6 +74,60 @@ describe('gerarResposta — sem ferramentas (compatibilidade)', () => {
     expect(mensagensEnviadas[0]).toMatchObject({ role: 'system' });
     expect(mensagensEnviadas[0].content).toContain('Nunca invente ou substitua um valor');
     expect(mensagensEnviadas[1]).toEqual({ role: 'user', content: 'oi' });
+  });
+});
+
+describe('gerarResposta — prompt caching nativo (Fase 5, Tarefa 25)', () => {
+  it('não envia cache_control quando o modelo não é da Anthropic', async () => {
+    const client = criarClienteFalso(respostaTexto('olá!'));
+    const create = client.chat.completions.create as unknown as ReturnType<typeof vi.fn>;
+
+    await gerarResposta(client, 'oi', [], { chatId: 0 }, [], 'openai/gpt-4o-mini');
+
+    const mensagemSystem = create.mock.calls[0]?.[0]?.messages[0];
+    expect(mensagemSystem.content).toEqual(expect.any(String));
+  });
+
+  it('envia cache_control ephemeral com ttl de 1h no system prompt quando o modelo é Anthropic', async () => {
+    const client = criarClienteFalso(respostaTexto('olá!'));
+    const create = client.chat.completions.create as unknown as ReturnType<typeof vi.fn>;
+
+    await gerarResposta(client, 'oi', [], { chatId: 0 }, [], 'anthropic/claude-3-haiku');
+
+    const mensagemSystem = create.mock.calls[0]?.[0]?.messages[0];
+    expect(mensagemSystem.role).toBe('system');
+    expect(mensagemSystem.content).toEqual([
+      {
+        type: 'text',
+        text: expect.any(String),
+        cache_control: { type: 'ephemeral', ttl: '1h' },
+      },
+    ]);
+  });
+
+  it('acumula cachedTokens/cacheWriteTokens de usage.prompt_tokens_details quando presentes', async () => {
+    const client = criarClienteFalso({
+      choices: [{ message: { content: 'olá!' } }],
+      usage: {
+        prompt_tokens: 100,
+        completion_tokens: 10,
+        prompt_tokens_details: { cached_tokens: 80, cache_write_tokens: 20 },
+      },
+    });
+
+    const resultado = await gerarResposta(client, 'oi', [], { chatId: 0 }, [], 'anthropic/claude-3-haiku');
+
+    expect(resultado.cachedTokens).toBe(80);
+    expect(resultado.cacheWriteTokens).toBe(20);
+  });
+
+  it('cachedTokens/cacheWriteTokens ficam 0 quando prompt_tokens_details não vem na resposta', async () => {
+    const client = criarClienteFalso(respostaTexto('olá!', { prompt_tokens: 5, completion_tokens: 2 }));
+
+    const resultado = await gerarResposta(client, 'oi');
+
+    expect(resultado.cachedTokens).toBe(0);
+    expect(resultado.cacheWriteTokens).toBe(0);
   });
 });
 
