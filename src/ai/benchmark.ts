@@ -7,6 +7,8 @@ import { SYSTEM_PROMPT } from './systemPrompt.js';
 import { montarToolsConversa } from './tools/conversaTools.js';
 import { paraDefinicaoOpenAI } from './tools/registry.js';
 
+export const METRICA_ACURACIA_TOOL_CALLING = 'acuracia_tool_calling';
+
 export type ResultadoBenchmarkModelo = {
   modelo: string;
   totalCasos: number;
@@ -61,7 +63,7 @@ async function chamarModeloCandidato(
   modelo: string,
   entrada: string,
 ): Promise<RespostaModeloCandidato> {
-  const ferramentas = montarToolsConversa(db).map(paraDefinicaoOpenAI);
+  const ferramentas = montarToolsConversa(db, client).map(paraDefinicaoOpenAI);
 
   const completion = await client.chat.completions.create({
     model: modelo,

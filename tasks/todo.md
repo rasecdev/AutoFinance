@@ -131,19 +131,21 @@
 
 ---
 
-### Tarefa 35: Tool `rodar_benchmark_interno(fluxo, modelos_candidatos)`
+### Tarefa 35: Tool `rodar_benchmark_interno(fluxo, modelos_candidatos)` ✅
+
+**Implementado:** conforme descrito, sem desvios do planejado. `criarToolRodarBenchmarkInterno(client, db)` em `src/ai/tools/benchmark.ts`, `avisoConfirmacao` conta `casos × modelos` (ou avisa quando não há caso de teste pro fluxo). `montarToolsConversa` passa a receber `client` também (usado só por esta tool). `METRICA_ACURACIA_TOOL_CALLING` exportada de `src/ai/benchmark.ts`.
 
 **Descrição:** `src/ai/tools/benchmark.ts` (extende a Tarefa 33): `criarToolRodarBenchmarkInterno(client, db)` — `rodar_benchmark_interno(fluxo, modelos_candidatos: string[])`, `requerConfirmacao: true` (custa dinheiro real — N casos × M modelos, uma chamada cada), `avisoConfirmacao` mostra quantas chamadas reais a rodada vai fazer (`casos.length * modelosCandidatos.length`) antes da confirmação. Ao confirmar, chama `executarBenchmarkFluxo` (Tarefa 34) e, pra cada modelo candidato, grava o resultado via `registrarBenchmark(db, { fluxo, modelIdOpenrouter: modelo, metrica: 'acuracia_tool_calling', valor: acuracia, fonteUrl: 'interno' })`. Resposta final lista acurácia e custo por modelo candidato. Registrada em `texto.ts`.
 
 **Acceptance criteria:**
-- [ ] Exige confirmação antes de rodar, mostrando quantas chamadas reais serão feitas
-- [ ] Ao confirmar, roda o benchmark e grava um resultado por modelo candidato em `benchmarks_modelos`, com `fonte_url = 'interno'`
-- [ ] Resposta final mostra acurácia e custo por modelo candidato
+- [x] Exige confirmação antes de rodar, mostrando quantas chamadas reais serão feitas
+- [x] Ao confirmar, roda o benchmark e grava um resultado por modelo candidato em `benchmarks_modelos`, com `fonte_url = 'interno'`
+- [x] Resposta final mostra acurácia e custo por modelo candidato
 
 **Verification:**
-- [ ] `npm test` cobre: pedido de confirmação com contagem certa de chamadas, gravação de um resultado por modelo candidato após confirmar, `fonte_url = 'interno'` sempre
-- [ ] `npm run build`/`lint` sem erro
-- [ ] Manual em Homologação: com pelo menos 1 caso de teste já curado (Tarefa 33), pedir "roda o benchmark de tool calling comparando openai/gpt-4o-mini e qwen/qwen3-32b", confirmar, conferir `benchmarks_modelos` com 2 linhas novas e custo do teste em `uso_tokens` (`origem = benchmark_interno`)
+- [x] `npm test` cobre: pedido de confirmação com contagem certa de chamadas, gravação de um resultado por modelo candidato após confirmar, `fonte_url = 'interno'` sempre — 487/487 em `development`
+- [x] `npm run build`/`lint` sem erro
+- [x] Manual em Homologação: com pelo menos 1 caso de teste já curado (Tarefa 33), pedir "roda o benchmark de tool calling comparando openai/gpt-4o-mini e qwen/qwen3-32b", confirmar, conferir `benchmarks_modelos` com 2 linhas novas e custo do teste em `uso_tokens` (`origem = benchmark_interno`) — confirmado via Telegram real. **Achado real no primeiro teste, corrigido antes de fechar (mesmo commit):** o modelo tinha invocado `rodar_benchmark_interno` com um `fluxo` inventado (a descrição da comparação, não o identificador `conversa_texto`), e mesmo com 0 casos encontrados o handler ainda gravava "0% de acurácia" em `benchmarks_modelos` — dado enganoso. `fluxo` virou hardcoded (`conversa_texto`, único fluxo desta rodada) e o handler agora recusa rodar sem nenhum caso de teste, mesmo confirmado. Reteste após o fix: aviso mostrou "1 caso × 2 modelos = 2 chamadas", ambos os modelos gravados com `valor: 1` (100%, "oi" não esperava nenhuma ferramenta) e custo real em `uso_tokens` (`openai/gpt-4o-mini`: US$ 0.00093825, `qwen/qwen3-32b`: US$ 0.00131485)
 
 **Dependencies:** Tarefa 31, Tarefa 34
 
@@ -157,8 +159,8 @@
 ---
 
 ## Checkpoint: Benchmark interno funcional
-- [ ] Todos os critérios de aceite das Tarefas 31-35 atendidos
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: marcar uma resposta como correta (`/certo`), curar pelo menos 1 caso real de tool calling, rodar o benchmark comparando pelo menos 2 modelos, confirmar resultado em `benchmarks_modelos` com valor plausível e custo do teste visível em `uso_tokens` (`origem = benchmark_interno`)
+- [x] Todos os critérios de aceite das Tarefas 31-35 atendidos
+- [x] `npm run build`/`lint`/`test` sem erro (488/488 em `development`)
+- [x] Teste manual em Homologação: marcar uma resposta como correta (`/certo`), curar pelo menos 1 caso real de tool calling, rodar o benchmark comparando pelo menos 2 modelos, confirmar resultado em `benchmarks_modelos` com valor plausível e custo do teste visível em `uso_tokens` (`origem = benchmark_interno`)
 - [ ] PROGRESSO.md atualizado com o marco "Fase 6 (parte 2) concluída"
 - [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
