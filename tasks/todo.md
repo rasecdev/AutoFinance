@@ -54,7 +54,7 @@
 **Verification:**
 - [x] `npm test` cobre o repositório (registrar, consultar últimos N, transação em lote) com fetch mockado no teste do script (sem chamada de rede real em teste automatizado) — 376/376 em `development`
 - [x] `npm run build`/`lint` sem erro
-- [ ] Manual em Homologação: rodar `node dist/scripts/monitorarPrecos.js` manualmente (`docker compose exec`), conferir `modelos_openrouter_historico` populado no banco
+- [x] Manual em Homologação: rodar `node dist/scripts/monitorarPrecos.js` manualmente (`docker compose exec`), conferir `modelos_openrouter_historico` populado no banco — confirmado (424 modelos gravados, preço e `capacidades`/`supported_parameters` corretos)
 
 **Dependencies:** None (tabela já existe desde a Fase 1)
 
