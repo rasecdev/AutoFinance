@@ -2,11 +2,13 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3-multiple-ciphers';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { criarToolCriarCasoTesteBenchmark } from '../../../src/ai/tools/benchmark.js';
+import type OpenAI from 'openai';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { criarToolCriarCasoTesteBenchmark, criarToolRodarBenchmarkInterno } from '../../../src/ai/tools/benchmark.js';
 import type { DbClient } from '../../../src/db/client.js';
 import { migrate } from '../../../src/db/migrate.js';
-import { listarCasosTeste } from '../../../src/db/repositories/casosTesteBenchmark.js';
+import { listarBenchmarks } from '../../../src/db/repositories/benchmarksModelos.js';
+import { criarCasoTeste, listarCasosTeste } from '../../../src/db/repositories/casosTesteBenchmark.js';
 import { atualizarAvaliacaoInteracao, registrarInteracaoIa } from '../../../src/db/repositories/interacoesIa.js';
 
 const CHAVE_TESTE = 'chave-teste-tools-benchmark';
@@ -100,5 +102,105 @@ describe('tool criar_caso_teste_benchmark', () => {
 
     expect(resultado).toContain('Não encontrei');
     expect(listarCasosTeste(db, 'conversa_texto')).toEqual([]);
+  });
+});
+
+function criarClienteFalso(toolCalls: Array<{ nome: string; argumentos: unknown }>) {
+  const create = vi.fn().mockResolvedValue({
+    choices: [
+      {
+        message: {
+          role: 'assistant',
+          content: null,
+          tool_calls: toolCalls.map((tc, i) => ({
+            id: `call-${i}`,
+            type: 'function',
+            function: { name: tc.nome, arguments: JSON.stringify(tc.argumentos) },
+          })),
+        },
+      },
+    ],
+    usage: { prompt_tokens: 100, completion_tokens: 20, cost: 0.0002 },
+  });
+  return { chat: { completions: { create } } } as unknown as OpenAI;
+}
+
+describe('tool rodar_benchmark_interno', () => {
+  it('exige confirmação e avisa quantas chamadas reais serão feitas', () => {
+    criarCasoTeste(db, {
+      fluxo: 'conversa_texto',
+      entrada: 'caso 1',
+      saidaEsperada: [{ nome: 'ferramenta_a', argumentos: {} }],
+      origem: 'curado',
+    });
+    const client = criarClienteFalso([]);
+    const tool = criarToolRodarBenchmarkInterno(client, db);
+
+    expect(tool.requerConfirmacao).toBe(true);
+    const aviso = tool.avisoConfirmacao?.({
+      fluxo: 'conversa_texto',
+      modelos_candidatos: ['openai/gpt-4o-mini', 'qwen/qwen3-32b'],
+    });
+
+    expect(aviso).toContain('2 chamada');
+  });
+
+  it('avisa quando não há nenhum caso de teste pro fluxo', () => {
+    const client = criarClienteFalso([]);
+    const tool = criarToolRodarBenchmarkInterno(client, db);
+
+    const aviso = tool.avisoConfirmacao?.({ fluxo: 'conversa_texto', modelos_candidatos: ['openai/gpt-4o-mini'] });
+
+    expect(aviso).toContain('Não há nenhum caso de teste');
+  });
+
+  it('roda o benchmark e grava um resultado por modelo candidato em benchmarks_modelos', async () => {
+    criarCasoTeste(db, {
+      fluxo: 'conversa_texto',
+      entrada: 'registra 30 reais de uber',
+      saidaEsperada: [{ nome: 'registrar_transacao', argumentos: { valor: 30 } }],
+      origem: 'curado',
+    });
+    const client = criarClienteFalso([{ nome: 'registrar_transacao', argumentos: { valor: 30 } }]);
+    const tool = criarToolRodarBenchmarkInterno(client, db);
+
+    const resposta = await tool.handler(
+      { fluxo: 'conversa_texto', modelos_candidatos: ['openai/gpt-4o-mini'] },
+      { chatId: 1 },
+    );
+
+    expect(resposta).toContain('openai/gpt-4o-mini');
+    expect(resposta).toContain('100%');
+    const benchmarks = listarBenchmarks(db, 'conversa_texto', 'openai/gpt-4o-mini');
+    expect(benchmarks).toEqual([
+      {
+        id: expect.any(Number),
+        fluxo: 'conversa_texto',
+        modelIdOpenrouter: 'openai/gpt-4o-mini',
+        metrica: 'acuracia_tool_calling',
+        valor: 1,
+        fonteUrl: 'interno',
+        dataPesquisa: expect.any(String),
+      },
+    ]);
+  });
+
+  it('grava um resultado por modelo candidato quando há mais de um', async () => {
+    criarCasoTeste(db, {
+      fluxo: 'conversa_texto',
+      entrada: 'caso 1',
+      saidaEsperada: [{ nome: 'ferramenta_a', argumentos: {} }],
+      origem: 'curado',
+    });
+    const client = criarClienteFalso([{ nome: 'ferramenta_a', argumentos: {} }]);
+    const tool = criarToolRodarBenchmarkInterno(client, db);
+
+    await tool.handler(
+      { fluxo: 'conversa_texto', modelos_candidatos: ['modelo-a', 'modelo-b'] },
+      { chatId: 1 },
+    );
+
+    expect(listarBenchmarks(db, 'conversa_texto', 'modelo-a')).toHaveLength(1);
+    expect(listarBenchmarks(db, 'conversa_texto', 'modelo-b')).toHaveLength(1);
   });
 });

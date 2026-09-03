@@ -25,7 +25,7 @@ function ehErroModeloInvalido(erro: unknown): boolean {
 }
 
 export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger) {
-  const tools = montarToolsConversa(db);
+  const tools = montarToolsConversa(db, client);
 
   return async function handlerTexto(ctx: Context): Promise<void> {
     const mensagemUsuario = ctx.message?.text;

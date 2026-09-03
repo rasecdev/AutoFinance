@@ -131,18 +131,20 @@
 
 ---
 
-### Tarefa 35: Tool `rodar_benchmark_interno(fluxo, modelos_candidatos)`
+### Tarefa 35: Tool `rodar_benchmark_interno(fluxo, modelos_candidatos)` ✅
+
+**Implementado:** conforme descrito, sem desvios do planejado. `criarToolRodarBenchmarkInterno(client, db)` em `src/ai/tools/benchmark.ts`, `avisoConfirmacao` conta `casos × modelos` (ou avisa quando não há caso de teste pro fluxo). `montarToolsConversa` passa a receber `client` também (usado só por esta tool). `METRICA_ACURACIA_TOOL_CALLING` exportada de `src/ai/benchmark.ts`.
 
 **Descrição:** `src/ai/tools/benchmark.ts` (extende a Tarefa 33): `criarToolRodarBenchmarkInterno(client, db)` — `rodar_benchmark_interno(fluxo, modelos_candidatos: string[])`, `requerConfirmacao: true` (custa dinheiro real — N casos × M modelos, uma chamada cada), `avisoConfirmacao` mostra quantas chamadas reais a rodada vai fazer (`casos.length * modelosCandidatos.length`) antes da confirmação. Ao confirmar, chama `executarBenchmarkFluxo` (Tarefa 34) e, pra cada modelo candidato, grava o resultado via `registrarBenchmark(db, { fluxo, modelIdOpenrouter: modelo, metrica: 'acuracia_tool_calling', valor: acuracia, fonteUrl: 'interno' })`. Resposta final lista acurácia e custo por modelo candidato. Registrada em `texto.ts`.
 
 **Acceptance criteria:**
-- [ ] Exige confirmação antes de rodar, mostrando quantas chamadas reais serão feitas
-- [ ] Ao confirmar, roda o benchmark e grava um resultado por modelo candidato em `benchmarks_modelos`, com `fonte_url = 'interno'`
-- [ ] Resposta final mostra acurácia e custo por modelo candidato
+- [x] Exige confirmação antes de rodar, mostrando quantas chamadas reais serão feitas
+- [x] Ao confirmar, roda o benchmark e grava um resultado por modelo candidato em `benchmarks_modelos`, com `fonte_url = 'interno'`
+- [x] Resposta final mostra acurácia e custo por modelo candidato
 
 **Verification:**
-- [ ] `npm test` cobre: pedido de confirmação com contagem certa de chamadas, gravação de um resultado por modelo candidato após confirmar, `fonte_url = 'interno'` sempre
-- [ ] `npm run build`/`lint` sem erro
+- [x] `npm test` cobre: pedido de confirmação com contagem certa de chamadas, gravação de um resultado por modelo candidato após confirmar, `fonte_url = 'interno'` sempre — 487/487 em `development`
+- [x] `npm run build`/`lint` sem erro
 - [ ] Manual em Homologação: com pelo menos 1 caso de teste já curado (Tarefa 33), pedir "roda o benchmark de tool calling comparando openai/gpt-4o-mini e qwen/qwen3-32b", confirmar, conferir `benchmarks_modelos` com 2 linhas novas e custo do teste em `uso_tokens` (`origem = benchmark_interno`)
 
 **Dependencies:** Tarefa 31, Tarefa 34

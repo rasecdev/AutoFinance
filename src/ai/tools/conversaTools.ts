@@ -1,5 +1,6 @@
+import type OpenAI from 'openai';
 import type { DbClient } from '../../db/client.js';
-import { criarToolCriarCasoTesteBenchmark } from './benchmark.js';
+import { criarToolCriarCasoTesteBenchmark, criarToolRodarBenchmarkInterno } from './benchmark.js';
 import { criarToolCriarCartao, criarToolCriarConta } from './contas.js';
 import { criarToolConsultarSaldo, criarToolConsultarExtrato, criarToolResumoMensal } from './consultas.js';
 import {
@@ -20,7 +21,7 @@ import type { ToolDefinition } from './types.js';
 // garante que o benchmark testa contra exatamente o mesmo schema/conjunto
 // de ferramentas que a produção usa de verdade, nunca uma cópia que pode
 // divergir com o tempo.
-export function montarToolsConversa(db: DbClient): ToolDefinition[] {
+export function montarToolsConversa(db: DbClient, client: OpenAI): ToolDefinition[] {
   return [
     criarToolCriarConta(db),
     criarToolCriarCartao(db),
@@ -44,5 +45,6 @@ export function montarToolsConversa(db: DbClient): ToolDefinition[] {
     criarToolEditarDespesaFixa(db),
     criarToolRelatorio(db),
     criarToolCriarCasoTesteBenchmark(db),
+    criarToolRodarBenchmarkInterno(client, db),
   ];
 }
