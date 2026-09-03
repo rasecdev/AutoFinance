@@ -68,6 +68,13 @@ function formatarSecaoUsoIa(usoIa: AgregacaoUsoIa): string[] {
     linhas.push('Comparação hipotética (mesmo volume de tokens, preço de modelos de referência — estimativa):');
     for (const candidato of usoIa.metrica1) {
       linhas.push(`- ${candidato.nomeExibicao}: ${formatarCustoUsd(candidato.custoEstimado)}`);
+
+      for (const ajustado of usoIa.metrica2) {
+        if (ajustado.modelo !== candidato.modelo) continue;
+        linhas.push(
+          `  - ajustado por ${ajustado.metrica} em ${ajustado.fluxo}: ${formatarCustoUsd(ajustado.custoAjustado)} (estimativa)`,
+        );
+      }
     }
   }
 
