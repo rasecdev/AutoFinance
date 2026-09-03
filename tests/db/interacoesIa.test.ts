@@ -12,6 +12,7 @@ import { migrate } from '../../src/db/migrate.js';
 import {
   atualizarAvaliacaoInteracao,
   buscarUltimasInteracoesPorChat,
+  contarInteracoesAvaliadasIncorretas,
   registrarInteracaoIa,
   somarTokensChat,
 } from '../../src/db/repositories/interacoesIa.js';
@@ -239,6 +240,47 @@ describe('somarTokensChat (Fase 4, Tarefa 17)', () => {
 
   it('retorna 0 quando o chat não tem interações', () => {
     expect(somarTokensChat(db, 999)).toBe(0);
+  });
+});
+
+describe('contarInteracoesAvaliadasIncorretas (Fase 6, Tarefa 27)', () => {
+  it('conta só interações marcadas como incorreto dentro do período', () => {
+    registrarInteracaoIa(db, {
+      traceId: 'trace-1',
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      resultado: 'sucesso',
+    });
+    registrarInteracaoIa(db, {
+      traceId: 'trace-2',
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      resultado: 'sucesso',
+    });
+    atualizarAvaliacaoInteracao(db, 'trace-1', 'incorreto');
+    atualizarAvaliacaoInteracao(db, 'trace-2', 'correto');
+
+    const agora = new Date();
+    const umaHoraAntes = new Date(agora.getTime() - 3600_000).toISOString();
+    const umaHoraDepois = new Date(agora.getTime() + 3600_000).toISOString();
+
+    expect(contarInteracoesAvaliadasIncorretas(db, { inicio: umaHoraAntes, fim: umaHoraDepois })).toBe(1);
+  });
+
+  it('retorna 0 fora da janela do período', () => {
+    registrarInteracaoIa(db, {
+      traceId: 'trace-1',
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      resultado: 'sucesso',
+    });
+    atualizarAvaliacaoInteracao(db, 'trace-1', 'incorreto');
+
+    const agora = new Date();
+    const duasHorasAntes = new Date(agora.getTime() - 7200_000).toISOString();
+    const umaHoraAntes = new Date(agora.getTime() - 3600_000).toISOString();
+
+    expect(contarInteracoesAvaliadasIncorretas(db, { inicio: duasHorasAntes, fim: umaHoraAntes })).toBe(0);
   });
 });
 

@@ -30,18 +30,20 @@
 
 ---
 
-### Tarefa 27: Agregação de uso de IA do período + Métrica 1
+### Tarefa 27: Agregação de uso de IA do período + Métrica 1 ✅
+
+**Implementado:** conforme descrito abaixo, sem desvios do planejado. `PeriodoRelatorio` (inicio/fim em `AAAA-MM-DD`, definido na Tarefa 26) é convertido internamente pra janela de timestamp completo (`T00:00:00.000Z`/`T23:59:59.999Z`) antes de consultar `uso_tokens`/`interacoes_ia`, que gravam `data_hora` como ISO completo — diferente de `transacoes.data`, que já é data pura. `modelos_referencia_comparacao` nasce vazia (mesmo padrão de `roteamento_tarefas`), Métrica 1 degrada graciosamente pra lista vazia sem tabela populada ou sem snapshot de preço do modelo de referência.
 
 **Descrição:** Nova migração adicionando `modelos_referencia_comparacao (id, nome_exibicao, model_id_openrouter, ativo)` — tabela pequena, nasce vazia (mesmo padrão de `roteamento_tarefas`: sem linha, sem essa parte do relatório). `src/relatorios/usoIa.ts` (novo): `agregarUsoIaPeriodo(db, { inicio, fim })` retorna tokens/custo do período por fluxo e por modelo (**só `uso_tokens.origem = 'uso_real'`**, filtro explícito — custo de benchmark interno nunca conta como uso real), contagem de `interacoes_ia.avaliacao_usuario = 'incorreto'` no período, e a Métrica 1 (recalcula o mesmo volume total de tokens do período usando o preço mais recente de cada modelo em `modelos_referencia_comparacao`, via `modelos_openrouter_historico` já existente — puro cálculo, sem chamada de IA).
 
 **Acceptance criteria:**
-- [ ] Retorna tokens/custo do período por fluxo e por modelo, só `origem = 'uso_real'`
-- [ ] Retorna contagem de interações marcadas `avaliacao_usuario = 'incorreto'` no período
-- [ ] Retorna a Métrica 1 (custo hipotético por modelo de referência) só quando `modelos_referencia_comparacao` tem linha ativa — vazio/ausente quando a tabela está vazia (degradação graciosa, sem erro)
+- [x] Retorna tokens/custo do período por fluxo e por modelo, só `origem = 'uso_real'`
+- [x] Retorna contagem de interações marcadas `avaliacao_usuario = 'incorreto'` no período
+- [x] Retorna a Métrica 1 (custo hipotético por modelo de referência) só quando `modelos_referencia_comparacao` tem linha ativa — vazio/ausente quando a tabela está vazia (degradação graciosa, sem erro)
 
 **Verification:**
-- [ ] `npm test` cobre: filtro `origem = uso_real` excluindo benchmark interno, agregação por fluxo/modelo, contagem de avaliação incorreta, Métrica 1 com e sem `modelos_referencia_comparacao` populada
-- [ ] `npm run build`/`lint` sem erro
+- [x] `npm test` cobre: filtro `origem = uso_real` excluindo benchmark interno, agregação por fluxo/modelo, contagem de avaliação incorreta, Métrica 1 com/sem `modelos_referencia_comparacao` populada e sem snapshot de preço — 412/412 em `development`
+- [x] `npm run build`/`lint` sem erro
 
 **Dependencies:** None (tabelas de uso já existem desde Fase 1/5)
 
