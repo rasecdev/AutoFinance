@@ -83,7 +83,7 @@
 **Verification:**
 - [x] `npm test` cobre: disparo por mudança de preço, disparo por candidato mais barato, não-disparo quando nada mudou/candidato não atende requisitos/candidato mais caro ou igual, fluxo roteado sem snapshot ainda (não quebra), formatação da mensagem agrupada, envio pra cada chat permitido — 389/389 em `development`
 - [x] `npm run build`/`lint` sem erro
-- [ ] Manual em Homologação: forçar uma mudança de preço nos dados de teste (snapshot manual com preço diferente do anterior) e confirmar que a mensagem chega no Telegram
+- [x] Manual em Homologação: forçar uma mudança de preço nos dados de teste (snapshot manual com preço diferente do anterior) e confirmar que a mensagem chega no Telegram — confirmado: o job semanal rodou automaticamente ao subir o container (`monitor-precos-homologacao`), detectou um candidato mais barato que atende `requisitos = 'tools'` pro fluxo `conversa_texto` (roteado pra `openai/gpt-5-nano` desde a Tarefa 22) e a mensagem chegou no Telegram — cobre o critério (b) do PLANO.md na prática, sem precisar forçar dado manualmente
 
 **Dependencies:** Tarefa 22 (`roteamento_tarefas`), Tarefa 23 (snapshot)
 
