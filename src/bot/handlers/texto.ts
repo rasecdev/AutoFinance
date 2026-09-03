@@ -104,8 +104,17 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
 
     try {
       const historico = montarHistorico(db, chatId);
-      const { modelo, resposta, toolCalls, tokensPrompt, tokensCompletion, duracaoMs, pendenciaConfirmacao } =
-        await gerarResposta(client, mensagemUsuario, tools, { chatId }, historico, resolverModeloConversa(db, chatId));
+      const {
+        modelo,
+        resposta,
+        toolCalls,
+        tokensPrompt,
+        tokensCompletion,
+        cachedTokens,
+        cacheWriteTokens,
+        duracaoMs,
+        pendenciaConfirmacao,
+      } = await gerarResposta(client, mensagemUsuario, tools, { chatId }, historico, resolverModeloConversa(db, chatId));
 
       if (pendenciaConfirmacao) {
         definirPendencia(chatId, pendenciaConfirmacao);
@@ -135,7 +144,10 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
         origem: 'uso_real',
       });
 
-      log.info({ modelo, tokensPrompt, tokensCompletion, duracaoMs }, 'interação com IA registrada');
+      log.info(
+        { modelo, tokensPrompt, tokensCompletion, cachedTokens, cacheWriteTokens, duracaoMs },
+        'interação com IA registrada',
+      );
       const mensagemEnviada = await ctx.reply(
         resposta.trim().length > 0 ? resposta : 'Não entendi, pode reformular?',
       );
