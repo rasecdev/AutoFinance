@@ -4,33 +4,7 @@ import type OpenAI from 'openai';
 import { montarHistorico } from '../../ai/contexto.js';
 import { gerarResposta, MODELO_PADRAO } from '../../ai/openrouter.js';
 import { verificarGatilhoResumo } from '../../ai/resumirContexto.js';
-import { criarToolCriarCartao, criarToolCriarConta } from '../../ai/tools/contas.js';
-import {
-  criarToolConsultarSaldo,
-  criarToolConsultarExtrato,
-  criarToolResumoMensal,
-} from '../../ai/tools/consultas.js';
-import {
-  criarToolEditarTransacao,
-  criarToolExcluirTransacao,
-  criarToolRegistrarTransacao,
-} from '../../ai/tools/transacoes.js';
-import { criarToolRegistrarTransferencia } from '../../ai/tools/transferencias.js';
-import {
-  criarToolAmortizarDivida,
-  criarToolCriarDivida,
-  criarToolQuitarDivida,
-  criarToolRenegociar,
-} from '../../ai/tools/dividas.js';
-import { criarToolPagarFatura, criarToolPagarParcela } from '../../ai/tools/pagamentos.js';
-import {
-  criarToolConsultarDividasAtivas,
-  criarToolConsultarFatura,
-  criarToolResumoDividas,
-} from '../../ai/tools/consultasDividas.js';
-import { criarToolCriarDespesaFixa, criarToolEditarDespesaFixa } from '../../ai/tools/despesasFixas.js';
-import { criarToolCriarCasoTesteBenchmark } from '../../ai/tools/benchmark.js';
-import { criarToolRelatorio } from '../../ai/tools/relatorios.js';
+import { montarToolsConversa } from '../../ai/tools/conversaTools.js';
 import type { DbClient } from '../../db/client.js';
 import { registrarInteracaoIa } from '../../db/repositories/interacoesIa.js';
 import { registrarUsoTokens } from '../../db/repositories/usoTokens.js';
@@ -51,30 +25,7 @@ function ehErroModeloInvalido(erro: unknown): boolean {
 }
 
 export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger) {
-  const tools = [
-    criarToolCriarConta(db),
-    criarToolCriarCartao(db),
-    criarToolRegistrarTransacao(db),
-    criarToolEditarTransacao(db),
-    criarToolExcluirTransacao(db),
-    criarToolConsultarSaldo(db),
-    criarToolConsultarExtrato(db),
-    criarToolResumoMensal(db),
-    criarToolRegistrarTransferencia(db),
-    criarToolCriarDivida(db),
-    criarToolRenegociar(db),
-    criarToolPagarParcela(db),
-    criarToolPagarFatura(db),
-    criarToolQuitarDivida(db),
-    criarToolAmortizarDivida(db),
-    criarToolConsultarFatura(db),
-    criarToolConsultarDividasAtivas(db),
-    criarToolResumoDividas(db),
-    criarToolCriarDespesaFixa(db),
-    criarToolEditarDespesaFixa(db),
-    criarToolRelatorio(db),
-    criarToolCriarCasoTesteBenchmark(db),
-  ];
+  const tools = montarToolsConversa(db);
 
   return async function handlerTexto(ctx: Context): Promise<void> {
     const mensagemUsuario = ctx.message?.text;
