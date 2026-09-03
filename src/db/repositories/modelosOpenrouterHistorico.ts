@@ -66,6 +66,22 @@ export function obterUltimosSnapshots(db: DbClient, modelo: string, limite: numb
   return linhas.map(mapearLinha);
 }
 
+// Custo estimado de uma chamada de IA, a partir do snapshot de preço mais
+// recente do modelo usado — 0 quando ainda não existe snapshot pra esse
+// modelo (mesma degradação graciosa já usada na Métrica 1 do relatório
+// mensal/semanal), nunca lança erro por preço ausente.
+export function calcularCustoTokens(
+  db: DbClient,
+  modelo: string,
+  tokensPrompt: number,
+  tokensCompletion: number,
+): number {
+  const [snapshotMaisRecente] = obterUltimosSnapshots(db, modelo, 1);
+  if (!snapshotMaisRecente) return 0;
+
+  return tokensPrompt * snapshotMaisRecente.precoPrompt + tokensCompletion * snapshotMaisRecente.precoCompletion;
+}
+
 // Usado pra buscar candidato mais barato no catálogo inteiro: o snapshot mais
 // recente de cada modelo distinto (não só os já roteados).
 export function obterUltimoSnapshotPorModelo(db: DbClient): SnapshotModelo[] {
