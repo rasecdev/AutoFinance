@@ -13,6 +13,7 @@ import { agregarFinanceiroPeriodo } from '../relatorios/financeiro.js';
 import { formatarRelatorio } from '../relatorios/formatar.js';
 import { calcularJanelaAnterior, calcularJanelaPeriodo } from '../relatorios/janela.js';
 import { agregarUsoIaPeriodo } from '../relatorios/usoIa.js';
+import { dormirAte } from './dormirAte.js';
 
 // Próximo último dia do mês às 23h a partir de `agora` — mesmo princípio de
 // calcularProximoDomingoAs23h (relatorioSemanal.ts): se hoje já é o último
@@ -82,7 +83,7 @@ async function main(): Promise<void> {
   if (!process.argv.includes('--agora')) {
     const proximoDisparo = calcularProximoUltimoDiaDoMesAs23h(new Date());
     logger.info({ proximoDisparo: proximoDisparo.toISOString() }, 'aguardando próximo relatório mensal');
-    await new Promise((resolve) => setTimeout(resolve, proximoDisparo.getTime() - Date.now()));
+    await dormirAte(proximoDisparo.getTime());
   }
 
   const texto = await montarRelatorioMensal(db, client);
