@@ -163,4 +163,4 @@
 - [x] `npm run build`/`lint`/`test` sem erro (356/356 em `development`, checado nesta revisão)
 - [x] Teste manual em Homologação: trocar de modelo via `/modelo`, confirmar que a próxima resposta usa o modelo novo (`interacoes_ia.modelo`) — confirmado (`modelo = 'openai/gpt-5-nano'` depois de `/modelo openai/gpt-5-nano`), incluindo o achado real de nome de exibição vs. slug corrigido na Tarefa 21
 - [x] PROGRESSO.md atualizado com o marco "Fase 4 concluída"
-- [ ] Revisão com o usuário antes de prosseguir para a Fase 5
+- [x] Revisão com o usuário antes de prosseguir para a Fase 5
