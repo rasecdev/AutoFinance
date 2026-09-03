@@ -97,9 +97,9 @@
 ---
 
 ## Checkpoint: Monitoramento de preço funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Rodar `scripts/monitorarPrecos.ts` manualmente em Homologação, confirmar snapshot gravado em `modelos_openrouter_historico`
-- [ ] Testar o alerta manualmente (forçar uma mudança de preço/candidato mais barato nos dados de teste), confirmar mensagem recebida no Telegram
+- [x] `npm run build`/`lint`/`test` sem erro (389/389 em `development`, checado nesta revisão)
+- [x] Rodar `scripts/monitorarPrecos.ts` manualmente em Homologação, confirmar snapshot gravado em `modelos_openrouter_historico` — confirmado na Tarefa 23 (424 modelos)
+- [x] Testar o alerta manualmente (forçar uma mudança de preço/candidato mais barato nos dados de teste), confirmar mensagem recebida no Telegram — confirmado na Tarefa 24 (job semanal rodou automaticamente, detectou candidato mais barato real no catálogo, mensagem recebida)
 - [ ] Revisão com o usuário antes de prosseguir
 
 ---

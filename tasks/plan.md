@@ -43,12 +43,12 @@ Prompt caching nativo (Anthropic cache_control + log de cached_tokens) (Tarefa 2
 ### Fase I: Monitoramento de preço e alerta
 
 - [x] Tarefa 23: Repositório `modelos_openrouter_historico` (registrar snapshot, consultar snapshots de um modelo) + `scripts/monitorarPrecos.ts` que busca `GET /api/v1/models` do OpenRouter e grava snapshot do catálogo inteiro
-- [ ] Tarefa 24: Comparação de preço (modelo ativo mudou de preço; modelo mais barato que atende `requisitos` surgiu) + envio de alerta via Telegram + serviço semanal no `docker-compose.yml` (mesmo padrão do backup)
+- [x] Tarefa 24: Comparação de preço (modelo ativo mudou de preço; modelo mais barato que atende `requisitos` surgiu) + envio de alerta via Telegram + serviço semanal no `docker-compose.yml` (mesmo padrão do backup)
 
 ### Checkpoint: Monitoramento de preço funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Rodar `scripts/monitorarPrecos.ts` manualmente em Homologação, confirmar snapshot gravado em `modelos_openrouter_historico`
-- [ ] Testar o alerta manualmente (forçar uma mudança de preço/candidato mais barato nos dados de teste), confirmar mensagem recebida no Telegram
+- [x] `npm run build`/`lint`/`test` sem erro (389/389 em `development`, checado nesta revisão)
+- [x] Rodar `scripts/monitorarPrecos.ts` manualmente em Homologação, confirmar snapshot gravado em `modelos_openrouter_historico` — confirmado na Tarefa 23 (424 modelos)
+- [x] Testar o alerta manualmente (forçar uma mudança de preço/candidato mais barato nos dados de teste), confirmar mensagem recebida no Telegram — confirmado na Tarefa 24 (job semanal rodou automaticamente, detectou candidato mais barato real no catálogo, mensagem recebida)
 - [ ] Revisão com o usuário antes de prosseguir
 
 ### Fase J: Prompt caching
