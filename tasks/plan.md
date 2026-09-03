@@ -45,6 +45,33 @@ agregarUsoIaPeriodo: lookup de benchmark por {fluxo, modelo real} (Tarefa 36)
 - [x] PROGRESSO.md atualizado com o marco "Fase 6 (parte 3) concluída"
 - [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
 
+### Fase Q: Seed de casos de teste curados
+
+- [ ] Tarefa 40: script de seed com casos de teste fixos (`origem: 'curado'`) cobrindo tarefas básicas, as mais usadas (dado real de `interacoes_ia`) e as de maior impacto financeiro (`requerConfirmacao: true`)
+
+**Contexto:** até aqui, `casos_teste_benchmark` só crescia organicamente via `/certo` + `criar_caso_teste_benchmark` (Tarefa 33) — depende de alguém usar o bot e marcar respostas como certas antes de existir qualquer caso pra testar. Pedido do usuário: um conjunto fixo, curado uma vez, que não depende de uso orgânico anterior.
+
+**Dado real consultado em Homologação antes de escolher os casos** (`interacoes_ia`, fluxo `conversa_texto`, contagem de nome de tool call): `consultar_saldo` (12), `relatorio` (8), `editar_transacao` (7), `resumo_mensal` (6), `consultar_dividas_ativas` (6), `editar_despesa_fixa` (5), `consultar_extrato` (4), `criar_conta`/`criar_divida` (3 cada). **Achado:** dentro de um único fluxo, custo não é atribuível por ferramenta (é por chamada de IA, dominado pelo tamanho do prompt/histórico, não por qual tool foi chamada) — não existe "ferramenta mais cara" mensurável nesse nível. Decisão do usuário: trocar essa dimensão por "maior impacto financeiro real", usando `requerConfirmacao: true` como critério objetivo (`criar_divida`, `quitar_divida`, `amortizar_divida`, `renegociar`, `excluir_transacao`) em vez de tentar forçar uma noção de custo que não existe aqui.
+
+**Casos excluídos deliberadamente:** `editar_transacao`, `editar_despesa_fixa`, `pagar_parcela` (sem `numero_parcela`) dependem de contexto de turno anterior (resolvem pra "a última X desta conversa") — não são autocontidos, mesma ressalva já documentada no risco de casos dependentes de contexto (ver tabela de riscos). Ficam de fora do seed fixo; continuam curáveis organicamente via `/certo` quando o turno anterior já estabeleceu o contexto.
+
+**Lista de 13 casos** (entrada → tool call esperado, contas/cartões fictícios — o motor de benchmark nunca executa o handler, então não precisam existir no banco):
+1. "oi" → `[]` (baseline sem ferramenta)
+2. "qual meu saldo da conta Nubank?" → `consultar_saldo({conta_apelido: "Nubank"})`
+3. "registra 50 reais de transporte na conta Nubank" → `registrar_transacao({conta_apelido: "Nubank", tipo: "despesa", valor: 50, categoria: "transporte"})`
+4. "cria uma conta corrente no Nubank, PF, apelido Nubank" → `criar_conta({banco: "Nubank", tipo: "PF", apelido: "Nubank"})`
+5. "me manda o relatório de hoje" → `relatorio({periodo: "dia"})`
+6. "resumo do mês na conta Nubank" → `resumo_mensal({conta_apelido: "Nubank"})`
+7. "quais dívidas eu tenho na conta Nubank?" → `consultar_dividas_ativas({conta_apelido: "Nubank"})`
+8. "extrato da conta Nubank esse mês" → `consultar_extrato({conta_apelido: "Nubank"})`
+9. "cria uma dívida de financiamento de 12000 reais em 24 parcelas na conta Nubank" → `criar_divida({conta_apelido: "Nubank", tipo: "financiamento", valor_total: 12000, num_parcelas: 24})`
+10. "quita a dívida de financiamento da conta Nubank" → `quitar_divida({conta_apelido: "Nubank", tipo_divida: "financiamento"})`
+11. "amortiza 500 reais da dívida de financiamento da conta Nubank, reduzindo o valor das parcelas" → `amortizar_divida({conta_apelido: "Nubank", tipo_divida: "financiamento", valor: 500, modo: "reduzir_valor"})`
+12. "renegocia a dívida de financiamento da conta Nubank pra 15000 em 30 parcelas" → `renegociar({origem: "divida", conta_apelido: "Nubank", tipo_divida: "financiamento", valor_total: 15000, num_parcelas: 30})`
+13. "exclui a última transação" → `excluir_transacao({})`
+
+**Idempotência:** o script pula (não duplica) casos cuja `entrada` já existe pro fluxo `conversa_texto` — pode rodar de novo em qualquer ambiente sem gerar duplicata.
+
 ## Risks and Mitigations
 
 | Risk | Impact | Mitigation |

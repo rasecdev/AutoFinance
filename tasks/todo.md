@@ -100,4 +100,33 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 - [x] `npm run build`/`lint`/`test` sem erro
 - [x] Teste manual em Homologação: `relatorio(periodo=...)` no mesmo período mostra a Métrica 2 ajustada pro(s) candidato(s) comparáveis contra o modelo real em uso em `conversa_texto`
 - [x] PROGRESSO.md atualizado com o marco "Fase 6 (parte 3) concluída"
+
+## Fase Q: Seed de casos de teste curados
+
+### Tarefa 40: script de seed com casos de teste fixos pro benchmark interno
+
+**Description:** Novo `src/scripts/seedCasosTesteBenchmarkCurados.ts` (padrão dos outros scripts, com guard de execução direta) — lista fixa de 13 casos (ver `tasks/plan.md`, Fase Q, pra entrada/tool call esperado de cada um) cobrindo tarefas básicas, as mais usadas (dado real de `interacoes_ia`) e as de maior impacto financeiro (`requerConfirmacao: true`). Usa `criarCasoTeste(db, {fluxo: 'conversa_texto', entrada, saidaEsperada, origem: 'curado'})` (Tarefa 31, já existe). Roda uma vez por ambiente (Homologação e, quando promovido, Produção); idempotente — pula caso cuja `entrada` já existe pro fluxo, não duplica ao rodar de novo.
+
+**Acceptance criteria:**
+- [ ] Rodar o script numa base vazia cria as 13 linhas em `casos_teste_benchmark` com `origem: 'curado'`
+- [ ] Rodar o script de novo (mesma base) não duplica nenhuma linha (idempotente por `entrada`)
+- [ ] Nenhum dos 13 casos depende de contexto de turno anterior (todos autocontidos)
+
+**Verification:**
+- [ ] `npm test -- tests/scripts/seedCasosTesteBenchmarkCurados.test.ts`
+- [ ] `npm run build`
+- [ ] Manual: rodar o script em Homologação (`node dist/scripts/seedCasosTesteBenchmarkCurados.js`), confirmar as 13 linhas via consulta direta ao banco, e rodar `rodar_benchmark_interno` comparando 2 modelos reais contra o conjunto novo
+
+**Dependencies:** None (usa `criarCasoTeste`/`listarCasosTeste`, já existentes desde a Tarefa 31)
+
+**Files likely touched:**
+- `src/scripts/seedCasosTesteBenchmarkCurados.ts`
+- `tests/scripts/seedCasosTesteBenchmarkCurados.test.ts`
+
+**Estimated scope:** Small (1 arquivo de código + teste, sem mudança de schema)
+
+## Checkpoint: Seed de casos curados funcional
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação: script rodado, 13 casos confirmados no banco, `rodar_benchmark_interno` executado com sucesso contra o conjunto novo
+- [ ] PROGRESSO.md atualizado com o marco
 - [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
