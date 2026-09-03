@@ -18,7 +18,7 @@
 **Verification:**
 - [x] `npm test` cobre: leitura com/sem linha existente, definição/atualização (`ON CONFLICT`), precedência de `/modelo` sobre `roteamento_tarefas`, `resumir_contexto` usando `roteamento_tarefas` quando definido — 367/367 em `development`
 - [x] `npm run build`/`lint` sem erro
-- [ ] Manual em Homologação: inserir uma linha em `roteamento_tarefas` pro fluxo `conversa_texto` com um modelo diferente do padrão (sem usar `/modelo`), confirmar em `interacoes_ia.modelo` que a próxima conversa usou esse modelo
+- [x] Manual em Homologação: inserir uma linha em `roteamento_tarefas` pro fluxo `conversa_texto` com um modelo diferente do padrão (sem usar `/modelo`), confirmar em `interacoes_ia.modelo` que a próxima conversa usou esse modelo — confirmado (`modelo = 'openai/gpt-5-nano'` depois de inserir a linha direto no banco, sem `/modelo`)
 
 **Dependencies:** None (tabela já existe desde a Fase 1)
 
