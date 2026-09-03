@@ -5,7 +5,7 @@ import Database from 'better-sqlite3-multiple-ciphers';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
-import { registrarUsoTokens } from '../../src/db/repositories/usoTokens.js';
+import { listarUsoTokensPeriodo, registrarUsoTokens } from '../../src/db/repositories/usoTokens.js';
 
 const CHAVE_TESTE = 'chave-teste-uso-tokens';
 
@@ -47,5 +47,32 @@ describe('registrarUsoTokens', () => {
       custo_estimado: 0,
       origem: 'uso_real',
     });
+  });
+});
+
+describe('listarUsoTokensPeriodo', () => {
+  it('retorna registros dentro da janela e ignora fora dela', () => {
+    registrarUsoTokens(db, {
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      tokensPrompt: 10,
+      tokensCompletion: 5,
+      custoEstimado: 0.001,
+      origem: 'uso_real',
+    });
+
+    const agora = new Date();
+    const umaHoraAntes = new Date(agora.getTime() - 3600_000).toISOString();
+    const umaHoraDepois = new Date(agora.getTime() + 3600_000).toISOString();
+    const duasHorasAntes = new Date(agora.getTime() - 7200_000).toISOString();
+
+    expect(listarUsoTokensPeriodo(db, { inicio: umaHoraAntes, fim: umaHoraDepois })).toHaveLength(1);
+    expect(listarUsoTokensPeriodo(db, { inicio: duasHorasAntes, fim: umaHoraAntes })).toHaveLength(0);
+  });
+
+  it('retorna array vazio quando não há registro', () => {
+    expect(listarUsoTokensPeriodo(db, { inicio: '2000-01-01T00:00:00.000Z', fim: '2099-01-01T00:00:00.000Z' })).toEqual(
+      [],
+    );
   });
 });
