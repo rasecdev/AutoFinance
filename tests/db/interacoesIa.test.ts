@@ -260,6 +260,9 @@ describe('handlerTexto (OpenRouter mockado, sem chamada real)', () => {
       mensagem_usuario: 'quanto gastei esse mês?',
       resposta_modelo: 'resposta gerada pela IA',
       resultado: 'sucesso',
+      chat_id: 111,
+      tokens_prompt: 7,
+      tokens_completion: 3,
     });
     expect(linhas[0].trace_id).toEqual(expect.any(String));
 
@@ -272,6 +275,34 @@ describe('handlerTexto (OpenRouter mockado, sem chamada real)', () => {
       tokens_completion: 3,
       origem: 'uso_real',
     });
+  });
+
+  it('injeta o turno anterior do mesmo chat no prompt da segunda mensagem (Tarefa 19)', async () => {
+    const create = vi
+      .fn()
+      .mockResolvedValueOnce({
+        choices: [{ message: { content: 'você gastou R$ 1000 em março' } }],
+        usage: { prompt_tokens: 7, completion_tokens: 3 },
+      })
+      .mockResolvedValueOnce({
+        choices: [{ message: { content: 'em fevereiro você gastou R$ 800' } }],
+        usage: { prompt_tokens: 12, completion_tokens: 4 },
+      });
+    const client = { chat: { completions: { create } } } as unknown as OpenAI;
+    const logger = createLogger({ write() {} });
+    const handler = createHandlerTexto(client, db, logger);
+
+    await handler(criarContextoFake('quanto gastei em março?', 777));
+    await handler(criarContextoFake('e em fevereiro?', 777));
+
+    const mensagensSegundaChamada = create.mock.calls[1]?.[0]?.messages;
+    expect(mensagensSegundaChamada).toEqual(
+      expect.arrayContaining([
+        { role: 'user', content: 'quanto gastei em março?' },
+        { role: 'assistant', content: 'você gastou R$ 1000 em março' },
+        { role: 'user', content: 'e em fevereiro?' },
+      ]),
+    );
   });
 
   it('rastreia o message_id da resposta enviada pro trace_id da interação (Tarefa 16)', async () => {

@@ -50,6 +50,7 @@ export async function gerarResposta(
   mensagemUsuario: string,
   tools: ToolDefinition[] = [],
   ctx: ToolContext = { chatId: 0 },
+  historico: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [],
 ): Promise<RespostaGerada> {
   const inicio = Date.now();
   const registry = new Map(tools.map((tool) => [tool.name, tool]));
@@ -57,6 +58,7 @@ export async function gerarResposta(
 
   const mensagens: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     { role: 'system', content: SYSTEM_PROMPT },
+    ...historico,
     { role: 'user', content: mensagemUsuario },
   ];
   const toolCallsRegistradas: ToolCallRegistrada[] = [];

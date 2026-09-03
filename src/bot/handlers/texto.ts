@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Context } from 'grammy';
 import type OpenAI from 'openai';
+import { montarHistorico } from '../../ai/contexto.js';
 import { gerarResposta, MODELO_PADRAO } from '../../ai/openrouter.js';
 import { criarToolCriarCartao, criarToolCriarConta } from '../../ai/tools/contas.js';
 import {
@@ -91,8 +92,9 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
     const log = logger.child({ traceId });
 
     try {
+      const historico = montarHistorico(db, chatId);
       const { modelo, resposta, toolCalls, tokensPrompt, tokensCompletion, duracaoMs, pendenciaConfirmacao } =
-        await gerarResposta(client, mensagemUsuario, tools, { chatId });
+        await gerarResposta(client, mensagemUsuario, tools, { chatId }, historico);
 
       if (pendenciaConfirmacao) {
         definirPendencia(chatId, pendenciaConfirmacao);
@@ -106,6 +108,9 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
         respostaModelo: resposta,
         toolCalls,
         resultado: 'sucesso',
+        chatId,
+        tokensPrompt,
+        tokensCompletion,
       });
 
       // custo_estimado fica 0 até a Fase 5 (monitoramento de preço/roteamento)
@@ -131,6 +136,7 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
         modelo: MODELO_PADRAO,
         mensagemUsuario,
         resultado: 'erro',
+        chatId,
       });
 
       log.error({ err: erro }, 'falha ao chamar OpenRouter');
