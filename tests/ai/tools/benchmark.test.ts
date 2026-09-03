@@ -138,20 +138,29 @@ describe('tool rodar_benchmark_interno', () => {
 
     expect(tool.requerConfirmacao).toBe(true);
     const aviso = tool.avisoConfirmacao?.({
-      fluxo: 'conversa_texto',
       modelos_candidatos: ['openai/gpt-4o-mini', 'qwen/qwen3-32b'],
     });
 
     expect(aviso).toContain('2 chamada');
   });
 
-  it('avisa quando não há nenhum caso de teste pro fluxo', () => {
+  it('avisa quando não há nenhum caso de teste', () => {
     const client = criarClienteFalso([]);
     const tool = criarToolRodarBenchmarkInterno(client, db);
 
-    const aviso = tool.avisoConfirmacao?.({ fluxo: 'conversa_texto', modelos_candidatos: ['openai/gpt-4o-mini'] });
+    const aviso = tool.avisoConfirmacao?.({ modelos_candidatos: ['openai/gpt-4o-mini'] });
 
     expect(aviso).toContain('Não há nenhum caso de teste');
+  });
+
+  it('recusa rodar (e não grava nada) mesmo se confirmado sem nenhum caso de teste', async () => {
+    const client = criarClienteFalso([]);
+    const tool = criarToolRodarBenchmarkInterno(client, db);
+
+    const resposta = await tool.handler({ modelos_candidatos: ['openai/gpt-4o-mini'] }, { chatId: 1 });
+
+    expect(resposta).toContain('Não há nenhum caso de teste');
+    expect(listarBenchmarks(db, 'conversa_texto', 'openai/gpt-4o-mini')).toEqual([]);
   });
 
   it('roda o benchmark e grava um resultado por modelo candidato em benchmarks_modelos', async () => {
@@ -164,10 +173,7 @@ describe('tool rodar_benchmark_interno', () => {
     const client = criarClienteFalso([{ nome: 'registrar_transacao', argumentos: { valor: 30 } }]);
     const tool = criarToolRodarBenchmarkInterno(client, db);
 
-    const resposta = await tool.handler(
-      { fluxo: 'conversa_texto', modelos_candidatos: ['openai/gpt-4o-mini'] },
-      { chatId: 1 },
-    );
+    const resposta = await tool.handler({ modelos_candidatos: ['openai/gpt-4o-mini'] }, { chatId: 1 });
 
     expect(resposta).toContain('openai/gpt-4o-mini');
     expect(resposta).toContain('100%');
@@ -195,10 +201,7 @@ describe('tool rodar_benchmark_interno', () => {
     const client = criarClienteFalso([{ nome: 'ferramenta_a', argumentos: {} }]);
     const tool = criarToolRodarBenchmarkInterno(client, db);
 
-    await tool.handler(
-      { fluxo: 'conversa_texto', modelos_candidatos: ['modelo-a', 'modelo-b'] },
-      { chatId: 1 },
-    );
+    await tool.handler({ modelos_candidatos: ['modelo-a', 'modelo-b'] }, { chatId: 1 });
 
     expect(listarBenchmarks(db, 'conversa_texto', 'modelo-a')).toHaveLength(1);
     expect(listarBenchmarks(db, 'conversa_texto', 'modelo-b')).toHaveLength(1);
