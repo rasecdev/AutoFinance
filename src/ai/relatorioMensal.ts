@@ -3,6 +3,7 @@ import type { DbClient } from '../db/client.js';
 import { obterModeloRoteamento } from '../db/repositories/roteamentoTarefas.js';
 import type { AgregacaoFinanceira } from '../relatorios/financeiro.js';
 import type { AgregacaoUsoIa } from '../relatorios/usoIa.js';
+import type { UsageComCusto } from './openrouter.js';
 
 // Modelo próprio pro fluxo de relatório mensal, isolado de MODELO_PADRAO —
 // usado como fallback quando roteamento_tarefas não tem linha pro fluxo
@@ -29,6 +30,7 @@ export type ResultadoResumoMensal = {
   resumoTexto: string;
   tokensPrompt: number;
   tokensCompletion: number;
+  custoReal: number;
 };
 
 function montarPromptDados(dados: DadosParaResumoMensal): string {
@@ -62,6 +64,7 @@ export async function gerarResumoMensal(
     resumoTexto: completion.choices[0]?.message?.content ?? '',
     tokensPrompt: completion.usage?.prompt_tokens ?? 0,
     tokensCompletion: completion.usage?.completion_tokens ?? 0,
+    custoReal: (completion.usage as UsageComCusto | undefined)?.cost ?? 0,
   };
 }
 
