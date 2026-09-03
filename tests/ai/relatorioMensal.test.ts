@@ -4,10 +4,10 @@ import { MODELO_RELATORIO_MENSAL, gerarResumoMensal } from '../../src/ai/relator
 import type { AgregacaoFinanceira } from '../../src/relatorios/financeiro.js';
 import type { AgregacaoUsoIa } from '../../src/relatorios/usoIa.js';
 
-function criarClienteFalso(resumoTexto: string) {
+function criarClienteFalso(resumoTexto: string, custo = 0) {
   const create = vi.fn().mockResolvedValue({
     choices: [{ message: { content: resumoTexto } }],
-    usage: { prompt_tokens: 80, completion_tokens: 30 },
+    usage: { prompt_tokens: 80, completion_tokens: 30, cost: custo },
   });
   return { client: { chat: { completions: { create } } } as unknown as OpenAI, create };
 }
@@ -30,7 +30,7 @@ const usoIaVazio: AgregacaoUsoIa = {
 
 describe('gerarResumoMensal', () => {
   it('envia os dados pré-calculados no prompt e devolve o texto narrado pelo modelo', async () => {
-    const { client, create } = criarClienteFalso('Mês positivo, com destaque para a categoria alimentação.');
+    const { client, create } = criarClienteFalso('Mês positivo, com destaque para a categoria alimentação.', 0.00021);
 
     const resultado = await gerarResumoMensal(client, {
       inicio: '2026-03-01',
@@ -50,6 +50,7 @@ describe('gerarResumoMensal', () => {
       resumoTexto: 'Mês positivo, com destaque para a categoria alimentação.',
       tokensPrompt: 80,
       tokensCompletion: 30,
+      custoReal: 0.00021,
     });
 
     const mensagensEnviadas = create.mock.calls[0]?.[0]?.messages;

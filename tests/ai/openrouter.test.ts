@@ -12,7 +12,10 @@ function criarClienteFalso(...respostas: unknown[]): OpenAI {
   return { chat: { completions: { create } } } as unknown as OpenAI;
 }
 
-function respostaTexto(texto: string, usage?: { prompt_tokens: number; completion_tokens: number }) {
+function respostaTexto(
+  texto: string,
+  usage?: { prompt_tokens: number; completion_tokens: number; cost?: number },
+) {
   return { choices: [{ message: { content: texto } }], usage };
 }
 
@@ -60,8 +63,19 @@ describe('gerarResposta — sem ferramentas (compatibilidade)', () => {
       tokensCompletion: 0,
       cachedTokens: 0,
       cacheWriteTokens: 0,
+      custoReal: 0,
       duracaoMs: expect.any(Number),
     });
+  });
+
+  it('lê o custo real (usage.cost) devolvido pelo OpenRouter — 1 crédito = 1 USD', async () => {
+    const client = criarClienteFalso(
+      respostaTexto('olá!', { prompt_tokens: 100, completion_tokens: 20, cost: 0.000123 }),
+    );
+
+    const resultado = await gerarResposta(client, 'oi');
+
+    expect(resultado.custoReal).toBe(0.000123);
   });
 
   it('sempre envia o system prompt como primeira mensagem', async () => {
