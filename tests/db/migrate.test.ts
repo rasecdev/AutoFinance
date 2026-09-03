@@ -22,6 +22,7 @@ const TABELAS_ESPERADAS = [
   'despesas_fixas',
   'interacoes_ia',
   'resumos_conversa',
+  'modelos_referencia_comparacao',
 ];
 
 const CHAVE_TESTE = 'chave-teste-migracao';

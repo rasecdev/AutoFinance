@@ -131,3 +131,17 @@ export function somarTokensChat(db: DbClient, chatId: number, desdeTraceId?: str
 
   return resultado.total;
 }
+
+export function contarInteracoesAvaliadasIncorretas(
+  db: DbClient,
+  periodo: { inicio: string; fim: string },
+): number {
+  const resultado = db
+    .prepare(
+      `SELECT COUNT(*) AS total FROM interacoes_ia
+       WHERE avaliacao_usuario = 'incorreto' AND data_hora >= ? AND data_hora <= ?`,
+    )
+    .get(periodo.inicio, periodo.fim) as { total: number };
+
+  return resultado.total;
+}
