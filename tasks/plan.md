@@ -44,7 +44,7 @@ Tabelas casos_teste_benchmark + benchmarks_modelos (Tarefa 31)
 
 - [x] Tarefa 32: Comando `/certo` — marca a última resposta do bot como correta (contraparte de `/errado`)
 - [x] Tarefa 33: Tool `criar_caso_teste_benchmark` — promove a última interação avaliada como correta na conversa em caso de teste
-- [ ] Tarefa 34: `montarToolsConversa` compartilhado + motor de execução do benchmark (não-executor, compara tool_calls, calcula acurácia e custo)
+- [x] Tarefa 34: `montarToolsConversa` compartilhado + motor de execução do benchmark (não-executor, compara tool_calls, calcula acurácia e custo)
 - [ ] Tarefa 35: Tool `rodar_benchmark_interno(fluxo, modelos_candidatos)` — expõe o motor no chat, exige confirmação, grava resultado em `benchmarks_modelos`
 
 ### Checkpoint: Benchmark interno funcional
