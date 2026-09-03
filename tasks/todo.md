@@ -80,7 +80,7 @@
 **Verification:**
 - [x] `npm test` cobre: cálculo de janela por período (dia/semana com borda segunda-domingo/mês com ano bissexto), formatação com dado presente/ausente, tool com dado real do banco, regressão específica do bug de timezone (registro perto da virada do dia incluído/excluído corretamente) — 431/431 em `development`
 - [x] `npm run build`/`lint` sem erro
-- [ ] Manual em Homologação: pedir "me manda o relatório de hoje" pro bot, conferir que os números batem com o banco
+- [x] Manual em Homologação: pedir "me manda o relatório de hoje" pro bot, conferir que os números batem com o banco — confirmado (`relatorio(periodo='dia')` chamada corretamente, "2026-09-03", "nenhuma transação registrada hoje" e "Saldo consolidado: R$ -35,00" batendo com `contas`/`transacoes`)
 
 **Dependencies:** Tarefa 26, Tarefa 27
 
