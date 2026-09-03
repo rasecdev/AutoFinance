@@ -12,6 +12,15 @@ function formatarMoeda(valor: number): string {
   return `R$ ${valor.toFixed(2)}`;
 }
 
+// Custo de IA vem em créditos OpenRouter (1 crédito = 1 USD, achado real:
+// exibir com "R$" fazia o valor parecer não bater com openrouter.ai/settings/profile,
+// que mostra USD) — nunca convertido pra BRL (sem fonte de câmbio no projeto).
+// toFixed(2) some com valores típicos (fração de centavo por chamada) — 6
+// casas decimais é o suficiente pra aparecer um número diferente de zero.
+function formatarCustoUsd(valor: number): string {
+  return `US$ ${valor.toFixed(6)}`;
+}
+
 function formatarSecaoFinanceira(financeiro: AgregacaoFinanceira): string[] {
   const linhas = ['**Financeiro**'];
 
@@ -42,12 +51,12 @@ function formatarSecaoUsoIa(usoIa: AgregacaoUsoIa): string[] {
   }
 
   linhas.push(
-    `Total: ${usoIa.totalTokensPrompt + usoIa.totalTokensCompletion} tokens, custo estimado ${formatarMoeda(usoIa.totalCustoEstimado)}`,
+    `Total: ${usoIa.totalTokensPrompt + usoIa.totalTokensCompletion} tokens, custo estimado ${formatarCustoUsd(usoIa.totalCustoEstimado)}`,
   );
   linhas.push('Por fluxo/modelo:');
   for (const item of usoIa.porFluxoModelo) {
     linhas.push(
-      `- ${item.fluxo} (${item.modelo}): ${item.tokensPrompt + item.tokensCompletion} tokens, ${formatarMoeda(item.custoEstimado)}`,
+      `- ${item.fluxo} (${item.modelo}): ${item.tokensPrompt + item.tokensCompletion} tokens, ${formatarCustoUsd(item.custoEstimado)}`,
     );
   }
 
@@ -58,7 +67,7 @@ function formatarSecaoUsoIa(usoIa: AgregacaoUsoIa): string[] {
   if (usoIa.metrica1.length > 0) {
     linhas.push('Comparação hipotética (mesmo volume de tokens, preço de modelos de referência — estimativa):');
     for (const candidato of usoIa.metrica1) {
-      linhas.push(`- ${candidato.nomeExibicao}: ${formatarMoeda(candidato.custoEstimado)}`);
+      linhas.push(`- ${candidato.nomeExibicao}: ${formatarCustoUsd(candidato.custoEstimado)}`);
     }
   }
 

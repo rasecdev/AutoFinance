@@ -7,7 +7,6 @@ import { FLUXO_RELATORIO_MENSAL, gerarResumoMensal, resolverModeloRelatorioMensa
 import { loadEnv } from '../config/env.js';
 import { getDb, type DbClient } from '../db/client.js';
 import { registrarInteracaoIa } from '../db/repositories/interacoesIa.js';
-import { calcularCustoTokens } from '../db/repositories/modelosOpenrouterHistorico.js';
 import { registrarUsoTokens } from '../db/repositories/usoTokens.js';
 import { createLogger } from '../logging/logger.js';
 import { agregarFinanceiroPeriodo } from '../relatorios/financeiro.js';
@@ -63,7 +62,7 @@ export async function montarRelatorioMensal(db: DbClient, client: OpenAI, agora:
     modelo,
     tokensPrompt: resultado.tokensPrompt,
     tokensCompletion: resultado.tokensCompletion,
-    custoEstimado: calcularCustoTokens(db, modelo, resultado.tokensPrompt, resultado.tokensCompletion),
+    custoEstimado: resultado.custoReal,
     origem: 'uso_real',
   });
 

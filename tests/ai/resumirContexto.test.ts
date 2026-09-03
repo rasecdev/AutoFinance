@@ -35,10 +35,10 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-function criarClienteFalso(resumoTexto: string) {
+function criarClienteFalso(resumoTexto: string, custo = 0) {
   const create = vi.fn().mockResolvedValue({
     choices: [{ message: { content: resumoTexto } }],
-    usage: { prompt_tokens: 50, completion_tokens: 20 },
+    usage: { prompt_tokens: 50, completion_tokens: 20, cost: custo },
   });
   return { client: { chat: { completions: { create } } } as unknown as OpenAI, create };
 }
@@ -92,6 +92,7 @@ describe('resumirContexto', () => {
       resumoTexto: 'resumo cumulativo gerado pela IA',
       tokensPrompt: 50,
       tokensCompletion: 20,
+      custoReal: 0,
     });
 
     const mensagensEnviadas = create.mock.calls[0]?.[0]?.messages;
@@ -128,7 +129,7 @@ describe('verificarGatilhoResumo', () => {
   });
 
   it('registra a chamada de resumo em interacoes_ia e uso_tokens com o fluxo próprio', async () => {
-    const { client } = criarClienteFalso('resumo gerado');
+    const { client } = criarClienteFalso('resumo gerado', 0.000045);
     registrarInteracaoComTokens(100, 'trace-1', LIMITE_TOKENS_JANELA + 1);
 
     await verificarGatilhoResumo(db, client, 100);
@@ -145,7 +146,12 @@ describe('verificarGatilhoResumo', () => {
 
     const usoTokens = lerUsoTokens().filter((u) => u.fluxo === FLUXO_RESUMIR_CONTEXTO);
     expect(usoTokens).toHaveLength(1);
-    expect(usoTokens[0]).toMatchObject({ modelo: MODELO_RESUMO, tokens_prompt: 50, tokens_completion: 20 });
+    expect(usoTokens[0]).toMatchObject({
+      modelo: MODELO_RESUMO,
+      tokens_prompt: 50,
+      tokens_completion: 20,
+      custo_estimado: 0.000045,
+    });
   });
 
   it('usa o resumo cumulativo (resumo anterior + só as mensagens depois dele) ao disparar de novo', async () => {
