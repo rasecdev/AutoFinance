@@ -133,8 +133,8 @@
 ---
 
 ## Checkpoint: Fase 5 completa
-- [ ] Todos os critérios de aceite das Tarefas 22-25 atendidos
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação confirmando cache ativo (`cached_tokens` > 0) numa conversa com modelo Anthropic roteado via `/modelo`
-- [ ] PROGRESSO.md atualizado com o marco "Fase 5 concluída"
+- [x] Todos os critérios de aceite das Tarefas 22-25 atendidos
+- [x] `npm run build`/`lint`/`test` sem erro (393/393 em `development`, checado nesta revisão)
+- [x] Teste manual em Homologação confirmando cache ativo (`cached_tokens` > 0) numa conversa com modelo Anthropic roteado via `/modelo` — confirmado com `anthropic/claude-haiku-4.5` (`cachedTokens: 19950` na 2ª mensagem)
+- [x] PROGRESSO.md atualizado com o marco "Fase 5 concluída"
 - [ ] Revisão com o usuário antes de prosseguir para a Fase 6
