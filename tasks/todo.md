@@ -4,18 +4,20 @@
 
 ## Fase H: Roteamento por fluxo
 
-### Tarefa 22: Repositório `roteamento_tarefas` + aplicar nos fluxos existentes
+### Tarefa 22: Repositório `roteamento_tarefas` + aplicar nos fluxos existentes ✅
+
+**Implementado:** conforme descrito abaixo, sem desvios do planejado. `modeloAtivo.ts` (Fase 4) ganhou `resolverModeloConversa(db, chatId)` (override do chat > `roteamento_tarefas` > `MODELO_PADRAO`), substituindo o antigo `obterModeloAtivo` (que já embutia só o fallback pra `MODELO_PADRAO`) — `obterOverrideModelo` isola só a leitura do override, usado internamente e pelo `handlerModelo` (que passou a receber `db` pra exibir o modelo resolvido, não só o override cru). `resumirContexto.ts` resolve o modelo do fluxo `resumir_contexto` do mesmo jeito (`obterModeloRoteamento(db, 'resumir_contexto') ?? MODELO_RESUMO`), sem override de chat (esse fluxo não tem comando pra trocar por chat).
 
 **Descrição:** `src/db/repositories/roteamentoTarefas.ts` (novo): `obterModeloRoteamento(db, fluxo)` (retorna `modelo_preferido` da linha, ou `undefined` se não existir — sem lançar erro) e `definirRoteamento(db, fluxo, modeloPreferido, requisitos?)` (`INSERT ... ON CONFLICT(fluxo) DO UPDATE`, já que `fluxo` é `UNIQUE`). `texto.ts` passa a resolver o modelo de `conversa_texto` como `obterModeloAtivo(chatId) ?? obterModeloRoteamento(db, 'conversa_texto') ?? MODELO_PADRAO` (override do chat sempre vence, `roteamento_tarefas` é o padrão de fábrica); `resumirContexto.ts` resolve `MODELO_RESUMO` do mesmo jeito pro fluxo `resumir_contexto`, sem override de chat (esse fluxo não tem comando pra trocar por chat).
 
 **Acceptance criteria:**
-- [ ] Existe uma linha em `roteamento_tarefas` pra um fluxo e o modelo dela é de fato usado na próxima chamada daquele fluxo
-- [ ] Fluxo sem linha em `roteamento_tarefas` continua usando a constante padrão atual, sem quebrar nem exigir seed
-- [ ] `/modelo` (override por chat, Fase 4) continua tendo precedência sobre `roteamento_tarefas` em `conversa_texto`
+- [x] Existe uma linha em `roteamento_tarefas` pra um fluxo e o modelo dela é de fato usado na próxima chamada daquele fluxo
+- [x] Fluxo sem linha em `roteamento_tarefas` continua usando a constante padrão atual, sem quebrar nem exigir seed
+- [x] `/modelo` (override por chat, Fase 4) continua tendo precedência sobre `roteamento_tarefas` em `conversa_texto`
 
 **Verification:**
-- [ ] `npm test` cobre: leitura com/sem linha existente, definição/atualização (`ON CONFLICT`), precedência de `/modelo` sobre `roteamento_tarefas`, `resumir_contexto` usando `roteamento_tarefas` quando definido
-- [ ] `npm run build`/`lint` sem erro
+- [x] `npm test` cobre: leitura com/sem linha existente, definição/atualização (`ON CONFLICT`), precedência de `/modelo` sobre `roteamento_tarefas`, `resumir_contexto` usando `roteamento_tarefas` quando definido — 367/367 em `development`
+- [x] `npm run build`/`lint` sem erro
 - [ ] Manual em Homologação: inserir uma linha em `roteamento_tarefas` pro fluxo `conversa_texto` com um modelo diferente do padrão (sem usar `/modelo`), confirmar em `interacoes_ia.modelo` que a próxima conversa usou esse modelo
 
 **Dependencies:** None (tabela já existe desde a Fase 1)
