@@ -57,7 +57,7 @@
 **Verification:**
 - [x] `npm test` cobre: `/certo` marca como correto, mesmos casos de erro de `/errado` adaptados, roteamento reconhece `/certo` case-insensitive sem quebrar o roteamento de `/errado` — 464/464 em `development`
 - [x] `npm run build`/`lint` sem erro
-- [ ] Manual em Homologação: responder a uma mensagem do bot com `/certo`, conferir `avaliacao_usuario = 'correto'` na interação
+- [x] Manual em Homologação: responder a uma mensagem do bot com `/certo`, conferir `avaliacao_usuario = 'correto'` na interação — confirmado (fechado junto do teste manual da Tarefa 33)
 
 **Dependencies:** None
 
@@ -86,7 +86,7 @@
 **Verification:**
 - [x] `npm test` cobre: promoção da última interação correta, chat sem interação correta, múltiplos chats não se misturam, interação sem `tool_calls` (mensagem só de texto, sem chamada de ferramenta) tratada corretamente — 474/474 em `development`
 - [x] `npm run build`/`lint` sem erro
-- [ ] Manual em Homologação: marcar uma resposta recente como correta (`/certo`, Tarefa 32), pedir "salva isso como caso de teste", conferir linha nova em `casos_teste_benchmark`
+- [x] Manual em Homologação: marcar uma resposta recente como correta (`/certo`, Tarefa 32), pedir "salva isso como caso de teste", conferir linha nova em `casos_teste_benchmark` — confirmado via Telegram real: `/certo` marcou a interação "oi" como correta, "Salvar isso como caso de teste de benchmark" chamou `criar_caso_teste_benchmark` corretamente, linha criada com `entrada: "oi"`, `saida_esperada: []`, `origem: derivado_correcao`
 
 **Dependencies:** Tarefa 31, Tarefa 32
 
