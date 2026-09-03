@@ -51,6 +51,7 @@ export async function gerarResposta(
   tools: ToolDefinition[] = [],
   ctx: ToolContext = { chatId: 0 },
   historico: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [],
+  modelo: string = MODELO_PADRAO,
 ): Promise<RespostaGerada> {
   const inicio = Date.now();
   const registry = new Map(tools.map((tool) => [tool.name, tool]));
@@ -67,7 +68,7 @@ export async function gerarResposta(
 
   for (let iteracao = 0; iteracao < MAX_ITERACOES_TOOL_CALLING; iteracao++) {
     let completion = await client.chat.completions.create({
-      model: MODELO_PADRAO,
+      model: modelo,
       messages: mensagens,
       ...(ferramentas ? { tools: ferramentas, tool_choice: 'auto' as const } : {}),
     });
@@ -83,7 +84,7 @@ export async function gerarResposta(
       retentativa++
     ) {
       completion = await client.chat.completions.create({
-        model: MODELO_PADRAO,
+        model: modelo,
         messages: mensagens,
         ...(ferramentas ? { tools: ferramentas, tool_choice: 'auto' as const } : {}),
       });
@@ -96,7 +97,7 @@ export async function gerarResposta(
 
     if (!mensagem?.tool_calls || mensagem.tool_calls.length === 0) {
       return {
-        modelo: MODELO_PADRAO,
+        modelo,
         resposta: mensagem?.content ?? '',
         toolCalls: toolCallsRegistradas,
         tokensPrompt,
@@ -114,7 +115,7 @@ export async function gerarResposta(
 
       if (resultado.tipo === 'pendente_confirmacao') {
         return {
-          modelo: MODELO_PADRAO,
+          modelo,
           resposta: gerarPerguntaConfirmacao(resultado.tool, resultado.argumentos),
           toolCalls: [...toolCallsRegistradas, { nome: resultado.tool.name, argumentos: resultado.argumentos }],
           tokensPrompt,
