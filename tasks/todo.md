@@ -86,13 +86,13 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** `DadosRelatorio` (`src/relatorios/formatar.ts`) ganha o campo `errosTecnicos: number`. `formatarRelatorio` inclui uma linha extra (fora da seção "Uso de IA", só quando `errosTecnicos > 0`) — ex: `Erros técnicos no período: 2 (ver listar_erros).` Os 3 chamadores de `formatarRelatorio` passam a calcular e passar esse valor: tool `relatorio` (`src/ai/tools/relatorios.ts`), `montarRelatorioSemanal` e `montarRelatorioMensal` (via `contarErrosPeriodo` da Tarefa 41).
 
 **Acceptance criteria:**
-- [ ] `errosTecnicos > 0` mostra a linha extra no relatório, com o número certo
-- [ ] `errosTecnicos === 0` não mostra a linha (sem texto vazio nem "0 erros")
-- [ ] A linha aparece independente de `usoIa.porFluxoModelo` estar vazio ou não (não fica escondida pelo "Nenhum uso de IA registrado no período")
+- [x] `errosTecnicos > 0` mostra a linha extra no relatório, com o número certo
+- [x] `errosTecnicos === 0` não mostra a linha (sem texto vazio nem "0 erros")
+- [x] A linha aparece independente de `usoIa.porFluxoModelo` estar vazio ou não (não fica escondida pelo "Nenhum uso de IA registrado no período")
 
 **Verification:**
-- [ ] `npm test -- tests/relatorios/formatar.test.ts tests/relatorios/usoIa.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/relatorios/formatar.test.ts tests/relatorios/usoIa.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 41
 

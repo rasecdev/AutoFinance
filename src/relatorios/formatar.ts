@@ -6,6 +6,7 @@ export type DadosRelatorio = {
   fim: string;
   financeiro: AgregacaoFinanceira;
   usoIa: AgregacaoUsoIa;
+  errosTecnicos: number;
 };
 
 function formatarMoeda(valor: number): string {
@@ -96,7 +97,15 @@ export function formatarRelatorio(dados: DadosRelatorio): string {
       ? `**Relatório — ${dados.inicio}**`
       : `**Relatório — ${dados.inicio} a ${dados.fim}**`;
 
-  return [cabecalho, '', ...formatarSecaoFinanceira(dados.financeiro), '', ...formatarSecaoUsoIa(dados.usoIa)].join(
-    '\n',
-  );
+  const linhas = [cabecalho, '', ...formatarSecaoFinanceira(dados.financeiro), '', ...formatarSecaoUsoIa(dados.usoIa)];
+
+  // Fora da seção "Uso de IA" de propósito — um job de fundo pode falhar
+  // (ex: backup) mesmo num período sem nenhum uso de IA, e formatarSecaoUsoIa
+  // retorna cedo nesse caso (ver "Nenhum uso de IA registrado no período"),
+  // o que esconderia essa contagem se ela estivesse lá dentro.
+  if (dados.errosTecnicos > 0) {
+    linhas.push('', `Erros técnicos no período: ${dados.errosTecnicos} (ver listar_erros).`);
+  }
+
+  return linhas.join('\n');
 }
