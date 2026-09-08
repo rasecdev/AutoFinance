@@ -190,6 +190,28 @@ function resolverTool(registry: Map<string, ToolDefinition>, nome: string): Tool
   return semPrefixo ? registry.get(semPrefixo) : undefined;
 }
 
+// Achado real de teste manual: modelos frequentemente emitem `null` num
+// parâmetro opcional não informado (ex: conta_id) em vez de simplesmente
+// omitir a chave. `z.optional()` só aceita `undefined`, não `null` — o
+// resultado era falha de validação Zod pra chamadas de tool tecnicamente
+// corretas, e o texto técnico do erro virava uma resposta confusa pro
+// usuário (o modelo tenta parafrasear a mensagem de erro). Normaliza null
+// pra "chave ausente" antes de validar contra o schema — tratado como
+// equivalente a "não informado" em todo o projeto (resolverContaId etc.
+// já usam essa convenção). Exportado pra o motor de benchmark (benchmark.ts)
+// aplicar a mesma normalização na comparação com o gabarito.
+export function removerChavesNulas(valor: unknown): unknown {
+  if (Array.isArray(valor)) return valor.map(removerChavesNulas);
+  if (valor === null || typeof valor !== 'object') return valor;
+
+  const objeto = valor as Record<string, unknown>;
+  const resultado: Record<string, unknown> = {};
+  for (const [chave, item] of Object.entries(objeto)) {
+    if (item !== null) resultado[chave] = removerChavesNulas(item);
+  }
+  return resultado;
+}
+
 async function executarToolCall(
   tool: ToolDefinition | undefined,
   toolCall: OpenAI.Chat.Completions.ChatCompletionMessageToolCall,
@@ -210,7 +232,7 @@ async function executarToolCall(
     return { tipo: 'executado', conteudo: 'Argumentos inválidos: JSON malformado', argumentos: null };
   }
 
-  const validacao = tool.schema.safeParse(argumentosBrutos);
+  const validacao = tool.schema.safeParse(removerChavesNulas(argumentosBrutos));
   if (!validacao.success) {
     return {
       tipo: 'executado',
