@@ -65,6 +65,7 @@ function criarContextoFake(texto: string, chatId = 111) {
     message: { text: texto },
     chat: { id: chatId },
     reply: vi.fn().mockResolvedValue({ message_id: 999 }),
+    replyWithChatAction: vi.fn().mockResolvedValue(undefined),
   } as unknown as Parameters<ReturnType<typeof createHandlerTexto>>[0] & { reply: ReturnType<typeof vi.fn> };
 }
 
