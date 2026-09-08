@@ -25,8 +25,8 @@ function ehErroModeloInvalido(erro: unknown): boolean {
 }
 
 // Telegram expira o indicador de "digitando..." em ~5s — reenvia periodicamente
-// enquanto a ação confirmada roda, pra servir de loader em ações demoradas
-// (ex: rodar_benchmark_interno, várias chamadas de IA sequenciais).
+// enquanto a chamada de IA (ou ação confirmada) roda, pra sinalizar que o bot
+// está processando até responder de fato.
 const INTERVALO_LOADER_MS = 4000;
 
 async function comIndicadorDigitando<T>(ctx: Context, tarefa: Promise<T>): Promise<T> {
@@ -88,7 +88,10 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
         custoReal,
         duracaoMs,
         pendenciaConfirmacao,
-      } = await gerarResposta(client, mensagemUsuario, tools, { chatId }, historico, resolverModeloConversa(db, chatId));
+      } = await comIndicadorDigitando(
+        ctx,
+        gerarResposta(client, mensagemUsuario, tools, { chatId }, historico, resolverModeloConversa(db, chatId)),
+      );
 
       if (pendenciaConfirmacao) {
         definirPendencia(chatId, pendenciaConfirmacao);
