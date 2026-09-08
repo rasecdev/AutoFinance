@@ -131,6 +131,24 @@ describe('executarBenchmarkFluxo', () => {
     expect(resultados[0]).toMatchObject({ acertos: 1, acuracia: 1 });
   });
 
+  it('conta acerto quando o candidato manda null num parâmetro opcional em vez de omitir a chave', async () => {
+    criarCasoTeste(db, {
+      fluxo: FLUXO,
+      entrada: 'registra 30 reais de uber em transporte',
+      saidaEsperada: [{ nome: 'registrar_transacao', argumentos: { valor: 30, categoria: 'transporte' } }],
+      origem: 'curado',
+    });
+    const { client } = criarClienteFalso(
+      respostaComToolCalls([
+        { nome: 'registrar_transacao', argumentos: { valor: 30, categoria: 'transporte', conta_id: null } },
+      ]),
+    );
+
+    const resultados = await executarBenchmarkFluxo(client, db, FLUXO, ['openai/gpt-4o-mini']);
+
+    expect(resultados[0]).toMatchObject({ acertos: 1, acuracia: 1 });
+  });
+
   it('roda múltiplos casos e múltiplos modelos candidatos, cada um com sua própria acurácia', async () => {
     criarCasoTeste(db, {
       fluxo: FLUXO,
