@@ -6,6 +6,7 @@ import { createOpenRouterClient } from '../ai/openrouter.js';
 import { FLUXO_RELATORIO_MENSAL, gerarResumoMensal, resolverModeloRelatorioMensal } from '../ai/relatorioMensal.js';
 import { loadEnv } from '../config/env.js';
 import { getDb, type DbClient } from '../db/client.js';
+import { contarErrosPeriodo } from '../db/repositories/errosExecucao.js';
 import { registrarInteracaoIa } from '../db/repositories/interacoesIa.js';
 import { registrarUsoTokens } from '../db/repositories/usoTokens.js';
 import { createLogger } from '../logging/logger.js';
@@ -67,7 +68,14 @@ export async function montarRelatorioMensal(db: DbClient, client: OpenAI, agora:
     origem: 'uso_real',
   });
 
-  const relatorio = formatarRelatorio({ inicio: janelaAtual.inicio, fim: janelaAtual.fim, financeiro, usoIa });
+  const errosTecnicos = contarErrosPeriodo(db, janelaAtual);
+  const relatorio = formatarRelatorio({
+    inicio: janelaAtual.inicio,
+    fim: janelaAtual.fim,
+    financeiro,
+    usoIa,
+    errosTecnicos,
+  });
 
   return `${relatorio}\n\n**Resumo do mês**\n${resultado.resumoTexto}`;
 }

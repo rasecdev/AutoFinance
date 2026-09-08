@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { DbClient } from '../../db/client.js';
+import { contarErrosPeriodo } from '../../db/repositories/errosExecucao.js';
 import { agregarFinanceiroPeriodo } from '../../relatorios/financeiro.js';
 import { formatarRelatorio } from '../../relatorios/formatar.js';
 import { calcularJanelaPeriodo } from '../../relatorios/janela.js';
@@ -22,8 +23,9 @@ export function criarToolRelatorio(db: DbClient): ToolDefinition {
       const janela = calcularJanelaPeriodo(periodo);
       const financeiro = agregarFinanceiroPeriodo(db, janela);
       const usoIa = agregarUsoIaPeriodo(db, janela);
+      const errosTecnicos = contarErrosPeriodo(db, janela);
 
-      return formatarRelatorio({ inicio: janela.inicio, fim: janela.fim, financeiro, usoIa });
+      return formatarRelatorio({ inicio: janela.inicio, fim: janela.fim, financeiro, usoIa, errosTecnicos });
     },
   };
 }
