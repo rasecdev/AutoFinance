@@ -106,7 +106,7 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Estimated scope:** Small (1 arquivo de composição + 3 chamadores pequenos)
 
 ## Checkpoint: `erros_execucao` funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: forçar um erro num job, confirmar linha em `erros_execucao` via consulta direta ao banco e alerta recebido no Telegram; pedir `relatorio` real e confirmar a contagem de erros aparecendo; testar `listar_erros(periodo)` via Telegram
-- [ ] PROGRESSO.md atualizado com o marco
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Teste manual em Homologação: forçar um erro num job, confirmar linha em `erros_execucao` via consulta direta ao banco e alerta recebido no Telegram; pedir `relatorio` real e confirmar a contagem de erros aparecendo; testar `listar_erros(periodo)` via Telegram
+- [x] PROGRESSO.md atualizado com o marco
 - [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
