@@ -15,20 +15,38 @@ const usoIaVazio = {
 
 describe('formatarRelatorio', () => {
   it('cabeçalho de um único dia mostra só a data', () => {
-    const texto = formatarRelatorio({ inicio: '2026-03-15', fim: '2026-03-15', financeiro: financeiroVazio, usoIa: usoIaVazio });
+    const texto = formatarRelatorio({
+      inicio: '2026-03-15',
+      fim: '2026-03-15',
+      financeiro: financeiroVazio,
+      usoIa: usoIaVazio,
+      errosTecnicos: 0,
+    });
 
     expect(texto).toContain('2026-03-15');
     expect(texto).not.toContain('a 2026-03-15');
   });
 
   it('cabeçalho de um intervalo mostra início e fim', () => {
-    const texto = formatarRelatorio({ inicio: '2026-03-01', fim: '2026-03-31', financeiro: financeiroVazio, usoIa: usoIaVazio });
+    const texto = formatarRelatorio({
+      inicio: '2026-03-01',
+      fim: '2026-03-31',
+      financeiro: financeiroVazio,
+      usoIa: usoIaVazio,
+      errosTecnicos: 0,
+    });
 
     expect(texto).toContain('2026-03-01 a 2026-03-31');
   });
 
   it('mostra "nenhuma transação" quando não há dado financeiro', () => {
-    const texto = formatarRelatorio({ inicio: '2026-03-15', fim: '2026-03-15', financeiro: financeiroVazio, usoIa: usoIaVazio });
+    const texto = formatarRelatorio({
+      inicio: '2026-03-15',
+      fim: '2026-03-15',
+      financeiro: financeiroVazio,
+      usoIa: usoIaVazio,
+      errosTecnicos: 0,
+    });
 
     expect(texto).toContain('Nenhuma transação no período.');
     expect(texto).toContain('R$ 500.00');
@@ -45,6 +63,7 @@ describe('formatarRelatorio', () => {
         saldoConsolidado: 500,
       },
       usoIa: usoIaVazio,
+      errosTecnicos: 0,
     });
 
     expect(texto).toContain('R$ 1000.00');
@@ -53,7 +72,13 @@ describe('formatarRelatorio', () => {
   });
 
   it('mostra "nenhum uso de IA" quando não há dado', () => {
-    const texto = formatarRelatorio({ inicio: '2026-03-15', fim: '2026-03-15', financeiro: financeiroVazio, usoIa: usoIaVazio });
+    const texto = formatarRelatorio({
+      inicio: '2026-03-15',
+      fim: '2026-03-15',
+      financeiro: financeiroVazio,
+      usoIa: usoIaVazio,
+      errosTecnicos: 0,
+    });
 
     expect(texto).toContain('Nenhum uso de IA registrado no período.');
   });
@@ -75,6 +100,7 @@ describe('formatarRelatorio', () => {
         metrica2: [],
         metrica3: [],
       },
+      errosTecnicos: 0,
     });
 
     expect(texto).toContain('conversa_texto');
@@ -104,6 +130,7 @@ describe('formatarRelatorio', () => {
         metrica2: [],
         metrica3: [],
       },
+      errosTecnicos: 0,
     });
 
     expect(texto).not.toContain('incorretas');
@@ -135,6 +162,7 @@ describe('formatarRelatorio', () => {
           },
         ],
       },
+      errosTecnicos: 0,
     });
 
     expect(texto).toContain('Benchmark do modelo real em uso');
@@ -144,7 +172,13 @@ describe('formatarRelatorio', () => {
   });
 
   it('não mostra a seção da Métrica 3 quando vazia', () => {
-    const texto = formatarRelatorio({ inicio: '2026-03-15', fim: '2026-03-15', financeiro: financeiroVazio, usoIa: usoIaVazio });
+    const texto = formatarRelatorio({
+      inicio: '2026-03-15',
+      fim: '2026-03-15',
+      financeiro: financeiroVazio,
+      usoIa: usoIaVazio,
+      errosTecnicos: 0,
+    });
 
     expect(texto).not.toContain('Benchmark do modelo real em uso');
   });
@@ -174,6 +208,7 @@ describe('formatarRelatorio', () => {
         ],
         metrica3: [],
       },
+      errosTecnicos: 0,
     });
 
     expect(texto).toContain('Claude Haiku');
@@ -199,8 +234,46 @@ describe('formatarRelatorio', () => {
         metrica2: [],
         metrica3: [],
       },
+      errosTecnicos: 0,
     });
 
     expect(texto).not.toContain('ajustado por');
+  });
+
+  it('mostra a contagem de erros técnicos quando presente', () => {
+    const texto = formatarRelatorio({
+      inicio: '2026-03-15',
+      fim: '2026-03-15',
+      financeiro: financeiroVazio,
+      usoIa: usoIaVazio,
+      errosTecnicos: 3,
+    });
+
+    expect(texto).toContain('Erros técnicos no período: 3');
+  });
+
+  it('não mostra linha de erros técnicos quando é zero', () => {
+    const texto = formatarRelatorio({
+      inicio: '2026-03-15',
+      fim: '2026-03-15',
+      financeiro: financeiroVazio,
+      usoIa: usoIaVazio,
+      errosTecnicos: 0,
+    });
+
+    expect(texto).not.toContain('Erros técnicos');
+  });
+
+  it('mostra erros técnicos mesmo sem nenhum uso de IA no período (não fica escondido pelo early-return de usoIa)', () => {
+    const texto = formatarRelatorio({
+      inicio: '2026-03-15',
+      fim: '2026-03-15',
+      financeiro: financeiroVazio,
+      usoIa: usoIaVazio,
+      errosTecnicos: 1,
+    });
+
+    expect(texto).toContain('Nenhum uso de IA registrado no período.');
+    expect(texto).toContain('Erros técnicos no período: 1');
   });
 });
