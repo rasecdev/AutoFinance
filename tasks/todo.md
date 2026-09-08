@@ -115,7 +115,7 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Verification:**
 - [x] `npm test -- tests/scripts/seedCasosTesteBenchmarkCurados.test.ts`
 - [x] `npm run build`
-- [ ] Manual: rodar o script em Homologação (`node dist/scripts/seedCasosTesteBenchmarkCurados.js`), confirmar as 13 linhas via consulta direta ao banco, e rodar `rodar_benchmark_interno` comparando 2 modelos reais contra o conjunto novo
+- [x] Manual: rodar o script em Homologação (`node dist/scripts/seedCasosTesteBenchmarkCurados.js`), confirmar as 13 linhas via consulta direta ao banco, e rodar `rodar_benchmark_interno` comparando 2 modelos reais contra o conjunto novo
 
 **Dependencies:** None (usa `criarCasoTeste`/`listarCasosTeste`, já existentes desde a Tarefa 31)
 
@@ -126,7 +126,7 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Estimated scope:** Small (1 arquivo de código + teste, sem mudança de schema)
 
 ## Checkpoint: Seed de casos curados funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: script rodado, 13 casos confirmados no banco, `rodar_benchmark_interno` executado com sucesso contra o conjunto novo
-- [ ] PROGRESSO.md atualizado com o marco
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Teste manual em Homologação: script rodado, 13 casos confirmados no banco, `rodar_benchmark_interno` executado com sucesso contra o conjunto novo
+- [x] PROGRESSO.md atualizado com o marco
 - [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
