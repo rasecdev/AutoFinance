@@ -33,15 +33,15 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Novo `src/scripts/tratarErroCriticoJob.ts` — função `tratarErroCriticoJob(db, logger, contexto, erro, botToken, chatIds)`: grava a falha via `registrarErro` (mensagem = `erro.message` se `Error`, senão `String(erro)`; `detalhes` = `erro.stack` quando disponível), loga via `logger.error`, e envia um alerta (`⚠️ Erro crítico no job "..."`) pra cada `chatId` da allowlist via `new Bot(botToken).api.sendMessage` (com `.catch` por chat, uma falha de envio não deve impedir o registro nem os outros envios). Integrar nos 4 scripts existentes (`backup.ts`, `monitorarPrecos.ts`, `relatorioSemanal.ts`, `relatorioMensal.ts`): mover o corpo de `main()` (depois de `loadEnv`/`getDb`/`createLogger`/`Bot` já resolvidos) pra dentro de um `try`, chamando `tratarErroCriticoJob` no `catch` e relançando o erro (mantém o `.catch(...)` externo existente com `console.error`/`process.exitCode = 1` funcionando igual a hoje).
 
 **Acceptance criteria:**
-- [ ] Erro lançado dentro do corpo de qualquer um dos 4 scripts grava uma linha em `erros_execucao` com o `contexto` certo (nome do job) antes de propagar
-- [ ] Alerta é enviado pra cada `chatId` da allowlist quando o job falha
-- [ ] Falha ao enviar alerta pra um chat não impede o registro em `erros_execucao` nem o envio pros outros chats
-- [ ] Comportamento de sucesso (sem erro) dos 4 scripts não muda
+- [x] Erro lançado dentro do corpo de qualquer um dos 4 scripts grava uma linha em `erros_execucao` com o `contexto` certo (nome do job) antes de propagar
+- [x] Alerta é enviado pra cada `chatId` da allowlist quando o job falha
+- [x] Falha ao enviar alerta pra um chat não impede o registro em `erros_execucao` nem o envio pros outros chats
+- [x] Comportamento de sucesso (sem erro) dos 4 scripts não muda
 
 **Verification:**
-- [ ] `npm test -- tests/scripts/tratarErroCriticoJob.test.ts`
-- [ ] `npm test -- tests/scripts/monitorarPrecos.test.ts tests/scripts/backup.test.ts tests/scripts/relatorioSemanal.test.ts tests/scripts/relatorioMensal.test.ts` (os que já existirem)
-- [ ] `npm run build`
+- [x] `npm test -- tests/scripts/tratarErroCriticoJob.test.ts`
+- [x] `npm test -- tests/scripts/monitorarPrecos.test.ts tests/scripts/relatorioSemanal.test.ts tests/scripts/relatorioMensal.test.ts` (não existe `backup.test.ts`)
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 41
 

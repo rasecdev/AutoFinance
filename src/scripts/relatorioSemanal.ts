@@ -8,6 +8,7 @@ import { formatarRelatorio } from '../relatorios/formatar.js';
 import { calcularJanelaAnterior, calcularJanelaPeriodo } from '../relatorios/janela.js';
 import { agregarUsoIaPeriodo } from '../relatorios/usoIa.js';
 import { dormirAte } from './dormirAte.js';
+import { tratarErroCriticoJob } from './tratarErroCriticoJob.js';
 
 // Próximo domingo às 23h a partir de `agora` — se já é domingo e ainda não
 // passou das 23h, dispara hoje; se já passou das 23h (ou não é domingo),
@@ -58,19 +59,24 @@ async function main(): Promise<void> {
   const db = getDb(env);
   const bot = new Bot(env.telegramBotToken);
 
-  // --agora pula a espera pra permitir teste manual sem esperar o domingo
-  // de verdade (node dist/scripts/relatorioSemanal.js --agora).
-  if (!process.argv.includes('--agora')) {
-    const proximoDisparo = calcularProximoDomingoAs23h(new Date());
-    logger.info({ proximoDisparo: proximoDisparo.toISOString() }, 'aguardando próximo relatório semanal');
-    await dormirAte(proximoDisparo.getTime());
-  }
+  try {
+    // --agora pula a espera pra permitir teste manual sem esperar o domingo
+    // de verdade (node dist/scripts/relatorioSemanal.js --agora).
+    if (!process.argv.includes('--agora')) {
+      const proximoDisparo = calcularProximoDomingoAs23h(new Date());
+      logger.info({ proximoDisparo: proximoDisparo.toISOString() }, 'aguardando próximo relatório semanal');
+      await dormirAte(proximoDisparo.getTime());
+    }
 
-  const texto = montarRelatorioSemanal(db);
-  for (const chatId of env.telegramAllowedChatIds) {
-    await bot.api.sendMessage(chatId, texto);
+    const texto = montarRelatorioSemanal(db);
+    for (const chatId of env.telegramAllowedChatIds) {
+      await bot.api.sendMessage(chatId, texto);
+    }
+    logger.info('relatório semanal enviado');
+  } catch (erro) {
+    await tratarErroCriticoJob(db, logger, 'relatorio_semanal', erro, env.telegramBotToken, env.telegramAllowedChatIds);
+    throw erro;
   }
-  logger.info('relatório semanal enviado');
 }
 
 // Guard pra rodar main() só quando o arquivo é executado diretamente — ver
