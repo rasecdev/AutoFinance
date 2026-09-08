@@ -2,7 +2,7 @@ import type OpenAI from 'openai';
 import type { DbClient } from '../db/client.js';
 import { listarCasosTeste, type ToolCallEsperada } from '../db/repositories/casosTesteBenchmark.js';
 import { registrarUsoTokens } from '../db/repositories/usoTokens.js';
-import type { UsageComCusto } from './openrouter.js';
+import { removerChavesNulas, type UsageComCusto } from './openrouter.js';
 import { SYSTEM_PROMPT } from './systemPrompt.js';
 import { montarToolsConversa } from './tools/conversaTools.js';
 import { paraDefinicaoOpenAI } from './tools/registry.js';
@@ -80,7 +80,11 @@ async function chamarModeloCandidato(
     .filter((toolCall) => toolCall.type === 'function')
     .map((toolCall) => ({
       nome: toolCall.function.name,
-      argumentos: JSON.parse(toolCall.function.arguments || '{}') as unknown,
+      // Mesma normalização de openrouter.ts (null explícito == chave ausente)
+      // — sem isso, um candidato tecnicamente correto que manda null num
+      // parâmetro opcional seria marcado como erro na comparação com o
+      // gabarito (que nunca tem chave com valor null).
+      argumentos: removerChavesNulas(JSON.parse(toolCall.function.arguments || '{}')) as unknown,
     }));
 
   const usage = completion.usage as UsageComCusto | undefined;

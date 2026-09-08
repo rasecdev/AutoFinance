@@ -1,7 +1,7 @@
 import type OpenAI from 'openai';
 import { z } from 'zod';
 import { describe, expect, it, vi } from 'vitest';
-import { MODELO_PADRAO, gerarResposta } from '../../src/ai/openrouter.js';
+import { MODELO_PADRAO, gerarResposta, removerChavesNulas } from '../../src/ai/openrouter.js';
 import type { ToolDefinition } from '../../src/ai/tools/types.js';
 
 function criarClienteFalso(...respostas: unknown[]): OpenAI {
@@ -48,6 +48,35 @@ function respostaToolCall(
     usage,
   };
 }
+
+describe('removerChavesNulas', () => {
+  it('remove chaves com valor null de um objeto', () => {
+    expect(removerChavesNulas({ a: 1, b: null, c: 'x' })).toEqual({ a: 1, c: 'x' });
+  });
+
+  it('mantém undefined, zero, string vazia e false (só remove null)', () => {
+    expect(removerChavesNulas({ a: undefined, b: 0, c: '', d: false })).toEqual({
+      a: undefined,
+      b: 0,
+      c: '',
+      d: false,
+    });
+  });
+
+  it('remove recursivamente em objeto aninhado', () => {
+    expect(removerChavesNulas({ a: { b: null, c: 1 } })).toEqual({ a: { c: 1 } });
+  });
+
+  it('mapeia elementos de array recursivamente, sem remover null do array em si', () => {
+    expect(removerChavesNulas([{ a: null, b: 1 }, 'x', null])).toEqual([{ b: 1 }, 'x', null]);
+  });
+
+  it('devolve valor primitivo/null como está', () => {
+    expect(removerChavesNulas(null)).toBeNull();
+    expect(removerChavesNulas(5)).toBe(5);
+    expect(removerChavesNulas('x')).toBe('x');
+  });
+});
 
 describe('gerarResposta — sem ferramentas (compatibilidade)', () => {
   it('retorna a resposta em texto sem chamar tool_calls', async () => {
@@ -190,6 +219,25 @@ describe('gerarResposta — loop de tool calling', () => {
     await gerarResposta(client, 'msg', [toolComHandlerEspiao]);
 
     expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('trata parâmetro opcional enviado como null igual a ausente (achado real: modelos mandam null em vez de omitir a chave)', async () => {
+    const handler = vi.fn().mockResolvedValue('ok');
+    const toolComOpcional: ToolDefinition = {
+      name: 'consulta',
+      description: 'Consulta algo com filtro opcional',
+      schema: z.object({ conta_id: z.number().int().positive().optional(), conta_apelido: z.string().optional() }),
+      handler,
+    };
+    const client = criarClienteFalso(
+      respostaToolCall('consulta', { conta_id: null, conta_apelido: 'Nubank' }),
+      respostaTexto('resposta final'),
+    );
+
+    const resultado = await gerarResposta(client, 'msg', [toolComOpcional]);
+
+    expect(handler).toHaveBeenCalledWith({ conta_apelido: 'Nubank' }, expect.anything());
+    expect(resultado.toolCalls).toEqual([{ nome: 'consulta', argumentos: { conta_apelido: 'Nubank' } }]);
   });
 
   it('reporta ferramenta desconhecida sem lançar exceção', async () => {
