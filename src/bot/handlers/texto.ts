@@ -24,6 +24,24 @@ function ehErroModeloInvalido(erro: unknown): boolean {
   return typeof erro === 'object' && erro !== null && 'status' in erro && erro.status === 400;
 }
 
+// Telegram expira o indicador de "digitando..." em ~5s — reenvia periodicamente
+// enquanto a ação confirmada roda, pra servir de loader em ações demoradas
+// (ex: rodar_benchmark_interno, várias chamadas de IA sequenciais).
+const INTERVALO_LOADER_MS = 4000;
+
+async function comIndicadorDigitando<T>(ctx: Context, tarefa: Promise<T>): Promise<T> {
+  void ctx.replyWithChatAction('typing').catch(() => undefined);
+  const intervalo = setInterval(() => {
+    void ctx.replyWithChatAction('typing').catch(() => undefined);
+  }, INTERVALO_LOADER_MS);
+
+  try {
+    return await tarefa;
+  } finally {
+    clearInterval(intervalo);
+  }
+}
+
 export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger) {
   const tools = montarToolsConversa(db, client);
 
@@ -45,7 +63,7 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
       }
 
       try {
-        const resultado = await pendencia.tool.handler(pendencia.argumentos, { chatId });
+        const resultado = await comIndicadorDigitando(ctx, pendencia.tool.handler(pendencia.argumentos, { chatId }));
         await ctx.reply(resultado);
       } catch (erro) {
         logger.error({ err: erro }, 'falha ao executar ação confirmada pelo usuário');
