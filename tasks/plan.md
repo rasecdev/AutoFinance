@@ -18,7 +18,7 @@ Hoje, quando um job em background (backup, monitoramento de preço, relatório s
 ### Fase R: `erros_execucao` + alerta de job crítico
 
 - [x] Tarefa 41: migração + repositório `erros_execucao` (`registrarErro`, `listarErros(periodo)`, `contarErrosPeriodo(periodo)`)
-- [ ] Tarefa 42: helper `tratarErroCriticoJob` + integração nos 4 scripts de job (backup, monitorarPrecos, relatorioSemanal, relatorioMensal)
+- [x] Tarefa 42: helper `tratarErroCriticoJob` + integração nos 4 scripts de job (backup, monitorarPrecos, relatorioSemanal, relatorioMensal)
 - [ ] Tarefa 43: tool de chat `listar_erros(periodo)`
 - [ ] Tarefa 44: relatórios (tool `relatorio` + scripts semanal/mensal) passam a mostrar a contagem de erros técnicos do período
 
