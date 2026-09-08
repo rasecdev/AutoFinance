@@ -23,9 +23,9 @@ Hoje, quando um job em background (backup, monitoramento de preço, relatório s
 - [x] Tarefa 44: relatórios (tool `relatorio` + scripts semanal/mensal) passam a mostrar a contagem de erros técnicos do período
 
 ### Checkpoint: `erros_execucao` funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: forçar um erro num job (ex: rodar `monitorarPrecos.js` com `OPENROUTER_API_KEY`/rede indisponível, ou uma falha simulada), confirmar linha em `erros_execucao` via consulta direta ao banco e alerta recebido no Telegram; pedir `relatorio` real e confirmar a contagem de erros aparecendo; testar `listar_erros(periodo)` via Telegram
-- [ ] PROGRESSO.md atualizado com o marco
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Teste manual em Homologação: forçar um erro num job (ex: rodar `monitorarPrecos.js` com `OPENROUTER_API_KEY`/rede indisponível, ou uma falha simulada), confirmar linha em `erros_execucao` via consulta direta ao banco e alerta recebido no Telegram; pedir `relatorio` real e confirmar a contagem de erros aparecendo; testar `listar_erros(periodo)` via Telegram
+- [x] PROGRESSO.md atualizado com o marco
 - [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
 
 ## Risks and Mitigations
