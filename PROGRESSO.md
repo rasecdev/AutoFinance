@@ -22,6 +22,8 @@ Log vivo do projeto. Atualizado a cada marco/etapa concluída — é o primeiro 
 
 ## Erros conhecidos
 
+- **`openai/gpt-5-nano` (modelo roteado pra `conversa_texto`) falha sistematicamente em chamar tools** — confirmado em 2026-09-08 via teste manual real em Homologação: 4 de 6 mensagens reais na mesma conversa (`Extrato mensal`, `Resumo Mensal`, `Extrato Mensal Conta Testes`, `Extrato Mensal Conta Testes Mês de Julho`) resultaram em `tool_calls: null` — o modelo respondia em texto livre pedindo `conta_id`/confirmação extra, ignorando a instrução explícita da descrição da tool ("não peça confirmação extra, chame diretamente"). **Ação:** `roteamento_tarefas.conversa_texto` trocado manualmente pra `openai/gpt-4o-mini` em Homologação (já tinha benchmark real de 92-100% de acurácia de tool calling, Tarefa 40). Ainda não rodado `rodar_benchmark_interno` formal contra `gpt-5-nano` pra confirmar objetivamente o tamanho do problema (achado só via uso real) — se quiser retomar esse modelo (mais barato) no futuro, rodar o benchmark antes.
+
 - **`.env.producao` na VM está só como template (vazio)** — `TELEGRAM_BOT_TOKEN` e `TELEGRAM_ALLOWED_CHAT_IDS` sem valor, `AMBIENTE=homologacao` (errado). Confirmado em 2026-09-08 ao revisar a allowlist do Telegram: o serviço `producao` do `docker-compose.yml` nunca foi de fato subido na VM (só os serviços `*-homologacao` aparecem no `docker compose ps`), então isso não é um risco ativo hoje — mas precisa ser preenchido (token de bot novo e exclusivo pra Produção, chat_id real, `AMBIENTE=producao`) antes de rodar `docker compose up -d producao ...`, senão a validação Zod em `env.ts` recusa subir (falha segura, não é um bug de segurança, só um pré-requisito pendente).
 
 ## Histórico
