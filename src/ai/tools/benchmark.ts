@@ -73,7 +73,7 @@ export function criarToolRodarBenchmarkInterno(client: OpenAI, db: DbClient): To
       }
 
       const totalChamadas = totalCasos * modelosCandidatos.length;
-      return `Isso vai fazer ${totalChamadas} chamada(s) real(is) de IA (${totalCasos} caso(s) × ${modelosCandidatos.length} modelo(s)), com custo real.`;
+      return `Isso vai fazer ${totalChamadas} chamada(s) real(is) de IA (${totalCasos} caso(s) × ${modelosCandidatos.length} modelo(s)), com custo real. Pode demorar bastante (as chamadas são sequenciais) — aguarde a mensagem de resultado.`;
     },
     handler: async (args) => {
       const { modelos_candidatos: modelosCandidatos } = args as z.infer<typeof schemaRodarBenchmarkInterno>;
