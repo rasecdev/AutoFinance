@@ -62,12 +62,12 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Nova tool `listar_erros` (schema `{ periodo: 'dia' | 'semana' | 'mes' }`, mesmo enum de `relatorio`) em `src/ai/tools/errosExecucao.ts` — resolve a janela via `calcularJanelaPeriodo`, chama `listarErros(db, janela)`, formata cada linha (`contexto`, `mensagem`, `data_hora`) numa lista de texto; sem erro no período, devolve uma frase dizendo que não houve erro. Registrada em `montarToolsConversa` (`conversaTools.ts`).
 
 **Acceptance criteria:**
-- [ ] Período com erros registrados lista cada um (contexto + mensagem + data/hora)
-- [ ] Período sem erro nenhum devolve mensagem clara de "nenhum erro", nunca lista vazia sem explicação
+- [x] Período com erros registrados lista cada um (contexto + mensagem + data/hora)
+- [x] Período sem erro nenhum devolve mensagem clara de "nenhum erro", nunca lista vazia sem explicação
 
 **Verification:**
-- [ ] `npm test -- tests/ai/tools/errosExecucao.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/ai/tools/errosExecucao.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 41
 
