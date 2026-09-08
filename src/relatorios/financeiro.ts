@@ -14,10 +14,18 @@ export type TotalPorCategoria = {
   totalDespesa: number;
 };
 
+export type TotalPorConta = {
+  apelido: string;
+  totalReceita: number;
+  totalDespesa: number;
+  saldoAtual: number;
+};
+
 export type AgregacaoFinanceira = {
   totalReceita: number;
   totalDespesa: number;
   porCategoria: TotalPorCategoria[];
+  porConta: TotalPorConta[];
   saldoConsolidado: number;
 };
 
@@ -25,6 +33,7 @@ export function agregarFinanceiroPeriodo(db: DbClient, periodo: PeriodoRelatorio
   const transacoes = listarTransacoesAtivas(db, { dataInicio: periodo.inicio, dataFim: periodo.fim });
 
   const porCategoriaMap = new Map<string, TotalPorCategoria>();
+  const totalPorContaIdMap = new Map<number, { totalReceita: number; totalDespesa: number }>();
   let totalReceita = 0;
   let totalDespesa = 0;
 
@@ -44,24 +53,42 @@ export function agregarFinanceiroPeriodo(db: DbClient, periodo: PeriodoRelatorio
     }
 
     porCategoriaMap.set(transacao.categoria, atual);
+
+    if (transacao.contaId !== null) {
+      const atualConta = totalPorContaIdMap.get(transacao.contaId) ?? { totalReceita: 0, totalDespesa: 0 };
+      if (transacao.tipo === 'receita') {
+        atualConta.totalReceita += transacao.valor;
+      } else {
+        atualConta.totalDespesa += transacao.valor;
+      }
+      totalPorContaIdMap.set(transacao.contaId, atualConta);
+    }
   }
 
-  // Saldo consolidado é sempre o saldo ATUAL (não do período) — mesma regra
-  // de consultar_saldo (Fase 3): base da conta + delta de transações/transferências
-  // até agora, somado entre todas as contas.
-  const saldoConsolidado = listarContas(db).reduce(
-    (soma, conta) =>
-      soma +
-      conta.saldoAtual +
-      calcularSaldoTransacoesConta(db, conta.id) +
-      calcularSaldoTransferenciasConta(db, conta.id),
-    0,
-  );
+  // Saldo consolidado (e o de cada conta em porConta) é sempre o saldo ATUAL
+  // (não do período) — mesma regra de consultar_saldo (Fase 3): base da
+  // conta + delta de transações/transferências até agora.
+  let saldoConsolidado = 0;
+  const porConta: TotalPorConta[] = [];
+  for (const conta of listarContas(db)) {
+    const saldoAtual =
+      conta.saldoAtual + calcularSaldoTransacoesConta(db, conta.id) + calcularSaldoTransferenciasConta(db, conta.id);
+    saldoConsolidado += saldoAtual;
+
+    const totaisPeriodo = totalPorContaIdMap.get(conta.id) ?? { totalReceita: 0, totalDespesa: 0 };
+    porConta.push({
+      apelido: conta.apelido,
+      totalReceita: totaisPeriodo.totalReceita,
+      totalDespesa: totaisPeriodo.totalDespesa,
+      saldoAtual,
+    });
+  }
 
   return {
     totalReceita,
     totalDespesa,
     porCategoria: [...porCategoriaMap.values()],
+    porConta,
     saldoConsolidado,
   };
 }

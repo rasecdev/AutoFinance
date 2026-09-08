@@ -40,6 +40,14 @@ describe('agregarFinanceiroPeriodo', () => {
     expect(resultado.saldoConsolidado).toBe(100);
   });
 
+  it('lista a conta existente em porConta mesmo sem movimentação no período (zerada, mas com saldo real)', () => {
+    const resultado = agregarFinanceiroPeriodo(db, { inicio: '2026-03-01', fim: '2026-03-31' });
+
+    expect(resultado.porConta).toEqual([
+      { apelido: 'Principal', totalReceita: 0, totalDespesa: 0, saldoAtual: 100 },
+    ]);
+  });
+
   it('soma receita e despesa do período, quebrado por categoria', () => {
     criarTransacao(db, { contaId, tipo: 'despesa', valor: 30, categoria: 'transporte', data: '2026-03-05' });
     criarTransacao(db, { contaId, tipo: 'despesa', valor: 20, categoria: 'transporte', data: '2026-03-10' });
@@ -98,5 +106,36 @@ describe('agregarFinanceiroPeriodo', () => {
     const resultado = agregarFinanceiroPeriodo(db, { inicio: '2026-03-01', fim: '2026-03-31' });
 
     expect(resultado.saldoConsolidado).toBe(350);
+  });
+
+  it('discrimina receita/despesa/saldo por conta, sem misturar entre contas', () => {
+    const contaDoisId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Poupança', saldoInicial: 250 }).id;
+    criarTransacao(db, { contaId, tipo: 'despesa', valor: 30, categoria: 'transporte', data: '2026-03-05' });
+    criarTransacao(db, {
+      contaId: contaDoisId,
+      tipo: 'receita',
+      valor: 500,
+      categoria: 'salario',
+      data: '2026-03-01',
+    });
+
+    const resultado = agregarFinanceiroPeriodo(db, { inicio: '2026-03-01', fim: '2026-03-31' });
+
+    expect(resultado.porConta).toEqual(
+      expect.arrayContaining([
+        { apelido: 'Principal', totalReceita: 0, totalDespesa: 30, saldoAtual: 70 },
+        { apelido: 'Poupança', totalReceita: 500, totalDespesa: 0, saldoAtual: 750 },
+      ]),
+    );
+  });
+
+  it('não conta transação de outro período em porConta', () => {
+    criarTransacao(db, { contaId, tipo: 'despesa', valor: 30, categoria: 'transporte', data: '2026-02-28' });
+
+    const resultado = agregarFinanceiroPeriodo(db, { inicio: '2026-03-01', fim: '2026-03-31' });
+
+    expect(resultado.porConta).toEqual([
+      { apelido: 'Principal', totalReceita: 0, totalDespesa: 0, saldoAtual: 70 },
+    ]);
   });
 });
