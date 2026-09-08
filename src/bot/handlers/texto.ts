@@ -29,11 +29,15 @@ function ehErroModeloInvalido(erro: unknown): boolean {
 // está processando até responder de fato.
 const INTERVALO_LOADER_MS = 4000;
 
-async function comIndicadorDigitando<T>(ctx: Context, tarefa: Promise<T>): Promise<T> {
-  void ctx.replyWithChatAction('typing').catch(() => undefined);
-  const intervalo = setInterval(() => {
-    void ctx.replyWithChatAction('typing').catch(() => undefined);
-  }, INTERVALO_LOADER_MS);
+async function comIndicadorDigitando<T>(ctx: Context, tarefa: Promise<T>, logger: Logger): Promise<T> {
+  const enviarIndicador = () => {
+    void ctx.replyWithChatAction('typing').catch((erro: unknown) => {
+      logger.warn({ err: erro }, 'falha ao enviar indicador de "digitando..."');
+    });
+  };
+
+  enviarIndicador();
+  const intervalo = setInterval(enviarIndicador, INTERVALO_LOADER_MS);
 
   try {
     return await tarefa;
@@ -63,7 +67,11 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
       }
 
       try {
-        const resultado = await comIndicadorDigitando(ctx, pendencia.tool.handler(pendencia.argumentos, { chatId }));
+        const resultado = await comIndicadorDigitando(
+          ctx,
+          pendencia.tool.handler(pendencia.argumentos, { chatId }),
+          logger,
+        );
         await ctx.reply(resultado);
       } catch (erro) {
         logger.error({ err: erro }, 'falha ao executar ação confirmada pelo usuário');
@@ -91,6 +99,7 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
       } = await comIndicadorDigitando(
         ctx,
         gerarResposta(client, mensagemUsuario, tools, { chatId }, historico, resolverModeloConversa(db, chatId)),
+        log,
       );
 
       if (pendenciaConfirmacao) {
