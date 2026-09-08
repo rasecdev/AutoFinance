@@ -22,7 +22,7 @@ Log vivo do projeto. Atualizado a cada marco/etapa concluída — é o primeiro 
 
 ## Erros conhecidos
 
-_Nenhum registrado ainda._
+- **`.env.producao` na VM está só como template (vazio)** — `TELEGRAM_BOT_TOKEN` e `TELEGRAM_ALLOWED_CHAT_IDS` sem valor, `AMBIENTE=homologacao` (errado). Confirmado em 2026-09-08 ao revisar a allowlist do Telegram: o serviço `producao` do `docker-compose.yml` nunca foi de fato subido na VM (só os serviços `*-homologacao` aparecem no `docker compose ps`), então isso não é um risco ativo hoje — mas precisa ser preenchido (token de bot novo e exclusivo pra Produção, chat_id real, `AMBIENTE=producao`) antes de rodar `docker compose up -d producao ...`, senão a validação Zod em `env.ts` recusa subir (falha segura, não é um bug de segurança, só um pré-requisito pendente).
 
 ## Histórico
 
