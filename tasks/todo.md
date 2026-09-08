@@ -1,132 +1,112 @@
-# Tarefas: Fase 6 (parte 3) — Métricas 2 e 3 do relatório de uso de IA
+# Tarefas: Fase 6 (parte 5) — `erros_execucao` + alerta de job crítico
 
 Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, ordem). Fluxo de branch/PR/merge por tarefa é o já descrito em `CLAUDE.md` — não repetido aqui.
 
-## Fase O: Métrica 3
+## Fase R: `erros_execucao` + alerta de job crítico
 
-### Tarefa 36: `agregarUsoIaPeriodo` — lookup de benchmark do modelo real em uso por fluxo
+### Tarefa 41: migração + repositório `erros_execucao`
 
-**Description:** Pra cada `{fluxo, modelo}` já presente em `AgregacaoUsoIa.porFluxoModelo` (uso real do período), busca `listarBenchmarks(db, fluxo, modelo)`. Quando houver ao menos uma linha, expõe no retorno de `agregarUsoIaPeriodo` uma nova métrica (`metrica3: MetricaModeloEmUso[]`) com `{fluxo, modelo, custoEstimado (já calculado em porFluxoModelo), metrica: nome, valor, fonteUrl}` usando a linha mais recente de cada `metrica` nomeada encontrada. Sem benchmark pra aquele `{fluxo, modelo}`, não entra no array (degradação graciosa).
+**Description:** Nova migração `src/db/migrations/0008_erros_execucao.sql` criando a tabela `erros_execucao (id, trace_id nullable, contexto, mensagem, detalhes nullable, data_hora, resolvido)` (ver PLANO.md, "Logs e tratamento de erros", item 3). Novo repositório `src/db/repositories/errosExecucao.ts` com `registrarErro(db, {contexto, mensagem, detalhes?, traceId?})` (grava `resolvido: 0`, `data_hora: new Date().toISOString()`), `listarErros(db, periodo: {inicio, fim})` (retorna linhas ordenadas por `id DESC`, mesma janela em timestamp UTC completo que `interacoes_ia`/`uso_tokens` já usam) e `contarErrosPeriodo(db, periodo: PeriodoRelatorio)` (recebe data pura AAAA-MM-DD, converte internamente pra timestamp UTC completo igual ao helper já existente em `usoIa.ts`, conta linhas).
 
 **Acceptance criteria:**
-- [x] `metrica3` tem uma entrada por `{fluxo, modelo, metrica}` onde existe benchmark cadastrado
-- [x] `{fluxo, modelo}` sem benchmark cadastrado não aparece em `metrica3`
-- [x] Múltiplas métricas nomeadas pro mesmo `{fluxo, modelo}` geram uma entrada por métrica
+- [x] `registrarErro` grava uma linha com `data_hora` preenchido e `resolvido: 0`
+- [x] `listarErros` retorna só as linhas dentro da janela, mais recentes primeiro
+- [x] `contarErrosPeriodo` aceita `PeriodoRelatorio` (data pura) e conta certo considerando fuso (mesmo achado real documentado em `usoIa.ts`: não pode só concatenar "T00:00:00.000Z" na data local)
 
 **Verification:**
-- [x] `npm test -- tests/relatorios/usoIa.test.ts`
+- [x] `npm test -- tests/db/errosExecucao.test.ts`
 - [x] `npm run build`
 
-**Dependencies:** None (usa `listarBenchmarks`, já existente desde a Tarefa 31)
+**Dependencies:** None
 
 **Files likely touched:**
-- `src/relatorios/usoIa.ts`
-- `tests/relatorios/usoIa.test.ts`
+- `src/db/migrations/0008_erros_execucao.sql`
+- `src/db/repositories/errosExecucao.ts`
+- `tests/db/errosExecucao.test.ts`
 
-**Estimated scope:** Small (1 arquivo de código + teste)
+**Estimated scope:** Small (2 arquivos de código + teste, sem dependência)
 
 ---
 
-### Tarefa 37: `formatarRelatorio` — exibir Métrica 3
+### Tarefa 42: helper `tratarErroCriticoJob` + integração nos 4 scripts de job
 
-**Description:** Na seção "Uso de IA" do texto do relatório, depois da Métrica 1 existente, adiciona uma linha por entrada de `metrica3`: custo real do período naquele fluxo junto com o valor do benchmark do modelo em uso (ex: `- conversa_texto (openai/gpt-4o-mini): US$ 0,002341 no período — acuracia_tool_calling: 100% (fonte: interno)`). Sem nenhuma entrada em `metrica3`, a seção inteira não aparece (mesma regra de degradação graciosa da Métrica 1).
-
-**Acceptance criteria:**
-- [x] Relatório com `metrica3` não vazio mostra a nova seção com custo real + valor de benchmark por linha
-- [x] Relatório com `metrica3` vazio não mostra a seção (sem texto vazio nem cabeçalho solto)
-
-**Verification:**
-- [x] `npm test -- tests/relatorios/formatar.test.ts`
-- [x] `npm run build`
-
-**Dependencies:** Tarefa 36
-
-**Files likely touched:**
-- `src/relatorios/formatar.ts`
-- `tests/relatorios/formatar.test.ts`
-
-**Estimated scope:** Small (1 arquivo de código + teste)
-
-## Checkpoint: Métrica 3 funcional
-- [x] `npm run build`/`lint`/`test` sem erro (493/493 em `development`)
-- [x] Teste manual em Homologação: pedir `relatorio` (período com uso real de `conversa_texto`) via Telegram real e confirmar que a seção da Métrica 3 aparece com o benchmark real (`acuracia_tool_calling`) já cadastrado na Tarefa 35
-
-## Fase P: Métrica 2
-
-### Tarefa 38: `agregarUsoIaPeriodo` — calcular fator de acurácia relativo (Métrica 2)
-
-**Description:** Reaproveitando o lookup da Tarefa 36 (benchmark do modelo real em uso por fluxo), calcula pra cada candidato de referência (mesmo conjunto de `metrica1`) que tenha benchmark da **mesma métrica nomeada** pro **mesmo fluxo**: `fator = valorModeloEmUso / valorCandidato`, `custoAjustado = (tokensDoFluxoNoPeríodo × precoDoCandidato) × fator`. Expõe no retorno (`metrica2: MetricaAjustadaPorFluxo[]`) com `{fluxo, nomeExibicaoCandidato, modelo, metrica: nome, custoAjustado}`. Sem par comparável (mesma métrica nos dois lados), não gera entrada pra aquele `{fluxo, candidato}` — cai de volta pra só Métrica 1 (já existente, inalterada).
+**Description:** Novo `src/scripts/tratarErroCriticoJob.ts` — função `tratarErroCriticoJob(db, logger, contexto, erro, botToken, chatIds)`: grava a falha via `registrarErro` (mensagem = `erro.message` se `Error`, senão `String(erro)`; `detalhes` = `erro.stack` quando disponível), loga via `logger.error`, e envia um alerta (`⚠️ Erro crítico no job "..."`) pra cada `chatId` da allowlist via `new Bot(botToken).api.sendMessage` (com `.catch` por chat, uma falha de envio não deve impedir o registro nem os outros envios). Integrar nos 4 scripts existentes (`backup.ts`, `monitorarPrecos.ts`, `relatorioSemanal.ts`, `relatorioMensal.ts`): mover o corpo de `main()` (depois de `loadEnv`/`getDb`/`createLogger`/`Bot` já resolvidos) pra dentro de um `try`, chamando `tratarErroCriticoJob` no `catch` e relançando o erro (mantém o `.catch(...)` externo existente com `console.error`/`process.exitCode = 1` funcionando igual a hoje).
 
 **Acceptance criteria:**
-- [x] Fluxo/candidato com benchmark da mesma métrica nos dois lados gera entrada em `metrica2` com o fator aplicado corretamente
-- [x] Fluxo/candidato sem benchmark comparável (métrica nomeada diferente, ou só um lado tem benchmark) não gera entrada
-- [x] `metrica1` continua exatamente como está hoje (não alterada por esta tarefa)
+- [ ] Erro lançado dentro do corpo de qualquer um dos 4 scripts grava uma linha em `erros_execucao` com o `contexto` certo (nome do job) antes de propagar
+- [ ] Alerta é enviado pra cada `chatId` da allowlist quando o job falha
+- [ ] Falha ao enviar alerta pra um chat não impede o registro em `erros_execucao` nem o envio pros outros chats
+- [ ] Comportamento de sucesso (sem erro) dos 4 scripts não muda
 
 **Verification:**
-- [x] `npm test -- tests/relatorios/usoIa.test.ts`
-- [x] `npm run build`
+- [ ] `npm test -- tests/scripts/tratarErroCriticoJob.test.ts`
+- [ ] `npm test -- tests/scripts/monitorarPrecos.test.ts tests/scripts/backup.test.ts tests/scripts/relatorioSemanal.test.ts tests/scripts/relatorioMensal.test.ts` (os que já existirem)
+- [ ] `npm run build`
 
-**Dependencies:** Tarefa 36
+**Dependencies:** Tarefa 41
 
 **Files likely touched:**
-- `src/relatorios/usoIa.ts`
-- `tests/relatorios/usoIa.test.ts`
+- `src/scripts/tratarErroCriticoJob.ts`
+- `src/scripts/backup.ts`
+- `src/scripts/monitorarPrecos.ts`
+- `src/scripts/relatorioSemanal.ts`
+- `src/scripts/relatorioMensal.ts`
+- `tests/scripts/tratarErroCriticoJob.test.ts`
 
-**Estimated scope:** Small (1 arquivo de código + teste)
+**Estimated scope:** Medium (5 arquivos de código + teste novo, toca 4 scripts existentes)
 
 ---
 
-### Tarefa 39: `formatarRelatorio` — exibir Métrica 2
+### Tarefa 43: tool de chat `listar_erros(periodo)`
 
-**Description:** Na seção "Uso de IA", junto da comparação hipotética da Métrica 1 já existente, adiciona (quando houver `metrica2` pro candidato) o custo ajustado pelo fator de acurácia, rotulado como estimativa (ex: `- Claude Sonnet 4.5: US$ 0,004102 (ajustado por acuracia_tool_calling — estimativa)`, ao lado da linha já existente da Métrica 1 pro mesmo candidato). Sem `metrica2` pro candidato/fluxo, mostra só a linha da Métrica 1 já existente (sem alteração).
+**Description:** Nova tool `listar_erros` (schema `{ periodo: 'dia' | 'semana' | 'mes' }`, mesmo enum de `relatorio`) em `src/ai/tools/errosExecucao.ts` — resolve a janela via `calcularJanelaPeriodo`, chama `listarErros(db, janela)`, formata cada linha (`contexto`, `mensagem`, `data_hora`) numa lista de texto; sem erro no período, devolve uma frase dizendo que não houve erro. Registrada em `montarToolsConversa` (`conversaTools.ts`).
 
 **Acceptance criteria:**
-- [x] Candidato com `metrica2` disponível mostra a linha ajustada além da linha de Métrica 1
-- [x] Candidato sem `metrica2` mostra só a linha de Métrica 1 (comportamento atual preservado)
+- [ ] Período com erros registrados lista cada um (contexto + mensagem + data/hora)
+- [ ] Período sem erro nenhum devolve mensagem clara de "nenhum erro", nunca lista vazia sem explicação
 
 **Verification:**
-- [x] `npm test -- tests/relatorios/formatar.test.ts`
-- [x] `npm run build`
+- [ ] `npm test -- tests/ai/tools/errosExecucao.test.ts`
+- [ ] `npm run build`
 
-**Dependencies:** Tarefa 38, Tarefa 37 (mesma seção do relatório)
+**Dependencies:** Tarefa 41
+
+**Files likely touched:**
+- `src/ai/tools/errosExecucao.ts`
+- `src/ai/tools/conversaTools.ts`
+- `tests/ai/tools/errosExecucao.test.ts`
+- `tests/ai/tools/conversaTools.test.ts`
+
+**Estimated scope:** Small (1 tool nova + registro)
+
+---
+
+### Tarefa 44: relatórios mostram contagem de erros técnicos do período
+
+**Description:** `DadosRelatorio` (`src/relatorios/formatar.ts`) ganha o campo `errosTecnicos: number`. `formatarRelatorio` inclui uma linha extra (fora da seção "Uso de IA", só quando `errosTecnicos > 0`) — ex: `Erros técnicos no período: 2 (ver listar_erros).` Os 3 chamadores de `formatarRelatorio` passam a calcular e passar esse valor: tool `relatorio` (`src/ai/tools/relatorios.ts`), `montarRelatorioSemanal` e `montarRelatorioMensal` (via `contarErrosPeriodo` da Tarefa 41).
+
+**Acceptance criteria:**
+- [ ] `errosTecnicos > 0` mostra a linha extra no relatório, com o número certo
+- [ ] `errosTecnicos === 0` não mostra a linha (sem texto vazio nem "0 erros")
+- [ ] A linha aparece independente de `usoIa.porFluxoModelo` estar vazio ou não (não fica escondida pelo "Nenhum uso de IA registrado no período")
+
+**Verification:**
+- [ ] `npm test -- tests/relatorios/formatar.test.ts tests/relatorios/usoIa.test.ts`
+- [ ] `npm run build`
+
+**Dependencies:** Tarefa 41
 
 **Files likely touched:**
 - `src/relatorios/formatar.ts`
+- `src/ai/tools/relatorios.ts`
+- `src/scripts/relatorioSemanal.ts`
+- `src/scripts/relatorioMensal.ts`
 - `tests/relatorios/formatar.test.ts`
 
-**Estimated scope:** Small (1 arquivo de código + teste)
+**Estimated scope:** Small (1 arquivo de composição + 3 chamadores pequenos)
 
-## Checkpoint: Métrica 2 funcional (Fase 6 parte 3 concluída)
-- [x] `npm run build`/`lint`/`test` sem erro
-- [x] Teste manual em Homologação: `relatorio(periodo=...)` no mesmo período mostra a Métrica 2 ajustada pro(s) candidato(s) comparáveis contra o modelo real em uso em `conversa_texto`
-- [x] PROGRESSO.md atualizado com o marco "Fase 6 (parte 3) concluída"
-
-## Fase Q: Seed de casos de teste curados
-
-### Tarefa 40: script de seed com casos de teste fixos pro benchmark interno
-
-**Description:** Novo `src/scripts/seedCasosTesteBenchmarkCurados.ts` (padrão dos outros scripts, com guard de execução direta) — lista fixa de 13 casos (ver `tasks/plan.md`, Fase Q, pra entrada/tool call esperado de cada um) cobrindo tarefas básicas, as mais usadas (dado real de `interacoes_ia`) e as de maior impacto financeiro (`requerConfirmacao: true`). Usa `criarCasoTeste(db, {fluxo: 'conversa_texto', entrada, saidaEsperada, origem: 'curado'})` (Tarefa 31, já existe). Roda uma vez por ambiente (Homologação e, quando promovido, Produção); idempotente — pula caso cuja `entrada` já existe pro fluxo, não duplica ao rodar de novo.
-
-**Acceptance criteria:**
-- [x] Rodar o script numa base vazia cria as 13 linhas em `casos_teste_benchmark` com `origem: 'curado'`
-- [x] Rodar o script de novo (mesma base) não duplica nenhuma linha (idempotente por `entrada`)
-- [x] Nenhum dos 13 casos depende de contexto de turno anterior (todos autocontidos)
-
-**Verification:**
-- [x] `npm test -- tests/scripts/seedCasosTesteBenchmarkCurados.test.ts`
-- [x] `npm run build`
-- [x] Manual: rodar o script em Homologação (`node dist/scripts/seedCasosTesteBenchmarkCurados.js`), confirmar as 13 linhas via consulta direta ao banco, e rodar `rodar_benchmark_interno` comparando 2 modelos reais contra o conjunto novo
-
-**Dependencies:** None (usa `criarCasoTeste`/`listarCasosTeste`, já existentes desde a Tarefa 31)
-
-**Files likely touched:**
-- `src/scripts/seedCasosTesteBenchmarkCurados.ts`
-- `tests/scripts/seedCasosTesteBenchmarkCurados.test.ts`
-
-**Estimated scope:** Small (1 arquivo de código + teste, sem mudança de schema)
-
-## Checkpoint: Seed de casos curados funcional
-- [x] `npm run build`/`lint`/`test` sem erro
-- [x] Teste manual em Homologação: script rodado, 13 casos confirmados no banco, `rodar_benchmark_interno` executado com sucesso contra o conjunto novo
-- [x] PROGRESSO.md atualizado com o marco
+## Checkpoint: `erros_execucao` funcional
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação: forçar um erro num job, confirmar linha em `erros_execucao` via consulta direta ao banco e alerta recebido no Telegram; pedir `relatorio` real e confirmar a contagem de erros aparecendo; testar `listar_erros(periodo)` via Telegram
+- [ ] PROGRESSO.md atualizado com o marco
 - [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
