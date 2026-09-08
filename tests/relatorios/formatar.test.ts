@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { formatarRelatorio } from '../../src/relatorios/formatar.js';
 
-const financeiroVazio = { totalReceita: 0, totalDespesa: 0, porCategoria: [], saldoConsolidado: 500 };
+const financeiroVazio = { totalReceita: 0, totalDespesa: 0, porCategoria: [], porConta: [], saldoConsolidado: 500 };
 const usoIaVazio = {
   porFluxoModelo: [],
   totalTokensPrompt: 0,
@@ -60,6 +60,7 @@ describe('formatarRelatorio', () => {
         totalReceita: 1000,
         totalDespesa: 50,
         porCategoria: [{ categoria: 'transporte', totalReceita: 0, totalDespesa: 50 }],
+        porConta: [],
         saldoConsolidado: 500,
       },
       usoIa: usoIaVazio,
@@ -69,6 +70,42 @@ describe('formatarRelatorio', () => {
     expect(texto).toContain('R$ 1000.00');
     expect(texto).toContain('transporte');
     expect(texto).toContain('R$ 50.00');
+  });
+
+  it('mostra a discriminação por conta quando há mais de uma conta', () => {
+    const texto = formatarRelatorio({
+      inicio: '2026-03-15',
+      fim: '2026-03-15',
+      financeiro: {
+        totalReceita: 1500,
+        totalDespesa: 50,
+        porCategoria: [],
+        porConta: [
+          { apelido: 'Principal', totalReceita: 0, totalDespesa: 50, saldoAtual: 70 },
+          { apelido: 'Poupança', totalReceita: 1500, totalDespesa: 0, saldoAtual: 1750 },
+        ],
+        saldoConsolidado: 1820,
+      },
+      usoIa: usoIaVazio,
+      errosTecnicos: 0,
+    });
+
+    expect(texto).toContain('Por conta:');
+    expect(texto).toContain('Principal: receita R$ 0.00, despesa R$ 50.00, saldo atual R$ 70.00');
+    expect(texto).toContain('Poupança: receita R$ 1500.00, despesa R$ 0.00, saldo atual R$ 1750.00');
+    expect(texto).toContain('Saldo consolidado (todas as contas): R$ 1820.00');
+  });
+
+  it('não mostra a seção "Por conta" quando porConta está vazio', () => {
+    const texto = formatarRelatorio({
+      inicio: '2026-03-15',
+      fim: '2026-03-15',
+      financeiro: financeiroVazio,
+      usoIa: usoIaVazio,
+      errosTecnicos: 0,
+    });
+
+    expect(texto).not.toContain('Por conta:');
   });
 
   it('mostra "nenhum uso de IA" quando não há dado', () => {

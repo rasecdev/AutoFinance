@@ -16,6 +16,7 @@ const financeiroVazio: AgregacaoFinanceira = {
   totalReceita: 0,
   totalDespesa: 0,
   porCategoria: [],
+  porConta: [],
   saldoConsolidado: 0,
 };
 
@@ -39,6 +40,7 @@ describe('gerarResumoMensal', () => {
         totalReceita: 5000,
         totalDespesa: 3000,
         porCategoria: [{ categoria: 'alimentacao', totalReceita: 0, totalDespesa: 1200 }],
+        porConta: [],
         saldoConsolidado: 2000,
       },
       usoIa: usoIaVazio,
