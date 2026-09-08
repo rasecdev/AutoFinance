@@ -11,6 +11,7 @@ import {
 } from '../db/repositories/modelosOpenrouterHistorico.js';
 import { listarRoteamentos } from '../db/repositories/roteamentoTarefas.js';
 import { createLogger } from '../logging/logger.js';
+import { tratarErroCriticoJob } from './tratarErroCriticoJob.js';
 
 const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models';
 
@@ -134,14 +135,19 @@ async function main(): Promise<void> {
   const logger = createLogger(undefined, env.logLevel);
   const db = getDb(env);
 
-  const modelos = await buscarCatalogoOpenRouter();
-  registrarSnapshotCatalogo(db, paraSnapshots(modelos));
-  logger.info({ total: modelos.length }, 'snapshot de preços do OpenRouter gravado');
+  try {
+    const modelos = await buscarCatalogoOpenRouter();
+    registrarSnapshotCatalogo(db, paraSnapshots(modelos));
+    logger.info({ total: modelos.length }, 'snapshot de preços do OpenRouter gravado');
 
-  const oportunidades = detectarOportunidades(db);
-  if (oportunidades.length > 0) {
-    await enviarAlertas(env.telegramBotToken, env.telegramAllowedChatIds, formatarMensagemAlerta(oportunidades));
-    logger.info({ total: oportunidades.length }, 'alerta de preço enviado');
+    const oportunidades = detectarOportunidades(db);
+    if (oportunidades.length > 0) {
+      await enviarAlertas(env.telegramBotToken, env.telegramAllowedChatIds, formatarMensagemAlerta(oportunidades));
+      logger.info({ total: oportunidades.length }, 'alerta de preço enviado');
+    }
+  } catch (erro) {
+    await tratarErroCriticoJob(db, logger, 'monitorar_precos', erro, env.telegramBotToken, env.telegramAllowedChatIds);
+    throw erro;
   }
 }
 
