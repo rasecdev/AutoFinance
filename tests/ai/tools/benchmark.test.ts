@@ -142,6 +142,8 @@ describe('tool rodar_benchmark_interno', () => {
     });
 
     expect(aviso).toContain('2 chamada');
+    expect(aviso).toContain('minuto');
+    expect(aviso).toContain('NÃO reenvie');
   });
 
   it('avisa quando não há nenhum caso de teste', () => {

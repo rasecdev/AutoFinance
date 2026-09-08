@@ -73,7 +73,12 @@ export function criarToolRodarBenchmarkInterno(client: OpenAI, db: DbClient): To
       }
 
       const totalChamadas = totalCasos * modelosCandidatos.length;
-      return `Isso vai fazer ${totalChamadas} chamada(s) real(is) de IA (${totalCasos} caso(s) × ${modelosCandidatos.length} modelo(s)), com custo real. Pode demorar bastante (as chamadas são sequenciais) — aguarde a mensagem de resultado.`;
+      // Estimativa grosseira (~5s por chamada sequencial) só pra dar uma
+      // referência de tempo concreta — sem isso o usuário tende a ficar
+      // impaciente e reenviar o pedido no meio da execução (achado real de
+      // teste manual), o que só duplica o custo sem acelerar nada.
+      const estimativaMinutos = Math.max(1, Math.round((totalChamadas * 5) / 60));
+      return `Isso vai fazer ${totalChamadas} chamada(s) real(is) de IA (${totalCasos} caso(s) × ${modelosCandidatos.length} modelo(s)), com custo real. As chamadas são sequenciais — pode levar uns ${estimativaMinutos} minuto(s) (estimativa). NÃO reenvie o pedido nem cancele antes disso: só espere a mensagem de resultado chegar.`;
     },
     handler: async (args) => {
       const { modelos_candidatos: modelosCandidatos } = args as z.infer<typeof schemaRodarBenchmarkInterno>;
