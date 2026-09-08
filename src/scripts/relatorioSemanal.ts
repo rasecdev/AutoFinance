@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 import { Bot } from 'grammy';
 import { loadEnv } from '../config/env.js';
 import { getDb, type DbClient } from '../db/client.js';
+import { contarErrosPeriodo } from '../db/repositories/errosExecucao.js';
 import { createLogger } from '../logging/logger.js';
 import { agregarFinanceiroPeriodo } from '../relatorios/financeiro.js';
 import { formatarRelatorio } from '../relatorios/formatar.js';
@@ -40,7 +41,14 @@ export function montarRelatorioSemanal(db: DbClient, agora: Date = new Date()): 
   const financeiroAnterior = agregarFinanceiroPeriodo(db, janelaAnterior);
   const usoIaAnterior = agregarUsoIaPeriodo(db, janelaAnterior);
 
-  const relatorio = formatarRelatorio({ inicio: janelaAtual.inicio, fim: janelaAtual.fim, financeiro, usoIa });
+  const errosTecnicos = contarErrosPeriodo(db, janelaAtual);
+  const relatorio = formatarRelatorio({
+    inicio: janelaAtual.inicio,
+    fim: janelaAtual.fim,
+    financeiro,
+    usoIa,
+    errosTecnicos,
+  });
 
   const comparacao = [
     '',
