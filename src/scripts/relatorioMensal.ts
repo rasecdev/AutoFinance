@@ -14,6 +14,7 @@ import { formatarRelatorio } from '../relatorios/formatar.js';
 import { calcularJanelaAnterior, calcularJanelaPeriodo } from '../relatorios/janela.js';
 import { agregarUsoIaPeriodo } from '../relatorios/usoIa.js';
 import { dormirAte } from './dormirAte.js';
+import { tratarErroCriticoJob } from './tratarErroCriticoJob.js';
 
 // Próximo último dia do mês às 23h a partir de `agora` — mesmo princípio de
 // calcularProximoDomingoAs23h (relatorioSemanal.ts): se hoje já é o último
@@ -78,19 +79,24 @@ async function main(): Promise<void> {
   const client = createOpenRouterClient(env.openrouterApiKey);
   const bot = new Bot(env.telegramBotToken);
 
-  // --agora pula a espera pra permitir teste manual sem esperar o último dia
-  // do mês de verdade (node dist/scripts/relatorioMensal.js --agora).
-  if (!process.argv.includes('--agora')) {
-    const proximoDisparo = calcularProximoUltimoDiaDoMesAs23h(new Date());
-    logger.info({ proximoDisparo: proximoDisparo.toISOString() }, 'aguardando próximo relatório mensal');
-    await dormirAte(proximoDisparo.getTime());
-  }
+  try {
+    // --agora pula a espera pra permitir teste manual sem esperar o último dia
+    // do mês de verdade (node dist/scripts/relatorioMensal.js --agora).
+    if (!process.argv.includes('--agora')) {
+      const proximoDisparo = calcularProximoUltimoDiaDoMesAs23h(new Date());
+      logger.info({ proximoDisparo: proximoDisparo.toISOString() }, 'aguardando próximo relatório mensal');
+      await dormirAte(proximoDisparo.getTime());
+    }
 
-  const texto = await montarRelatorioMensal(db, client);
-  for (const chatId of env.telegramAllowedChatIds) {
-    await bot.api.sendMessage(chatId, texto);
+    const texto = await montarRelatorioMensal(db, client);
+    for (const chatId of env.telegramAllowedChatIds) {
+      await bot.api.sendMessage(chatId, texto);
+    }
+    logger.info('relatório mensal enviado');
+  } catch (erro) {
+    await tratarErroCriticoJob(db, logger, 'relatorio_mensal', erro, env.telegramBotToken, env.telegramAllowedChatIds);
+    throw erro;
   }
-  logger.info('relatório mensal enviado');
 }
 
 // Guard pra rodar main() só quando o arquivo é executado diretamente — ver

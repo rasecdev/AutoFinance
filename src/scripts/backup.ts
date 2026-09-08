@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { loadEnv } from '../config/env.js';
 import { getDb } from '../db/client.js';
 import { createLogger, type Logger } from '../logging/logger.js';
+import { tratarErroCriticoJob } from './tratarErroCriticoJob.js';
 
 const RETENCAO_DIAS = 7;
 const DIR_BACKUP = './data/backups';
@@ -26,18 +27,23 @@ function removerBackupsExpirados(dir: string, retencaoDias: number, logger: Logg
 async function main(): Promise<void> {
   const db = getDb(env);
 
-  mkdirSync(DIR_BACKUP, { recursive: true });
+  try {
+    mkdirSync(DIR_BACKUP, { recursive: true });
 
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const destino = join(DIR_BACKUP, `autofinance-${env.ambiente}-${timestamp}.db`);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const destino = join(DIR_BACKUP, `autofinance-${env.ambiente}-${timestamp}.db`);
 
-  db.prepare('VACUUM INTO ?').run(destino);
-  logger.info({ destino }, 'backup do banco criado');
+    db.prepare('VACUUM INTO ?').run(destino);
+    logger.info({ destino }, 'backup do banco criado');
 
-  removerBackupsExpirados(DIR_BACKUP, RETENCAO_DIAS, logger);
+    removerBackupsExpirados(DIR_BACKUP, RETENCAO_DIAS, logger);
+  } catch (erro) {
+    await tratarErroCriticoJob(db, logger, 'backup', erro, env.telegramBotToken, env.telegramAllowedChatIds);
+    throw erro;
+  }
 }
 
 main().catch((erro: unknown) => {
-  logger.error({ err: erro }, 'falha ao gerar backup do banco');
+  console.error('falha ao gerar backup do banco', erro);
   process.exitCode = 1;
 });
