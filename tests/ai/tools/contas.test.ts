@@ -3,9 +3,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { criarToolCriarCartao, criarToolCriarConta } from '../../../src/ai/tools/contas.js';
+import { criarToolCriarCartao, criarToolCriarConta, criarToolListarContas } from '../../../src/ai/tools/contas.js';
 import type { DbClient } from '../../../src/db/client.js';
 import { criarConta } from '../../../src/db/repositories/contas.js';
+import { criarTransacao } from '../../../src/db/repositories/transacoes.js';
 import { migrate } from '../../../src/db/migrate.js';
 
 const CHAVE_TESTE = 'chave-teste-tools-contas';
@@ -228,5 +229,27 @@ describe('tool criar_cartao', () => {
     expect(resultado).toContain('PF no Nubank');
     expect(resultado).toContain('PJ no Itaú');
     expect(resultado).not.toMatch(/\bid\b/i);
+  });
+});
+
+describe('tool listar_contas', () => {
+  it('avisa quando não há nenhuma conta cadastrada', async () => {
+    const tool = criarToolListarContas(db);
+
+    const resultado = await tool.handler({}, { chatId: 1 });
+
+    expect(resultado).toContain('não tem nenhuma conta cadastrada');
+  });
+
+  it('lista apelido, tipo e saldo atual de cada conta', async () => {
+    criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Principal', saldoInicial: 100 });
+    const contaId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PJ', apelido: 'Empresa', saldoInicial: 500 }).id;
+    criarTransacao(db, { contaId, tipo: 'despesa', valor: 50, categoria: 'transporte', data: '2026-03-05' });
+    const tool = criarToolListarContas(db);
+
+    const resultado = await tool.handler({}, { chatId: 1 });
+
+    expect(resultado).toContain('"Principal" (PF): R$ 100.00');
+    expect(resultado).toContain('"Empresa" (PJ): R$ 450.00');
   });
 });
