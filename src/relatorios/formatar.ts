@@ -38,6 +38,15 @@ function formatarSecaoFinanceira(financeiro: AgregacaoFinanceira): string[] {
     }
   }
 
+  if (financeiro.porConta.length > 0) {
+    linhas.push('Por conta:');
+    for (const conta of financeiro.porConta) {
+      linhas.push(
+        `- ${conta.apelido}: receita ${formatarMoeda(conta.totalReceita)}, despesa ${formatarMoeda(conta.totalDespesa)}, saldo atual ${formatarMoeda(conta.saldoAtual)}`,
+      );
+    }
+  }
+
   linhas.push(`Saldo consolidado (todas as contas): ${formatarMoeda(financeiro.saldoConsolidado)}`);
 
   return linhas;
