@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { buscarCartaoPorNomeNaConta, criarCartao } from '../../db/repositories/cartoes.js';
-import { buscarContaPorApelido, criarConta } from '../../db/repositories/contas.js';
+import { buscarContaPorApelido, criarConta, listarContas } from '../../db/repositories/contas.js';
+import { calcularSaldoTransacoesConta } from '../../db/repositories/transacoes.js';
+import { calcularSaldoTransferenciasConta } from '../../db/repositories/transferencias.js';
 import type { DbClient } from '../../db/client.js';
 import { resolverContaId } from './resolucao.js';
 import type { ToolDefinition } from './types.js';
@@ -44,6 +46,36 @@ export function criarToolCriarConta(db: DbClient): ToolDefinition {
 
       const conta = criarConta(db, { bancoNome: banco, tipo, apelido, saldoInicial });
       return `Conta criada: "${apelido}" (${tipo}), banco ${banco}, saldo inicial R$ ${conta.saldoAtual.toFixed(2)}.`;
+    },
+  };
+}
+
+const schemaListarContas = z.object({});
+
+// Achado real de teste manual: sem essa tool, "listar contas"/"quais contas eu
+// tenho" não tinha nenhuma ferramenta correspondente — o modelo ficava
+// tentando adivinhar por até 5 iterações de tool calling (custo de tokens à
+// toa) antes de falhar com "não consegui processar".
+export function criarToolListarContas(db: DbClient): ToolDefinition {
+  return {
+    name: 'listar_contas',
+    description: 'Lista todas as contas cadastradas, com apelido, tipo (PF/PJ) e saldo atual de cada uma.',
+    schema: schemaListarContas,
+    handler: async () => {
+      const contas = listarContas(db);
+      if (contas.length === 0) {
+        return 'Você ainda não tem nenhuma conta cadastrada.';
+      }
+
+      const linhas = contas.map((conta) => {
+        const saldo =
+          conta.saldoAtual +
+          calcularSaldoTransacoesConta(db, conta.id) +
+          calcularSaldoTransferenciasConta(db, conta.id);
+        return `- "${conta.apelido}" (${conta.tipo}): R$ ${saldo.toFixed(2)}`;
+      });
+
+      return `Contas cadastradas:\n${linhas.join('\n')}`;
     },
   };
 }
