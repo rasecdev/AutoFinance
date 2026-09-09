@@ -9,6 +9,7 @@ import {
   criarToolRegistrarTransacao,
 } from '../../../src/ai/tools/transacoes.js';
 import type { DbClient } from '../../../src/db/client.js';
+import { buscarCategoriaCache } from '../../../src/db/repositories/cacheCategorizacao.js';
 import { criarCartao } from '../../../src/db/repositories/cartoes.js';
 import { criarConta } from '../../../src/db/repositories/contas.js';
 import { criarTransacao, obterTransacao } from '../../../src/db/repositories/transacoes.js';
@@ -132,6 +133,100 @@ describe('tool registrar_transacao', () => {
     expect(resultado).toContain('Cartões existentes');
     expect(resultado).toContain('Roxinho');
   });
+
+  it('descrição nova + categoria informada: grava a categoria da IA e cria linha no cache com origem ia', async () => {
+    const tool = criarToolRegistrarTransacao(db);
+    const args = tool.schema.parse({
+      conta_id: contaId,
+      tipo: 'despesa',
+      valor: 30,
+      categoria: 'Transporte',
+      descricao: 'Uber',
+      data: '2026-08-31',
+    });
+
+    const resultado = await tool.handler(args, { chatId: 1, modelo: 'openai/gpt-4o-mini' });
+
+    expect(resultado).toContain('Transporte');
+    expect(buscarCategoriaCache(db, 'uber')).toMatchObject({
+      categoria: 'Transporte',
+      origem: 'ia',
+      modeloSugeriu: 'openai/gpt-4o-mini',
+    });
+  });
+
+  it('descrição já cacheada: usa a categoria cacheada mesmo que a IA mande uma diferente, sem sobrescrever o cache', async () => {
+    const toolInicial = criarToolRegistrarTransacao(db);
+    const argsIniciais = toolInicial.schema.parse({
+      conta_id: contaId,
+      tipo: 'despesa',
+      valor: 30,
+      categoria: 'Transporte',
+      descricao: 'Uber',
+      data: '2026-08-31',
+    });
+    await toolInicial.handler(argsIniciais, { chatId: 1, modelo: 'openai/gpt-4o-mini' });
+
+    const tool = criarToolRegistrarTransacao(db);
+    const args = tool.schema.parse({
+      conta_id: contaId,
+      tipo: 'despesa',
+      valor: 25,
+      categoria: 'Lazer',
+      descricao: 'uber',
+      data: '2026-09-01',
+    });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).toContain('Transporte');
+    expect(resultado).not.toContain('Lazer');
+    expect(buscarCategoriaCache(db, 'uber')).toMatchObject({ categoria: 'Transporte', origem: 'ia' });
+  });
+
+  it('sem descrição informada, comportamento igual a hoje: usa a categoria da IA sem tocar o cache', async () => {
+    const tool = criarToolRegistrarTransacao(db);
+    const args = tool.schema.parse({
+      conta_id: contaId,
+      tipo: 'despesa',
+      valor: 10,
+      categoria: 'Alimentação',
+      data: '2026-08-31',
+    });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).toContain('Alimentação');
+  });
+
+  it('com descrição nova mas sem categoria e sem cache, pede a categoria sem criar a transação', async () => {
+    const tool = criarToolRegistrarTransacao(db);
+    const args = tool.schema.parse({
+      conta_id: contaId,
+      tipo: 'despesa',
+      valor: 10,
+      descricao: 'Farmácia',
+      data: '2026-08-31',
+    });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).toContain('categoria');
+  });
+
+  it('sem descrição e sem categoria, pede a categoria', async () => {
+    const tool = criarToolRegistrarTransacao(db);
+    const args = tool.schema.parse({
+      conta_id: contaId,
+      tipo: 'despesa',
+      valor: 10,
+      data: '2026-08-31',
+    });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).toContain('categoria');
+  });
 });
 
 describe('tool editar_transacao', () => {
@@ -195,6 +290,90 @@ describe('tool editar_transacao', () => {
     const resultado = await tool.handler(args, { chatId: 999 });
 
     expect(resultado).toContain('Não sei qual transação');
+  });
+
+  it('editar a categoria de uma transação com descrição sobrescreve o cache com origem usuario', async () => {
+    const transacao = criarTransacao(db, {
+      contaId,
+      tipo: 'despesa',
+      valor: 30,
+      categoria: 'Transporte',
+      descricao: 'Uber',
+      data: '2026-08-31',
+    });
+
+    const tool = criarToolEditarTransacao(db);
+    const args = tool.schema.parse({ id: transacao.id, categoria: 'Deslocamento trabalho' });
+    await tool.handler(args, { chatId: 1 });
+
+    expect(buscarCategoriaCache(db, 'uber')).toMatchObject({
+      categoria: 'Deslocamento trabalho',
+      origem: 'usuario',
+      modeloSugeriu: null,
+    });
+  });
+
+  it('editar outro campo sem tocar categoria não altera o cache', async () => {
+    const transacao = criarTransacao(db, {
+      contaId,
+      tipo: 'despesa',
+      valor: 30,
+      categoria: 'Transporte',
+      descricao: 'Uber',
+      data: '2026-08-31',
+    });
+
+    const tool = criarToolEditarTransacao(db);
+    const args = tool.schema.parse({ id: transacao.id, valor: 40 });
+    await tool.handler(args, { chatId: 1 });
+
+    expect(buscarCategoriaCache(db, 'uber')).toBeUndefined();
+  });
+
+  it('editar categoria de transação sem descrição não lança erro nem grava no cache', async () => {
+    const transacao = criarTransacao(db, {
+      contaId,
+      tipo: 'despesa',
+      valor: 30,
+      categoria: 'Transporte',
+      data: '2026-08-31',
+    });
+
+    const tool = criarToolEditarTransacao(db);
+    const args = tool.schema.parse({ id: transacao.id, categoria: 'Deslocamento trabalho' });
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).toContain('Deslocamento trabalho');
+  });
+
+  it('ciclo completo: registrar, corrigir a categoria e registrar de novo a mesma descrição usa a corrigida', async () => {
+    const toolRegistrar = criarToolRegistrarTransacao(db);
+    const argsRegistrar = toolRegistrar.schema.parse({
+      conta_id: contaId,
+      tipo: 'despesa',
+      valor: 30,
+      categoria: 'Transporte',
+      descricao: 'Uber',
+      data: '2026-08-31',
+    });
+    await toolRegistrar.handler(argsRegistrar, { chatId: 7, modelo: 'openai/gpt-4o-mini' });
+
+    const toolEditar = criarToolEditarTransacao(db);
+    const argsEditar = toolEditar.schema.parse({ categoria: 'Deslocamento trabalho' });
+    await toolEditar.handler(argsEditar, { chatId: 7 });
+
+    const argsRegistrarDeNovo = toolRegistrar.schema.parse({
+      conta_id: contaId,
+      tipo: 'despesa',
+      valor: 22,
+      categoria: 'Transporte',
+      descricao: 'Uber',
+      data: '2026-09-05',
+    });
+    const resultado = await toolRegistrar.handler(argsRegistrarDeNovo, { chatId: 7 });
+
+    expect(resultado).toContain('Deslocamento trabalho');
+    expect(resultado).not.toContain('Transporte');
   });
 });
 
