@@ -1,112 +1,127 @@
-# Tarefas: Fase 6 (parte 5) — `erros_execucao` + alerta de job crítico
+# Tarefas: Fase 6 (parte 6) — Categorização automática assistida
 
 Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, ordem). Fluxo de branch/PR/merge por tarefa é o já descrito em `CLAUDE.md` — não repetido aqui.
 
-## Fase R: `erros_execucao` + alerta de job crítico
+## Fase S: Categorização automática assistida
 
-### Tarefa 41: migração + repositório `erros_execucao`
+### Tarefa 45: migração + repositório `cache_categorizacao`
 
-**Description:** Nova migração `src/db/migrations/0008_erros_execucao.sql` criando a tabela `erros_execucao (id, trace_id nullable, contexto, mensagem, detalhes nullable, data_hora, resolvido)` (ver PLANO.md, "Logs e tratamento de erros", item 3). Novo repositório `src/db/repositories/errosExecucao.ts` com `registrarErro(db, {contexto, mensagem, detalhes?, traceId?})` (grava `resolvido: 0`, `data_hora: new Date().toISOString()`), `listarErros(db, periodo: {inicio, fim})` (retorna linhas ordenadas por `id DESC`, mesma janela em timestamp UTC completo que `interacoes_ia`/`uso_tokens` já usam) e `contarErrosPeriodo(db, periodo: PeriodoRelatorio)` (recebe data pura AAAA-MM-DD, converte internamente pra timestamp UTC completo igual ao helper já existente em `usoIa.ts`, conta linhas).
+**Description:** Nova migração `src/db/migrations/0009_cache_categorizacao.sql` criando a tabela `cache_categorizacao (id, descricao_normalizada TEXT NOT NULL UNIQUE, categoria TEXT NOT NULL, origem TEXT NOT NULL CHECK (origem IN ('ia', 'usuario')), modelo_sugeriu TEXT, atualizado_em TEXT NOT NULL)` (ver PLANO.md, "Cache", "Cache de categorização" — sem FK pra `categorias`, ver Architecture Decisions do plano). Novo repositório `src/db/repositories/cacheCategorizacao.ts` com `buscarCategoriaCache(db, descricaoNormalizada)` (retorna a linha ou `undefined`) e `upsertCategoriaCache(db, { descricaoNormalizada, categoria, origem, modeloSugeriu? }): void` (`INSERT ... ON CONFLICT(descricao_normalizada) DO UPDATE`, sempre grava `atualizado_em: new Date().toISOString()`, mesmo padrão sem retorno de `definirRoteamento` em `roteamentoTarefas.ts`), seguindo o padrão de tipos `Nova<Entidade>`/`<Entidade>`/`Linha<Entidade>` já usado em `errosExecucao.ts`.
 
 **Acceptance criteria:**
-- [x] `registrarErro` grava uma linha com `data_hora` preenchido e `resolvido: 0`
-- [x] `listarErros` retorna só as linhas dentro da janela, mais recentes primeiro
-- [x] `contarErrosPeriodo` aceita `PeriodoRelatorio` (data pura) e conta certo considerando fuso (mesmo achado real documentado em `usoIa.ts`: não pode só concatenar "T00:00:00.000Z" na data local)
+- [x] `buscarCategoriaCache` retorna `undefined` quando não há linha pra aquela descrição normalizada, e a linha certa quando há
+- [x] `upsertCategoriaCache` cria a linha quando é a primeira vez, e sobrescreve (categoria, origem, modelo_sugeriu, atualizado_em) quando já existe linha pra aquela descrição
+- [x] Migração roda sem erro em banco novo e em banco já existente (idempotente via `migrate.ts`, mesmo mecanismo das migrações anteriores)
 
 **Verification:**
-- [x] `npm test -- tests/db/errosExecucao.test.ts`
+- [x] `npm test -- tests/db/cacheCategorizacao.test.ts`
 - [x] `npm run build`
 
 **Dependencies:** None
 
 **Files likely touched:**
-- `src/db/migrations/0008_erros_execucao.sql`
-- `src/db/repositories/errosExecucao.ts`
-- `tests/db/errosExecucao.test.ts`
+- `src/db/migrations/0009_cache_categorizacao.sql`
+- `src/db/repositories/cacheCategorizacao.ts`
+- `tests/db/cacheCategorizacao.test.ts`
 
 **Estimated scope:** Small (2 arquivos de código + teste, sem dependência)
 
 ---
 
-### Tarefa 42: helper `tratarErroCriticoJob` + integração nos 4 scripts de job
+### Tarefa 46: função `normalizarDescricao`
 
-**Description:** Novo `src/scripts/tratarErroCriticoJob.ts` — função `tratarErroCriticoJob(db, logger, contexto, erro, botToken, chatIds)`: grava a falha via `registrarErro` (mensagem = `erro.message` se `Error`, senão `String(erro)`; `detalhes` = `erro.stack` quando disponível), loga via `logger.error`, e envia um alerta (`⚠️ Erro crítico no job "..."`) pra cada `chatId` da allowlist via `new Bot(botToken).api.sendMessage` (com `.catch` por chat, uma falha de envio não deve impedir o registro nem os outros envios). Integrar nos 4 scripts existentes (`backup.ts`, `monitorarPrecos.ts`, `relatorioSemanal.ts`, `relatorioMensal.ts`): mover o corpo de `main()` (depois de `loadEnv`/`getDb`/`createLogger`/`Bot` já resolvidos) pra dentro de um `try`, chamando `tratarErroCriticoJob` no `catch` e relançando o erro (mantém o `.catch(...)` externo existente com `console.error`/`process.exitCode = 1` funcionando igual a hoje).
+**Description:** Nova função `normalizarDescricao(descricao: string): string` — `trim()`, `toLowerCase()`, remoção de acento (`normalize('NFD').replace(/[̀-ͯ]/g, '')`) e colapso de espaços múltiplos em um só. Usada tanto pelo lookup no cache quanto na gravação, garantindo que a mesma descrição digitada de formas levemente diferentes ("Uber ", "UBER", "Über") bata na mesma chave. Local: `src/ai/tools/normalizarDescricao.ts` (mesmo diretório das tools que vão consumi-la, sem repositório específico envolvido).
 
 **Acceptance criteria:**
-- [x] Erro lançado dentro do corpo de qualquer um dos 4 scripts grava uma linha em `erros_execucao` com o `contexto` certo (nome do job) antes de propagar
-- [x] Alerta é enviado pra cada `chatId` da allowlist quando o job falha
-- [x] Falha ao enviar alerta pra um chat não impede o registro em `erros_execucao` nem o envio pros outros chats
-- [x] Comportamento de sucesso (sem erro) dos 4 scripts não muda
+- [x] "Uber", "UBER", " uber  " e "Über" normalizam pro mesmo valor
+- [x] Espaços múltiplos internos colapsam em um único espaço
+- [x] String vazia normaliza pra string vazia, sem lançar erro
 
 **Verification:**
-- [x] `npm test -- tests/scripts/tratarErroCriticoJob.test.ts`
-- [x] `npm test -- tests/scripts/monitorarPrecos.test.ts tests/scripts/relatorioSemanal.test.ts tests/scripts/relatorioMensal.test.ts` (não existe `backup.test.ts`)
+- [x] `npm test -- tests/ai/tools/normalizarDescricao.test.ts`
 - [x] `npm run build`
 
-**Dependencies:** Tarefa 41
+**Dependencies:** None
 
 **Files likely touched:**
-- `src/scripts/tratarErroCriticoJob.ts`
-- `src/scripts/backup.ts`
-- `src/scripts/monitorarPrecos.ts`
-- `src/scripts/relatorioSemanal.ts`
-- `src/scripts/relatorioMensal.ts`
-- `tests/scripts/tratarErroCriticoJob.test.ts`
+- `src/ai/tools/normalizarDescricao.ts`
+- `tests/ai/tools/normalizarDescricao.test.ts`
 
-**Estimated scope:** Medium (5 arquivos de código + teste novo, toca 4 scripts existentes)
+**Estimated scope:** Small (1 arquivo de código + teste, função pura)
 
 ---
 
-### Tarefa 43: tool de chat `listar_erros(periodo)`
+### Tarefa 47: `ToolContext.modelo` — thread do id do modelo até o handler da tool
 
-**Description:** Nova tool `listar_erros` (schema `{ periodo: 'dia' | 'semana' | 'mes' }`, mesmo enum de `relatorio`) em `src/ai/tools/errosExecucao.ts` — resolve a janela via `calcularJanelaPeriodo`, chama `listarErros(db, janela)`, formata cada linha (`contexto`, `mensagem`, `data_hora`) numa lista de texto; sem erro no período, devolve uma frase dizendo que não houve erro. Registrada em `montarToolsConversa` (`conversaTools.ts`).
+**Description:** `ToolContext` (`src/ai/tools/types.ts`) ganha o campo opcional `modelo?: string`. Em `gerarResposta` (`src/ai/openrouter.ts`), na chamada a `executarToolCall` (linha ~158), passar `{ ...ctx, modelo }` em vez de `ctx` puro — `modelo` já está no escopo da função, só precisa ser propagado. Nenhuma tool existente precisa mudar (campo novo opcional, ignorado por quem não usa).
 
 **Acceptance criteria:**
-- [x] Período com erros registrados lista cada um (contexto + mensagem + data/hora)
-- [x] Período sem erro nenhum devolve mensagem clara de "nenhum erro", nunca lista vazia sem explicação
+- [x] Qualquer handler de tool chamado durante uma conversa recebe `ctx.modelo` preenchido com o id do modelo usado naquele turno
+- [x] Comportamento de todas as tools existentes não muda (campo aditivo, sem quebra de contrato)
 
 **Verification:**
-- [x] `npm test -- tests/ai/tools/errosExecucao.test.ts`
+- [x] `npm test -- tests/ai/openrouter.test.ts`
 - [x] `npm run build`
 
-**Dependencies:** Tarefa 41
+**Dependencies:** None
 
 **Files likely touched:**
-- `src/ai/tools/errosExecucao.ts`
-- `src/ai/tools/conversaTools.ts`
-- `tests/ai/tools/errosExecucao.test.ts`
-- `tests/ai/tools/conversaTools.test.ts`
+- `src/ai/tools/types.ts`
+- `src/ai/openrouter.ts`
+- `tests/ai/openrouter.test.ts`
 
-**Estimated scope:** Small (1 tool nova + registro)
+**Estimated scope:** Small (2 arquivos de código, mudança pontual)
 
 ---
 
-### Tarefa 44: relatórios mostram contagem de erros técnicos do período
+### Tarefa 48: `registrar_transacao` resolve categoria via cache
 
-**Description:** `DadosRelatorio` (`src/relatorios/formatar.ts`) ganha o campo `errosTecnicos: number`. `formatarRelatorio` inclui uma linha extra (fora da seção "Uso de IA", só quando `errosTecnicos > 0`) — ex: `Erros técnicos no período: 2 (ver listar_erros).` Os 3 chamadores de `formatarRelatorio` passam a calcular e passar esse valor: tool `relatorio` (`src/ai/tools/relatorios.ts`), `montarRelatorioSemanal` e `montarRelatorioMensal` (via `contarErrosPeriodo` da Tarefa 41).
+**Description:** Em `src/ai/tools/transacoes.ts`, `categoria` no schema de `registrar_transacao` passa a ser `z.string().min(1).optional()`. No handler: se `descricao` foi informada, normaliza via `normalizarDescricao` e busca em `cacheCategorizacao`. Cache-hit → usa a categoria cacheada pra gravar a transação, **ignorando** qualquer `categoria` que a IA tenha mandado naquela chamada (o cache é autoritativo, ver Architecture Decisions). Sem cache-hit (ou sem descrição): usa a `categoria` informada pela IA; se também não foi informada, retorna mensagem de erro em texto pedindo a categoria (mesmo padrão de `resolverContaId`/`resolverCartaoId`, nunca lança exceção) — nesse caso a transação não é criada. Quando a categoria vem da IA (sem cache-hit) e há descrição, grava/atualiza o cache via `upsertCategoriaCache` com `origem: 'ia'`, `modeloSugeriu: ctx.modelo`. Descrição do tool atualizada informando que `categoria` é opcional quando a descrição já foi categorizada antes.
 
 **Acceptance criteria:**
-- [x] `errosTecnicos > 0` mostra a linha extra no relatório, com o número certo
-- [x] `errosTecnicos === 0` não mostra a linha (sem texto vazio nem "0 erros")
-- [x] A linha aparece independente de `usoIa.porFluxoModelo` estar vazio ou não (não fica escondida pelo "Nenhum uso de IA registrado no período")
+- [x] Descrição nova (sem cache) + categoria informada pela IA → transação usa a categoria da IA, e uma linha nova é gravada em `cache_categorizacao` com `origem: ia` e o `modelo_sugeriu` correto
+- [x] Descrição já cacheada, mesmo que a IA mande uma categoria diferente na chamada → transação é gravada com a categoria **cacheada**, cache não é sobrescrito
+- [x] Sem descrição informada → comportamento igual a hoje (usa a categoria da IA sem tocar o cache); erro claro se também não vier categoria
+- [x] Com descrição mas sem cache e sem categoria da IA → mensagem de erro pedindo a categoria, transação não é criada
 
 **Verification:**
-- [x] `npm test -- tests/relatorios/formatar.test.ts tests/relatorios/usoIa.test.ts`
+- [x] `npm test -- tests/ai/tools/transacoes.test.ts`
 - [x] `npm run build`
 
-**Dependencies:** Tarefa 41
+**Dependencies:** Tarefa 45, Tarefa 46, Tarefa 47
 
 **Files likely touched:**
-- `src/relatorios/formatar.ts`
-- `src/ai/tools/relatorios.ts`
-- `src/scripts/relatorioSemanal.ts`
-- `src/scripts/relatorioMensal.ts`
-- `tests/relatorios/formatar.test.ts`
+- `src/ai/tools/transacoes.ts`
+- `tests/ai/tools/transacoes.test.ts`
 
-**Estimated scope:** Small (1 arquivo de composição + 3 chamadores pequenos)
+**Estimated scope:** Medium (1 arquivo principal, várias ramificações de comportamento a testar)
 
-## Checkpoint: `erros_execucao` funcional
-- [x] `npm run build`/`lint`/`test` sem erro
-- [x] Teste manual em Homologação: forçar um erro num job, confirmar linha em `erros_execucao` via consulta direta ao banco e alerta recebido no Telegram; pedir `relatorio` real e confirmar a contagem de erros aparecendo; testar `listar_erros(periodo)` via Telegram
-- [x] PROGRESSO.md atualizado com o marco
-- [x] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase) — sessão extensa de teste manual real em Homologação (2026-09-08/09), 6 bugs reais encontrados e corrigidos além das 4 tarefas originais (ver PROGRESSO.md). Usuário encerrou esta rodada de testes em 2026-09-09.
+---
+
+### Tarefa 49: `editar_transacao` sobrescreve o cache com `origem: usuario`
+
+**Description:** Em `criarToolEditarTransacao` (`src/ai/tools/transacoes.ts`), depois de `atualizarTransacao` retornar a transação atualizada: se `categoria` estava entre os campos alterados (`mudancas`) e a transação resultante tem `descricao` não nula, chama `upsertCategoriaCache` com a descrição normalizada dessa transação, a nova categoria, `origem: 'usuario'`, `modeloSugeriu: null` — sobrescrevendo qualquer entrada anterior daquela descrição (inclusive uma de `origem: ia`). Se a transação não tem descrição, ou se `categoria` não foi alterada, não toca o cache.
+
+**Acceptance criteria:**
+- [x] Editar a `categoria` de uma transação com descrição sobrescreve (ou cria) a linha do cache daquela descrição normalizada com `origem: usuario`
+- [x] Editar outro campo (ex: `valor`, `data`) sem tocar `categoria` não altera o cache
+- [x] Editar a `categoria` de uma transação sem descrição não lança erro nem grava nada no cache
+- [x] Uma entrada de cache com `origem: usuario` feita aqui é usada por `registrar_transacao` (Tarefa 48) na próxima transação com a mesma descrição — teste de integração cobrindo o ciclo completo (registrar → editar categoria → registrar de novo a mesma descrição → confirma categoria corrigida)
+
+**Verification:**
+- [x] `npm test -- tests/ai/tools/transacoes.test.ts`
+- [x] `npm run build`
+
+**Dependencies:** Tarefa 48
+
+**Files likely touched:**
+- `src/ai/tools/transacoes.ts`
+- `tests/ai/tools/transacoes.test.ts`
+
+**Estimated scope:** Small (mesmo arquivo da Tarefa 48, lógica adicional contida)
+
+## Checkpoint: Categorização assistida funcional
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação via Telegram: registrar transação com descrição nova (confirmar categoria da IA e linha nova em `cache_categorizacao` via consulta direta ao banco); registrar outra transação com a mesma descrição pedindo explicitamente uma categoria diferente (confirmar que o sistema ignora e reaproveita a cacheada); corrigir a categoria via `editar_transacao`; registrar de novo a mesma descrição e confirmar que agora usa a categoria corrigida (`origem: usuario`)
+- [ ] PROGRESSO.md atualizado com o marco
+- [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)

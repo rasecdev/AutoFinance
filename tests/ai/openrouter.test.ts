@@ -196,6 +196,19 @@ describe('gerarResposta — loop de tool calling', () => {
     expect(resultado.tokensCompletion).toBe(13);
   });
 
+  it('passa o modelo usado no turno pro ctx recebido pelo handler da ferramenta', async () => {
+    const handler = vi.fn(async () => 'ok');
+    const toolComHandlerEspiao: ToolDefinition = { ...ecoar, handler };
+    const client = criarClienteFalso(
+      respostaToolCall('ecoar', { texto: 'oi' }),
+      respostaTexto('resposta final'),
+    );
+
+    await gerarResposta(client, 'msg', [toolComHandlerEspiao], { chatId: 42 }, [], 'openai/gpt-4o-mini');
+
+    expect(handler).toHaveBeenCalledWith({ texto: 'oi' }, { chatId: 42, modelo: 'openai/gpt-4o-mini' });
+  });
+
   it('resolve a ferramenta mesmo quando o modelo prefixa o nome (ex: "default_api.ecoar", achado real testando Gemini)', async () => {
     const client = criarClienteFalso(
       respostaToolCall('default_api.ecoar', { texto: 'oi' }),
