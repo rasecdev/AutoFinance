@@ -46,6 +46,22 @@ export function criarConta(db: DbClient, conta: NovaConta): Conta {
   };
 }
 
+export function atualizarConta(
+  db: DbClient,
+  id: number,
+  mudancas: Partial<Pick<Conta, 'apelido' | 'tipo'>>,
+): Conta | undefined {
+  const atual = obterConta(db, id);
+  if (!atual) return undefined;
+
+  const apelido = mudancas.apelido ?? atual.apelido;
+  const tipo = mudancas.tipo ?? atual.tipo;
+
+  db.prepare('UPDATE contas SET apelido = ?, tipo = ? WHERE id = ?').run(apelido, tipo, id);
+
+  return { ...atual, apelido, tipo };
+}
+
 export function contaExiste(db: DbClient, id: number): boolean {
   const linha = db.prepare('SELECT 1 FROM contas WHERE id = ?').get(id);
   return linha !== undefined;
