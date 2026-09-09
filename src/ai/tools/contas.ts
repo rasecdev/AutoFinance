@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { buscarCartaoPorNomeNaConta, criarCartao } from '../../db/repositories/cartoes.js';
-import { buscarContaPorApelido, criarConta, listarContas } from '../../db/repositories/contas.js';
+import { atualizarConta, buscarContaPorApelido, criarConta, listarContas } from '../../db/repositories/contas.js';
 import { calcularSaldoTransacoesConta } from '../../db/repositories/transacoes.js';
 import { calcularSaldoTransferenciasConta } from '../../db/repositories/transferencias.js';
 import type { DbClient } from '../../db/client.js';
@@ -46,6 +46,58 @@ export function criarToolCriarConta(db: DbClient): ToolDefinition {
 
       const conta = criarConta(db, { bancoNome: banco, tipo, apelido, saldoInicial });
       return `Conta criada: "${apelido}" (${tipo}), banco ${banco}, saldo inicial R$ ${conta.saldoAtual.toFixed(2)}.`;
+    },
+  };
+}
+
+const schemaEditarConta = z
+  .object({
+    conta_id: z.number().int().positive().optional(),
+    conta_apelido: z.string().min(1).optional(),
+    novo_apelido: z.string().min(1).optional(),
+    tipo: z.enum(['PF', 'PJ']).optional(),
+  })
+  .refine((valor) => valor.conta_id !== undefined || valor.conta_apelido !== undefined, {
+    message: 'Informe a conta (id ou apelido).',
+  })
+  .refine((valor) => valor.novo_apelido !== undefined || valor.tipo !== undefined, {
+    message: 'Informe pelo menos um campo para alterar (novo_apelido ou tipo).',
+  });
+
+// Achado real de teste manual: "mude o nome da conta" não tinha nenhuma tool
+// correspondente (só existia criar_conta) — mesma classe de gap de
+// listar_contas, o modelo insistia sem achar ferramenta certa.
+export function criarToolEditarConta(db: DbClient): ToolDefinition {
+  return {
+    name: 'editar_conta',
+    description:
+      'Renomeia (novo_apelido) e/ou muda o tipo (PF/PJ) de uma conta já existente, identificada pelo id ou apelido atual. NUNCA pergunte pelo id, chame direto com o apelido atual que o usuário mencionou. Baixo impacto, executa direto sem confirmação.',
+    schema: schemaEditarConta,
+    handler: async (args) => {
+      const {
+        conta_id: contaId,
+        conta_apelido: contaApelido,
+        novo_apelido: novoApelido,
+        tipo,
+      } = args as z.infer<typeof schemaEditarConta>;
+
+      const resolucao = resolverContaId(db, contaId, contaApelido);
+      if (!resolucao.ok) return resolucao.mensagem;
+
+      if (novoApelido !== undefined) {
+        const [existente] = buscarContaPorApelido(db, novoApelido);
+        if (existente && existente.id !== resolucao.id) {
+          return `Já existe uma conta com o apelido "${novoApelido}". Apelidos de conta precisam ser únicos — escolha outro.`;
+        }
+      }
+
+      const conta = atualizarConta(db, resolucao.id, {
+        ...(novoApelido !== undefined ? { apelido: novoApelido } : {}),
+        ...(tipo !== undefined ? { tipo } : {}),
+      });
+      if (!conta) return 'Não encontrei essa conta.';
+
+      return `Conta atualizada: "${conta.apelido}" (${conta.tipo}).`;
     },
   };
 }

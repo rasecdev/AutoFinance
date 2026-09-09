@@ -5,7 +5,13 @@ import Database from 'better-sqlite3-multiple-ciphers';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
-import { buscarContaPorApelido, buscarContaPorApelidoParcial, contaExiste, criarConta } from '../../src/db/repositories/contas.js';
+import {
+  atualizarConta,
+  buscarContaPorApelido,
+  buscarContaPorApelidoParcial,
+  contaExiste,
+  criarConta,
+} from '../../src/db/repositories/contas.js';
 
 const CHAVE_TESTE = 'chave-teste-contas';
 
@@ -53,6 +59,28 @@ describe('criarConta', () => {
     });
 
     expect(conta.saldoAtual).toBe(2500);
+  });
+});
+
+describe('atualizarConta', () => {
+  it('atualiza apelido e tipo, mantendo o resto', () => {
+    const conta = criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Antigo', saldoInicial: 100 });
+
+    const atualizada = atualizarConta(db, conta.id, { apelido: 'Novo', tipo: 'PJ' });
+
+    expect(atualizada).toMatchObject({ id: conta.id, apelido: 'Novo', tipo: 'PJ', saldoAtual: 100 });
+  });
+
+  it('atualiza só o campo informado, preservando o outro', () => {
+    const conta = criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Original' });
+
+    const atualizada = atualizarConta(db, conta.id, { apelido: 'Renomeada' });
+
+    expect(atualizada).toMatchObject({ apelido: 'Renomeada', tipo: 'PF' });
+  });
+
+  it('retorna undefined pra conta inexistente', () => {
+    expect(atualizarConta(db, 999, { apelido: 'X' })).toBeUndefined();
   });
 });
 
