@@ -109,4 +109,4 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 - [x] `npm run build`/`lint`/`test` sem erro
 - [x] Teste manual em Homologação: forçar um erro num job, confirmar linha em `erros_execucao` via consulta direta ao banco e alerta recebido no Telegram; pedir `relatorio` real e confirmar a contagem de erros aparecendo; testar `listar_erros(periodo)` via Telegram
 - [x] PROGRESSO.md atualizado com o marco
-- [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
+- [x] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase) — sessão extensa de teste manual real em Homologação (2026-09-08/09), 6 bugs reais encontrados e corrigidos além das 4 tarefas originais (ver PROGRESSO.md). Usuário encerrou esta rodada de testes em 2026-09-09.
