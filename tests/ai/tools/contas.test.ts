@@ -3,7 +3,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { criarToolCriarCartao, criarToolCriarConta, criarToolListarContas } from '../../../src/ai/tools/contas.js';
+import {
+  criarToolCriarCartao,
+  criarToolCriarConta,
+  criarToolEditarConta,
+  criarToolListarContas,
+} from '../../../src/ai/tools/contas.js';
 import type { DbClient } from '../../../src/db/client.js';
 import { criarConta } from '../../../src/db/repositories/contas.js';
 import { criarTransacao } from '../../../src/db/repositories/transacoes.js';
@@ -229,6 +234,59 @@ describe('tool criar_cartao', () => {
     expect(resultado).toContain('PF no Nubank');
     expect(resultado).toContain('PJ no Itaú');
     expect(resultado).not.toMatch(/\bid\b/i);
+  });
+});
+
+describe('tool editar_conta', () => {
+  it('não requer confirmação (baixo impacto)', () => {
+    const tool = criarToolEditarConta(db);
+    expect(tool.requerConfirmacao).toBeUndefined();
+  });
+
+  it('renomeia a conta identificada pelo apelido atual', async () => {
+    criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Antigo' });
+    const tool = criarToolEditarConta(db);
+    const args = tool.schema.parse({ conta_apelido: 'Antigo', novo_apelido: 'Novo' });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).toContain('"Novo" (PF)');
+  });
+
+  it('muda o tipo da conta', async () => {
+    criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Empresa' });
+    const tool = criarToolEditarConta(db);
+    const args = tool.schema.parse({ conta_apelido: 'Empresa', tipo: 'PJ' });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).toContain('"Empresa" (PJ)');
+  });
+
+  it('recusa renomear pra um apelido já usado por outra conta', async () => {
+    criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Principal' });
+    criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Secundaria' });
+    const tool = criarToolEditarConta(db);
+    const args = tool.schema.parse({ conta_apelido: 'Secundaria', novo_apelido: 'Principal' });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).toContain('Já existe uma conta com o apelido "Principal"');
+  });
+
+  it('avisa quando a conta não é encontrada', async () => {
+    const tool = criarToolEditarConta(db);
+    const args = tool.schema.parse({ conta_apelido: 'Não existe', tipo: 'PJ' });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).toContain('Não encontrei nenhuma conta');
+  });
+
+  it('rejeita chamada sem nenhum campo pra alterar', () => {
+    const tool = criarToolEditarConta(db);
+    const validacao = tool.schema.safeParse({ conta_apelido: 'Antigo' });
+    expect(validacao.success).toBe(false);
   });
 });
 
