@@ -2,6 +2,7 @@ import type { z } from 'zod';
 
 export type ToolContext = {
   chatId: number;
+  modelo?: string;
 };
 
 export type ToolDefinition<Schema extends z.ZodTypeAny = z.ZodTypeAny> = {

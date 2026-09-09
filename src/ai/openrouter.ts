@@ -155,7 +155,10 @@ export async function gerarResposta(
     for (const toolCall of mensagem.tool_calls) {
       if (toolCall.type !== 'function') continue;
 
-      const resultado = await executarToolCall(resolverTool(registry, toolCall.function.name), toolCall, ctx);
+      const resultado = await executarToolCall(resolverTool(registry, toolCall.function.name), toolCall, {
+        ...ctx,
+        modelo,
+      });
 
       if (resultado.tipo === 'pendente_confirmacao') {
         return {

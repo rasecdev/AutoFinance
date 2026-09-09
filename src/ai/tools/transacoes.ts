@@ -1,14 +1,16 @@
 import { z } from 'zod';
 import { definirUltimaTransacao, obterUltimaTransacao } from '../../bot/contextoRecente.js';
 import type { DbClient } from '../../db/client.js';
+import { buscarCategoriaCache, upsertCategoriaCache } from '../../db/repositories/cacheCategorizacao.js';
 import {
   atualizarTransacao,
   criarTransacao,
   excluirTransacao,
   obterTransacao,
 } from '../../db/repositories/transacoes.js';
+import { normalizarDescricao } from './normalizarDescricao.js';
 import { resolverCartaoId, resolverContaId } from './resolucao.js';
-import type { ToolDefinition } from './types.js';
+import type { ToolContext, ToolDefinition } from './types.js';
 
 const schemaRegistrarTransacao = z
   .object({
@@ -18,7 +20,7 @@ const schemaRegistrarTransacao = z
     cartao_nome: z.string().min(1).optional(),
     tipo: z.enum(['receita', 'despesa']),
     valor: z.number().positive(),
-    categoria: z.string().min(1),
+    categoria: z.string().min(1).optional(),
     descricao: z.string().optional(),
     data: z.string().min(1).optional(),
   })
@@ -58,6 +60,43 @@ function resolverIdTransacao(chatId: number, idInformado?: number): number | und
   return idInformado ?? obterUltimaTransacao(chatId);
 }
 
+type ResolucaoCategoria = { ok: true; categoria: string } | { ok: false; mensagem: string };
+
+// Cache é autoritativo: quando a descrição já tem categoria cacheada, ela vale
+// mesmo que a IA mande uma categoria diferente nesta chamada — é o mecanismo
+// que garante "a IA nunca mais re-adivinha" (ver tasks/plan.md, Fase 6 parte 6).
+function resolverCategoria(
+  db: DbClient,
+  descricao: string | undefined,
+  categoriaInformada: string | undefined,
+  ctx: ToolContext,
+): ResolucaoCategoria {
+  if (descricao === undefined) {
+    if (categoriaInformada === undefined) {
+      return { ok: false, mensagem: 'Informe a categoria dessa transação.' };
+    }
+    return { ok: true, categoria: categoriaInformada };
+  }
+
+  const descricaoNormalizada = normalizarDescricao(descricao);
+  const cache = buscarCategoriaCache(db, descricaoNormalizada);
+  if (cache) {
+    return { ok: true, categoria: cache.categoria };
+  }
+
+  if (categoriaInformada === undefined) {
+    return { ok: false, mensagem: 'Informe a categoria dessa transação — ainda não tenho uma categoria salva para essa descrição.' };
+  }
+
+  upsertCategoriaCache(db, {
+    descricaoNormalizada,
+    categoria: categoriaInformada,
+    origem: 'ia',
+    modeloSugeriu: ctx.modelo,
+  });
+  return { ok: true, categoria: categoriaInformada };
+}
+
 function hojeISO(): string {
   const agora = new Date();
   const ano = agora.getFullYear();
@@ -70,7 +109,7 @@ export function criarToolRegistrarTransacao(db: DbClient): ToolDefinition {
   return {
     name: 'registrar_transacao',
     description:
-      'Registra uma nova transação de receita ou despesa, vinculada a uma conta ou a um cartão (por id ou pelo nome/apelido). O campo "data" é opcional — só informe quando o usuário mencionar uma data específica; quando omitido, usa a data de hoje automaticamente.',
+      'Registra uma nova transação de receita ou despesa, vinculada a uma conta ou a um cartão (por id ou pelo nome/apelido). O campo "data" é opcional — só informe quando o usuário mencionar uma data específica; quando omitido, usa a data de hoje automaticamente. O campo "categoria" é opcional quando a descrição já foi categorizada antes nesta conversa (o sistema reaproveita automaticamente a categoria salva, mesmo que você mande uma diferente) — informe categoria sempre que a descrição for nova.',
     schema: schemaRegistrarTransacao,
     handler: async (args, ctx) => {
       const {
@@ -80,10 +119,14 @@ export function criarToolRegistrarTransacao(db: DbClient): ToolDefinition {
         cartao_nome: cartaoNome,
         tipo,
         valor,
-        categoria,
+        categoria: categoriaInformada,
         descricao,
         data: dataInformada,
       } = args as z.infer<typeof schemaRegistrarTransacao>;
+
+      const resolucaoCategoria = resolverCategoria(db, descricao, categoriaInformada, ctx);
+      if (!resolucaoCategoria.ok) return resolucaoCategoria.mensagem;
+      const categoria = resolucaoCategoria.categoria;
 
       const data = dataInformada ?? hojeISO();
 
@@ -126,6 +169,15 @@ export function criarToolEditarTransacao(db: DbClient): ToolDefinition {
       const transacao = atualizarTransacao(db, id, mudancas);
       if (!transacao) {
         return 'Não encontrei essa transação. Confirme antes de tentar novamente.';
+      }
+
+      if (mudancas.categoria !== undefined && transacao.descricao !== null) {
+        upsertCategoriaCache(db, {
+          descricaoNormalizada: normalizarDescricao(transacao.descricao),
+          categoria: transacao.categoria,
+          origem: 'usuario',
+          modeloSugeriu: null,
+        });
       }
 
       const camposAlterados = Object.keys(mudancas).join(', ');
