@@ -2,12 +2,16 @@
   <img src="docs/assets/logo-lockup.svg" alt="AutoFinance" width="380" height="81" />
 </p>
 
-🇧🇷 Português | 🇺🇸 [English](README.en.md) | 🇪🇸 [Español](README.es.md)
+<p align="center">
+  🇧🇷 Português | 🇺🇸 <a href="README.en.md">English</a> | 🇪🇸 <a href="README.es.md">Español</a>
+</p>
 
-[![CI](https://github.com/rasecdev/AutoFinance/actions/workflows/ci.yml/badge.svg)](https://github.com/rasecdev/AutoFinance/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![Node](https://img.shields.io/badge/node-%3E%3D22-339933?logo=node.js&logoColor=white)
-![Vitest](https://img.shields.io/badge/tests-vitest-6E9F18?logo=vitest&logoColor=white)
+<p align="center">
+  <a href="https://github.com/rasecdev/AutoFinance/actions/workflows/ci.yml"><img src="https://github.com/rasecdev/AutoFinance/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT" /></a>
+  <img src="https://img.shields.io/badge/node-%3E%3D22-339933?logo=node.js&logoColor=white" alt="Node" />
+  <img src="https://img.shields.io/badge/tests-vitest-6E9F18?logo=vitest&logoColor=white" alt="Vitest" />
+</p>
 
 Bot financeiro pessoal via Telegram. Você descreve o que aconteceu em linguagem natural — texto, foto, PDF, e-mail — e a IA interpreta e decide qual ação tomar; todo cálculo financeiro é sempre código determinístico, nunca a IA "achando" um número. O backend é a fonte de verdade: histórico e dado financeiro moram no seu próprio banco, nunca no provedor de IA.
 
