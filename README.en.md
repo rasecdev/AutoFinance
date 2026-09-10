@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="docs/assets/logo.svg" alt="AutoFinance logo" width="96" height="96" />
+  <img src="docs/assets/logo-lockup.svg" alt="AutoFinance" width="220" height="47" />
 </p>
-
-# AutoFinance
 
 🇧🇷 [Português](README.md) | 🇺🇸 English | 🇪🇸 [Español](README.es.md)
 
