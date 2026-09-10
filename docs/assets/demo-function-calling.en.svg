@@ -1,0 +1,114 @@
+<svg viewBox="0 0 520 300" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <clipPath id="cardClip2En"><rect width="520" height="300" rx="16"/></clipPath>
+    <clipPath id="typeMsgEn">
+      <rect x="52" y="115" width="0" height="20">
+        <animate attributeName="width" values="0;0;340;340" keyTimes="0;0.03125;0.14375;1" dur="24s" repeatCount="indefinite"/>
+      </rect>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#cardClip2En)">
+    <rect width="520" height="300" fill="#eef1f5"/>
+
+    <!-- header -->
+    <rect width="520" height="36" fill="#2f6fed"/>
+    <text x="20" y="23" fill="#ffffff" font-size="13" font-weight="600">AutoFinance &#183; function calling</text>
+
+    <!-- stepper -->
+    <text x="68" y="58" font-size="10.5" text-anchor="middle" fill="#9aa4b2" font-weight="600">
+      MESSAGE
+      <animate attributeName="fill" values="#2f6fed;#2f6fed;#9aa4b2;#9aa4b2;#9aa4b2;#9aa4b2" keyTimes="0;0.0125;0.03125;0.1875;0.20625;1" dur="24s" repeatCount="indefinite"/>
+    </text>
+    <text x="164" y="58" font-size="10.5" text-anchor="middle" fill="#9aa4b2" font-weight="600">
+      SCHEMAS
+      <animate attributeName="fill" values="#9aa4b2;#9aa4b2;#2f6fed;#2f6fed;#9aa4b2;#9aa4b2" keyTimes="0;0.21875;0.2375;0.4125;0.43125;1" dur="24s" repeatCount="indefinite"/>
+    </text>
+    <text x="260" y="58" font-size="10.5" text-anchor="middle" fill="#9aa4b2" font-weight="600">
+      TOOL CALL
+      <animate attributeName="fill" values="#9aa4b2;#9aa4b2;#2f6fed;#2f6fed;#9aa4b2;#9aa4b2" keyTimes="0;0.44375;0.4625;0.6125;0.63125;1" dur="24s" repeatCount="indefinite"/>
+    </text>
+    <text x="356" y="58" font-size="10.5" text-anchor="middle" fill="#9aa4b2" font-weight="600">
+      EXECUTION
+      <animate attributeName="fill" values="#9aa4b2;#9aa4b2;#2f6fed;#2f6fed;#9aa4b2;#9aa4b2" keyTimes="0;0.64375;0.6625;0.8125;0.83125;1" dur="24s" repeatCount="indefinite"/>
+    </text>
+    <text x="452" y="58" font-size="10.5" text-anchor="middle" fill="#9aa4b2" font-weight="600">
+      RESPONSE
+      <animate attributeName="fill" values="#9aa4b2;#9aa4b2;#2f6fed;#2f6fed;#9aa4b2" keyTimes="0;0.84375;0.8625;0.98125;1" dur="24s" repeatCount="indefinite"/>
+    </text>
+    <rect y="66" height="3" rx="1.5" fill="#2f6fed" width="70">
+      <animate attributeName="x" values="33;129;225;321;417" keyTimes="0;0.2375;0.4625;0.6625;0.8625" calcMode="discrete" dur="24s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="20" y="70" width="480" height="1" fill="#dde2e8"/>
+
+    <!-- canvas card -->
+    <rect x="20" y="82" width="480" height="200" rx="12" fill="#ffffff" stroke="#dde2e8"/>
+
+    <!-- STAGE 1: message -->
+    <g>
+      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.0125;0.03125;0.1875;0.20625;1" dur="24s" repeatCount="indefinite"/>
+      <text x="42" y="105" font-size="10.5" fill="#9aa4b2">User sends, in natural language:</text>
+      <rect x="40" y="113" width="360" height="34" rx="12" fill="#dff3e1"/>
+      <g clip-path="url(#typeMsgEn)">
+        <text x="52" y="135" font-size="12" fill="#173d1e">Pay the Visa Infinity bill, Checking account</text>
+      </g>
+    </g>
+
+    <!-- STAGE 2: available schemas -->
+    <g>
+      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.21875;0.2375;0.4125;0.43125;1" dur="24s" repeatCount="indefinite"/>
+      <text x="42" y="103" font-size="10.5" fill="#9aa4b2">JSON schema of registered functions (tools):</text>
+      <rect x="40" y="112" width="440" height="150" rx="8" fill="#1c2430"/>
+      <rect x="46" y="151" width="428" height="34" rx="4" fill="#2f6fed" opacity="0">
+        <animate attributeName="opacity" values="0;0;0.30;0.30" keyTimes="0;0.375;0.39;1" dur="24s" repeatCount="indefinite"/>
+      </rect>
+      <text x="54" y="130" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#c7cfda">[</text>
+      <text x="66" y="146" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#8a94a3">{ "name": "log_transaction", ... },</text>
+      <text x="66" y="162" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#8fe3c0">{ "name": "pay_bill",</text>
+      <text x="80" y="178" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#8fe3c0">"parameters": ["card","account"] },</text>
+      <text x="66" y="194" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#8a94a3">{ "name": "list_accounts", ... }</text>
+      <text x="54" y="210" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#c7cfda">]</text>
+      <text x="450" y="163" font-size="9.5" fill="#7fb0ff" text-anchor="end" font-style="italic" opacity="0">
+        <animate attributeName="opacity" values="0;0;1;1" keyTimes="0;0.375;0.39;1" dur="24s" repeatCount="indefinite"/>
+        AI selects
+      </text>
+    </g>
+
+    <!-- STAGE 3: model extracts arguments and assembles the tool call -->
+    <g>
+      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.44375;0.4625;0.6125;0.63125;1" dur="24s" repeatCount="indefinite"/>
+      <text x="42" y="103" font-size="10.5" fill="#9aa4b2">Model extracts the arguments from the message:</text>
+      <rect x="40" y="110" width="150" height="22" rx="11" fill="#e7edfd"/>
+      <text x="115" y="125" font-size="10" fill="#2f6fed" text-anchor="middle" font-weight="600">"Visa Infinity" &#8594; card</text>
+      <rect x="200" y="110" width="150" height="22" rx="11" fill="#e7edfd"/>
+      <text x="275" y="125" font-size="10" fill="#2f6fed" text-anchor="middle" font-weight="600">"Checking" &#8594; account</text>
+      <rect x="40" y="144" width="440" height="86" rx="8" fill="#1c2430"/>
+      <text x="54" y="164" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#c7cfda">{</text>
+      <text x="66" y="180" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#8fe3c0">"name": "pay_bill",</text>
+      <text x="66" y="196" font-family="'Cascadia Code','Consolas',monospace" font-size="9.5" fill="#8fe3c0">"arguments": { "card": "Visa Infinity", "account": "Checking" }</text>
+      <text x="54" y="212" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#c7cfda">}</text>
+    </g>
+
+    <!-- STAGE 4: backend execution + return -->
+    <g>
+      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.64375;0.6625;0.8125;0.83125;1" dur="24s" repeatCount="indefinite"/>
+      <text x="42" y="103" font-size="10.5" fill="#9aa4b2">Backend runs the function:</text>
+      <rect x="40" y="112" width="200" height="30" rx="8" fill="#ffffff" stroke="#dde2e8"/>
+      <text x="140" y="132" font-size="11" fill="#1c2430" text-anchor="middle">&#9881; pay_bill()</text>
+      <text x="42" y="168" font-size="10.5" fill="#9aa4b2">return to the model:</text>
+      <rect x="40" y="176" width="440" height="68" rx="8" fill="#1c2430"/>
+      <text x="54" y="196" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#c7cfda">{</text>
+      <text x="66" y="212" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#8fe3c0">"amount_paid": 850.00, "new_limit": 4200.00</text>
+      <text x="54" y="228" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#c7cfda">}</text>
+    </g>
+
+    <!-- STAGE 5: final response -->
+    <g>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.84375;0.8625;0.98125;1" dur="24s" repeatCount="indefinite"/>
+      <text x="42" y="105" font-size="10.5" fill="#9aa4b2">Model formats the final response:</text>
+      <rect x="40" y="114" width="440" height="60" rx="12" fill="#ffffff" stroke="#dde2e8"/>
+      <text x="54" y="136" font-size="12.5" fill="#1c2430" font-weight="600">&#9989; Bill paid: $850.00 (Visa Infinity)</text>
+      <text x="54" y="156" font-size="12.5" fill="#4a5568">New available limit: $4,200.00</text>
+    </g>
+  </g>
+</svg>
