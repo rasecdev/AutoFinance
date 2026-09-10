@@ -2,7 +2,7 @@
   <defs>
     <clipPath id="cardClip2Es"><rect width="520" height="300" rx="16"/></clipPath>
     <clipPath id="typeMsgEs">
-      <rect x="52" y="115" width="0" height="20">
+      <rect x="52" y="112" width="0" height="28">
         <animate attributeName="width" values="0;0;360;360" keyTimes="0;0.03125;0.14375;1" dur="24s" repeatCount="indefinite"/>
       </rect>
     </clipPath>
