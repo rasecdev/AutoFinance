@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/logo.svg" alt="Logo do AutoFinance" width="96" height="96" />
+</p>
+
 # AutoFinance
 
 🇧🇷 Português | 🇺🇸 [English](README.en.md) | 🇪🇸 [Español](README.es.md)
