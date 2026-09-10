@@ -498,6 +498,37 @@ Licença: **MIT**. Comparado com os projetos pesquisados do akitaonrails (ver "E
 - Toda chamada de modelo passa a gravar em `uso_tokens` (tokens + custo) — base para os relatórios da Fase 6.
 - `interacoes_ia` passa a registrar também as `tool_calls` escolhidas; feedback via reação/comando no Telegram (`avaliacao_usuario`) fica disponível a partir daqui.
 
+**Por que API direta (function calling), não MCP** *(dúvida do usuário, 2026-09-09)*: MCP (Model Context Protocol) é um protocolo entre um **host/cliente** (Claude Desktop, Claude Code, etc.) e um **servidor de ferramentas**, feito pra reusar o mesmo conjunto de tools em vários hosts diferentes sem reescrever a integração em cada um. O modelo em si nunca fala MCP diretamente — em qualquer um dos dois desenhos, o que chega pra ele é o mesmo JSON schema de function calling (o formato `tools`/`tool_calls` do Chat Completions API), e o que ele devolve é o mesmo formato de volta. A diferença seria só de onde vem esse schema: um servidor MCP o exporia, e o bot faria o papel de host/cliente MCP buscando essa definição em vez de importar o módulo local — uma camada de rede/protocolo a mais, sem ganho de velocidade, confiabilidade ou riqueza na comunicação. MCP compensaria se um dia essas mesmas ferramentas (`registrar_transacao`, `editar_conta` etc.) precisassem ser consumidas por outro host além deste bot (ex: Claude Desktop) — não é o caso hoje: ferramenta e domínio (DB, repositórios) vivem no mesmo processo/repo, um único consumidor. Reavaliar só se isso mudar.
+
+**Como a comunicação funciona de fato hoje:** o bot roda como cliente do SDK `openai` apontado pro OpenRouter (`baseURL: https://openrouter.ai/api/v1`, ver `createOpenRouterClient` em `src/ai/openrouter.ts`). A cada chamada, `gerarResposta` monta uma request HTTP para `chat.completions.create` com três partes: (1) mensagem `system` com as regras de comportamento (`SYSTEM_PROMPT`), (2) histórico + mensagem do usuário, (3) a lista de `tools` do projeto (`src/ai/tools/registry.ts`) convertida para JSON schema via `paraDefinicaoOpenAI` — é esse schema, no formato padrão OpenAI (adotado também por Anthropic/Gemini e normalizado pelo OpenRouter entre provedores), que descreve nome/parâmetros de cada ferramenta pro modelo. O modelo responde com `tool_calls` (nome da função + argumentos em JSON) em vez de executar nada — a execução real acontece só depois, dentro do próprio processo Node: `executarToolCall` valida os argumentos contra o schema Zod da tool (`removerChavesNulas` primeiro, pra tratar `null` como "não informado"), roda o handler correspondente (leitura/escrita no SQLite via repositório) e devolve o resultado como uma nova mensagem `role: tool`, que volta pro modelo na iteração seguinte (loop de até `MAX_ITERACOES_TOOL_CALLING = 5`, cobrindo o caso de precisar de mais de uma ferramenta em sequência antes de responder em texto). Não há servidor MCP nem protocolo de tools separado — só uma função TypeScript por ferramenta, exposta ao modelo como schema dentro do próprio request HTTP.
+
+Variação real de confiabilidade entre provedores nesse formato (não é falha do JSON schema em si, é maturidade de implementação por modelo): Gemini às vezes prefixa o nome da função com `default_api.` (contornado em `resolverTool`) e alguns modelos mandam `null` num parâmetro opcional em vez de omitir a chave (contornado em `removerChavesNulas`) — ambos documentados como achados de teste real mais acima nesta fase.
+
+**Exemplo concreto do JSON trocado** *(dúvida do usuário, 2026-09-09, usando a tool real `editar_conta` de `src/ai/tools/contas.ts`)*: usuário manda "muda o nome da conta Nubank pra Nubank PJ". O schema Zod da tool é convertido para JSON schema (`paraDefinicaoOpenAI`) e enviado dentro de `tools` no request; em vez de texto, o modelo responde com `tool_calls`:
+
+```json
+{
+  "role": "assistant",
+  "content": null,
+  "tool_calls": [{
+    "id": "call_abc123",
+    "type": "function",
+    "function": {
+      "name": "editar_conta",
+      "arguments": "{\"conta_apelido\":\"Nubank\",\"novo_apelido\":\"Nubank PJ\"}"
+    }
+  }]
+}
+```
+
+`arguments` chega como **string** JSON, não objeto — por isso `executarToolCall` faz `JSON.parse` antes de validar contra o schema Zod. O handler roda, e o resultado volta pro modelo como mensagem `role: tool`:
+
+```json
+{ "role": "tool", "tool_call_id": "call_abc123", "content": "Conta \"Nubank\" renomeada para \"Nubank PJ\"." }
+```
+
+Só então o modelo formula a resposta final em texto ("Pronto, renomeei a conta...").
+
 ### Fase 4 — Contexto e memória de conversa
 - Troca de modelo por comando (`/modelo <nome>`) pra comparação prática.
 - Mecanismo de janela curta + resumo cumulativo, detalhado abaixo.
@@ -909,6 +940,8 @@ Registrado aqui pra não se perder: skills instaladas globalmente no Claude Code
 **Nota:** essa mesma VM também vai hospedar outros projetos pessoais futuros do usuário (decisão de infraestrutura fora do escopo deste plano) — se no futuro aparecer um container Postgres rodando ao lado do AutoFinance nessa VM, é pra outro app, não uma migração deste. O AutoFinance continua em SQLite/SQLCipher (ver "Stack" e Segurança item 3): trocar de banco só faria sentido se deixasse de ser single-user, o que não é o caso.
 
 **Nota (mitigação de idle-reclaim, fora do escopo deste repositório):** pra reduzir o risco de idle-reclaim descrito acima, a mesma VM também vai rodar um serviço `keepalive` (repositório próprio, `github.com/rasecdev/keepalive`, privado — infraestrutura da VM, não parte do AutoFinance) com um endpoint HTTP `/health`, chamado por um monitor de uptime externo gratuito pra gerar tráfego de rede real e manter a instância fora do critério de reclaim.
+
+**Verificado em 2026-09-09 (métricas reais do console OCI + SSH na VM): a mitigação de rede não é suficiente sozinha.** CPU (~1-4%), memória (~8-9%) e rede (tráfego do `keepalive` é ordens de grandeza menor que 20% da banda de ~2Gbps do shape A1) estavam **todos** abaixo de 20% simultaneamente — a VM se enquadrava tecnicamente no critério de idle apesar do `keepalive` rodando, porque o tráfego de health-check nunca teria volume suficiente pra mover a métrica de rede sozinho. Memória foi o critério escolhido pra corrigir (mais barato de garantir sem gerar carga artificial de CPU/rede): `keepalive` ganhou uma reserva de memória residente configurável (`MIN_MEMORY_MB`, ver `github.com/rasecdev/keepalive`), configurada em produção com `MIN_MEMORY_MB=2560` (~20% de 12GB) — confirmado via `docker stats`/`free -h` na VM que o uso subiu de ~9% pra ~30%, acima do threshold.
 
 ## Decisões em aberto (não bloqueiam início)
 - Categorias de gasto/receita específicas do seu dia a dia.
