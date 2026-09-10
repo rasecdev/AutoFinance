@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo-lockup.svg" alt="AutoFinance" width="220" height="47" />
+  <img src="docs/assets/logo-lockup.svg" alt="AutoFinance" width="380" height="81" />
 </p>
 
 🇧🇷 Português | 🇺🇸 [English](README.en.md) | 🇪🇸 [Español](README.es.md)
