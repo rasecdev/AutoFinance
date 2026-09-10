@@ -60,14 +60,14 @@ Duas camadas independentes, cada uma resolvendo um problema diferente:
 
 | Camada | Tecnologia |
 |---|---|
-| Runtime | Node.js 22+ / TypeScript |
+| Runtime | [Node.js](https://nodejs.org/) 22+ / [TypeScript](https://www.typescriptlang.org/) |
 | Bot | [grammY](https://grammy.dev/) (Telegram) |
-| IA | OpenRouter, roteado por fluxo (SDK `openai`) |
-| Banco | SQLite cifrado (`better-sqlite3-multiple-ciphers`), migrações em SQL puro |
-| Validação | Zod |
-| Logs | Pino |
-| Testes | Vitest |
-| Deploy | Docker Compose, ambientes isolados (Homologação / Produção) |
+| IA | [OpenRouter](https://openrouter.ai/), roteado por fluxo (SDK [`openai`](https://www.npmjs.com/package/openai)) |
+| Banco | SQLite cifrado ([`better-sqlite3-multiple-ciphers`](https://www.npmjs.com/package/better-sqlite3-multiple-ciphers)), migrações em SQL puro |
+| Validação | [Zod](https://zod.dev/) |
+| Logs | [Pino](https://getpino.io/) |
+| Testes | [Vitest](https://vitest.dev/) |
+| Deploy | [Docker Compose](https://docs.docker.com/compose/), ambientes isolados (Homologação / Produção) |
 
 ## Status do projeto
 
