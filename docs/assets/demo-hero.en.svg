@@ -1,0 +1,74 @@
+<svg viewBox="0 0 480 270" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <clipPath id="cardClipEn"><rect width="480" height="270" rx="16"/></clipPath>
+    <clipPath id="typeClipEn">
+      <rect x="112" y="59" width="0" height="20">
+        <animate attributeName="width" values="0;0;340;340;0;0" keyTimes="0;0.02;0.24;0.96;0.98;1" dur="8s" repeatCount="indefinite"/>
+      </rect>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#cardClipEn)">
+    <rect width="480" height="270" fill="#eef1f5"/>
+
+    <rect width="480" height="40" fill="#2f6fed"/>
+    <circle cx="22" cy="20" r="11" fill="#ffffff" opacity="0.22"/>
+    <text x="22" y="24" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">A</text>
+    <text x="42" y="24" fill="#ffffff" font-size="14" font-weight="600">AutoFinance</text>
+    <circle cx="452" cy="20" r="4" fill="#7CFFB2"/>
+    <text x="443" y="24" fill="#dceaff" font-size="10" text-anchor="end">online</text>
+
+    <!-- user bubble -->
+    <g>
+      <rect x="100" y="50" width="380" height="34" rx="12" fill="#dff3e1">
+        <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.02;0.10;0.96;0.98;1" dur="8s" repeatCount="indefinite"/>
+      </rect>
+      <g clip-path="url(#typeClipEn)">
+        <text x="112" y="72" font-size="12.5" fill="#173d1e">I spent $45 at the store, Checking, Visa Infinity</text>
+      </g>
+    </g>
+
+    <!-- typing indicator -->
+    <g>
+      <rect x="20" y="96" width="64" height="26" rx="13" fill="#ffffff" stroke="#dde2e8">
+        <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.30;0.36;0.48;0.54;1" dur="8s" repeatCount="indefinite"/>
+      </rect>
+      <g>
+        <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.30;0.36;0.48;0.54;1" dur="8s" repeatCount="indefinite"/>
+        <circle cx="38" cy="109" r="3" fill="#9aa4b2"><animate attributeName="opacity" values="0.3;1;0.3" dur="0.9s" begin="0s" repeatCount="indefinite"/></circle>
+        <circle cx="51" cy="109" r="3" fill="#9aa4b2"><animate attributeName="opacity" values="0.3;1;0.3" dur="0.9s" begin="0.15s" repeatCount="indefinite"/></circle>
+        <circle cx="64" cy="109" r="3" fill="#9aa4b2"><animate attributeName="opacity" values="0.3;1;0.3" dur="0.9s" begin="0.3s" repeatCount="indefinite"/></circle>
+      </g>
+    </g>
+
+    <!-- tool call chip -->
+    <g>
+      <rect x="20" y="132" width="380" height="30" rx="7" fill="#1c2430">
+        <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.40;0.45;0.52;0.57;1" dur="8s" repeatCount="indefinite"/>
+      </rect>
+      <text x="34" y="151" font-family="'Cascadia Code','Consolas',monospace" font-size="11" fill="#8fe3c0">
+        <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.40;0.45;0.52;0.57;1" dur="8s" repeatCount="indefinite"/>
+        log_transaction(45, "grocery store", "Checking")
+      </text>
+    </g>
+
+    <!-- bot response bubble -->
+    <g>
+      <rect x="20" y="172" width="380" height="72" rx="12" fill="#ffffff" stroke="#dde2e8">
+        <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.60;0.68;0.96;0.98;1" dur="8s" repeatCount="indefinite"/>
+      </rect>
+      <text x="34" y="192" font-size="12" fill="#1c2430" font-weight="600">
+        <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.60;0.68;0.96;0.98;1" dur="8s" repeatCount="indefinite"/>
+        Logged: Grocery store
+      </text>
+      <text x="34" y="210" font-size="12" fill="#4a5568">
+        <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.60;0.68;0.96;0.98;1" dur="8s" repeatCount="indefinite"/>
+        $45.00 - category: Groceries
+      </text>
+      <text x="34" y="228" font-size="12" fill="#4a5568">
+        <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.60;0.68;0.96;0.98;1" dur="8s" repeatCount="indefinite"/>
+        Checking account - Visa Infinity card
+      </text>
+    </g>
+  </g>
+</svg>

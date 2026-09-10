@@ -9,9 +9,9 @@
   <g clip-path="url(#infraCard)">
     <rect width="560" height="900" fill="#eef1f5"/>
     <rect width="560" height="36" fill="#2f6fed"/>
-    <text x="20" y="23" fill="#ffffff" font-size="13" font-weight="700">AutoFinance &#183; infraestrutura</text>
+    <text x="20" y="23" fill="#ffffff" font-size="13" font-weight="700">AutoFinance &#183; infrastructure</text>
 
-    <!-- ============ TELEGRAM: mini print do chat real ============ -->
+    <!-- ============ TELEGRAM: mini snapshot of the real chat ============ -->
     <rect x="165" y="60" width="230" height="200" rx="14" fill="#ffffff" stroke="#dde2e8"/>
     <clipPath id="tgHeaderClip"><rect x="165" y="60" width="230" height="200" rx="14"/></clipPath>
     <g clip-path="url(#tgHeaderClip)">
@@ -22,29 +22,29 @@
       <circle cx="379" cy="75" r="3.5" fill="#7CFFB2"/>
     </g>
     <rect x="177" y="102" width="206" height="46" rx="10" fill="#dff3e1"/>
-    <text x="187" y="120" font-size="10.5" fill="#173d1e" font-weight="700">Gastei 45 no mercado na conta</text>
-    <text x="187" y="136" font-size="10.5" fill="#173d1e" font-weight="700">Corrente, Visa Infinity</text>
+    <text x="187" y="120" font-size="10.5" fill="#173d1e" font-weight="700">I spent $45 at the store,</text>
+    <text x="187" y="136" font-size="10.5" fill="#173d1e" font-weight="700">Checking account, Visa Infinity</text>
     <rect x="177" y="160" width="206" height="76" rx="10" fill="#ffffff" stroke="#dde2e8"/>
-    <text x="187" y="178" font-size="10.5" fill="#1c2430" font-weight="700">Registrado: Mercado</text>
-    <text x="187" y="194" font-size="10.5" fill="#4a5568" font-weight="700">R$ 45,00 - Alimentacao</text>
-    <text x="187" y="210" font-size="10.5" fill="#4a5568" font-weight="700">Conta Corrente - Visa Infinity</text>
-    <text x="280" y="276" font-size="10.5" fill="#4a5568" text-anchor="middle" font-weight="700">Usuario (Telegram)</text>
+    <text x="187" y="178" font-size="10.5" fill="#1c2430" font-weight="700">Logged: Grocery store</text>
+    <text x="187" y="194" font-size="10.5" fill="#4a5568" font-weight="700">$45.00 - Groceries</text>
+    <text x="187" y="210" font-size="10.5" fill="#4a5568" font-weight="700">Checking account - Visa Infinity</text>
+    <text x="280" y="276" font-size="10.5" fill="#4a5568" text-anchor="middle" font-weight="700">User (Telegram)</text>
 
     <!-- arrows telegram <-> VM (vertical) -->
     <line x1="260" y1="296" x2="260" y2="366" stroke="#5b6472" stroke-width="1.5" marker-end="url(#arrow)"/>
     <line x1="300" y1="366" x2="300" y2="296" stroke="#5b6472" stroke-width="1.5" marker-end="url(#arrow)"/>
-    <text x="222" y="335" font-size="10" fill="#5b6472" text-anchor="end" font-weight="700">mensagens</text>
-    <text x="338" y="335" font-size="10" fill="#5b6472" text-anchor="start" font-weight="700">resposta</text>
+    <text x="222" y="335" font-size="10" fill="#5b6472" text-anchor="end" font-weight="700">messages</text>
+    <text x="338" y="335" font-size="10" fill="#5b6472" text-anchor="start" font-weight="700">response</text>
 
-    <!-- ============ VM: computador (monitor + pe) ============ -->
+    <!-- ============ VM: computer (monitor + stand) ============ -->
     <rect x="140" y="376" width="280" height="190" rx="10" fill="#1c2430"/>
     <rect x="152" y="388" width="256" height="150" rx="4" fill="#ffffff"/>
     <text x="168" y="408" font-size="9.5" fill="#9aa4b2" font-weight="700">docker compose:</text>
-    <text x="168" y="426" font-size="10.5" fill="#1c2430" font-weight="700">development &#8594; Homologacao</text>
+    <text x="168" y="426" font-size="10.5" fill="#1c2430" font-weight="700">development &#8594; Staging</text>
     <text x="168" y="440" font-size="9.5" fill="#4a5568" font-weight="700">bot + SQLite</text>
-    <text x="168" y="462" font-size="10.5" fill="#1c2430" font-weight="700">master &#8594; Producao</text>
+    <text x="168" y="462" font-size="10.5" fill="#1c2430" font-weight="700">master &#8594; Production</text>
     <text x="168" y="476" font-size="9.5" fill="#4a5568" font-weight="700">bot + SQLite</text>
-    <text x="280" y="520" font-size="11" fill="#7a8493" text-anchor="middle" font-weight="700">promocao: sempre manual</text>
+    <text x="280" y="520" font-size="11" fill="#7a8493" text-anchor="middle" font-weight="700">promotion: always manual</text>
 
     <!-- stand -->
     <rect x="265" y="566" width="30" height="25" fill="#1c2430"/>
@@ -55,10 +55,10 @@
     <!-- arrows VM <-> OpenRouter (vertical) -->
     <line x1="260" y1="644" x2="260" y2="714" stroke="#5b6472" stroke-width="1.5" marker-end="url(#arrow)"/>
     <line x1="300" y1="714" x2="300" y2="644" stroke="#5b6472" stroke-width="1.5" marker-end="url(#arrow)"/>
-    <text x="222" y="683" font-size="10" fill="#5b6472" text-anchor="end" font-weight="700">chamada</text>
-    <text x="338" y="683" font-size="10" fill="#5b6472" text-anchor="start" font-weight="700">resposta</text>
+    <text x="222" y="683" font-size="10" fill="#5b6472" text-anchor="end" font-weight="700">call</text>
+    <text x="338" y="683" font-size="10" fill="#5b6472" text-anchor="start" font-weight="700">response</text>
 
-    <!-- ============ OpenRouter: chip de IA, texto dentro ============ -->
+    <!-- ============ OpenRouter: AI chip, text inside ============ -->
     <rect x="230" y="724" width="6" height="10" fill="#1c2430"/>
     <rect x="277" y="724" width="6" height="10" fill="#1c2430"/>
     <rect x="324" y="724" width="6" height="10" fill="#1c2430"/>
@@ -71,7 +71,7 @@
     <rect x="365" y="824" width="12" height="6" fill="#1c2430"/>
     <rect x="195" y="734" width="170" height="130" rx="16" fill="#1c2430"/>
     <text x="280" y="789" font-size="14" fill="#8fe3c0" text-anchor="middle" font-weight="700">OpenRouter</text>
-    <text x="280" y="811" font-size="11" fill="#c7cfda" text-anchor="middle" font-weight="700">IA roteada</text>
-    <text x="280" y="827" font-size="11" fill="#c7cfda" text-anchor="middle" font-weight="700">por fluxo</text>
+    <text x="280" y="811" font-size="11" fill="#c7cfda" text-anchor="middle" font-weight="700">AI routed</text>
+    <text x="280" y="827" font-size="11" fill="#c7cfda" text-anchor="middle" font-weight="700">by flow</text>
   </g>
 </svg>

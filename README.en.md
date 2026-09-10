@@ -9,7 +9,7 @@
 
 Personal finance bot over Telegram. You describe what happened in natural language — text, photo, PDF, email — and the AI interprets it and decides which action to take; every financial calculation is always deterministic code, never the AI "guessing" a number. The backend is the source of truth: history and financial data live in your own database, never in the AI provider.
 
-<img src="docs/assets/demo-hero.svg" alt="Demo: user logs an expense in natural language and the bot replies confirming account, card and category" width="480" />
+<img src="docs/assets/demo-hero.en.svg" alt="Demo: user logs an expense in natural language and the bot replies confirming account, card and category" width="480" />
 
 ## Why it exists
 
@@ -19,7 +19,7 @@ Besides solving a real problem (financial control without the friction of openin
 
 The AI never calculates money nor has direct database access — it picks which function (*tool*) to call from a fixed JSON schema, and the backend runs the actual calculation. Classic function calling, five steps:
 
-<img src="docs/assets/demo-function-calling.svg" alt="Animated diagram: user message, JSON schema of available functions, argument extraction and tool call assembly, deterministic backend execution with return value, and final response formatted by the AI" width="480" />
+<img src="docs/assets/demo-function-calling.en.svg" alt="Animated diagram: user message, JSON schema of available functions, argument extraction and tool call assembly, deterministic backend execution with return value, and final response formatted by the AI" width="480" />
 
 1. **Message** — user writes in natural language.
 2. **Schemas** — the AI receives the JSON schema of every registered function (tool).
