@@ -9,7 +9,9 @@
 
 Bot financeiro pessoal via Telegram. Você descreve o que aconteceu em linguagem natural — texto, foto, PDF, e-mail — e a IA interpreta e decide qual ação tomar; todo cálculo financeiro é sempre código determinístico, nunca a IA "achando" um número. O backend é a fonte de verdade: histórico e dado financeiro moram no seu próprio banco, nunca no provedor de IA.
 
-<img src="docs/assets/demo-hero.svg" alt="Demo: usuário registra um gasto em linguagem natural e o bot responde confirmando conta, cartão e categoria" width="480" />
+<p align="center">
+  <img src="docs/assets/demo-hero.svg" alt="Demo: usuário registra um gasto em linguagem natural e o bot responde confirmando conta, cartão e categoria" width="480" />
+</p>
 
 ## Por que existe
 
@@ -19,7 +21,9 @@ Além de resolver um problema real (controle financeiro sem o atrito de abrir ap
 
 A IA nunca calcula dinheiro nem tem acesso direto ao banco — ela escolhe qual função (*tool*) chamar a partir de um schema JSON fixo, e o backend executa o cálculo real. Function calling clássico, cinco etapas:
 
-<img src="docs/assets/demo-function-calling.svg" alt="Diagrama animado: mensagem do usuário, schema JSON das funções disponíveis, extração de argumentos e montagem da tool call, execução determinística no backend com retorno, e resposta final formatada pela IA" width="480" />
+<p align="center">
+  <img src="docs/assets/demo-function-calling.svg" alt="Diagrama animado: mensagem do usuário, schema JSON das funções disponíveis, extração de argumentos e montagem da tool call, execução determinística no backend com retorno, e resposta final formatada pela IA" width="480" />
+</p>
 
 1. **Mensagem** — usuário escreve em linguagem natural.
 2. **Schemas** — a IA recebe o JSON schema de todas as funções registradas (tools).
