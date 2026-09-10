@@ -94,7 +94,12 @@ Full log, with the reasoning behind every decision, in [PROGRESSO.md](PROGRESSO.
 
 ## Infrastructure
 
-<img src="docs/assets/infra-diagram.svg" alt="Infrastructure diagram: user on Telegram exchanging messages with the Oracle Cloud Always Free VM, which runs the Staging and Production environments via Docker Compose, with calls routed to OpenRouter" width="420" />
+<p align="center">
+  <picture>
+    <source media="(max-width: 600px)" srcset="docs/assets/infra-diagram.svg">
+    <img src="docs/assets/infra-diagram-wide.svg" alt="Infrastructure diagram: user on Telegram exchanging messages with the Oracle Cloud Always Free VM, which runs the Staging and Production environments via Docker Compose, with calls routed to OpenRouter" width="760" />
+  </picture>
+</p>
 
 Hosted on Oracle Cloud's free tier ("Always Free") — a single VM runs both environments side by side, each as a separate service in the same `docker-compose.yml`. The branch maps to the environment: `development` runs the Staging service, `master` runs Production — and promoting one to the other is never automatic, it only happens by explicit decision after real manual testing.
 
