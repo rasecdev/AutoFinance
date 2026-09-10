@@ -1,0 +1,77 @@
+<svg viewBox="0 0 960 350" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <clipPath id="infraCardWide"><rect width="960" height="350" rx="16"/></clipPath>
+    <marker id="arrowWide" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6472"/>
+    </marker>
+  </defs>
+
+  <g clip-path="url(#infraCardWide)">
+    <rect width="960" height="350" fill="#eef1f5"/>
+    <rect width="960" height="36" fill="#2f6fed"/>
+    <text x="20" y="23" fill="#ffffff" font-size="13" font-weight="700">AutoFinance &#183; infrastructure</text>
+
+    <!-- ============ TELEGRAM: mini snapshot of the real chat ============ -->
+    <rect x="24" y="90" width="230" height="200" rx="14" fill="#ffffff" stroke="#dde2e8"/>
+    <clipPath id="tgHeaderClipWide"><rect x="24" y="90" width="230" height="200" rx="14"/></clipPath>
+    <g clip-path="url(#tgHeaderClipWide)">
+      <rect x="24" y="90" width="230" height="30" fill="#2f6fed"/>
+      <circle cx="44" cy="105" r="9" fill="#ffffff" opacity="0.22"/>
+      <text x="44" y="109" fill="#ffffff" font-size="9" font-weight="700" text-anchor="middle">A</text>
+      <text x="60" y="109" fill="#ffffff" font-size="11" font-weight="700">AutoFinance</text>
+      <circle cx="238" cy="105" r="3.5" fill="#7CFFB2"/>
+    </g>
+    <rect x="36" y="132" width="206" height="46" rx="10" fill="#dff3e1"/>
+    <text x="46" y="150" font-size="10.5" fill="#173d1e" font-weight="700">I spent $45 at the store,</text>
+    <text x="46" y="166" font-size="10.5" fill="#173d1e" font-weight="700">Checking account, Visa Infinity</text>
+    <rect x="36" y="190" width="206" height="76" rx="10" fill="#ffffff" stroke="#dde2e8"/>
+    <text x="46" y="208" font-size="10.5" fill="#1c2430" font-weight="700">Logged: Grocery store</text>
+    <text x="46" y="224" font-size="10.5" fill="#4a5568" font-weight="700">$45.00 - Groceries</text>
+    <text x="46" y="240" font-size="10.5" fill="#4a5568" font-weight="700">Checking account - Visa Infinity</text>
+    <text x="139" y="306" font-size="10.5" fill="#4a5568" text-anchor="middle" font-weight="700">User (Telegram)</text>
+
+    <!-- arrows telegram <-> VM -->
+    <line x1="254" y1="155" x2="344" y2="155" stroke="#5b6472" stroke-width="1.5" marker-end="url(#arrowWide)"/>
+    <line x1="344" y1="175" x2="254" y2="175" stroke="#5b6472" stroke-width="1.5" marker-end="url(#arrowWide)"/>
+    <text x="299" y="145" font-size="10" fill="#5b6472" text-anchor="middle" font-weight="700">messages</text>
+    <text x="299" y="189" font-size="10" fill="#5b6472" text-anchor="middle" font-weight="700">response</text>
+
+    <!-- ============ VM: computer (monitor + stand) ============ -->
+    <rect x="344" y="70" width="280" height="190" rx="10" fill="#1c2430"/>
+    <rect x="356" y="82" width="256" height="150" rx="4" fill="#ffffff"/>
+    <text x="372" y="102" font-size="9.5" fill="#9aa4b2" font-weight="700">docker compose:</text>
+    <text x="372" y="120" font-size="10.5" fill="#1c2430" font-weight="700">development &#8594; Staging</text>
+    <text x="372" y="134" font-size="9.5" fill="#4a5568" font-weight="700">bot + SQLite</text>
+    <text x="372" y="156" font-size="10.5" fill="#1c2430" font-weight="700">master &#8594; Production</text>
+    <text x="372" y="170" font-size="9.5" fill="#4a5568" font-weight="700">bot + SQLite</text>
+    <text x="484" y="214" font-size="11" fill="#7a8493" text-anchor="middle" font-weight="700">promotion: always manual</text>
+
+    <!-- stand -->
+    <rect x="469" y="260" width="30" height="25" fill="#1c2430"/>
+    <rect x="434" y="285" width="100" height="10" rx="4" fill="#1c2430"/>
+
+    <text x="484" y="318" font-size="10.5" fill="#4a5568" text-anchor="middle" font-weight="700">VM Oracle Cloud &#8212; Always Free</text>
+
+    <!-- arrows VM <-> OpenRouter -->
+    <line x1="624" y1="155" x2="714" y2="155" stroke="#5b6472" stroke-width="1.5" marker-end="url(#arrowWide)"/>
+    <line x1="714" y1="175" x2="624" y2="175" stroke="#5b6472" stroke-width="1.5" marker-end="url(#arrowWide)"/>
+    <text x="669" y="145" font-size="10" fill="#5b6472" text-anchor="middle" font-weight="700">call</text>
+    <text x="669" y="189" font-size="10" fill="#5b6472" text-anchor="middle" font-weight="700">response</text>
+
+    <!-- ============ OpenRouter: AI chip, text inside ============ -->
+    <rect x="759" y="90" width="6" height="10" fill="#1c2430"/>
+    <rect x="806" y="90" width="6" height="10" fill="#1c2430"/>
+    <rect x="853" y="90" width="6" height="10" fill="#1c2430"/>
+    <rect x="759" y="230" width="6" height="10" fill="#1c2430"/>
+    <rect x="806" y="230" width="6" height="10" fill="#1c2430"/>
+    <rect x="853" y="230" width="6" height="10" fill="#1c2430"/>
+    <rect x="712" y="130" width="12" height="6" fill="#1c2430"/>
+    <rect x="712" y="180" width="12" height="6" fill="#1c2430"/>
+    <rect x="894" y="130" width="12" height="6" fill="#1c2430"/>
+    <rect x="894" y="180" width="12" height="6" fill="#1c2430"/>
+    <rect x="724" y="100" width="170" height="130" rx="16" fill="#1c2430"/>
+    <text x="809" y="155" font-size="14" fill="#8fe3c0" text-anchor="middle" font-weight="700">OpenRouter</text>
+    <text x="809" y="177" font-size="11" fill="#c7cfda" text-anchor="middle" font-weight="700">AI routed</text>
+    <text x="809" y="193" font-size="11" fill="#c7cfda" text-anchor="middle" font-weight="700">by flow</text>
+  </g>
+</svg>

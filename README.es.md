@@ -94,7 +94,12 @@ Log completo, con el porqué de cada decisión, en [PROGRESSO.md](PROGRESSO.md) 
 
 ## Infraestructura
 
-<img src="docs/assets/infra-diagram.svg" alt="Diagrama de infraestructura: usuario en Telegram intercambiando mensajes con la VM de Oracle Cloud Always Free, que ejecuta los entornos de Staging y Producción vía Docker Compose, con llamadas enrutadas a OpenRouter" width="420" />
+<p align="center">
+  <picture>
+    <source media="(max-width: 600px)" srcset="docs/assets/infra-diagram.svg">
+    <img src="docs/assets/infra-diagram-wide.svg" alt="Diagrama de infraestructura: usuario en Telegram intercambiando mensajes con la VM de Oracle Cloud Always Free, que ejecuta los entornos de Staging y Producción vía Docker Compose, con llamadas enrutadas a OpenRouter" width="760" />
+  </picture>
+</p>
 
 Hospedaje en la capa gratuita de Oracle Cloud ("Always Free") — una única VM ejecuta los dos entornos lado a lado, cada uno como un servicio separado del mismo `docker-compose.yml`. La branch mapea el entorno: `development` levanta el servicio de Staging, `master` levanta el de Producción — y la promoción de uno a otro nunca es automática, solo ocurre por decisión explícita después de una prueba manual real.
 
