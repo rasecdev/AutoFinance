@@ -3,7 +3,7 @@
     <clipPath id="cardClip2"><rect width="520" height="300" rx="16"/></clipPath>
     <clipPath id="typeMsg">
       <rect x="52" y="115" width="0" height="20">
-        <animate attributeName="width" values="0;0;250;250" keyTimes="0;0.03125;0.14375;1" dur="24s" repeatCount="indefinite"/>
+        <animate attributeName="width" values="0;0;340;340" keyTimes="0;0.03125;0.14375;1" dur="24s" repeatCount="indefinite"/>
       </rect>
     </clipPath>
   </defs>
@@ -48,9 +48,9 @@
     <g>
       <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.0125;0.03125;0.1875;0.20625;1" dur="24s" repeatCount="indefinite"/>
       <text x="42" y="105" font-size="10.5" fill="#9aa4b2">Usuario envia, em linguagem natural:</text>
-      <rect x="40" y="113" width="270" height="34" rx="12" fill="#dff3e1"/>
+      <rect x="40" y="113" width="360" height="34" rx="12" fill="#dff3e1"/>
       <g clip-path="url(#typeMsg)">
-        <text x="52" y="135" font-size="13" fill="#173d1e">Amortizar 500 na divida do carro</text>
+        <text x="52" y="135" font-size="12" fill="#173d1e">Pagar a fatura do Visa Infinity, conta Corrente</text>
       </g>
     </g>
 
@@ -64,8 +64,8 @@
       </rect>
       <text x="54" y="130" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#c7cfda">[</text>
       <text x="66" y="146" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#8a94a3">{ "name": "registrar_transacao", ... },</text>
-      <text x="66" y="162" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#8fe3c0">{ "name": "amortizar_divida",</text>
-      <text x="80" y="178" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#8fe3c0">"parametros": ["valor","divida"] },</text>
+      <text x="66" y="162" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#8fe3c0">{ "name": "pagar_fatura",</text>
+      <text x="80" y="178" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#8fe3c0">"parametros": ["cartao","conta"] },</text>
       <text x="66" y="194" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#8a94a3">{ "name": "listar_contas", ... }</text>
       <text x="54" y="210" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#c7cfda">]</text>
       <text x="450" y="163" font-size="9.5" fill="#7fb0ff" text-anchor="end" font-style="italic" opacity="0">
@@ -78,14 +78,14 @@
     <g>
       <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.44375;0.4625;0.6125;0.63125;1" dur="24s" repeatCount="indefinite"/>
       <text x="42" y="103" font-size="10.5" fill="#9aa4b2">Modelo extrai os argumentos da mensagem:</text>
-      <rect x="40" y="110" width="110" height="22" rx="11" fill="#e7edfd"/>
-      <text x="95" y="125" font-size="10" fill="#2f6fed" text-anchor="middle" font-weight="600">"500" &#8594; valor</text>
-      <rect x="160" y="110" width="130" height="22" rx="11" fill="#e7edfd"/>
-      <text x="225" y="125" font-size="10" fill="#2f6fed" text-anchor="middle" font-weight="600">"carro" &#8594; divida</text>
+      <rect x="40" y="110" width="180" height="22" rx="11" fill="#e7edfd"/>
+      <text x="130" y="125" font-size="10" fill="#2f6fed" text-anchor="middle" font-weight="600">"Visa Infinity" &#8594; cartao</text>
+      <rect x="230" y="110" width="150" height="22" rx="11" fill="#e7edfd"/>
+      <text x="305" y="125" font-size="10" fill="#2f6fed" text-anchor="middle" font-weight="600">"Corrente" &#8594; conta</text>
       <rect x="40" y="144" width="440" height="86" rx="8" fill="#1c2430"/>
       <text x="54" y="164" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#c7cfda">{</text>
-      <text x="66" y="180" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#8fe3c0">"name": "amortizar_divida",</text>
-      <text x="66" y="196" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#8fe3c0">"arguments": { "valor": 500, "divida": "carro" }</text>
+      <text x="66" y="180" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#8fe3c0">"name": "pagar_fatura",</text>
+      <text x="66" y="196" font-family="'Cascadia Code','Consolas',monospace" font-size="9.5" fill="#8fe3c0">"arguments": { "cartao": "Visa Infinity", "conta": "Corrente" }</text>
       <text x="54" y="212" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#c7cfda">}</text>
     </g>
 
@@ -94,11 +94,11 @@
       <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.64375;0.6625;0.8125;0.83125;1" dur="24s" repeatCount="indefinite"/>
       <text x="42" y="103" font-size="10.5" fill="#9aa4b2">Backend executa a funcao:</text>
       <rect x="40" y="112" width="200" height="30" rx="8" fill="#ffffff" stroke="#dde2e8"/>
-      <text x="140" y="132" font-size="11" fill="#1c2430" text-anchor="middle">&#9881; amortizar_divida()</text>
+      <text x="140" y="132" font-size="11" fill="#1c2430" text-anchor="middle">&#9881; pagar_fatura()</text>
       <text x="42" y="168" font-size="10.5" fill="#9aa4b2">retorno pro modelo:</text>
       <rect x="40" y="176" width="440" height="68" rx="8" fill="#1c2430"/>
       <text x="54" y="196" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#c7cfda">{</text>
-      <text x="66" y="212" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#8fe3c0">"novo_saldo": 12340.00, "status": "ok"</text>
+      <text x="66" y="212" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#8fe3c0">"valor_pago": 850.00, "novo_limite": 4200.00</text>
       <text x="54" y="228" font-family="'Cascadia Code','Consolas',monospace" font-size="10.5" fill="#c7cfda">}</text>
     </g>
 
@@ -107,8 +107,8 @@
       <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.84375;0.8625;0.98125;1" dur="24s" repeatCount="indefinite"/>
       <text x="42" y="105" font-size="10.5" fill="#9aa4b2">Modelo formata a resposta final:</text>
       <rect x="40" y="114" width="440" height="60" rx="12" fill="#ffffff" stroke="#dde2e8"/>
-      <text x="54" y="136" font-size="12.5" fill="#1c2430" font-weight="600">&#9989; Amortizado R$ 500,00 na divida do carro.</text>
-      <text x="54" y="156" font-size="12.5" fill="#4a5568">Saldo devedor: R$ 12.340,00</text>
+      <text x="54" y="136" font-size="12.5" fill="#1c2430" font-weight="600">&#9989; Fatura paga: R$ 850,00 (Visa Infinity)</text>
+      <text x="54" y="156" font-size="12.5" fill="#4a5568">Novo limite disponivel: R$ 4.200,00</text>
     </g>
   </g>
 </svg>
