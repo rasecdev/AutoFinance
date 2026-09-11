@@ -8,6 +8,8 @@ Instruções específicas deste projeto. Têm precedência sobre o `CLAUDE.md` g
 
 Trabalho é guiado por `tasks/plan.md` (grafo de dependência, riscos, decisões de arquitetura) e `tasks/todo.md` (tarefas com critério de aceite e verificação), gerados via skill `planning-and-task-breakdown`.
 
+**Cada rodada (Fase/parte) também vira um milestone no GitHub Issues do repositório, cada tarefa do `tasks/todo.md` também vira uma issue nesse milestone** (histórico completo de tarefas já feitas, de todas as fases, está retroativamente registrado assim desde 2026-09-11 — ver milestones fechados no repositório). Ao planejar uma rodada nova: criar o milestone (aberto) antes de criar as issues; ao começar cada tarefa, a issue correspondente já deve existir (criada junto do resto do planejamento, não uma por uma na hora de implementar).
+
 **Branches mapeiam ambiente** (ver "Ambientes" no PLANO.md): `development` = Homologação, `master` = Produção. **Tarefas 1 e 2 foram commitadas direto na `master`** (fluxo usado antes de existir a branch `development` — não retroagir, não reescrever de novo). **A partir da Tarefa 3, toda tarefa nasce em branch própria com PR contra `development`**, seguindo o padrão observado nos repositórios reais do akitaonrails (`ai-jail`, `frank_fbi`, `ai-usagebar`: branch por mudança, prefixo convencional, PR contra a branch principal, mesmo em projeto solo).
 
 Por tarefa do `tasks/todo.md`:
@@ -17,12 +19,13 @@ Por tarefa do `tasks/todo.md`:
 4. Marcar a caixinha da tarefa como concluída em `tasks/todo.md`.
 5. Se a implementação revelar necessidade de mudar PLANO.md/PRD.md, atualizar esses arquivos e registrar o porquê no PROGRESSO.md (nunca deixar a spec ficar desatualizada — mesmo princípio do `implement-specs`).
 6. Commit(s) na branch (código + `tasks/todo.md` + ajustes de PLANO/PROGRESSO, se houver).
-7. Push da branch e abertura do PR **contra `development`** (título referenciando a Tarefa N, corpo com o que foi feito).
-8. Esperar o CI (`gitleaks` + `node`) rodar no PR; se verde, **eu mesmo mergeio em `development`, sem esperar aprovação a cada PR** — todo esse ciclo (branch → PR → merge em `development`) é automático por tarefa, sem pedir confirmação.
+7. Push da branch e abertura do PR **contra `development`** (título referenciando a Tarefa N, corpo com o que foi feito e `Closes #<issue>` referenciando a issue da tarefa — fecha ela automaticamente no merge).
+8. Esperar o CI (`gitleaks` + `node`) rodar no PR; se verde, **eu mesmo mergeio em `development`, sem esperar aprovação a cada PR** — todo esse ciclo (branch → PR → merge em `development`) é automático por tarefa, sem pedir confirmação. A issue fecha sozinha via `Closes #N`; se por algum motivo não fechar automático, fechar manualmente depois do merge.
 
 Nos checkpoints do `tasks/plan.md` (fim de cada sub-fase):
 - Rodar a lista de verificação do checkpoint inteira em `development` (já com os PRs das tarefas mergeados).
 - Registrar o marco no PROGRESSO.md (commit direto em `development`, sem PR — é só documentação do estado, não uma tarefa do todo.md).
+- Confirmar que todas as issues do milestone da rodada fecharam (todas via `Closes #N` no merge das tarefas) e fechar o milestone.
 - **Pausar para revisão do usuário antes de prosseguir pra próxima sub-fase.**
 
 **Promoção `development` → `master` (produção) nunca é automática.** Só acontece quando o usuário disser explicitamente que quer promover — depois de testar manualmente o fluxo de verdade em Homologação, não só CI verde. CI passando é pré-requisito pra mergear em `development`, mas não autoriza produção sozinho.
