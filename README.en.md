@@ -107,6 +107,8 @@ Full log, with the reasoning behind every decision, in [PROGRESSO.md](PROGRESSO.
   </picture>
 </p>
 
+The VM is the only bridge between Telegram and the model — Telegram and OpenRouter never talk to each other directly, everything goes through the bot running on it.
+
 Hosted on Oracle Cloud's free tier ("Always Free") — a single VM runs both environments side by side, each as a separate service in the same `docker-compose.yml`. The branch maps to the environment: `development` runs the Staging service, `master` runs Production — and promoting one to the other is never automatic, it only happens by explicit decision after real manual testing.
 
 ## Running locally
