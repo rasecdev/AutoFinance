@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "seed": "tsx scripts/seed.ts",
-    "rotear": "tsx scripts/definirRoteamento.ts"
+    "rotear": "tsx src/scripts/definirRoteamento.ts"
   },
   "repository": {
     "type": "git",
