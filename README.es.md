@@ -107,6 +107,8 @@ Log completo, con el porqué de cada decisión, en [PROGRESSO.md](PROGRESSO.md) 
   </picture>
 </p>
 
+La VM es el único puente entre Telegram y el modelo — Telegram y OpenRouter nunca se hablan directamente, todo pasa por el bot que corre en ella.
+
 Hospedaje en la capa gratuita de Oracle Cloud ("Always Free") — una única VM ejecuta los dos entornos lado a lado, cada uno como un servicio separado del mismo `docker-compose.yml`. La branch mapea el entorno: `development` levanta el servicio de Staging, `master` levanta el de Producción — y la promoción de uno a otro nunca es automática, solo ocurre por decisión explícita después de una prueba manual real.
 
 ## Ejecutar localmente
