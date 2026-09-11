@@ -2,7 +2,7 @@
 
 Instruções específicas deste projeto. Têm precedência sobre o `CLAUDE.md` global em caso de conflito.
 
-> Leia [PROGRESSO.md](PROGRESSO.md) antes de continuar qualquer trabalho — log vivo do projeto, com o próximo passo real. Design completo em [PLANO.md](PLANO.md), resumo de produto em [PRD.md](PRD.md).
+> Leia [PROGRESSO.md](PROGRESSO.md) antes de continuar qualquer trabalho — log vivo do projeto, com o próximo passo real (histórico detalhado por período vive em `docs/progresso/`, linkado de lá, não precisa ler de saída). Design completo em [PLANO.md](PLANO.md) (inclui "Decisões em aberto" e "Fora de escopo" — confira antes de reabrir uma pergunta de arquitetura do zero) e em `docs/adr/` (decisões formais registradas via skill Wayfinder), resumo de produto em [PRD.md](PRD.md).
 
 ## Fluxo de implementação (Fase 1 em diante)
 
