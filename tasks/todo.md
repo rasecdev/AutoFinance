@@ -121,7 +121,7 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Estimated scope:** Small (mesmo arquivo da Tarefa 48, lógica adicional contida)
 
 ## Checkpoint: Categorização assistida funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação via Telegram: registrar transação com descrição nova (confirmar categoria da IA e linha nova em `cache_categorizacao` via consulta direta ao banco); registrar outra transação com a mesma descrição pedindo explicitamente uma categoria diferente (confirmar que o sistema ignora e reaproveita a cacheada); corrigir a categoria via `editar_transacao`; registrar de novo a mesma descrição e confirmar que agora usa a categoria corrigida (`origem: usuario`)
-- [ ] PROGRESSO.md atualizado com o marco
-- [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Teste manual em Homologação via Telegram: registrar transação com descrição nova (confirmar categoria da IA e linha nova em `cache_categorizacao` via consulta direta ao banco); registrar outra transação com a mesma descrição pedindo explicitamente uma categoria diferente (confirmar que o sistema ignora e reaproveita a cacheada); corrigir a categoria via `editar_transacao`; registrar de novo a mesma descrição e confirmar que agora usa a categoria corrigida (`origem: usuario`) — achado real fora do escopo das 5 tarefas: descrição nova sem cache fez a IA usar o nome do estabelecimento ("Uber") como categoria; corrigido via regra 11 no `SYSTEM_PROMPT` (PR #74)
+- [x] PROGRESSO.md atualizado com o marco
+- [x] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)

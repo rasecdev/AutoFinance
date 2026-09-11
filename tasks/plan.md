@@ -26,10 +26,10 @@ Hoje `categoria` em `registrar_transacao`/`editar_transacao` é texto livre deci
 - [x] Tarefa 49: `editar_transacao` sobrescreve o cache da descrição da transação com `origem: usuario` quando a categoria é alterada
 
 ### Checkpoint: Categorização assistida funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação via Telegram: registrar transação com descrição nova (confirmar categoria da IA e linha nova em `cache_categorizacao` via consulta direta); registrar outra transação com a mesma descrição pedindo explicitamente uma categoria diferente (confirmar que o sistema ignora e reaproveita a cacheada); corrigir a categoria via `editar_transacao`; registrar de novo a mesma descrição e confirmar que agora usa a categoria corrigida (`origem: usuario`)
-- [ ] PROGRESSO.md atualizado com o marco
-- [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Teste manual em Homologação via Telegram: registrar transação com descrição nova (confirmar categoria da IA e linha nova em `cache_categorizacao` via consulta direta); registrar outra transação com a mesma descrição pedindo explicitamente uma categoria diferente (confirmar que o sistema ignora e reaproveita a cacheada); corrigir a categoria via `editar_transacao`; registrar de novo a mesma descrição e confirmar que agora usa a categoria corrigida (`origem: usuario`) — achado real: descrição nova sem cache fez a IA usar o nome do estabelecimento como categoria, corrigido via regra 11 no `SYSTEM_PROMPT` (PR #74, fora do ciclo das 5 tarefas planejadas)
+- [x] PROGRESSO.md atualizado com o marco
+- [x] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
 
 ## Risks and Mitigations
 | Risk | Impact | Mitigation |
