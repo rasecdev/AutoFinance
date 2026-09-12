@@ -209,6 +209,6 @@ export function executarConsultaDinamica(db: DbClient, params: ParamsConsultaDin
   const ordenadas = aplicarOrdenacaoELimite(linhas, params.agruparPor, params.ordenarPor, params.limite);
 
   return {
-    linhas: ordenadas.map(({ chaveOrdem, ...resto }) => resto),
+    linhas: ordenadas.map(({ chaveOrdem: _chaveOrdem, ...resto }) => resto),
   };
 }
