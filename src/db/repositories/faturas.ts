@@ -65,3 +65,21 @@ export function buscarFaturaPorCartaoEMes(db: DbClient, cartaoId: number, mesRef
     .get(cartaoId, mesReferencia) as LinhaFatura | undefined;
   return linha ? paraFatura(linha) : undefined;
 }
+
+export type FaturaAbertaComVencimento = Fatura & { diaVencimento: number };
+
+type LinhaFaturaComVencimento = LinhaFatura & { dia_vencimento: number };
+
+// Usado por projetar_fluxo_caixa (Fase 6, parte 9): diaVencimento do cartão
+// já embutido evita uma segunda consulta pra calcular a data de vencimento
+// projetada da fatura (mes_referencia + dia_vencimento).
+export function listarFaturasAbertas(db: DbClient, contaId?: number): FaturaAbertaComVencimento[] {
+  const sql = `SELECT f.id, f.cartao_id, c.conta_id, f.mes_referencia, f.valor, f.status, f.data_pagamento,
+                      c.dia_vencimento
+               FROM faturas f
+               JOIN cartoes c ON c.id = f.cartao_id
+               WHERE f.status = 'aberta'${contaId !== undefined ? ' AND c.conta_id = ?' : ''}`;
+  const linhas = (contaId !== undefined ? db.prepare(sql).all(contaId) : db.prepare(sql).all()) as LinhaFaturaComVencimento[];
+
+  return linhas.map((linha) => ({ ...paraFatura(linha), diaVencimento: linha.dia_vencimento }));
+}
