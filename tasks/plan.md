@@ -25,10 +25,10 @@ Hoje `relatorio(periodo)` só mostra contagem bruta de problema (`interacoes_ia.
 - [x] Tarefa 57: módulo `src/relatorios/qualidade.ts` — `agregarQualidadePeriodo(db, periodo)`
 - [x] Tarefa 58: migração `analises_qualidade` + repositório `analisesQualidade.ts`
 - [x] Tarefa 59: `src/ai/analisarQualidade.ts` — prompt, `gerarAnaliseQualidade`, roteamento
-- [ ] Tarefa 60: tool `analisar_qualidade` (`src/ai/tools/qualidade.ts`) + registro em `conversaTools.ts`
+- [x] Tarefa 60: tool `analisar_qualidade` (`src/ai/tools/qualidade.ts`) + registro em `conversaTools.ts`
 
 ### Checkpoint: analisar_qualidade funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
+- [x] `npm run build`/`lint`/`test` sem erro (586/586)
 - [ ] Teste manual em Homologação via Telegram: perguntar algo como "como estão as respostas da IA esse mês?" — confirmar que a tool é chamada, retorna análise narrativa coerente, e uma linha nova aparece em `analises_qualidade`
 - [ ] PROGRESSO.md atualizado com o marco
 - [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)

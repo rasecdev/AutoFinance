@@ -40,6 +40,7 @@ describe('montarToolsConversa', () => {
     const nomes = montarToolsConversa(db, clienteFalso).map((t) => t.name);
 
     expect(nomes).toContain('relatorio');
+    expect(nomes).toContain('analisar_qualidade');
     expect(nomes).toContain('listar_erros');
     expect(nomes).toContain('criar_caso_teste_benchmark');
     expect(nomes).toContain('rodar_benchmark_interno');
