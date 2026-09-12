@@ -100,12 +100,12 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Novo `src/ai/analisarQualidade.ts`, mesmo esqueleto de `relatorioMensal.ts`: `MODELO_ANALISAR_QUALIDADE` (fallback `'openai/gpt-4o-mini'`), `FLUXO_ANALISAR_QUALIDADE = 'analisar_qualidade'`, prompt fixo instruindo a IA a narrar (3-5 frases) qual fluxo/modelo mais errou, se piorou vs. o período anterior, e uma sugestão de ação — deixando explícito que os números já vêm calculados (mesma regra de "nunca somar/calcular" já usada em `relatorioMensal.ts`/`resumirContexto.ts`) e que ela só recebe métricas agregadas, nunca conteúdo de conversa. `DadosParaAnaliseQualidade = { periodo: { inicio: string; fim: string }; atual: AgregacaoQualidade; anterior: AgregacaoQualidade }`. `gerarAnaliseQualidade(client, dados, modelo)` retorna `{ analiseTexto, tokensPrompt, tokensCompletion, custoReal }` (mesmo formato de `ResultadoResumoMensal`). `resolverModeloAnalisarQualidade(db)` via `obterModeloRoteamento(db, FLUXO_ANALISAR_QUALIDADE) ?? MODELO_ANALISAR_QUALIDADE`.
 
 **Acceptance criteria:**
-- [ ] `gerarAnaliseQualidade` monta o prompt com `atual`/`anterior`/período em JSON e retorna o texto + tokens + custo real da resposta
-- [ ] `resolverModeloAnalisarQualidade` usa o roteamento de `roteamento_tarefas` quando existe linha pro fluxo, senão cai no fallback
+- [x] `gerarAnaliseQualidade` monta o prompt com `atual`/`anterior`/período em JSON e retorna o texto + tokens + custo real da resposta
+- [x] `resolverModeloAnalisarQualidade` usa o roteamento de `roteamento_tarefas` quando existe linha pro fluxo, senão cai no fallback
 
 **Verification:**
-- [ ] `npm test -- tests/ai/analisarQualidade.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/ai/analisarQualidade.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 57
 
