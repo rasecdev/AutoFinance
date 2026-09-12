@@ -132,6 +132,7 @@ export function excluirTransacao(db: DbClient, id: number): boolean {
 
 export type FiltroTransacoes = {
   contaId?: number;
+  cartaoId?: number;
   categoria?: string;
   dataInicio?: string;
   dataFim?: string;
@@ -144,6 +145,10 @@ export function listarTransacoesAtivas(db: DbClient, filtro: FiltroTransacoes = 
   if (filtro.contaId !== undefined) {
     condicoes.push('conta_id = ?');
     params.push(filtro.contaId);
+  }
+  if (filtro.cartaoId !== undefined) {
+    condicoes.push('cartao_id = ?');
+    params.push(filtro.cartaoId);
   }
   if (filtro.categoria !== undefined) {
     condicoes.push('LOWER(categoria) = LOWER(?)');

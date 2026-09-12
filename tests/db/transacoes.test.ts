@@ -5,11 +5,13 @@ import Database from 'better-sqlite3-multiple-ciphers';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
+import { criarCartao } from '../../src/db/repositories/cartoes.js';
 import { criarConta } from '../../src/db/repositories/contas.js';
 import {
   atualizarTransacao,
   criarTransacao,
   excluirTransacao,
+  listarTransacoesAtivas,
   obterTransacao,
 } from '../../src/db/repositories/transacoes.js';
 
@@ -111,5 +113,50 @@ describe('excluirTransacao', () => {
 
     expect(excluirTransacao(db, transacao.id)).toBe(false);
     expect(excluirTransacao(db, 9999)).toBe(false);
+  });
+});
+
+describe('listarTransacoesAtivas com filtro cartaoId (Fase 6, Tarefa 61)', () => {
+  it('filtra só transações do cartão informado', () => {
+    const cartaoId = criarCartao(db, {
+      contaId,
+      nome: 'Cartão Teste',
+      limite: 1000,
+      diaFechamento: 20,
+      diaVencimento: 28,
+    }).id;
+
+    criarTransacao(db, { cartaoId, tipo: 'despesa', valor: 100, categoria: 'Compras', data: '2026-09-05' });
+    criarTransacao(db, { contaId, tipo: 'despesa', valor: 50, categoria: 'Alimentação', data: '2026-09-05' });
+
+    const resultado = listarTransacoesAtivas(db, { cartaoId });
+
+    expect(resultado).toHaveLength(1);
+    expect(resultado[0]?.cartaoId).toBe(cartaoId);
+    expect(resultado[0]?.valor).toBe(100);
+  });
+
+  it('combina cartaoId com dataInicio', () => {
+    const cartaoId = criarCartao(db, {
+      contaId,
+      nome: 'Cartão Teste',
+      limite: 1000,
+      diaFechamento: 20,
+      diaVencimento: 28,
+    }).id;
+
+    criarTransacao(db, { cartaoId, tipo: 'despesa', valor: 100, categoria: 'Compras', data: '2026-08-15' });
+    criarTransacao(db, { cartaoId, tipo: 'despesa', valor: 200, categoria: 'Compras', data: '2026-09-05' });
+
+    const resultado = listarTransacoesAtivas(db, { cartaoId, dataInicio: '2026-09-01' });
+
+    expect(resultado).toHaveLength(1);
+    expect(resultado[0]?.valor).toBe(200);
+  });
+
+  it('sem cartaoId informado, comportamento inalterado', () => {
+    criarTransacao(db, { contaId, tipo: 'despesa', valor: 50, categoria: 'Alimentação', data: '2026-08-31' });
+
+    expect(listarTransacoesAtivas(db)).toHaveLength(1);
   });
 });
