@@ -174,6 +174,6 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 ## Checkpoint: Projeção financeira funcional
 - [x] `npm run build`/`lint`/`test` sem erro (627/627 — 1 flake isolado de timeout em `tests/db/migrate.test.ts`, já documentado, confirmado não-relacionado rodando isolado)
 - [x] PLANO.md atualizado (linha 313, `simular_amortizacao` por conta+tipo, não `divida_id`) — porquê registrado no PROGRESSO.md
-- [ ] Teste manual em Homologação via Telegram: `projetar_fluxo_caixa`, `consultar_patrimonio_liquido`, `simular_amortizacao` e um registro de transação em cartão perto do limite (confirmar aviso quando acima de 80%)
+- [x] Teste manual em Homologação via Telegram: `projetar_fluxo_caixa`, `consultar_patrimonio_liquido` e o alerta de limite de cartão passaram de primeira; `simular_amortizacao` revelou 2 bugs reais de UX (resposta narrando simulação como fato consumado; exigência de conta desnecessária), ambos corrigidos e reconfirmados
 - [x] PROGRESSO.md atualizado com o marco
-- [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
+- [x] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
