@@ -12,7 +12,7 @@ import { criarToolCriarDespesaFixa, criarToolEditarDespesaFixa } from './despesa
 import { criarToolAmortizarDivida, criarToolCriarDivida, criarToolQuitarDivida, criarToolRenegociar } from './dividas.js';
 import { criarToolListarErros } from './errosExecucao.js';
 import { criarToolPagarFatura, criarToolPagarParcela } from './pagamentos.js';
-import { criarToolProjetarFluxoCaixa } from './projecaoFinanceira.js';
+import { criarToolConsultarPatrimonioLiquido, criarToolProjetarFluxoCaixa } from './projecaoFinanceira.js';
 import { criarToolAnalisarQualidade } from './qualidade.js';
 import { criarToolRelatorio } from './relatorios.js';
 import { criarToolEditarTransacao, criarToolExcluirTransacao, criarToolRegistrarTransacao } from './transacoes.js';
@@ -47,6 +47,7 @@ export function montarToolsConversa(db: DbClient, client: OpenAI): ToolDefinitio
     criarToolConsultarDividasAtivas(db),
     criarToolResumoDividas(db),
     criarToolProjetarFluxoCaixa(db),
+    criarToolConsultarPatrimonioLiquido(db),
     criarToolCriarDespesaFixa(db),
     criarToolEditarDespesaFixa(db),
     criarToolRelatorio(db),

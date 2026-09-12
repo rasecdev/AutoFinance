@@ -27,7 +27,7 @@ Quatro peças de leitura (nenhuma tabela nova): `projetar_fluxo_caixa(dias)` (so
 - [x] Tarefa 62: `listarFaturasAbertas(db, contaId?)` em faturas.ts (com `diaVencimento` do cartão via join)
 - [x] Tarefa 63: `src/relatorios/fluxoCaixa.ts` — datas puras + `projetarFluxoCaixa(db, dias, contaId?)`
 - [x] Tarefa 64: tool `projetar_fluxo_caixa` (`src/ai/tools/projecaoFinanceira.ts`)
-- [ ] Tarefa 65: `calcularPatrimonioLiquido(db)` + tool `consultar_patrimonio_liquido`
+- [x] Tarefa 65: `calcularPatrimonioLiquido(db)` + tool `consultar_patrimonio_liquido`
 - [ ] Tarefa 66: tool `simular_amortizacao` (reaproveita helpers de `dividas.ts`, exportados)
 - [ ] Tarefa 67: alerta de limite de cartão em `registrar_transacao`
 
