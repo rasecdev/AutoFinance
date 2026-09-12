@@ -4,7 +4,13 @@ import { join } from 'node:path';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../src/db/client.js';
-import { buscarCartaoPorNome, buscarCartaoPorNomeParcial, cartaoExiste, criarCartao } from '../../src/db/repositories/cartoes.js';
+import {
+  buscarCartaoPorNome,
+  buscarCartaoPorNomeParcial,
+  cartaoExiste,
+  criarCartao,
+  obterCartao,
+} from '../../src/db/repositories/cartoes.js';
 import { criarConta } from '../../src/db/repositories/contas.js';
 import { migrate } from '../../src/db/migrate.js';
 
@@ -67,6 +73,25 @@ describe('cartaoExiste', () => {
 
     expect(cartaoExiste(db, cartao.id)).toBe(true);
     expect(cartaoExiste(db, cartao.id + 999)).toBe(false);
+  });
+});
+
+describe('obterCartao', () => {
+  it('retorna o cartão com todos os campos', () => {
+    const conta = criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Principal' });
+    const cartao = criarCartao(db, {
+      contaId: conta.id,
+      nome: 'Roxinho',
+      limite: 1000,
+      diaFechamento: 5,
+      diaVencimento: 12,
+    });
+
+    expect(obterCartao(db, cartao.id)).toEqual(cartao);
+  });
+
+  it('retorna undefined pra cartão inexistente', () => {
+    expect(obterCartao(db, 999)).toBeUndefined();
   });
 });
 

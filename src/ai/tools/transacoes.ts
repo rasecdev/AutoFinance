@@ -8,9 +8,25 @@ import {
   excluirTransacao,
   obterTransacao,
 } from '../../db/repositories/transacoes.js';
+import { obterCartao } from '../../db/repositories/cartoes.js';
+import { calcularGastoCicloAtualCartao } from '../../relatorios/limiteCartao.js';
 import { normalizarDescricao } from './normalizarDescricao.js';
 import { resolverCartaoId, resolverContaId } from './resolucao.js';
 import type { ToolContext, ToolDefinition } from './types.js';
+
+// Sem meta configurável no projeto ainda (ver PLANO.md, "Metas") — limiar
+// fixo no código, mesma simplificação de LIMITE_DIVERGENCIA em dividas.ts.
+const LIMIAR_ALERTA_LIMITE_CARTAO = 0.8;
+
+function avisoLimiteCartao(db: DbClient, cartaoId: number): string {
+  const cartao = obterCartao(db, cartaoId);
+  if (!cartao) return '';
+
+  const gasto = calcularGastoCicloAtualCartao(db, cartaoId, cartao.diaFechamento, new Date());
+  if (gasto < LIMIAR_ALERTA_LIMITE_CARTAO * cartao.limite) return '';
+
+  return ` ⚠️ Atenção: gasto do ciclo atual do cartão "${cartao.nome}" já é R$ ${gasto.toFixed(2)} de R$ ${cartao.limite.toFixed(2)} de limite (${((gasto / cartao.limite) * 100).toFixed(0)}%).`;
+}
 
 const schemaRegistrarTransacao = z
   .object({
@@ -147,7 +163,9 @@ export function criarToolRegistrarTransacao(db: DbClient): ToolDefinition {
       const transacao = criarTransacao(db, { contaId, cartaoId, tipo, valor, categoria, descricao, data });
       definirUltimaTransacao(ctx.chatId, transacao.id);
 
-      return `${tipo === 'receita' ? 'Receita' : 'Despesa'} registrada: R$ ${valor.toFixed(2)}, categoria "${categoria}", data ${data}.`;
+      const avisoLimite = cartaoId !== undefined && tipo === 'despesa' ? avisoLimiteCartao(db, cartaoId) : '';
+
+      return `${tipo === 'receita' ? 'Receita' : 'Despesa'} registrada: R$ ${valor.toFixed(2)}, categoria "${categoria}", data ${data}.${avisoLimite}`;
     },
   };
 }
