@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  :flag-br: Português | :flag-us: <a href="README.en.md">English</a> | :flag-es: <a href="README.es.md">Español</a>
+  <img src="https://flagcdn.com/20x15/br.png" alt="BR" width="20" height="15" /> Português | <img src="https://flagcdn.com/20x15/us.png" alt="US" width="20" height="15" /> <a href="README.en.md">English</a> | <img src="https://flagcdn.com/20x15/es.png" alt="ES" width="20" height="15" /> <a href="README.es.md">Español</a>
 </p>
 
 <p align="center">
