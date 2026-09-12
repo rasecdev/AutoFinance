@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  🇧🇷 <a href="README.md">Português</a> | 🇺🇸 English | 🇪🇸 <a href="README.es.md">Español</a>
+  :flag-br: <a href="README.md">Português</a> | :flag-us: English | :flag-es: <a href="README.es.md">Español</a>
 </p>
 
 <p align="center">
