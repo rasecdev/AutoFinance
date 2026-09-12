@@ -104,13 +104,13 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Novo módulo `src/relatorios/patrimonio.ts` (arquivo próprio, não em `fluxoCaixa.ts` — agregação diferente, sem relação de dependência entre as duas): `calcularPatrimonioLiquido(db: DbClient): PatrimonioLiquido`, com `PatrimonioLiquido = { porTipo: Array<{ tipo: 'PF' | 'PJ'; saldoContas: number; saldoDevedorDividas: number; valorFaturasAbertas: number; patrimonioLiquido: number }>; consolidado: number }` — soma `listarContas(db)` por `tipo`, subtrai saldo devedor (`listarParcelasPendentesDividasAtivas(db)`, somado por `contaId` → `tipo` da conta) e valor de `listarFaturasAbertas(db)` (idem). Tool `criarToolConsultarPatrimonioLiquido(db)` em `projecaoFinanceira.ts`, sem parâmetro, formata os três blocos (PF, PJ, consolidado). Consulta, sem efeito colateral.
 
 **Acceptance criteria:**
-- [ ] `patrimonioLiquido` de cada tipo = `saldoContas - saldoDevedorDividas - valorFaturasAbertas`
-- [ ] `consolidado` = soma dos dois tipos
-- [ ] Sem nenhuma conta/dívida/fatura cadastrada, retorna tudo zerado sem lançar erro
+- [x] `patrimonioLiquido` de cada tipo = `saldoContas - saldoDevedorDividas - valorFaturasAbertas`
+- [x] `consolidado` = soma dos dois tipos
+- [x] Sem nenhuma conta/dívida/fatura cadastrada, retorna tudo zerado sem lançar erro
 
 **Verification:**
-- [ ] `npm test -- tests/relatorios/patrimonio.test.ts tests/ai/tools/projecaoFinanceira.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/relatorios/patrimonio.test.ts tests/ai/tools/projecaoFinanceira.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 62
 

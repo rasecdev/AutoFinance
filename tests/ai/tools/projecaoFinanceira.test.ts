@@ -3,7 +3,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { criarToolProjetarFluxoCaixa } from '../../../src/ai/tools/projecaoFinanceira.js';
+import {
+  criarToolConsultarPatrimonioLiquido,
+  criarToolProjetarFluxoCaixa,
+} from '../../../src/ai/tools/projecaoFinanceira.js';
 import type { DbClient } from '../../../src/db/client.js';
 import { criarConta } from '../../../src/db/repositories/contas.js';
 import { migrate } from '../../../src/db/migrate.js';
@@ -72,5 +75,18 @@ describe('tool projetar_fluxo_caixa', () => {
 
     expect(resultado).toContain('Vencimentos no período');
     expect(resultado).toContain('fica negativo');
+  });
+});
+
+describe('tool consultar_patrimonio_liquido', () => {
+  it('retorna PF, PJ e consolidado', async () => {
+    const tool = criarToolConsultarPatrimonioLiquido(db);
+
+    const resultado = await tool.handler({}, { chatId: 1 });
+
+    expect(resultado).toContain('PF:');
+    expect(resultado).toContain('PJ:');
+    expect(resultado).toContain('Consolidado:');
+    expect(resultado).toContain('1000.00');
   });
 });
