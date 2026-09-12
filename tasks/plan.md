@@ -32,7 +32,8 @@ Quatro peças de leitura (nenhuma tabela nova): `projetar_fluxo_caixa(dias)` (so
 - [x] Tarefa 67: alerta de limite de cartão em `registrar_transacao`
 
 ### Checkpoint: Projeção financeira funcional
-- [x] `npm run build`/`lint`/`test` sem erro (627/627)
+- [x] `npm run build`/`lint`/`test` sem erro (627/627, depois 634/634 com os fixes)
+- [x] Teste manual em Homologação — ver achados e fixes em `PROGRESSO.md`
 - [ ] PLANO.md atualizado (linha 313, `simular_amortizacao` por conta+tipo, não `divida_id`) — porquê registrado no PROGRESSO.md
 - [ ] Teste manual em Homologação via Telegram: `projetar_fluxo_caixa`, `consultar_patrimonio_liquido`, `simular_amortizacao` e um registro de transação em cartão perto do limite (confirmar aviso quando acima de 80%)
 - [ ] PROGRESSO.md atualizado com o marco
