@@ -114,7 +114,7 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Estimated scope:** Small (edição de configuração, sem código)
 
 ## Checkpoint: Job mensal de despesas fixas funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação via Telegram: cadastrar despesa fixa ativa via `criar_despesa_fixa` (sem cartão); rodar `docker compose exec homologacao node dist/scripts/verificarDespesasFixas.js --agora` sem transação lançada no mês — confirmar alerta citando a despesa; registrar transação da mesma conta/categoria no mês e rodar de novo — confirmar que não chega alerta
-- [ ] PROGRESSO.md atualizado com o marco
+- [x] `npm run build`/`lint`/`test` sem erro (571/572 — 1 flake isolado de timeout em `tests/db/migrate.test.ts`, já documentado, confirmado não-relacionado rodando isolado)
+- [x] Teste manual em Homologação via SSH direto no banco (sem tool de chat pra rodar via Telegram nesta sessão): despesa fixa de teste criada sem cartão, job rodado com `--agora` sem transação lançada — alerta disparado e enviado de verdade pro chat de Homologação; registrada transação da mesma conta/categoria e rodado de novo — log confirmou nenhum alerta enviado. Dado de teste limpo depois.
+- [x] PROGRESSO.md atualizado com o marco
 - [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
