@@ -54,13 +54,13 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Novo módulo `src/relatorios/qualidade.ts` (mesmo diretório de `financeiro.ts`/`usoIa.ts`/`janela.ts`), exportando `agregarQualidadePeriodo(db: DbClient, periodo: PeriodoRelatorio): AgregacaoQualidade`, com `AgregacaoQualidade = { porFluxoModelo: Array<{ fluxo: string; modelo: string; total: number; incorretas: number }>; erroPorContexto: Array<{ contexto: string; total: number }>; totalInteracoes: number; totalIncorretas: number; totalErrosTecnicos: number }`. Converte `periodo` pra timestamp (mesmo `paraData`/`paraJanelaTimestamp` já duplicado em `usoIa.ts`/`errosExecucao.ts` — replicar aqui, não importar de outro módulo de relatório, mesma convenção já estabelecida de cada arquivo de `relatorios/` ter sua própria cópia), chama `agruparInteracoesPorFluxoModelo` (Tarefa 55) e `agruparErrosPorContexto` (Tarefa 56), soma os totais.
 
 **Acceptance criteria:**
-- [ ] `totalInteracoes`/`totalIncorretas` batem com a soma de `porFluxoModelo`
-- [ ] `totalErrosTecnicos` bate com a soma de `erroPorContexto`
-- [ ] Período sem nenhum dado retorna listas vazias e totais zerados, sem lançar erro
+- [x] `totalInteracoes`/`totalIncorretas` batem com a soma de `porFluxoModelo`
+- [x] `totalErrosTecnicos` bate com a soma de `erroPorContexto`
+- [x] Período sem nenhum dado retorna listas vazias e totais zerados, sem lançar erro
 
 **Verification:**
-- [ ] `npm test -- tests/relatorios/qualidade.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/relatorios/qualidade.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 55, Tarefa 56
 
