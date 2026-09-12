@@ -55,15 +55,15 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Novo módulo `src/relatorios/fluxoCaixa.ts`. Duas funções de data puras: `calcularDataVencimentoFatura(mesReferencia: string, diaVencimento: number): string` (constrói a data a partir de `mesReferencia` "AAAA-MM" + o dia, mesmo princípio de `somarMeses` em `dividas.ts`) e `calcularProximaOcorrenciaMensal(diaDoMes: number, apartirDe: Date): string` (próxima data em que o dia do mês ocorre a partir de hoje — mesmo uso que `dia_vencimento_esperado` de despesas fixas já tem em `verificarDespesasFixas.ts`, mas isolada aqui pra reaproveitar). Função principal `projetarFluxoCaixa(db: DbClient, dias: number, contaId?: number): ResultadoProjecaoFluxoCaixa`, com `ResultadoProjecaoFluxoCaixa = { saldoAtual: number; saldoProjetado: number; eventos: EventoFluxoCaixa[]; dataFicaNegativo: string | null }` e `EventoFluxoCaixa = { data: string; descricao: string; valor: number }` — junta parcelas pendentes (`listarParcelasPendentesDividasAtivas`, filtradas por `dataVencimento` na janela `[hoje, hoje+dias]`), faturas abertas (`listarFaturasAbertas` + `calcularDataVencimentoFatura`, mesma janela) e despesas fixas ativas sem `cartaoId` (`listarDespesasFixasAtivas`/`buscarDespesasFixasPorConta` quando `contaId` informado, filtradas por conta quando aplicável, com `calcularProximaOcorrenciaMensal` pra achar a próxima data, só entra se cair na janela) — soma saldo atual da(s) conta(s) (`obterConta`/`listarContas`, somado quando sem `contaId`) menos a soma ordenada cronológica dos eventos, marcando a primeira data em que a soma acumulada cruza negativo.
 
 **Acceptance criteria:**
-- [ ] Parcela/fatura/despesa fixa (sem cartão) vencendo dentro da janela entra em `eventos`; fora da janela, não entra
-- [ ] Despesa fixa com `cartaoId` preenchido nunca entra, mesmo vencendo dentro da janela
-- [ ] `saldoProjetado` = saldo atual menos a soma de todos os eventos
-- [ ] `dataFicaNegativo` é a data do primeiro evento (em ordem cronológica) cuja soma acumulada deixa o saldo negativo; `null` quando nunca fica negativo na janela
-- [ ] Sem `contaId`, soma saldo e eventos de todas as contas juntos (mesma simplificação de `resumo_dividas`)
+- [x] Parcela/fatura/despesa fixa (sem cartão) vencendo dentro da janela entra em `eventos`; fora da janela, não entra
+- [x] Despesa fixa com `cartaoId` preenchido nunca entra, mesmo vencendo dentro da janela
+- [x] `saldoProjetado` = saldo atual menos a soma de todos os eventos
+- [x] `dataFicaNegativo` é a data do primeiro evento (em ordem cronológica) cuja soma acumulada deixa o saldo negativo; `null` quando nunca fica negativo na janela
+- [x] Sem `contaId`, soma saldo e eventos de todas as contas juntos (mesma simplificação de `resumo_dividas`)
 
 **Verification:**
-- [ ] `npm test -- tests/relatorios/fluxoCaixa.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/relatorios/fluxoCaixa.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 62
 
