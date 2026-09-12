@@ -2,7 +2,7 @@ import type { DbClient } from '../../db/client.js';
 import { buscarCartaoPorNome, buscarCartaoPorNomeParcial, cartaoExiste, listarCartoes } from '../../db/repositories/cartoes.js';
 import { buscarContaPorApelido, buscarContaPorApelidoParcial, contaExiste, listarContas } from '../../db/repositories/contas.js';
 import { buscarDespesasFixasPorConta } from '../../db/repositories/despesasFixas.js';
-import { buscarDividasPorContaETipo, type TipoDivida } from '../../db/repositories/dividas.js';
+import { buscarDividasPorContaETipo, listarDividasAtivas, type TipoDivida } from '../../db/repositories/dividas.js';
 import { encontrarPorSemelhanca } from './similaridade.js';
 
 export type ResolucaoId = { ok: true; id: number } | { ok: false; mensagem: string };
@@ -205,6 +205,51 @@ export function resolverDividaId(
   return {
     ok: false,
     mensagem: `Encontrei mais de uma dívida do tipo "${tipo}" nesta conta: ${opcoes}. Diga qual (pelo nome, se tiver, ou outro detalhe que diferencie).`,
+  };
+}
+
+// Usado por simular_amortizacao (Fase 6, parte 9): diferente de
+// resolverDividaId (sempre exige conta, porque grava dado real em
+// amortizar_divida), aqui a busca é sem conta — simulação é só leitura, então
+// não há risco em resolver globalmente quando a descrição já é única no
+// sistema. Só pede a conta de volta quando há mais de uma dívida do mesmo
+// tipo (+ descrição, se informada) em contas diferentes.
+export function resolverDividaGlobal(db: DbClient, tipo: TipoDivida, descricao?: string): ResolucaoId {
+  const doTipo = listarDividasAtivas(db).filter((divida) => divida.tipo === tipo);
+
+  if (doTipo.length === 0) {
+    return { ok: false, mensagem: `Não encontrei nenhuma dívida ativa do tipo "${tipo}".` };
+  }
+
+  let candidatas = doTipo;
+  if (descricao !== undefined) {
+    const alvo = descricao.toLowerCase();
+    candidatas = doTipo.filter(
+      (divida) =>
+        divida.descricao !== null &&
+        (divida.descricao.toLowerCase() === alvo ||
+          divida.descricao.toLowerCase().includes(alvo) ||
+          alvo.includes(divida.descricao.toLowerCase())),
+    );
+    if (candidatas.length === 0) {
+      return {
+        ok: false,
+        mensagem: `Não encontrei nenhuma dívida do tipo "${tipo}" chamada "${descricao}".`,
+      };
+    }
+  }
+
+  if (candidatas.length === 1) {
+    const unica = candidatas[0];
+    if (unica) return { ok: true, id: unica.id };
+  }
+
+  const opcoes = candidatas
+    .map((divida) => `"${divida.descricao ?? 'sem nome'}" na conta ${apelidoDaConta(db, divida.contaId)}`)
+    .join(', ');
+  return {
+    ok: false,
+    mensagem: `Encontrei mais de uma dívida do tipo "${tipo}": ${opcoes}. Diga a conta (ou uma descrição mais específica).`,
   };
 }
 
