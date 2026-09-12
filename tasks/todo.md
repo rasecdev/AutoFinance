@@ -152,13 +152,13 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Nova função pura `calcularGastoCicloAtualCartao(db: DbClient, cartaoId: number, hoje: Date): number` em `src/relatorios/limiteCartao.ts` — determina o início do ciclo atual a partir de `cartao.diaFechamento` (se `hoje.dia > diaFechamento`, ciclo começou em `diaFechamento + 1` deste mês; senão, do mês anterior) e soma `listarTransacoesAtivas(db, { cartaoId, dataInicio })` (usa o filtro da Tarefa 61), filtrando em código só as de `tipo === 'despesa'` (o filtro do repositório não ganha campo de tipo nesta rodada, evita escopo além do pedido). Em `criarToolRegistrarTransacao` (`transacoes.ts`), depois de criar a transação, se `cartaoId` estiver definido: busca o cartão (nova `obterCartao(db, id)` em `cartoes.ts`, se não existir ainda), calcula o gasto do ciclo, e se `>= 0.8 * cartao.limite`, acrescenta um aviso ao texto de retorno (mesmo princípio de `parteDivergencia`/`parteIndexador` em `dividas.ts` — texto concatenado à resposta normal, sem mecanismo de envio separado).
 
 **Acceptance criteria:**
-- [ ] Transação de despesa em cartão que deixa o gasto do ciclo abaixo de 80% do limite não altera o texto de retorno
-- [ ] Transação que deixa o gasto igual ou acima de 80% do limite acrescenta aviso ao texto de retorno, citando valor gasto e limite
-- [ ] Transação sem `cartao_id` (conta normal) nunca aciona o cálculo
+- [x] Transação de despesa em cartão que deixa o gasto do ciclo abaixo de 80% do limite não altera o texto de retorno
+- [x] Transação que deixa o gasto igual ou acima de 80% do limite acrescenta aviso ao texto de retorno, citando valor gasto e limite
+- [x] Transação sem `cartao_id` (conta normal) nunca aciona o cálculo
 
 **Verification:**
-- [ ] `npm test -- tests/relatorios/limiteCartao.test.ts tests/ai/tools/transacoes.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/relatorios/limiteCartao.test.ts tests/ai/tools/transacoes.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 61
 
@@ -172,7 +172,7 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Estimated scope:** Medium (função de data/agregação + hook num handler existente)
 
 ## Checkpoint: Projeção financeira funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
+- [x] `npm run build`/`lint`/`test` sem erro (627/627 — 1 flake isolado de timeout em `tests/db/migrate.test.ts`, já documentado, confirmado não-relacionado rodando isolado)
 - [ ] PLANO.md atualizado (linha 313, `simular_amortizacao` por conta+tipo, não `divida_id`) — porquê registrado no PROGRESSO.md
 - [ ] Teste manual em Homologação via Telegram: `projetar_fluxo_caixa`, `consultar_patrimonio_liquido`, `simular_amortizacao` e um registro de transação em cartão perto do limite (confirmar aviso quando acima de 80%)
 - [ ] PROGRESSO.md atualizado com o marco
