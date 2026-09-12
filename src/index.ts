@@ -3,6 +3,7 @@ import { createBot } from './bot/bot.js';
 import { createHandlerFeedback } from './bot/handlers/feedback.js';
 import { createHandlerMidia } from './bot/handlers/midia.js';
 import { createHandlerModelo } from './bot/handlers/modelo.js';
+import { createHandlerModelos } from './bot/handlers/modelos.js';
 import { createHandlerNaoSuportado } from './bot/handlers/naoSuportado.js';
 import { createHandlerTexto } from './bot/handlers/texto.js';
 import { loadEnv } from './config/env.js';
@@ -26,6 +27,7 @@ const handlerNaoSuportado = createHandlerNaoSuportado(logger);
 const handlerFeedback = createHandlerFeedback(db, logger, 'incorreto');
 const handlerFeedbackCorreto = createHandlerFeedback(db, logger, 'correto');
 const handlerModelo = createHandlerModelo(db);
+const handlerModelos = createHandlerModelos(db);
 
 const bot = createBot(
   env,
@@ -36,6 +38,7 @@ const bot = createBot(
   handlerFeedback,
   handlerFeedbackCorreto,
   handlerModelo,
+  handlerModelos,
 );
 
 bot.start({

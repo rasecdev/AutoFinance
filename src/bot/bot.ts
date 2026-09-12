@@ -13,12 +13,22 @@ export function createBot(
   handlerFeedback: Handler,
   handlerFeedbackCorreto: Handler,
   handlerModelo: Handler,
+  handlerModelos: Handler,
 ): Bot {
   const bot = new Bot(env.telegramBotToken);
 
   bot.use(createAllowlistMiddleware(env.telegramAllowedChatIds, logger));
 
-  registerRoutes(bot, handlerTexto, handlerMidia, handlerNaoSuportado, handlerFeedback, handlerFeedbackCorreto, handlerModelo);
+  registerRoutes(
+    bot,
+    handlerTexto,
+    handlerMidia,
+    handlerNaoSuportado,
+    handlerFeedback,
+    handlerFeedbackCorreto,
+    handlerModelo,
+    handlerModelos,
+  );
 
   bot.catch((erro) => {
     logger.error({ err: erro.error }, 'erro não tratado no bot — processo continua rodando');
