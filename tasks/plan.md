@@ -29,8 +29,8 @@ Hoje `relatorio(periodo)` só mostra contagem bruta de problema (`interacoes_ia.
 
 ### Checkpoint: analisar_qualidade funcional
 - [x] `npm run build`/`lint`/`test` sem erro (586/586)
-- [ ] Teste manual em Homologação via Telegram: perguntar algo como "como estão as respostas da IA esse mês?" — confirmar que a tool é chamada, retorna análise narrativa coerente, e uma linha nova aparece em `analises_qualidade`
-- [ ] PROGRESSO.md atualizado com o marco
+- [x] Teste manual em Homologação via Telegram: "como estão as respostas da IA esse mês?" disparou a tool e retornou análise coerente identificando o problema real e já conhecido do `openai/gpt-5-nano`
+- [x] PROGRESSO.md atualizado com o marco
 - [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
 
 ## Risks and Mitigations
