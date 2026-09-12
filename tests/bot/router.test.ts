@@ -25,6 +25,7 @@ describe('registerRoutes', () => {
     const handlerFeedback = vi.fn();
     const handlerFeedbackCorreto = vi.fn();
     const handlerModelo = vi.fn();
+    const handlerModelos = vi.fn();
 
     registerRoutes(
       bot,
@@ -34,6 +35,7 @@ describe('registerRoutes', () => {
       handlerFeedback,
       handlerFeedbackCorreto,
       handlerModelo,
+      handlerModelos,
     );
 
     expect(bot.on).toHaveBeenCalledWith('message:text', handlerTexto);
@@ -47,6 +49,7 @@ describe('registerRoutes', () => {
     const handlerFeedback = vi.fn();
     const handlerFeedbackCorreto = vi.fn();
     const handlerModelo = vi.fn();
+    const handlerModelos = vi.fn();
 
     registerRoutes(
       bot,
@@ -56,6 +59,7 @@ describe('registerRoutes', () => {
       handlerFeedback,
       handlerFeedbackCorreto,
       handlerModelo,
+      handlerModelos,
     );
 
     expect(bot.on).toHaveBeenCalledWith(['message:photo', 'message:document'], handlerMidia);
@@ -69,6 +73,7 @@ describe('registerRoutes', () => {
     const handlerFeedback = vi.fn();
     const handlerFeedbackCorreto = vi.fn();
     const handlerModelo = vi.fn();
+    const handlerModelos = vi.fn();
 
     registerRoutes(
       bot,
@@ -78,6 +83,7 @@ describe('registerRoutes', () => {
       handlerFeedback,
       handlerFeedbackCorreto,
       handlerModelo,
+      handlerModelos,
     );
 
     expect(bot.on).toHaveBeenCalledWith('message', handlerNaoSuportado);
@@ -91,6 +97,7 @@ describe('registerRoutes', () => {
     const handlerFeedback = vi.fn();
     const handlerFeedbackCorreto = vi.fn();
     const handlerModelo = vi.fn();
+    const handlerModelos = vi.fn();
 
     registerRoutes(
       bot,
@@ -100,6 +107,7 @@ describe('registerRoutes', () => {
       handlerFeedback,
       handlerFeedbackCorreto,
       handlerModelo,
+      handlerModelos,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerFeedback);
@@ -118,6 +126,7 @@ describe('registerRoutes', () => {
     const handlerFeedback = vi.fn();
     const handlerFeedbackCorreto = vi.fn();
     const handlerModelo = vi.fn();
+    const handlerModelos = vi.fn();
 
     registerRoutes(
       bot,
@@ -127,6 +136,7 @@ describe('registerRoutes', () => {
       handlerFeedback,
       handlerFeedbackCorreto,
       handlerModelo,
+      handlerModelos,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerFeedbackCorreto);
@@ -138,7 +148,7 @@ describe('registerRoutes', () => {
     expect(predicado(criarCtxComTexto('/errado'))).toBe(false);
   });
 
-  it('registra o handler de modelo com um filtro pro comando /modelo', () => {
+  it('registra o handler de modelos (lista todos) com um filtro pro comando /modelos', () => {
     const bot = criarBotFake();
     const handlerTexto = vi.fn();
     const handlerMidia = vi.fn();
@@ -146,6 +156,7 @@ describe('registerRoutes', () => {
     const handlerFeedback = vi.fn();
     const handlerFeedbackCorreto = vi.fn();
     const handlerModelo = vi.fn();
+    const handlerModelos = vi.fn();
 
     registerRoutes(
       bot,
@@ -155,13 +166,44 @@ describe('registerRoutes', () => {
       handlerFeedback,
       handlerFeedbackCorreto,
       handlerModelo,
+      handlerModelos,
+    );
+
+    expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerModelos);
+    const predicado = bot.filter.mock.calls[2]?.[0] as (ctx: Context) => boolean;
+    expect(predicado(criarCtxComTexto('/modelos'))).toBe(true);
+    expect(predicado(criarCtxComTexto('/Modelos'))).toBe(true);
+    expect(predicado(criarCtxComTexto('/modelo'))).toBe(false);
+    expect(predicado(criarCtxComTexto('não é o comando'))).toBe(false);
+  });
+
+  it('registra o handler de modelo com um filtro pro comando /modelo, sem casar /modelos', () => {
+    const bot = criarBotFake();
+    const handlerTexto = vi.fn();
+    const handlerMidia = vi.fn();
+    const handlerNaoSuportado = vi.fn();
+    const handlerFeedback = vi.fn();
+    const handlerFeedbackCorreto = vi.fn();
+    const handlerModelo = vi.fn();
+    const handlerModelos = vi.fn();
+
+    registerRoutes(
+      bot,
+      handlerTexto,
+      handlerMidia,
+      handlerNaoSuportado,
+      handlerFeedback,
+      handlerFeedbackCorreto,
+      handlerModelo,
+      handlerModelos,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerModelo);
-    const predicado = bot.filter.mock.calls[2]?.[0] as (ctx: Context) => boolean;
+    const predicado = bot.filter.mock.calls[3]?.[0] as (ctx: Context) => boolean;
     expect(predicado(criarCtxComTexto('/modelo'))).toBe(true);
     expect(predicado(criarCtxComTexto('/Modelo openai/gpt-4o'))).toBe(true);
     expect(predicado(criarCtxComTexto('/MODELO qwen/qwen3-32b'))).toBe(true);
+    expect(predicado(criarCtxComTexto('/modelos'))).toBe(false);
     expect(predicado(criarCtxComTexto('não é o comando'))).toBe(false);
   });
 });
