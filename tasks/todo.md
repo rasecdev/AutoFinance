@@ -32,13 +32,13 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Nova função em `src/db/repositories/faturas.ts` — `SELECT f.*, c.conta_id, c.dia_vencimento FROM faturas f JOIN cartoes c ON c.id = f.cartao_id WHERE f.status = 'aberta'` (+ `AND c.conta_id = ?` quando `contaId` informado), retornando `FaturaAbertaComVencimento = Fatura & { diaVencimento: number }` — o `diaVencimento` do cartão já embutido evita uma segunda consulta pra calcular a data de vencimento projetada (Tarefa 63).
 
 **Acceptance criteria:**
-- [ ] Retorna só faturas com `status = 'aberta'`
-- [ ] Com `contaId` informado, filtra só faturas de cartões daquela conta
-- [ ] Cada item inclui `diaVencimento` do cartão correspondente
+- [x] Retorna só faturas com `status = 'aberta'`
+- [x] Com `contaId` informado, filtra só faturas de cartões daquela conta
+- [x] Cada item inclui `diaVencimento` do cartão correspondente
 
 **Verification:**
-- [ ] `npm test -- tests/db/faturas.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/db/faturas.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** None
 

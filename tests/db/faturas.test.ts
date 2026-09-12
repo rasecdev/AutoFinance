@@ -8,6 +8,7 @@ import { criarCartao } from '../../src/db/repositories/cartoes.js';
 import { criarConta } from '../../src/db/repositories/contas.js';
 import {
   buscarFaturaPorCartaoEMes,
+  listarFaturasAbertas,
   marcarFaturaPaga,
   marcarFaturaRenegociada,
   obterFatura,
@@ -18,6 +19,7 @@ const CHAVE_TESTE = 'chave-teste-faturas';
 
 let dir: string;
 let db: DbClient;
+let contaId: number;
 let cartaoId: number;
 
 beforeEach(() => {
@@ -26,7 +28,7 @@ beforeEach(() => {
   db.pragma("cipher='sqlcipher'");
   db.pragma(`key='${CHAVE_TESTE}'`);
   migrate(db);
-  const contaId = criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Principal' }).id;
+  contaId = criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Principal' }).id;
   cartaoId = criarCartao(db, { contaId, nome: 'Nubank Cartão', limite: 5000, diaFechamento: 5, diaVencimento: 10 }).id;
 });
 
@@ -71,6 +73,47 @@ describe('buscarFaturaPorCartaoEMes', () => {
     inserirFatura('2026-08');
 
     expect(buscarFaturaPorCartaoEMes(db, cartaoId, '2026-09')).toBeUndefined();
+  });
+});
+
+describe('listarFaturasAbertas (Fase 6, Tarefa 62)', () => {
+  it('retorna só faturas com status aberta, com o diaVencimento do cartão embutido', () => {
+    const abertaId = inserirFatura('2026-09', 800);
+    const pagaId = inserirFatura('2026-08', 700);
+    db.prepare("UPDATE faturas SET status = 'paga' WHERE id = ?").run(pagaId);
+
+    const resultado = listarFaturasAbertas(db);
+
+    expect(resultado).toEqual([
+      expect.objectContaining({ id: abertaId, valor: 800, status: 'aberta', diaVencimento: 10 }),
+    ]);
+  });
+
+  it('filtra por contaId quando informado', () => {
+    inserirFatura('2026-09', 800);
+
+    const outraContaId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PJ', apelido: 'PJ' }).id;
+    const outroCartaoId = criarCartao(db, {
+      contaId: outraContaId,
+      nome: 'Itaú Cartão',
+      limite: 3000,
+      diaFechamento: 15,
+      diaVencimento: 22,
+    }).id;
+    db.prepare("INSERT INTO faturas (cartao_id, mes_referencia, valor, status) VALUES (?, ?, ?, 'aberta')").run(
+      outroCartaoId,
+      '2026-09',
+      500,
+    );
+
+    const resultado = listarFaturasAbertas(db, contaId);
+
+    expect(resultado).toHaveLength(1);
+    expect(resultado[0]?.valor).toBe(800);
+  });
+
+  it('retorna lista vazia quando não há fatura aberta', () => {
+    expect(listarFaturasAbertas(db)).toEqual([]);
   });
 });
 
