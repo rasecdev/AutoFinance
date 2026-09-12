@@ -9,15 +9,17 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Nova função pura `executarConsultaDinamica(db: DbClient, params: ParamsConsultaDinamica): ResultadoConsultaDinamica` em `src/relatorios/consultaDinamica.ts`. Pra `dominio: 'financeiro'`, monta `SELECT` contra `transacoes` com `GROUP BY` dinâmico (1 ou 2 dimensões da whitelist: `categoria`, `conta_id`, `cartao_id`, `dia_semana`, `mes`, `tipo_transacao`), métrica (`soma_valor` → `SUM(valor)`, `media_valor` → `AVG(valor)`, `contagem` → `COUNT(*)`, `saldo` → `SUM(CASE WHEN tipo='receita' THEN valor ELSE -valor END)`, mesmo padrão de `calcularSaldoTransacoesConta`), filtros (`dataInicio`/`dataFim`/`categoria`/`contaId`/`cartaoId`/`tipo`) sempre via bind parameter. `dia_semana`/`mes` calculados com `strftime('%w', data)`/`strftime('%Y-%m', data)`. Resultado: `{rotulo, valor}[]` com 1 dimensão, `{serie, rotulo, valor}[]` com 2 (primeira dimensão listada = série). Ordenação: `mes`/`dia_semana` sempre cronológica (tabela de ordem fixa no código, jan→dez / dom→sáb), `ordenar_por` só escolhe direção pra essas; dimensões sem ordem natural usam `ordenar_por`/`limite` por valor.
 
 **Acceptance criteria:**
-- [ ] 1 dimensão (ex: `categoria`) retorna lista simples `{rotulo, valor}`, ordenável por valor com `limite` (cobre "top 5")
-- [ ] 2 dimensões (ex: `[categoria, mes]`) retorna `{serie, rotulo, valor}`, com `mes` sempre em ordem cronológica independente de `ordenar_por`
-- [ ] Cada métrica (`soma_valor`, `media_valor`, `contagem`, `saldo`) calcula certo contra dado de teste conhecido
-- [ ] Filtros (`dataInicio`/`dataFim`/`categoria`/`contaId`/`cartaoId`/`tipo`) combinam corretamente entre si e com o agrupamento
-- [ ] Parâmetro fora da whitelist (métrica/dimensão desconhecida) lança erro tipado, não silencioso
+- [x] 1 dimensão (ex: `categoria`) retorna lista simples `{rotulo, valor}`, ordenável por valor com `limite` (cobre "top 5")
+- [x] 2 dimensões (ex: `[categoria, mes]`) retorna `{serie, rotulo, valor}`, com `mes` sempre em ordem cronológica independente de `ordenar_por`
+- [x] Cada métrica (`soma_valor`, `media_valor`, `contagem`, `saldo`) calcula certo contra dado de teste conhecido
+- [x] Filtros (`dataInicio`/`dataFim`/`categoria`/`contaId`/`cartaoId`/`tipo`) combinam corretamente entre si e com o agrupamento
+- [x] Parâmetro fora da whitelist (métrica/dimensão desconhecida) lança erro tipado, não silencioso
+
+**Nota de implementação:** função aceita `metrica` (singular), não `metricas` — simplificação pra manter o shape de saída `{rotulo,valor}` sem uma dimensão extra por métrica; múltiplas métricas na mesma pergunta virariam múltiplas chamadas da tool, mesmo padrão já usado pra cruzar domínio (PLANO.md item 8.1). Registrado também em `tasks/plan.md`.
 
 **Verification:**
-- [ ] `npm test -- tests/relatorios/consultaDinamica.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/relatorios/consultaDinamica.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** None
 
