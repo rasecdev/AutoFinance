@@ -32,6 +32,84 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
+function inserirUsoTokens(fluxo: string, modelo: string, custoEstimado: number, dataHora: string, origem: 'uso_real' | 'benchmark_interno' = 'uso_real'): void {
+  db.prepare(
+    `INSERT INTO uso_tokens (fluxo, modelo, tokens_prompt, tokens_completion, custo_estimado, origem, data_hora)
+     VALUES (?, ?, 100, 50, ?, ?, ?)`,
+  ).run(fluxo, modelo, custoEstimado, origem, dataHora);
+}
+
+describe('executarConsultaDinamica — domínio uso_ia', () => {
+  it('agrupa por fluxo, somando custo_estimado', () => {
+    inserirUsoTokens('conversa_texto', 'gpt-4o-mini', 0.01, '2026-09-01T10:00:00.000Z');
+    inserirUsoTokens('conversa_texto', 'gpt-4o-mini', 0.02, '2026-09-02T10:00:00.000Z');
+    inserirUsoTokens('resumir_contexto', 'deepseek/deepseek-v4-flash', 0.005, '2026-09-01T10:00:00.000Z');
+
+    const resultado = executarConsultaDinamica(db, {
+      dominio: 'uso_ia',
+      metrica: 'soma_valor',
+      agruparPor: ['fluxo'],
+    });
+
+    expect(resultado.linhas).toEqual(
+      expect.arrayContaining([
+        { rotulo: 'conversa_texto', valor: 0.03 },
+        { rotulo: 'resumir_contexto', valor: 0.005 },
+      ]),
+    );
+  });
+
+  it('agrupa por modelo e respeita filtro de período', () => {
+    inserirUsoTokens('conversa_texto', 'gpt-4o-mini', 0.01, '2026-09-01T10:00:00.000Z');
+    inserirUsoTokens('conversa_texto', 'gpt-4o-mini', 0.02, '2026-10-01T10:00:00.000Z');
+
+    const resultado = executarConsultaDinamica(db, {
+      dominio: 'uso_ia',
+      metrica: 'soma_valor',
+      agruparPor: ['modelo'],
+      filtros: { dataInicio: '2026-09-01', dataFim: '2026-09-30' },
+    });
+
+    expect(resultado.linhas).toEqual([{ rotulo: 'gpt-4o-mini', valor: 0.01 }]);
+  });
+
+  it('exclui registros de origem benchmark_interno do agregado', () => {
+    inserirUsoTokens('conversa_texto', 'gpt-4o-mini', 0.01, '2026-09-01T10:00:00.000Z', 'uso_real');
+    inserirUsoTokens('conversa_texto', 'gpt-4o-mini', 100, '2026-09-01T10:00:00.000Z', 'benchmark_interno');
+
+    const resultado = executarConsultaDinamica(db, {
+      dominio: 'uso_ia',
+      metrica: 'soma_valor',
+      agruparPor: ['fluxo'],
+    });
+
+    expect(resultado.linhas).toEqual([{ rotulo: 'conversa_texto', valor: 0.01 }]);
+  });
+
+  it('dimensão do domínio financeiro (categoria) é rejeitada no domínio uso_ia', () => {
+    expect(() =>
+      executarConsultaDinamica(db, {
+        dominio: 'uso_ia',
+        metrica: 'soma_valor',
+        // @ts-expect-error dimensão de outro domínio de propósito
+        agruparPor: ['categoria'],
+      }),
+    ).toThrow(ParametroConsultaInvalidoError);
+  });
+
+  it('métrica saldo não existe no domínio uso_ia', () => {
+    inserirUsoTokens('conversa_texto', 'gpt-4o-mini', 0.01, '2026-09-01T10:00:00.000Z');
+
+    expect(() =>
+      executarConsultaDinamica(db, {
+        dominio: 'uso_ia',
+        metrica: 'saldo',
+        agruparPor: ['fluxo'],
+      }),
+    ).toThrow(ParametroConsultaInvalidoError);
+  });
+});
+
 describe('executarConsultaDinamica — domínio financeiro', () => {
   it('agrupa por 1 dimensão (categoria) e ordena por valor decrescente com limite', () => {
     criarTransacao(db, { contaId, tipo: 'despesa', valor: 100, categoria: 'Mercado', data: '2026-09-01' });
