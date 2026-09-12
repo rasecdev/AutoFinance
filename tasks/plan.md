@@ -21,7 +21,7 @@ Hoje `relatorio(periodo)` só mostra contagem bruta de problema (`interacoes_ia.
 ### Fase U: analisar_qualidade(periodo)
 
 - [x] Tarefa 55: `agruparInteracoesPorFluxoModelo(db, janela)` em `interacoesIa.ts`
-- [ ] Tarefa 56: `agruparErrosPorContexto(db, periodo)` em `errosExecucao.ts`
+- [x] Tarefa 56: `agruparErrosPorContexto(db, periodo)` em `errosExecucao.ts`
 - [ ] Tarefa 57: módulo `src/relatorios/qualidade.ts` — `agregarQualidadePeriodo(db, periodo)`
 - [ ] Tarefa 58: migração `analises_qualidade` + repositório `analisesQualidade.ts`
 - [ ] Tarefa 59: `src/ai/analisarQualidade.ts` — prompt, `gerarAnaliseQualidade`, roteamento
