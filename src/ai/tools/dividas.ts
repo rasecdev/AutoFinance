@@ -349,7 +349,9 @@ type ResolucaoAmortizacao =
 // primeira amortização da dívida (amortizações SAC encadeadas são um caso
 // mais raro, fora do escopo desta correção, mesma classe de simplificação já
 // aceita pra SAC desde a Tarefa 8).
-function calcularSaldoDevedorAtual(divida: Divida, parcelasRestantes: number): number {
+// Exportada pra reaproveitamento em simular_amortizacao (Fase 6, parte 9) —
+// mesmo cálculo, sem gravar nada.
+export function calcularSaldoDevedorAtual(divida: Divida, parcelasRestantes: number): number {
   const taxa = divida.taxaJuros ?? 0;
 
   if (divida.sistemaAmortizacao === 'sac') {
@@ -361,7 +363,8 @@ function calcularSaldoDevedorAtual(divida: Divida, parcelasRestantes: number): n
   return (divida.valorParcela * (1 - (1 + taxa) ** -parcelasRestantes)) / taxa;
 }
 
-function estimarResultado(
+// Exportada pra reaproveitamento em simular_amortizacao (Fase 6, parte 9).
+export function estimarResultado(
   divida: Divida & { sistemaAmortizacao: NonNullable<Divida['sistemaAmortizacao']> },
   parcelasRestantes: number,
   valor: number,

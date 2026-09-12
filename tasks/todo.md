@@ -128,13 +128,13 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Em `src/ai/tools/dividas.ts`, adicionar `export` a `calcularSaldoDevedorAtual` e `estimarResultado` (já existem, privadas). Nova tool `criarToolSimularAmortizacao(db)` em `projecaoFinanceira.ts`: schema `{ conta_id?, conta_apelido?, tipo_divida, divida_descricao?, valor: number positivo, modo: 'reduzir_parcelas'|'reduzir_valor' }` (mesma identificação de `amortizar_divida`, sem `divida_id`). Resolve conta + dívida (`resolverContaId`/`resolverDividaId`), busca parcelas pendentes; se a dívida não tem `sistemaAmortizacao`, retorna aviso ("essa dívida não tem sistema de amortização cadastrado, não dá pra simular"); senão chama `estimarResultado` e formata o resultado hipotético, deixando claro que é simulação, nada foi alterado. Sem `requerConfirmacao` (não grava nada).
 
 **Acceptance criteria:**
-- [ ] Dívida sem `sistemaAmortizacao` retorna aviso, sem calcular nada
-- [ ] Dívida com `sistemaAmortizacao` retorna o resultado estimado (novo número de parcelas ou novo valor de parcela, conforme `modo`), com texto deixando claro que é hipotético
-- [ ] Não grava nenhuma mudança na dívida/parcelas (chamada duas vezes seguidas dá o mesmo resultado)
+- [x] Dívida sem `sistemaAmortizacao` retorna aviso, sem calcular nada
+- [x] Dívida com `sistemaAmortizacao` retorna o resultado estimado (novo número de parcelas ou novo valor de parcela, conforme `modo`), com texto deixando claro que é hipotético
+- [x] Não grava nenhuma mudança na dívida/parcelas (chamada duas vezes seguidas dá o mesmo resultado)
 
 **Verification:**
-- [ ] `npm test -- tests/ai/tools/projecaoFinanceira.test.ts tests/ai/tools/dividas.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/ai/tools/projecaoFinanceira.test.ts tests/ai/tools/dividas.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 64 (mesmo arquivo `projecaoFinanceira.ts`, criado nessa tarefa)
 
