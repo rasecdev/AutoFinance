@@ -1,9 +1,12 @@
 import { z } from 'zod';
 import type { DbClient } from '../../db/client.js';
 import { obterConta } from '../../db/repositories/contas.js';
+import { listarParcelasPendentes } from '../../db/repositories/parcelas.js';
+import { obterDivida, type TipoDivida } from '../../db/repositories/dividas.js';
 import { projetarFluxoCaixa } from '../../relatorios/fluxoCaixa.js';
 import { calcularPatrimonioLiquido } from '../../relatorios/patrimonio.js';
-import { resolverContaId } from './resolucao.js';
+import { estimarResultado } from './dividas.js';
+import { resolverContaId, resolverDividaId } from './resolucao.js';
 import type { ToolDefinition } from './types.js';
 
 const schemaProjetarFluxoCaixa = z.object({
@@ -70,6 +73,71 @@ export function criarToolConsultarPatrimonioLiquido(db: DbClient): ToolDefinitio
       );
 
       return `Patrimônio líquido:\n${linhasPorTipo.join('\n')}\nConsolidado: R$ ${resultado.consolidado.toFixed(2)}`;
+    },
+  };
+}
+
+const schemaSimularAmortizacao = z
+  .object({
+    conta_id: z.number().int().positive().optional(),
+    conta_apelido: z.string().min(1).optional(),
+    tipo_divida: z.enum(['emprestimo', 'financiamento', 'consignado', 'outro']),
+    divida_descricao: z.string().min(1).optional(),
+    valor: z.number().positive(),
+    modo: z.enum(['reduzir_parcelas', 'reduzir_valor']),
+  })
+  .refine((valor) => valor.conta_id !== undefined || valor.conta_apelido !== undefined, {
+    message: 'Informe a conta (id ou apelido).',
+  });
+
+export function criarToolSimularAmortizacao(db: DbClient): ToolDefinition {
+  return {
+    name: 'simular_amortizacao',
+    description:
+      'Simula "e se eu pagasse um valor extra agora" numa dívida, sem gravar nada — mesma fórmula Price/SAC de amortizar_divida, só pra mostrar o resultado hipotético. Identifica a dívida por conta + tipo_divida (nunca por id — divida_descricao só quando houver mais de uma do mesmo tipo na mesma conta). modo é sempre informado pelo usuário: "reduzir_parcelas" (menos parcelas, mesmo valor) ou "reduzir_valor" (mesma quantidade, valor menor). Só funciona quando a dívida tem sistema_amortizacao cadastrado (price/sac) — sem isso não há como estimar, a ferramenta avisa em vez de simular. Diferente de amortizar_divida: aqui nada é alterado, sem confirmação necessária.',
+    schema: schemaSimularAmortizacao,
+    handler: async (args) => {
+      const {
+        conta_id: contaId,
+        conta_apelido: contaApelido,
+        tipo_divida: tipoDivida,
+        divida_descricao: dividaDescricao,
+        valor,
+        modo,
+      } = args as z.infer<typeof schemaSimularAmortizacao>;
+
+      const resolucaoConta = resolverContaId(db, contaId, contaApelido);
+      if (!resolucaoConta.ok) return resolucaoConta.mensagem;
+
+      const resolucaoDivida = resolverDividaId(db, resolucaoConta.id, tipoDivida as TipoDivida, dividaDescricao);
+      if (!resolucaoDivida.ok) return resolucaoDivida.mensagem;
+
+      const divida = obterDivida(db, resolucaoDivida.id);
+      if (!divida) return 'Não encontrei essa dívida.';
+
+      const pendentes = listarParcelasPendentes(db, divida.id);
+      if (pendentes.length === 0) {
+        return 'Essa dívida não tem parcela pendente pra simular.';
+      }
+
+      if (!divida.sistemaAmortizacao) {
+        return 'Essa dívida não tem sistema de amortização (price/sac) cadastrado, então não dá pra simular automaticamente.';
+      }
+
+      const resultado = estimarResultado(
+        divida as typeof divida & { sistemaAmortizacao: NonNullable<typeof divida.sistemaAmortizacao> },
+        pendentes.length,
+        valor,
+        modo,
+      );
+
+      const parteDescricao = divida.descricao ? ` "${divida.descricao}"` : '';
+      const parteResultado =
+        'novoNumParcelas' in resultado
+          ? `${divida.parcelasPagas + resultado.novoNumParcelas} parcelas no total (${resultado.novoNumParcelas} restantes de R$ ${divida.valorParcela.toFixed(2)} cada)`
+          : `parcelas restantes de R$ ${resultado.novoValorParcela.toFixed(2)} cada`;
+
+      return `Simulação (nada foi alterado): se você pagasse R$ ${valor.toFixed(2)} extra agora na dívida${parteDescricao} (sistema ${divida.sistemaAmortizacao}), ficaria com ${parteResultado}.`;
     },
   };
 }
