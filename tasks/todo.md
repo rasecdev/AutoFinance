@@ -77,12 +77,12 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Nova migração `src/db/migrations/0010_analises_qualidade.sql`: `CREATE TABLE analises_qualidade (id INTEGER PRIMARY KEY AUTOINCREMENT, periodo TEXT NOT NULL, conteudo_gerado TEXT NOT NULL, data_hora TEXT NOT NULL)` — schema exatamente como já registrado no PLANO.md (linha 786). Novo `src/db/repositories/analisesQualidade.ts` com `registrarAnaliseQualidade(db: DbClient, entrada: { periodo: string; conteudoGerado: string }): void` (mesmo padrão de `registrarErro`/`registrarSnapshotCatalogo` — INSERT simples, `data_hora` gerado com `new Date().toISOString()`). `periodo` grava `${janela.inicio}_${janela.fim}` (ex: `"2026-09-01_2026-09-30"`) — só log histórico auditável, não lido de volta nesta rodada (ver Architecture Decisions do plano).
 
 **Acceptance criteria:**
-- [ ] Migração cria a tabela com as 4 colunas, todas `NOT NULL`
-- [ ] `registrarAnaliseQualidade` insere uma linha recuperável por leitura direta (`SELECT * FROM analises_qualidade`) com os valores passados
+- [x] Migração cria a tabela com as 4 colunas, todas `NOT NULL`
+- [x] `registrarAnaliseQualidade` insere uma linha recuperável por leitura direta (`SELECT * FROM analises_qualidade`) com os valores passados
 
 **Verification:**
-- [ ] `npm test -- tests/db/migrate.test.ts tests/db/analisesQualidade.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/db/migrate.test.ts tests/db/analisesQualidade.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** None
 
