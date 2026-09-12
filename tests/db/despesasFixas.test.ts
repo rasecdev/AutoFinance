@@ -10,6 +10,7 @@ import {
   atualizarDespesaFixa,
   buscarDespesasFixasPorConta,
   criarDespesaFixa,
+  listarDespesasFixasAtivas,
   obterDespesaFixa,
 } from '../../src/db/repositories/despesasFixas.js';
 import { migrate } from '../../src/db/migrate.js';
@@ -88,6 +89,45 @@ describe('buscarDespesasFixasPorConta', () => {
     const encontradas = buscarDespesasFixasPorConta(db, contaId);
     expect(encontradas).toHaveLength(1);
     expect(encontradas[0]?.status).toBe('pausada');
+  });
+});
+
+describe('listarDespesasFixasAtivas', () => {
+  it('lista só despesas ativas, de qualquer conta', () => {
+    const outraContaId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Conta 2' }).id;
+
+    const ativa1 = criarDespesaFixa(db, {
+      contaId,
+      descricao: 'Aluguel',
+      categoria: 'Moradia',
+      valorEsperado: 1500,
+      diaVencimentoEsperado: 5,
+      criadoEm: '2026-09-02',
+    });
+    const ativa2 = criarDespesaFixa(db, {
+      contaId: outraContaId,
+      descricao: 'Academia',
+      categoria: 'Saúde',
+      valorEsperado: 100,
+      diaVencimentoEsperado: 15,
+      criadoEm: '2026-09-02',
+    });
+    const pausada = criarDespesaFixa(db, {
+      contaId,
+      descricao: 'Streaming',
+      categoria: 'Assinatura',
+      valorEsperado: 40,
+      diaVencimentoEsperado: 10,
+      criadoEm: '2026-09-02',
+    });
+    atualizarDespesaFixa(db, pausada.id, { status: 'pausada' });
+
+    const ativas = listarDespesasFixasAtivas(db);
+    expect(ativas.map((d) => d.id).sort()).toEqual([ativa1.id, ativa2.id].sort());
+  });
+
+  it('lista vazia quando não há nenhuma despesa ativa', () => {
+    expect(listarDespesasFixasAtivas(db)).toEqual([]);
   });
 });
 

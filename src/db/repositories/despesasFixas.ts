@@ -110,6 +110,16 @@ export function buscarDespesasFixasPorConta(db: DbClient, contaId: number): Desp
   return linhas.map(paraDespesaFixa);
 }
 
+// Varre todas as contas de uma vez (diferente de buscarDespesasFixasPorConta,
+// que é por conta e inclui pausadas) — usado pelo job mensal que compara toda
+// despesa fixa ativa contra o que foi registrado no período (Fase 6 parte 7).
+export function listarDespesasFixasAtivas(db: DbClient): DespesaFixa[] {
+  const linhas = db
+    .prepare("SELECT * FROM despesas_fixas WHERE status = 'ativa' ORDER BY conta_id, descricao")
+    .all() as LinhaDespesaFixa[];
+  return linhas.map(paraDespesaFixa);
+}
+
 export function atualizarDespesaFixa(
   db: DbClient,
   id: number,
