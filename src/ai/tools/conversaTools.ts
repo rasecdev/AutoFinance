@@ -12,6 +12,7 @@ import { criarToolCriarDespesaFixa, criarToolEditarDespesaFixa } from './despesa
 import { criarToolAmortizarDivida, criarToolCriarDivida, criarToolQuitarDivida, criarToolRenegociar } from './dividas.js';
 import { criarToolListarErros } from './errosExecucao.js';
 import { criarToolPagarFatura, criarToolPagarParcela } from './pagamentos.js';
+import { criarToolAnalisarQualidade } from './qualidade.js';
 import { criarToolRelatorio } from './relatorios.js';
 import { criarToolEditarTransacao, criarToolExcluirTransacao, criarToolRegistrarTransacao } from './transacoes.js';
 import { criarToolRegistrarTransferencia } from './transferencias.js';
@@ -47,6 +48,7 @@ export function montarToolsConversa(db: DbClient, client: OpenAI): ToolDefinitio
     criarToolCriarDespesaFixa(db),
     criarToolEditarDespesaFixa(db),
     criarToolRelatorio(db),
+    criarToolAnalisarQualidade(client, db),
     criarToolListarErros(db),
     criarToolCriarCasoTesteBenchmark(db),
     criarToolRodarBenchmarkInterno(client, db),

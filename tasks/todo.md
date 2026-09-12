@@ -122,13 +122,13 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Novo `src/ai/tools/qualidade.ts`, `criarToolAnalisarQualidade(client: OpenAI, db: DbClient): ToolDefinition` (mesmo padrão de `criarToolRodarBenchmarkInterno` — recebe `client` direto). Schema `{ periodo: z.enum(['dia', 'semana', 'mes']) }`. Handler: `calcularJanelaPeriodo(periodo)` → `calcularJanelaAnterior(periodo, janela)` → `agregarQualidadePeriodo` pros dois → `resolverModeloAnalisarQualidade` → `gerarAnaliseQualidade` → `registrarInteracaoIa` (fluxo `analisar_qualidade`) + `registrarUsoTokens` (`origem: 'uso_real'`, mesmo padrão exato de `montarRelatorioMensal`) + `registrarAnaliseQualidade` → retorna o texto da análise. Descrição da tool explicita frases-gatilho ("como estão as respostas da IA", "teve muito erro ultimamente") pra o modelo da conversa reconhecer o pedido sem precisar de correspondência exata de nome. Registrado em `montarToolsConversa` (`conversaTools.ts`), junto de `criarToolRodarBenchmarkInterno(client, db)`.
 
 **Acceptance criteria:**
-- [ ] Chamar a tool grava uma linha em `interacoes_ia` (fluxo `analisar_qualidade`) e em `uso_tokens`, e retorna o texto gerado pela IA
-- [ ] Uma linha nova aparece em `analises_qualidade` após a chamada
-- [ ] Tool aparece na lista retornada por `montarToolsConversa`
+- [x] Chamar a tool grava uma linha em `interacoes_ia` (fluxo `analisar_qualidade`) e em `uso_tokens`, e retorna o texto gerado pela IA
+- [x] Uma linha nova aparece em `analises_qualidade` após a chamada
+- [x] Tool aparece na lista retornada por `montarToolsConversa`
 
 **Verification:**
-- [ ] `npm test -- tests/ai/tools/qualidade.test.ts tests/ai/tools/conversaTools.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/ai/tools/qualidade.test.ts tests/ai/tools/conversaTools.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 58, Tarefa 59
 
@@ -140,7 +140,7 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Estimated scope:** Medium (tool nova + integração no registry)
 
 ## Checkpoint: analisar_qualidade funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
+- [x] `npm run build`/`lint`/`test` sem erro (586/586)
 - [ ] Teste manual em Homologação via Telegram: perguntar algo como "como estão as respostas da IA esse mês?" — confirmar que a tool é chamada, retorna análise narrativa coerente, e uma linha nova aparece em `analises_qualidade`
 - [ ] PROGRESSO.md atualizado com o marco
 - [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
