@@ -10,6 +10,7 @@ import { createHandlerTexto } from '../../src/bot/handlers/texto.js';
 import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
 import {
+  agruparInteracoesPorFluxoModelo,
   atualizarAvaliacaoInteracao,
   buscarUltimaInteracaoCorreta,
   buscarUltimasInteracoesPorChat,
@@ -283,6 +284,54 @@ describe('contarInteracoesAvaliadasIncorretas (Fase 6, Tarefa 27)', () => {
     const umaHoraAntes = new Date(agora.getTime() - 3600_000).toISOString();
 
     expect(contarInteracoesAvaliadasIncorretas(db, { inicio: duasHorasAntes, fim: umaHoraAntes })).toBe(0);
+  });
+});
+
+describe('agruparInteracoesPorFluxoModelo (Fase 6, Tarefa 55)', () => {
+  it('agrupa total e incorretas por fluxo/modelo dentro da janela', () => {
+    registrarInteracaoIa(db, {
+      traceId: 'trace-1',
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      resultado: 'sucesso',
+    });
+    registrarInteracaoIa(db, {
+      traceId: 'trace-2',
+      fluxo: 'conversa_texto',
+      modelo: 'openai/gpt-4o-mini',
+      resultado: 'sucesso',
+    });
+    registrarInteracaoIa(db, {
+      traceId: 'trace-3',
+      fluxo: 'relatorio_mensal',
+      modelo: 'deepseek/deepseek-v4-flash',
+      resultado: 'sucesso',
+    });
+    atualizarAvaliacaoInteracao(db, 'trace-1', 'incorreto');
+    atualizarAvaliacaoInteracao(db, 'trace-2', 'correto');
+    atualizarAvaliacaoInteracao(db, 'trace-3', 'correto');
+
+    const agora = new Date();
+    const umaHoraAntes = new Date(agora.getTime() - 3600_000).toISOString();
+    const umaHoraDepois = new Date(agora.getTime() + 3600_000).toISOString();
+
+    const resultado = agruparInteracoesPorFluxoModelo(db, { inicio: umaHoraAntes, fim: umaHoraDepois });
+
+    expect(resultado).toEqual(
+      expect.arrayContaining([
+        { fluxo: 'conversa_texto', modelo: 'openai/gpt-4o-mini', total: 2, incorretas: 1 },
+        { fluxo: 'relatorio_mensal', modelo: 'deepseek/deepseek-v4-flash', total: 1, incorretas: 0 },
+      ]),
+    );
+    expect(resultado).toHaveLength(2);
+  });
+
+  it('retorna lista vazia quando não há interação na janela', () => {
+    const agora = new Date();
+    const umaHoraAntes = new Date(agora.getTime() - 3600_000).toISOString();
+    const umaHoraDepois = new Date(agora.getTime() + 3600_000).toISOString();
+
+    expect(agruparInteracoesPorFluxoModelo(db, { inicio: umaHoraAntes, fim: umaHoraDepois })).toEqual([]);
   });
 });
 
