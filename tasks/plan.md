@@ -29,10 +29,10 @@ Quatro peças de leitura (nenhuma tabela nova): `projetar_fluxo_caixa(dias)` (so
 - [x] Tarefa 64: tool `projetar_fluxo_caixa` (`src/ai/tools/projecaoFinanceira.ts`)
 - [x] Tarefa 65: `calcularPatrimonioLiquido(db)` + tool `consultar_patrimonio_liquido`
 - [x] Tarefa 66: tool `simular_amortizacao` (reaproveita helpers de `dividas.ts`, exportados)
-- [ ] Tarefa 67: alerta de limite de cartão em `registrar_transacao`
+- [x] Tarefa 67: alerta de limite de cartão em `registrar_transacao`
 
 ### Checkpoint: Projeção financeira funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
+- [x] `npm run build`/`lint`/`test` sem erro (627/627)
 - [ ] PLANO.md atualizado (linha 313, `simular_amortizacao` por conta+tipo, não `divida_id`) — porquê registrado no PROGRESSO.md
 - [ ] Teste manual em Homologação via Telegram: `projetar_fluxo_caixa`, `consultar_patrimonio_liquido`, `simular_amortizacao` e um registro de transação em cartão perto do limite (confirmar aviso quando acima de 80%)
 - [ ] PROGRESSO.md atualizado com o marco

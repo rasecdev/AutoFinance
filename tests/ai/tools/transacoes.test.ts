@@ -439,3 +439,73 @@ describe('tool excluir_transacao', () => {
     expect(resultado).toContain('Não sei qual transação');
   });
 });
+
+describe('registrar_transacao — alerta de limite de cartão (Fase 6, Tarefa 67)', () => {
+  it('não avisa quando o gasto do ciclo fica abaixo do limiar', async () => {
+    const cartaoId = criarCartao(db, { contaId, nome: 'Cartão', limite: 1000, diaFechamento: 28, diaVencimento: 5 }).id;
+    const tool = criarToolRegistrarTransacao(db);
+    const args = tool.schema.parse({
+      cartao_id: cartaoId,
+      tipo: 'despesa',
+      valor: 100,
+      categoria: 'Compras',
+      data: new Date().toISOString().slice(0, 10),
+    });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).not.toContain('Atenção');
+  });
+
+  it('avisa quando o gasto do ciclo atinge 80% ou mais do limite', async () => {
+    const cartaoId = criarCartao(db, { contaId, nome: 'Cartão', limite: 1000, diaFechamento: 28, diaVencimento: 5 }).id;
+    const hojeISO = new Date().toISOString().slice(0, 10);
+    criarTransacao(db, { cartaoId, tipo: 'despesa', valor: 700, categoria: 'Compras', data: hojeISO });
+
+    const tool = criarToolRegistrarTransacao(db);
+    const args = tool.schema.parse({
+      cartao_id: cartaoId,
+      tipo: 'despesa',
+      valor: 100,
+      categoria: 'Compras',
+      data: hojeISO,
+    });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).toContain('Atenção');
+    expect(resultado).toContain('800.00');
+    expect(resultado).toContain('1000.00');
+  });
+
+  it('receita em cartão nunca aciona o cálculo do alerta', async () => {
+    const cartaoId = criarCartao(db, { contaId, nome: 'Cartão', limite: 100, diaFechamento: 28, diaVencimento: 5 }).id;
+    const tool = criarToolRegistrarTransacao(db);
+    const args = tool.schema.parse({
+      cartao_id: cartaoId,
+      tipo: 'receita',
+      valor: 500,
+      categoria: 'Reembolso',
+      data: new Date().toISOString().slice(0, 10),
+    });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).not.toContain('Atenção');
+  });
+
+  it('transação em conta (sem cartão) nunca aciona o cálculo do alerta', async () => {
+    const tool = criarToolRegistrarTransacao(db);
+    const args = tool.schema.parse({
+      conta_id: contaId,
+      tipo: 'despesa',
+      valor: 100,
+      categoria: 'Compras',
+      data: new Date().toISOString().slice(0, 10),
+    });
+
+    const resultado = await tool.handler(args, { chatId: 1 });
+
+    expect(resultado).not.toContain('Atenção');
+  });
+});

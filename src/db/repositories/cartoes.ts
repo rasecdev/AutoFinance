@@ -25,6 +25,13 @@ export function cartaoExiste(db: DbClient, id: number): boolean {
   return linha !== undefined;
 }
 
+export function obterCartao(db: DbClient, id: number): Cartao | undefined {
+  const linha = db
+    .prepare('SELECT id, conta_id, nome, limite, dia_fechamento, dia_vencimento FROM cartoes WHERE id = ?')
+    .get(id) as LinhaCartao | undefined;
+  return linha ? paraCartao(linha) : undefined;
+}
+
 type LinhaCartao = {
   id: number;
   conta_id: number;
