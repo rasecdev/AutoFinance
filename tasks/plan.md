@@ -24,7 +24,7 @@ Quatro peças de leitura (nenhuma tabela nova): `projetar_fluxo_caixa(dias)` (so
 ### Fase V: Projeção financeira
 
 - [x] Tarefa 61: `cartaoId` opcional em `FiltroTransacoes`/`listarTransacoesAtivas` (transacoes.ts)
-- [ ] Tarefa 62: `listarFaturasAbertas(db, contaId?)` em faturas.ts (com `diaVencimento` do cartão via join)
+- [x] Tarefa 62: `listarFaturasAbertas(db, contaId?)` em faturas.ts (com `diaVencimento` do cartão via join)
 - [ ] Tarefa 63: `src/relatorios/fluxoCaixa.ts` — datas puras + `projetarFluxoCaixa(db, dias, contaId?)`
 - [ ] Tarefa 64: tool `projetar_fluxo_caixa` (`src/ai/tools/projecaoFinanceira.ts`)
 - [ ] Tarefa 65: `calcularPatrimonioLiquido(db)` + tool `consultar_patrimonio_liquido`
