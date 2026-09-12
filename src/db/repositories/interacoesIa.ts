@@ -175,3 +175,26 @@ export function contarInteracoesAvaliadasIncorretas(
 
   return resultado.total;
 }
+
+export type QualidadePorFluxoModelo = { fluxo: string; modelo: string; total: number; incorretas: number };
+
+// Usado por analisar_qualidade (Fase 6, parte 8): diferente de
+// contarInteracoesAvaliadasIncorretas (só o total do período), aqui a
+// contagem sai agrupada por fluxo/modelo — precisa saber QUAL fluxo/modelo
+// errou mais, não só quanto no total.
+export function agruparInteracoesPorFluxoModelo(
+  db: DbClient,
+  janela: { inicio: string; fim: string },
+): QualidadePorFluxoModelo[] {
+  const linhas = db
+    .prepare(
+      `SELECT fluxo, modelo, COUNT(*) AS total,
+              SUM(CASE WHEN avaliacao_usuario = 'incorreto' THEN 1 ELSE 0 END) AS incorretas
+       FROM interacoes_ia
+       WHERE data_hora >= ? AND data_hora <= ?
+       GROUP BY fluxo, modelo`,
+    )
+    .all(janela.inicio, janela.fim) as Array<{ fluxo: string; modelo: string; total: number; incorretas: number }>;
+
+  return linhas;
+}
