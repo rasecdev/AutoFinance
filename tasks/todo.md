@@ -1,179 +1,186 @@
-# Tarefas: Fase 6 (parte 9) — Projeção financeira
+# Tarefas: Fase 6 (parte 10) — Consulta dinâmica + gráfico
 
 Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, ordem). Fluxo de branch/PR/merge por tarefa é o já descrito em `CLAUDE.md` — não repetido aqui.
 
-## Fase V: Projeção financeira
+## Fase VI: Consulta dinâmica + gráfico
 
-### Tarefa 61: `cartaoId` opcional em `FiltroTransacoes`/`listarTransacoesAtivas`
+### Tarefa 68: motor de query domínio `financeiro` em `consultaDinamica.ts`
 
-**Description:** Adicionar `cartaoId?: number` a `FiltroTransacoes` em `src/db/repositories/transacoes.ts`, com a condição `cartao_id = ?` quando informado (mesmo padrão das outras condições opcionais já existentes no filtro). Base pro cálculo do gasto do ciclo atual de um cartão (Tarefa 67).
+**Description:** Nova função pura `executarConsultaDinamica(db: DbClient, params: ParamsConsultaDinamica): ResultadoConsultaDinamica` em `src/relatorios/consultaDinamica.ts`. Pra `dominio: 'financeiro'`, monta `SELECT` contra `transacoes` com `GROUP BY` dinâmico (1 ou 2 dimensões da whitelist: `categoria`, `conta_id`, `cartao_id`, `dia_semana`, `mes`, `tipo_transacao`), métrica (`soma_valor` → `SUM(valor)`, `media_valor` → `AVG(valor)`, `contagem` → `COUNT(*)`, `saldo` → `SUM(CASE WHEN tipo='receita' THEN valor ELSE -valor END)`, mesmo padrão de `calcularSaldoTransacoesConta`), filtros (`dataInicio`/`dataFim`/`categoria`/`contaId`/`cartaoId`/`tipo`) sempre via bind parameter. `dia_semana`/`mes` calculados com `strftime('%w', data)`/`strftime('%Y-%m', data)`. Resultado: `{rotulo, valor}[]` com 1 dimensão, `{serie, rotulo, valor}[]` com 2 (primeira dimensão listada = série). Ordenação: `mes`/`dia_semana` sempre cronológica (tabela de ordem fixa no código, jan→dez / dom→sáb), `ordenar_por` só escolhe direção pra essas; dimensões sem ordem natural usam `ordenar_por`/`limite` por valor.
 
 **Acceptance criteria:**
-- [x] `listarTransacoesAtivas(db, { cartaoId })` retorna só transações ativas daquele cartão
-- [x] Combinado com `dataInicio`/`dataFim` já existentes, filtra por cartão E data ao mesmo tempo
-- [x] Sem `cartaoId` informado, comportamento inalterado (todas as contas/cartões)
+- [ ] 1 dimensão (ex: `categoria`) retorna lista simples `{rotulo, valor}`, ordenável por valor com `limite` (cobre "top 5")
+- [ ] 2 dimensões (ex: `[categoria, mes]`) retorna `{serie, rotulo, valor}`, com `mes` sempre em ordem cronológica independente de `ordenar_por`
+- [ ] Cada métrica (`soma_valor`, `media_valor`, `contagem`, `saldo`) calcula certo contra dado de teste conhecido
+- [ ] Filtros (`dataInicio`/`dataFim`/`categoria`/`contaId`/`cartaoId`/`tipo`) combinam corretamente entre si e com o agrupamento
+- [ ] Parâmetro fora da whitelist (métrica/dimensão desconhecida) lança erro tipado, não silencioso
 
 **Verification:**
-- [x] `npm test -- tests/db/transacoes.test.ts`
-- [x] `npm run build`
+- [ ] `npm test -- tests/relatorios/consultaDinamica.test.ts`
+- [ ] `npm run build`
 
 **Dependencies:** None
 
 **Files likely touched:**
-- `src/db/repositories/transacoes.ts`
-- `tests/db/transacoes.test.ts`
+- `src/relatorios/consultaDinamica.ts`
+- `tests/relatorios/consultaDinamica.test.ts`
 
-**Estimated scope:** Small (1 arquivo, campo de filtro novo)
-
----
-
-### Tarefa 62: `listarFaturasAbertas(db, contaId?)` em faturas.ts
-
-**Description:** Nova função em `src/db/repositories/faturas.ts` — `SELECT f.*, c.conta_id, c.dia_vencimento FROM faturas f JOIN cartoes c ON c.id = f.cartao_id WHERE f.status = 'aberta'` (+ `AND c.conta_id = ?` quando `contaId` informado), retornando `FaturaAbertaComVencimento = Fatura & { diaVencimento: number }` — o `diaVencimento` do cartão já embutido evita uma segunda consulta pra calcular a data de vencimento projetada (Tarefa 63).
-
-**Acceptance criteria:**
-- [x] Retorna só faturas com `status = 'aberta'`
-- [x] Com `contaId` informado, filtra só faturas de cartões daquela conta
-- [x] Cada item inclui `diaVencimento` do cartão correspondente
-
-**Verification:**
-- [x] `npm test -- tests/db/faturas.test.ts`
-- [x] `npm run build`
-
-**Dependencies:** None
-
-**Files likely touched:**
-- `src/db/repositories/faturas.ts`
-- `tests/db/faturas.test.ts`
-
-**Estimated scope:** Small (1 arquivo, função única)
+**Estimated scope:** Medium (motor de query novo, várias combinações de dimensão/métrica)
 
 ---
 
-### Tarefa 63: `src/relatorios/fluxoCaixa.ts` — datas puras + `projetarFluxoCaixa`
+### Tarefa 69: extensão do motor pro domínio `uso_ia`
 
-**Description:** Novo módulo `src/relatorios/fluxoCaixa.ts`. Duas funções de data puras: `calcularDataVencimentoFatura(mesReferencia: string, diaVencimento: number): string` (constrói a data a partir de `mesReferencia` "AAAA-MM" + o dia, mesmo princípio de `somarMeses` em `dividas.ts`) e `calcularProximaOcorrenciaMensal(diaDoMes: number, apartirDe: Date): string` (próxima data em que o dia do mês ocorre a partir de hoje — mesmo uso que `dia_vencimento_esperado` de despesas fixas já tem em `verificarDespesasFixas.ts`, mas isolada aqui pra reaproveitar). Função principal `projetarFluxoCaixa(db: DbClient, dias: number, contaId?: number): ResultadoProjecaoFluxoCaixa`, com `ResultadoProjecaoFluxoCaixa = { saldoAtual: number; saldoProjetado: number; eventos: EventoFluxoCaixa[]; dataFicaNegativo: string | null }` e `EventoFluxoCaixa = { data: string; descricao: string; valor: number }` — junta parcelas pendentes (`listarParcelasPendentesDividasAtivas`, filtradas por `dataVencimento` na janela `[hoje, hoje+dias]`), faturas abertas (`listarFaturasAbertas` + `calcularDataVencimentoFatura`, mesma janela) e despesas fixas ativas sem `cartaoId` (`listarDespesasFixasAtivas`/`buscarDespesasFixasPorConta` quando `contaId` informado, filtradas por conta quando aplicável, com `calcularProximaOcorrenciaMensal` pra achar a próxima data, só entra se cair na janela) — soma saldo atual da(s) conta(s) (`obterConta`/`listarContas`, somado quando sem `contaId`) menos a soma ordenada cronológica dos eventos, marcando a primeira data em que a soma acumulada cruza negativo.
+**Description:** Mesma função `executarConsultaDinamica`, nova branch pra `dominio: 'uso_ia'` — consulta `uso_tokens` (colunas `fluxo`, `modelo`, `tokens_prompt`, `tokens_completion`, `custo_estimado`, `data_hora`), com whitelist própria de dimensão (`fluxo`, `modelo`) e métrica restrita ao que faz sentido pra essa tabela (`soma_valor` soma `custo_estimado` ou `tokens_prompt+tokens_completion` — decidir e documentar qual; `contagem`, `media_valor` idem). Reaproveita o mesmo formato de saída e mecanismo de filtro/ordenação da Tarefa 68.
 
 **Acceptance criteria:**
-- [x] Parcela/fatura/despesa fixa (sem cartão) vencendo dentro da janela entra em `eventos`; fora da janela, não entra
-- [x] Despesa fixa com `cartaoId` preenchido nunca entra, mesmo vencendo dentro da janela
-- [x] `saldoProjetado` = saldo atual menos a soma de todos os eventos
-- [x] `dataFicaNegativo` é a data do primeiro evento (em ordem cronológica) cuja soma acumulada deixa o saldo negativo; `null` quando nunca fica negativo na janela
-- [x] Sem `contaId`, soma saldo e eventos de todas as contas juntos (mesma simplificação de `resumo_dividas`)
+- [ ] `dominio: 'uso_ia'` com `agrupar_por: [fluxo]` retorna custo/uso agregado por fluxo
+- [ ] `dominio: 'uso_ia'` com `agrupar_por: [modelo]` retorna agregado por modelo
+- [ ] Filtro de período (`dataInicio`/`dataFim`) funciona igual ao domínio financeiro
+- [ ] Dimensão/métrica do domínio financeiro (ex: `categoria`) rejeitada quando `dominio: 'uso_ia'` (whitelists são independentes por domínio)
 
 **Verification:**
-- [x] `npm test -- tests/relatorios/fluxoCaixa.test.ts`
-- [x] `npm run build`
+- [ ] `npm test -- tests/relatorios/consultaDinamica.test.ts`
+- [ ] `npm run build`
 
-**Dependencies:** Tarefa 62
+**Dependencies:** Tarefa 68
 
 **Files likely touched:**
-- `src/relatorios/fluxoCaixa.ts`
-- `tests/relatorios/fluxoCaixa.test.ts`
+- `src/relatorios/consultaDinamica.ts`
+- `tests/relatorios/consultaDinamica.test.ts`
 
-**Estimated scope:** Medium (função de agregação com 3 fontes + lógica de data)
+**Estimated scope:** Small (mesma função, nova branch reaproveitando a estrutura já criada)
 
 ---
 
-### Tarefa 64: tool `projetar_fluxo_caixa`
+### Tarefa 70: tool `consultar_dados_dinamico`
 
-**Description:** Novo `src/ai/tools/projecaoFinanceira.ts` (arquivo compartilhado pelas três tools desta rodada — Tarefas 64/65/66). `criarToolProjetarFluxoCaixa(db)`: schema `{ dias: z.number().int().positive(), conta_id?, conta_apelido? }`, resolve conta (opcional, mesmo padrão de `resumo_dividas`), chama `projetarFluxoCaixa`, formata texto: saldo atual, saldo projetado, lista de eventos (data, descrição, valor) e — quando `dataFicaNegativo` não é `null` — um aviso destacado com a data. Consulta, sem efeito colateral — não exige confirmação.
+**Description:** Nova tool em `src/ai/tools/consultaDinamica.ts` — `schema` Zod com `dominio` (enum), `metricas` (array de enum), `agrupar_por` (array de enum, máx. 2 itens), `filtros` (objeto opcional), `ordenar_por` (opcional, com direção quando dimensão de tempo), `limite` (opcional). Handler chama `executarConsultaDinamica`, formata a lista de resultado em texto (tabela simples) e sempre prefixa/sufixa com o eco de interpretação (período, filtro, agrupamento, métrica usados) — mitigação de Misinformation do PLANO.md item 8.4. Fora da whitelist: a validação Zod já recusa (enum), então o erro do schema chega como mensagem de "não consegui interpretar", nunca como exceção não tratada.
 
 **Acceptance criteria:**
-- [x] Chamada sem eventos na janela retorna só saldo atual = saldo projetado, sem lista
-- [x] Chamada com `dataFicaNegativo` preenchido inclui aviso destacado citando a data
-- [x] `conta_id`/`conta_apelido` invalidos retornam a mensagem de erro de `resolverContaId` (mesmo padrão de outras tools)
+- [ ] Pergunta simples (1 métrica, 1 dimensão) retorna texto com resultado + eco de interpretação
+- [ ] Pergunta composta (2 dimensões) retorna texto agrupado por série, ainda com eco
+- [ ] `dominio: 'uso_ia'` funciona igual, chamando o mesmo motor
+- [ ] Parâmetro inválido (fora do enum) retorna mensagem de recusa clara, sem estourar erro pro usuário
+- [ ] Tool marcada como consulta pura (`requerConfirmacao` ausente/false)
 
 **Verification:**
-- [x] `npm test -- tests/ai/tools/projecaoFinanceira.test.ts`
-- [x] `npm run build`
+- [ ] `npm test -- tests/ai/tools/consultaDinamica.test.ts`
+- [ ] `npm run build`
 
-**Dependencies:** Tarefa 63
+**Dependencies:** Tarefa 69
 
 **Files likely touched:**
-- `src/ai/tools/projecaoFinanceira.ts`
-- `src/ai/tools/conversaTools.ts`
-- `tests/ai/tools/projecaoFinanceira.test.ts`
+- `src/ai/tools/consultaDinamica.ts`
+- `src/ai/tools/conversaTools.ts` (registro)
+- `tests/ai/tools/consultaDinamica.test.ts`
 
-**Estimated scope:** Medium (tool nova + registro no registry)
+**Estimated scope:** Medium (schema com validação composta + formatação de texto)
 
 ---
 
-### Tarefa 65: `calcularPatrimonioLiquido` + tool `consultar_patrimonio_liquido`
+### Tarefa 71: `ToolDefinition.handler` pode devolver imagem
 
-**Description:** Novo módulo `src/relatorios/patrimonio.ts` (arquivo próprio, não em `fluxoCaixa.ts` — agregação diferente, sem relação de dependência entre as duas): `calcularPatrimonioLiquido(db: DbClient): PatrimonioLiquido`, com `PatrimonioLiquido = { porTipo: Array<{ tipo: 'PF' | 'PJ'; saldoContas: number; saldoDevedorDividas: number; valorFaturasAbertas: number; patrimonioLiquido: number }>; consolidado: number }` — soma `listarContas(db)` por `tipo`, subtrai saldo devedor (`listarParcelasPendentesDividasAtivas(db)`, somado por `contaId` → `tipo` da conta) e valor de `listarFaturasAbertas(db)` (idem). Tool `criarToolConsultarPatrimonioLiquido(db)` em `projecaoFinanceira.ts`, sem parâmetro, formata os três blocos (PF, PJ, consolidado). Consulta, sem efeito colateral.
+**Description:** Mudança de arquitetura mínima. Em `src/ai/tools/types.ts`, `handler` passa a `(args, ctx) => Promise<string | { texto: string; imagem?: Buffer }>`. Em `src/ai/openrouter.ts`: `executarToolCall` extrai `texto` (vira `conteudo`, igual hoje, vai pro `role: 'tool'`) e, se houver `imagem`, acumula; `gerarResposta` ganha campo novo `imagens: Buffer[]` no retorno (`RespostaGerada`), juntando as imagens de todas as tool calls do turno. Em `src/bot/handlers/texto.ts`, depois do `ctx.reply(resposta.resposta)` já existente, se `resposta.imagens.length > 0`, manda cada uma via `ctx.replyWithPhoto({ source: buffer })`. Nenhuma tool existente muda de comportamento (todas continuam retornando `string` puro, caso válido da união).
 
 **Acceptance criteria:**
-- [x] `patrimonioLiquido` de cada tipo = `saldoContas - saldoDevedorDividas - valorFaturasAbertas`
-- [x] `consolidado` = soma dos dois tipos
-- [x] Sem nenhuma conta/dívida/fatura cadastrada, retorna tudo zerado sem lançar erro
+- [ ] Tool que retorna `string` (todas as existentes) continua funcionando sem mudança de teste
+- [ ] Tool que retorna `{texto, imagem}` — o texto vai pro modelo via `role: 'tool'`, a imagem nunca é serializada pro modelo
+- [ ] `gerarResposta` acumula imagens de múltiplas tool calls no mesmo turno, se houver mais de uma
+- [ ] `src/bot/handlers/texto.ts` manda foto(s) depois do texto, só quando existirem
 
 **Verification:**
-- [x] `npm test -- tests/relatorios/patrimonio.test.ts tests/ai/tools/projecaoFinanceira.test.ts`
-- [x] `npm run build`
+- [ ] `npm test -- tests/ai/openrouter.test.ts tests/bot/handlers/texto.test.ts`
+- [ ] `npm run build`
 
-**Dependencies:** Tarefa 62
+**Dependencies:** None (paralelizável com 68-70)
 
 **Files likely touched:**
-- `src/relatorios/patrimonio.ts`
-- `src/ai/tools/projecaoFinanceira.ts`
-- `tests/relatorios/patrimonio.test.ts`
+- `src/ai/tools/types.ts`
+- `src/ai/openrouter.ts`
+- `src/bot/handlers/texto.ts`
+- `tests/ai/openrouter.test.ts`
+- `tests/bot/handlers/texto.test.ts`
 
-**Estimated scope:** Medium (agregação + tool)
+**Estimated scope:** Medium (muda tipo compartilhado por todas as tools, precisa cuidado pra não quebrar as existentes)
 
 ---
 
-### Tarefa 66: tool `simular_amortizacao`
+### Tarefa 72: `renderizarGrafico(tipo, dados)` em `grafico.ts`
 
-**Description:** Em `src/ai/tools/dividas.ts`, adicionar `export` a `calcularSaldoDevedorAtual` e `estimarResultado` (já existem, privadas). Nova tool `criarToolSimularAmortizacao(db)` em `projecaoFinanceira.ts`: schema `{ conta_id?, conta_apelido?, tipo_divida, divida_descricao?, valor: number positivo, modo: 'reduzir_parcelas'|'reduzir_valor' }` (mesma identificação de `amortizar_divida`, sem `divida_id`). Resolve conta + dívida (`resolverContaId`/`resolverDividaId`), busca parcelas pendentes; se a dívida não tem `sistemaAmortizacao`, retorna aviso ("essa dívida não tem sistema de amortização cadastrado, não dá pra simular"); senão chama `estimarResultado` e formata o resultado hipotético, deixando claro que é simulação, nada foi alterado. Sem `requerConfirmacao` (não grava nada).
+**Description:** Adicionar `chartjs-node-canvas` + `chart.js` como dependência. Nova função pura `renderizarGrafico(tipo: 'barra'|'linha'|'pizza', dados: DadoGrafico[]): Buffer` em `src/relatorios/grafico.ts` — recebe o mesmo formato de saída da Tarefa 68 (`{rotulo,valor}[]` ou `{serie,rotulo,valor}[]`), monta a config do Chart.js (dataset único ou múltiplo por série) e renderiza a imagem em PNG via canvas server-side. Confirmar que o build Docker aceita a dependência nativa (`canvas`) — se não aceitar de primeira, ajustar `Dockerfile` nesta mesma tarefa.
 
 **Acceptance criteria:**
-- [x] Dívida sem `sistemaAmortizacao` retorna aviso, sem calcular nada
-- [x] Dívida com `sistemaAmortizacao` retorna o resultado estimado (novo número de parcelas ou novo valor de parcela, conforme `modo`), com texto deixando claro que é hipotético
-- [x] Não grava nenhuma mudança na dívida/parcelas (chamada duas vezes seguidas dá o mesmo resultado)
+- [ ] `tipo: 'barra'`/`'linha'`/`'pizza'` com dado de 1 série renderiza sem erro, retorna `Buffer` não vazio válido como PNG
+- [ ] Dado com 2+ séries (`serie` presente) renderiza múltiplos datasets/cores
+- [ ] `npm run build` (Docker) continua funcionando com a dependência nova
 
 **Verification:**
-- [x] `npm test -- tests/ai/tools/projecaoFinanceira.test.ts tests/ai/tools/dividas.test.ts`
-- [x] `npm run build`
+- [ ] `npm test -- tests/relatorios/grafico.test.ts`
+- [ ] `npm run build`
+- [ ] `docker compose build homologacao` (confirmar que a dependência nativa instala na imagem)
 
-**Dependencies:** Tarefa 64 (mesmo arquivo `projecaoFinanceira.ts`, criado nessa tarefa)
+**Dependencies:** None (paralelizável com 68-71)
 
 **Files likely touched:**
-- `src/ai/tools/dividas.ts`
-- `src/ai/tools/projecaoFinanceira.ts`
-- `tests/ai/tools/projecaoFinanceira.test.ts`
+- `package.json`
+- `src/relatorios/grafico.ts`
+- `tests/relatorios/grafico.test.ts`
+- `Dockerfile` (se necessário)
 
-**Estimated scope:** Small (reaproveita cálculo já existente, só exporta + nova tool fina)
+**Estimated scope:** Medium (dependência nova + possível ajuste de imagem Docker)
 
 ---
 
-### Tarefa 67: alerta de limite de cartão em `registrar_transacao`
+### Tarefa 73: tool `gerar_grafico`
 
-**Description:** Nova função pura `calcularGastoCicloAtualCartao(db: DbClient, cartaoId: number, hoje: Date): number` em `src/relatorios/limiteCartao.ts` — determina o início do ciclo atual a partir de `cartao.diaFechamento` (se `hoje.dia > diaFechamento`, ciclo começou em `diaFechamento + 1` deste mês; senão, do mês anterior) e soma `listarTransacoesAtivas(db, { cartaoId, dataInicio })` (usa o filtro da Tarefa 61), filtrando em código só as de `tipo === 'despesa'` (o filtro do repositório não ganha campo de tipo nesta rodada, evita escopo além do pedido). Em `criarToolRegistrarTransacao` (`transacoes.ts`), depois de criar a transação, se `cartaoId` estiver definido: busca o cartão (nova `obterCartao(db, id)` em `cartoes.ts`, se não existir ainda), calcula o gasto do ciclo, e se `>= 0.8 * cartao.limite`, acrescenta um aviso ao texto de retorno (mesmo princípio de `parteDivergencia`/`parteIndexador` em `dividas.ts` — texto concatenado à resposta normal, sem mecanismo de envio separado).
+**Description:** Nova tool em `src/ai/tools/grafico.ts` — schema Zod valida `tipo` (enum) e `dados` (union de `{rotulo,valor}[]`/`{serie,rotulo,valor}[]`, tudo numérico validado). Handler chama `renderizarGrafico` e devolve `{texto: <descrição curta do gráfico gerado>, imagem: buffer}` (formato da Tarefa 71). Descrição da tool deixa explícito que `dados` deve vir do resultado de `consultar_dados_dinamico` (ou outra fonte determinística), nunca inventado pela IA.
 
 **Acceptance criteria:**
-- [x] Transação de despesa em cartão que deixa o gasto do ciclo abaixo de 80% do limite não altera o texto de retorno
-- [x] Transação que deixa o gasto igual ou acima de 80% do limite acrescenta aviso ao texto de retorno, citando valor gasto e limite
-- [x] Transação sem `cartao_id` (conta normal) nunca aciona o cálculo
+- [ ] `dados` no formato esperado gera imagem e texto de acompanhamento
+- [ ] `dados` fora do shape esperado (ex: valor não numérico) recusa com mensagem clara, não estoura erro
+- [ ] Tool marcada como consulta pura (sem `requerConfirmacao`)
 
 **Verification:**
-- [x] `npm test -- tests/relatorios/limiteCartao.test.ts tests/ai/tools/transacoes.test.ts`
-- [x] `npm run build`
+- [ ] `npm test -- tests/ai/tools/grafico.test.ts`
+- [ ] `npm run build`
 
-**Dependencies:** Tarefa 61
+**Dependencies:** Tarefa 71, Tarefa 72
 
 **Files likely touched:**
-- `src/relatorios/limiteCartao.ts`
-- `src/db/repositories/cartoes.ts`
-- `src/ai/tools/transacoes.ts`
-- `tests/relatorios/limiteCartao.test.ts`
-- `tests/ai/tools/transacoes.test.ts`
+- `src/ai/tools/grafico.ts`
+- `src/ai/tools/conversaTools.ts` (registro)
+- `tests/ai/tools/grafico.test.ts`
 
-**Estimated scope:** Medium (função de data/agregação + hook num handler existente)
+**Estimated scope:** Small (tool fina em cima do que já existe)
 
-## Checkpoint: Projeção financeira funcional
-- [x] `npm run build`/`lint`/`test` sem erro (627/627 — 1 flake isolado de timeout em `tests/db/migrate.test.ts`, já documentado, confirmado não-relacionado rodando isolado)
-- [x] PLANO.md atualizado (linha 313, `simular_amortizacao` por conta+tipo, não `divida_id`) — porquê registrado no PROGRESSO.md
-- [x] Teste manual em Homologação via Telegram: `projetar_fluxo_caixa`, `consultar_patrimonio_liquido` e o alerta de limite de cartão passaram de primeira; `simular_amortizacao` revelou 2 bugs reais de UX (resposta narrando simulação como fato consumado; exigência de conta desnecessária), ambos corrigidos e reconfirmados
-- [x] PROGRESSO.md atualizado com o marco
-- [x] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
+---
+
+### Tarefa 74: tool `consultar_e_graficar`
+
+**Description:** Nova tool em `src/ai/tools/consultaEGraficar.ts` — schema combina os parâmetros de `consultar_dados_dinamico` (Tarefa 70) com `tipo_grafico` (mesmo enum de `gerar_grafico`). Handler chama `executarConsultaDinamica` e `renderizarGrafico` na mesma função, sem round-trip novo pro modelo, devolvendo `{texto: <resultado numérico + eco de interpretação>, imagem: buffer}`. Descrição da tool deixa claro que é atalho pro caso comum e inequívoco (pedido já vem sem ambiguidade sobre o que visualizar) — não substitui as duas tools separadas.
+
+**Acceptance criteria:**
+- [ ] Chamada única retorna texto (com eco de interpretação) + imagem, sem exigir uma segunda chamada de tool
+- [ ] Mesmas validações de whitelist de `consultar_dados_dinamico` aplicadas aqui
+- [ ] Parâmetro de gráfico inválido (`tipo_grafico` fora do enum) recusa com clareza
+
+**Verification:**
+- [ ] `npm test -- tests/ai/tools/consultaEGraficar.test.ts`
+- [ ] `npm run build`
+
+**Dependencies:** Tarefa 70, Tarefa 73
+
+**Files likely touched:**
+- `src/ai/tools/consultaEGraficar.ts`
+- `src/ai/tools/conversaTools.ts` (registro)
+- `tests/ai/tools/consultaEGraficar.test.ts`
+
+**Estimated scope:** Small (combina duas funções já existentes numa tool nova)
+
+## Checkpoint: Consulta dinâmica + gráfico funcional
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] PROGRESSO.md atualizado com o marco
+- [ ] Teste manual em Homologação via Telegram: pergunta livre, gráfico e um caso fora da whitelist (confirmar recusa)
+- [ ] Milestone "Fase 6 (parte 10)" fechado — issues todas fechadas via `Closes #N`, e com isso a Fase 6 inteira fecha
+- [ ] Revisão com o usuário antes de prosseguir (Fase 7)
