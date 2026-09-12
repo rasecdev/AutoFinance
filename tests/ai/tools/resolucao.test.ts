@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { resolverCartaoId, resolverContaId, resolverDividaId } from '../../../src/ai/tools/resolucao.js';
+import { resolverCartaoId, resolverContaId, resolverDividaGlobal, resolverDividaId } from '../../../src/ai/tools/resolucao.js';
 import type { DbClient } from '../../../src/db/client.js';
 import { criarCartao } from '../../../src/db/repositories/cartoes.js';
 import { criarConta } from '../../../src/db/repositories/contas.js';
@@ -150,5 +150,51 @@ describe('resolverDividaId — busca aproximada na divida_descricao', () => {
     const resultado = resolverDividaId(db, contaId, 'financiamento', 'Financiamento da Moto');
 
     expect(resultado.ok).toBe(true);
+  });
+});
+
+describe('resolverDividaGlobal — busca sem conta (Fase 6, Tarefa 66/simular_amortizacao)', () => {
+  it('resolve direto quando a dívida do tipo é única no sistema, sem precisar de conta', () => {
+    const contaId = criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Principal' }).id;
+    const divida = criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 12000,
+      numParcelas: 12,
+      dataInicio: '2026-09-01',
+      descricao: 'Financiamento Moto',
+    });
+
+    const resultado = resolverDividaGlobal(db, 'financiamento');
+
+    expect(resultado).toEqual({ ok: true, id: divida.divida.id });
+  });
+
+  it('pede pra especificar quando há mais de uma dívida do mesmo tipo em contas diferentes', () => {
+    const contaId1 = criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Principal' }).id;
+    const contaId2 = criarConta(db, { bancoNome: 'Itaú', tipo: 'PJ', apelido: 'PJ' }).id;
+    criarDivida(db, { contaId: contaId1, tipo: 'financiamento', valorTotal: 12000, numParcelas: 12, dataInicio: '2026-09-01', descricao: 'Moto' });
+    criarDivida(db, { contaId: contaId2, tipo: 'financiamento', valorTotal: 8000, numParcelas: 10, dataInicio: '2026-09-01', descricao: 'Carro' });
+
+    const resultado = resolverDividaGlobal(db, 'financiamento');
+
+    expect(resultado.ok).toBe(false);
+  });
+
+  it('descrição informada desambigua entre dívidas de contas diferentes', () => {
+    const contaId1 = criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Principal' }).id;
+    const contaId2 = criarConta(db, { bancoNome: 'Itaú', tipo: 'PJ', apelido: 'PJ' }).id;
+    criarDivida(db, { contaId: contaId1, tipo: 'financiamento', valorTotal: 12000, numParcelas: 12, dataInicio: '2026-09-01', descricao: 'Moto' });
+    const dividaCarro = criarDivida(db, { contaId: contaId2, tipo: 'financiamento', valorTotal: 8000, numParcelas: 10, dataInicio: '2026-09-01', descricao: 'Carro' });
+
+    const resultado = resolverDividaGlobal(db, 'financiamento', 'Carro');
+
+    expect(resultado).toEqual({ ok: true, id: dividaCarro.divida.id });
+  });
+
+  it('retorna erro quando não há nenhuma dívida ativa do tipo', () => {
+    const resultado = resolverDividaGlobal(db, 'consignado');
+
+    expect(resultado.ok).toBe(false);
   });
 });

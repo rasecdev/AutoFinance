@@ -6,7 +6,7 @@ import { obterDivida, type TipoDivida } from '../../db/repositories/dividas.js';
 import { projetarFluxoCaixa } from '../../relatorios/fluxoCaixa.js';
 import { calcularPatrimonioLiquido } from '../../relatorios/patrimonio.js';
 import { estimarResultado } from './dividas.js';
-import { resolverContaId, resolverDividaId } from './resolucao.js';
+import { resolverContaId, resolverDividaGlobal, resolverDividaId } from './resolucao.js';
 import type { ToolDefinition } from './types.js';
 
 const schemaProjetarFluxoCaixa = z.object({
@@ -77,24 +77,20 @@ export function criarToolConsultarPatrimonioLiquido(db: DbClient): ToolDefinitio
   };
 }
 
-const schemaSimularAmortizacao = z
-  .object({
-    conta_id: z.number().int().positive().optional(),
-    conta_apelido: z.string().min(1).optional(),
-    tipo_divida: z.enum(['emprestimo', 'financiamento', 'consignado', 'outro']),
-    divida_descricao: z.string().min(1).optional(),
-    valor: z.number().positive(),
-    modo: z.enum(['reduzir_parcelas', 'reduzir_valor']),
-  })
-  .refine((valor) => valor.conta_id !== undefined || valor.conta_apelido !== undefined, {
-    message: 'Informe a conta (id ou apelido).',
-  });
+const schemaSimularAmortizacao = z.object({
+  conta_id: z.number().int().positive().optional(),
+  conta_apelido: z.string().min(1).optional(),
+  tipo_divida: z.enum(['emprestimo', 'financiamento', 'consignado', 'outro']),
+  divida_descricao: z.string().min(1).optional(),
+  valor: z.number().positive(),
+  modo: z.enum(['reduzir_parcelas', 'reduzir_valor']),
+});
 
 export function criarToolSimularAmortizacao(db: DbClient): ToolDefinition {
   return {
     name: 'simular_amortizacao',
     description:
-      'Simula "e se eu pagasse um valor extra agora" numa dívida, sem gravar nada — mesma fórmula Price/SAC de amortizar_divida, só pra mostrar o resultado hipotético. Identifica a dívida por conta + tipo_divida (nunca por id — divida_descricao só quando houver mais de uma do mesmo tipo na mesma conta). modo é sempre informado pelo usuário: "reduzir_parcelas" (menos parcelas, mesmo valor) ou "reduzir_valor" (mesma quantidade, valor menor). Só funciona quando a dívida tem sistema_amortizacao cadastrado (price/sac) — sem isso não há como estimar, a ferramenta avisa em vez de simular. Diferente de amortizar_divida: aqui nada é alterado, sem confirmação necessária.',
+      'Simula "e se eu pagasse um valor extra agora" numa dívida, sem gravar nada — mesma fórmula Price/SAC de amortizar_divida, só pra mostrar o resultado hipotético. Diferente de amortizar_divida, conta é totalmente opcional aqui (simulação não grava nada, então não precisa da mesma rigidez de identificação) — informe tipo_divida (e divida_descricao só se houver mais de uma dívida desse tipo no sistema); só peça a conta se a ferramenta avisar que há ambiguidade. Nunca identifique por id. modo é sempre informado pelo usuário: "reduzir_parcelas" (menos parcelas, mesmo valor) ou "reduzir_valor" (mesma quantidade, valor menor). Só funciona quando a dívida tem sistema_amortizacao cadastrado (price/sac) — sem isso não há como estimar, a ferramenta avisa em vez de simular. Ação de simulação: nunca exige confirmação, nada é alterado.',
     schema: schemaSimularAmortizacao,
     handler: async (args) => {
       const {
@@ -106,10 +102,14 @@ export function criarToolSimularAmortizacao(db: DbClient): ToolDefinition {
         modo,
       } = args as z.infer<typeof schemaSimularAmortizacao>;
 
-      const resolucaoConta = resolverContaId(db, contaId, contaApelido);
-      if (!resolucaoConta.ok) return resolucaoConta.mensagem;
-
-      const resolucaoDivida = resolverDividaId(db, resolucaoConta.id, tipoDivida as TipoDivida, dividaDescricao);
+      let resolucaoDivida: ReturnType<typeof resolverDividaGlobal>;
+      if (contaId !== undefined || contaApelido !== undefined) {
+        const resolucaoConta = resolverContaId(db, contaId, contaApelido);
+        if (!resolucaoConta.ok) return resolucaoConta.mensagem;
+        resolucaoDivida = resolverDividaId(db, resolucaoConta.id, tipoDivida as TipoDivida, dividaDescricao);
+      } else {
+        resolucaoDivida = resolverDividaGlobal(db, tipoDivida as TipoDivida, dividaDescricao);
+      }
       if (!resolucaoDivida.ok) return resolucaoDivida.mensagem;
 
       const divida = obterDivida(db, resolucaoDivida.id);
