@@ -77,6 +77,22 @@ services:
     command: sh -c "while true; do node dist/scripts/relatorioMensal.js; done"
     restart: unless-stopped
 
+  verificar-despesas-fixas-producao:
+    build: .
+    env_file: .env.producao
+    volumes:
+      - producao-db:/app/data
+    command: sh -c "while true; do node dist/scripts/verificarDespesasFixas.js; done"
+    restart: unless-stopped
+
+  verificar-despesas-fixas-homologacao:
+    build: .
+    env_file: .env.homologacao
+    volumes:
+      - homologacao-db:/app/data
+    command: sh -c "while true; do node dist/scripts/verificarDespesasFixas.js; done"
+    restart: unless-stopped
+
 volumes:
   producao-db:
   homologacao-db:
