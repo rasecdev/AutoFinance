@@ -1,41 +1,44 @@
-# Implementation Plan: Fase 6 (parte 7) — Job mensal de despesas fixas
+# Implementation Plan: Fase 6 (parte 8) — analisar_qualidade(periodo)
 
-Ver PLANO.md, linha 574 (item da Fase 6) e linha 108 (design original, seção "Modelo de dados") pro desenho completo. Fluxo de branch/PR/merge por tarefa é o já descrito em `CLAUDE.md`.
+Ver PLANO.md, linha 569 (item da Fase 6) e linhas 780-788 (desenho original, seção "Observabilidade e rastreabilidade de IA") pro desenho completo. Fluxo de branch/PR/merge por tarefa é o já descrito em `CLAUDE.md`.
 
 ## Overview
 
-`despesas_fixas` (Fase 1) e a tool `criar_despesa_fixa`/`editar_despesa_fixa` já existem, mas nada hoje verifica se uma despesa fixa ativa (aluguel, mensalidade paga fora do cartão) de fato apareceu como transação no mês — se o usuário esquecer de registrar, ninguém percebe. Esta rodada implementa o job mensal descrito no PLANO.md: ao final de cada mês, compara cada `despesas_fixas` com `status = 'ativa'` contra `transacoes` ativas do período (mesma conta + mesma categoria, case-insensitive) e avisa no Telegram só quando alguma não apareceu — mesmo princípio de "só alerta quando há algo a decidir" já usado em `monitorarPrecos.ts` (só envia mensagem quando `detectarOportunidades` encontra algo), não um relatório que sempre dispara como `relatorioMensal.ts`.
+Hoje `relatorio(periodo)` só mostra contagem bruta de problema (`interacoes_ia.avaliacao_usuario = incorreto`, `erros_execucao`), sem explicar o porquê. Esta rodada adiciona `analisar_qualidade(periodo)`: uma tool de chat, só sob demanda (nunca automática nos relatórios), que agrega taxa de incorreção por fluxo/modelo e contagem de erro técnico por contexto, manda só esses números agregados pra IA (nunca conteúdo bruto de conversa) e recebe de volta uma análise narrativa comparando com o período anterior — mesmo mecanismo já usado em `relatorioMensal.ts`, mas invocado via tool em vez de job agendado.
 
 ## Architecture Decisions
 
-- **Matching por conta + categoria (case-insensitive), não por descrição exata.** `listarTransacoesAtivas` já filtra por `contaId`/`categoria`(`LOWER(categoria) = LOWER(?)`)/`dataInicio`/`dataFim` — reaproveitado sem mudança de assinatura. Descrição não entra no match porque o texto exato varia mais que a categoria (ex.: despesa fixa "Aluguel" categoria "Moradia", transação registrada como "aluguel de setembro" mesma categoria) — mesmo critério "case-insensitive, texto livre" já usado em outras partes do projeto (cache de categorização).
-- **Despesa fixa vinculada a cartão (`cartao_id` preenchido) fica fora da checagem** — o próprio PLANO.md (linha 108) já registra que assinatura cobrada dentro da fatura do cartão "continua sem rastreio individual, por já estar coberta pelo controle agregado de fatura". Não existe hoje filtro de `cartaoId` em `listarTransacoesAtivas`, e criar um pra um caso já declarado fora de escopo seria trabalho não pedido — a checagem roda só para despesas com `cartaoId === null`.
-- **Alerta só dispara quando há despesa fixa faltante** (mesmo padrão de `monitorarPrecos.ts`) — job silencioso em mês sem pendência, evita ruído mensal de "está tudo certo" que nenhum outro job de anomalia deste projeto envia.
-- **Mesma janela de agendamento do `relatorioMensal.ts`** (`calcularProximoUltimoDiaDoMesAs23h`, já exportada de lá) — reaproveitada por import direto, sem duplicar a lógica de "próximo último dia do mês às 23h" num novo módulo.
-- **Nenhuma tool de chat nova.** É um job de background que só lê `despesas_fixas`/`transacoes` e manda mensagem — não uma ação que o usuário aciona.
+- **Tool com chamada de IA aninhada (como `rodar_benchmark_interno`), não um job.** `criarToolAnalisarQualidade(client, db)` recebe o `OpenAI` client direto (mesmo padrão de `benchmark.ts`), registrado em `montarToolsConversa` — não em `src/scripts/`, porque roda sob demanda dentro da própria conversa, nunca agendado.
+- **Comparação com período anterior via dupla agregação, não leitura do histórico salvo.** Mesmo padrão de `relatorioMensal.ts` (`financeiroAnterior`/`usoIaAnterior`): calcula `agregarQualidadePeriodo` pro período atual E pro anterior (`calcularJanelaAnterior`), manda os dois pra IA comparar. A tabela `analises_qualidade` (linha 784-788 do PLANO.md) fica só como log histórico auditável — não é lida de volta nesta rodada (evita inventar um mecanismo de "achar o período comparável salvo" que não existe em nenhum outro relatório do projeto; se um dia fizer falta, revisitar).
+- **Taxa de incorreção por fluxo/modelo, não só o total.** `contarInteracoesAvaliadasIncorretas` (já existe) só soma o total do período; `analisar_qualidade` precisa saber *qual* fluxo/modelo errou mais, então a nova `agruparInteracoesPorFluxoModelo` conta total e incorretas agrupado por `(fluxo, modelo)` — a taxa (`incorretas/total`) é calculada na formatação do prompt, nunca pela IA.
+- **Erro técnico agrupado por contexto, não só o total.** Mesma lógica: nova `agruparErrosPorContexto` em `errosExecucao.ts`, complementando `contarErrosPeriodo` (que só soma).
+- **Nenhum dado bruto de conversa no prompt.** `agregarQualidadePeriodo` só expõe contagens/taxas — nunca `mensagem_usuario`/`resposta_modelo` de `interacoes_ia`, nem `detalhes` de `erros_execucao` (só `contexto`, que já é uma string curta tipo `"monitorar_precos"`, não um payload de erro).
+- **Enum de período igual ao de `relatorio(periodo)`** (`dia`/`semana`/`mes`) — mesma tool `calcularJanelaPeriodo`/`calcularJanelaAnterior` já usada em todo o projeto, sem reinventar parsing de período.
+- **Sem short-circuit pra período vazio.** Mesmo comportamento de `relatorioMensal.ts` (sempre chama a IA, mesmo com dados zerados) — manter consistência em vez de adicionar uma otimização de custo não pedida.
 
 ## Task List
 
-### Fase T: Job mensal de despesas fixas
+### Fase U: analisar_qualidade(periodo)
 
-- [ ] Tarefa 50: `listarDespesasFixasAtivas(db)` no repositório `despesasFixas.ts`
-- [ ] Tarefa 51: `detectarDespesasFixasFaltantes(db, janela)` — lógica pura de comparação
-- [ ] Tarefa 52: `formatarAlertaDespesasFixas(faltantes, janela)` — formatação da mensagem
-- [ ] Tarefa 53: script `src/scripts/verificarDespesasFixas.ts` (agendamento + envio + `tratarErroCriticoJob`)
-- [ ] Tarefa 54: `docker-compose.yml` — serviços `verificar-despesas-fixas-producao`/`-homologacao`
+- [x] Tarefa 55: `agruparInteracoesPorFluxoModelo(db, janela)` em `interacoesIa.ts`
+- [ ] Tarefa 56: `agruparErrosPorContexto(db, periodo)` em `errosExecucao.ts`
+- [ ] Tarefa 57: módulo `src/relatorios/qualidade.ts` — `agregarQualidadePeriodo(db, periodo)`
+- [ ] Tarefa 58: migração `analises_qualidade` + repositório `analisesQualidade.ts`
+- [ ] Tarefa 59: `src/ai/analisarQualidade.ts` — prompt, `gerarAnaliseQualidade`, roteamento
+- [ ] Tarefa 60: tool `analisar_qualidade` (`src/ai/tools/qualidade.ts`) + registro em `conversaTools.ts`
 
-### Checkpoint: Job mensal de despesas fixas funcional
+### Checkpoint: analisar_qualidade funcional
 - [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação via Telegram: cadastrar uma despesa fixa ativa via `criar_despesa_fixa` (conta sem cartão); rodar `node dist/scripts/verificarDespesasFixas.js --agora` sem nenhuma transação lançada no mês — confirmar que chega alerta citando a despesa; registrar uma transação da mesma conta/categoria dentro do mês e rodar de novo — confirmar que **não** chega alerta dessa vez (nenhuma pendência)
+- [ ] Teste manual em Homologação via Telegram: perguntar algo como "como estão as respostas da IA esse mês?" — confirmar que a tool é chamada, retorna análise narrativa coerente, e uma linha nova aparece em `analises_qualidade`
 - [ ] PROGRESSO.md atualizado com o marco
 - [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
 
 ## Risks and Mitigations
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Categoria da transação registrada não bater exatamente com a categoria cadastrada na despesa fixa (texto livre nos dois lados) gera falso alerta | Médio | Comportamento já esperado de texto livre no projeto (mesma limitação documentada no cache de categorização) — se incomodar na prática, ajustar com dado real depois, não antecipar agora |
-| Despesa fixa com `cartao_id` preenchido nunca é verificada, mesmo se o usuário esperar que fosse | Baixo | Já é comportamento explicitamente definido no PLANO.md (linha 108) — assinatura de cartão é coberta pelo controle de fatura, não por este job |
-| Rodar o job múltiplas vezes no mesmo mês (ex. depois de reiniciar o container) reenvia alerta repetido pra despesa ainda não corrigida | Baixo | Mesmo comportamento já aceito em `monitorarPrecos.ts` (idempotência de alerta não é garantida ali também) — não é regressão, e a mensagem serve de lembrete, repetir não é incorreto |
+| Período sem nenhuma interação/erro gera análise vazia ou sem sentido ("não há dados") | Baixo | Comportamento aceitável — mesmo risco já existe em `relatorioMensal.ts` com período vazio, não é regressão |
+| Tool nova não é chamada pelo modelo da conversa quando o usuário pergunta de forma vaga ("como está indo?") | Médio | Descrição da tool explicita frases-gatilho comuns (ex: "como estão as respostas da IA", "teve muito erro"), mesmo padrão de `criarToolRelatorio` |
+| Custo real de IA por chamada (nested call dentro da tool) sem confirmação prévia | Baixo | Mesmo padrão de `relatorioMensal.ts`/análises já existentes sem `requerConfirmacao` — custo de uma única chamada de texto curto, ordem de grandeza de um resumo mensal, não do benchmark (que chama N vezes) |
 
 ## Open Questions
-Nenhuma — desenho e critério de matching (conta+categoria, ignorando despesa vinculada a cartão) derivados diretamente do que já está registrado no PLANO.md.
+Nenhuma — desenho derivado diretamente do que já está registrado no PLANO.md (linhas 569, 780-788).
