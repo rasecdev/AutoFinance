@@ -32,12 +32,12 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Nova função `agruparErrosPorContexto(db: DbClient, periodo: PeriodoRelatorio): Array<{ contexto: string; total: number }>` em `src/db/repositories/errosExecucao.ts` — reaproveita `paraJanelaTimestamp` já privado no arquivo (mesmo padrão de `listarErros`/`contarErrosPeriodo`, que já recebem `PeriodoRelatorio` e convertem internamente): `SELECT contexto, COUNT(*) AS total FROM erros_execucao WHERE data_hora >= ? AND data_hora <= ? GROUP BY contexto`.
 
 **Acceptance criteria:**
-- [ ] Uma linha por `contexto` distinto dentro da janela, com contagem correta
-- [ ] Janela sem nenhum erro retorna lista vazia
+- [x] Uma linha por `contexto` distinto dentro da janela, com contagem correta
+- [x] Janela sem nenhum erro retorna lista vazia
 
 **Verification:**
-- [ ] `npm test -- tests/db/errosExecucao.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/db/errosExecucao.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** None
 

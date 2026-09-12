@@ -5,7 +5,12 @@ import Database from 'better-sqlite3-multiple-ciphers';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
-import { contarErrosPeriodo, listarErros, registrarErro } from '../../src/db/repositories/errosExecucao.js';
+import {
+  agruparErrosPorContexto,
+  contarErrosPeriodo,
+  listarErros,
+  registrarErro,
+} from '../../src/db/repositories/errosExecucao.js';
 
 const CHAVE_TESTE = 'chave-teste-erros-execucao';
 
@@ -102,5 +107,35 @@ describe('contarErrosPeriodo', () => {
     ).run();
 
     expect(contarErrosPeriodo(db, hoje())).toBe(0);
+  });
+});
+
+describe('agruparErrosPorContexto (Fase 6, Tarefa 56)', () => {
+  it('retorna lista vazia quando não há erro no período', () => {
+    expect(agruparErrosPorContexto(db, hoje())).toEqual([]);
+  });
+
+  it('agrupa contagem por contexto dentro da janela do período', () => {
+    registrarErro(db, { contexto: 'backup', mensagem: 'erro 1' });
+    registrarErro(db, { contexto: 'backup', mensagem: 'erro 2' });
+    registrarErro(db, { contexto: 'monitorar_precos', mensagem: 'erro 3' });
+
+    const resultado = agruparErrosPorContexto(db, hoje());
+
+    expect(resultado).toEqual(
+      expect.arrayContaining([
+        { contexto: 'backup', total: 2 },
+        { contexto: 'monitorar_precos', total: 1 },
+      ]),
+    );
+    expect(resultado).toHaveLength(2);
+  });
+
+  it('não conta erro fora do período', () => {
+    db.prepare(
+      `INSERT INTO erros_execucao (contexto, mensagem, data_hora, resolvido) VALUES ('backup', 'erro antigo', '2000-01-01T00:00:00.000Z', 0)`,
+    ).run();
+
+    expect(agruparErrosPorContexto(db, hoje())).toEqual([]);
   });
 });

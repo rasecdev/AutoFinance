@@ -101,3 +101,23 @@ export function contarErrosPeriodo(db: DbClient, periodo: PeriodoRelatorio): num
 
   return resultado.total;
 }
+
+export type ErroPorContexto = { contexto: string; total: number };
+
+// Usado por analisar_qualidade (Fase 6, parte 8): diferente de
+// contarErrosPeriodo (só o total do período), aqui a contagem sai agrupada
+// por contexto — precisa saber QUAL contexto mais falhou, não só quanto no
+// total.
+export function agruparErrosPorContexto(db: DbClient, periodo: PeriodoRelatorio): ErroPorContexto[] {
+  const janela = paraJanelaTimestamp(periodo);
+
+  const linhas = db
+    .prepare(
+      `SELECT contexto, COUNT(*) AS total FROM erros_execucao
+       WHERE data_hora >= ? AND data_hora <= ?
+       GROUP BY contexto`,
+    )
+    .all(janela.inicio, janela.fim) as ErroPorContexto[];
+
+  return linhas;
+}
