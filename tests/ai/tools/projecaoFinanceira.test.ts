@@ -92,11 +92,16 @@ describe('tool consultar_patrimonio_liquido', () => {
   });
 });
 
-function inserirDividaComSistema(sistemaAmortizacao: 'price' | 'sac', taxaJuros: number): void {
+function inserirDividaComSistema(
+  sistemaAmortizacao: 'price' | 'sac',
+  taxaJuros: number,
+  paraContaId: number = contaId,
+  descricao?: string,
+): void {
   db.prepare(
-    `INSERT INTO dividas (conta_id, tipo, valor_total, num_parcelas, valor_parcela, taxa_juros, sistema_amortizacao, data_inicio)
-     VALUES (?, 'emprestimo', 10000, 12, 900, ?, ?, '2026-01-01')`,
-  ).run(contaId, taxaJuros, sistemaAmortizacao);
+    `INSERT INTO dividas (conta_id, tipo, valor_total, num_parcelas, valor_parcela, taxa_juros, sistema_amortizacao, data_inicio, descricao)
+     VALUES (?, 'emprestimo', 10000, 12, 900, ?, ?, '2026-01-01', ?)`,
+  ).run(paraContaId, taxaJuros, sistemaAmortizacao, descricao ?? null);
   const dividaId = (db.prepare('SELECT last_insert_rowid() AS id').get() as { id: number }).id;
   db.prepare('INSERT INTO parcelas (divida_id, numero_parcela, valor, data_vencimento) VALUES (?, 1, 900, ?)').run(
     dividaId,
@@ -151,5 +156,42 @@ describe('tool simular_amortizacao', () => {
     );
 
     expect(resultado).toMatch(/não encontrei|nenhuma conta/i);
+  });
+
+  it('sem conta informada, resolve direto quando a dívida do tipo é única no sistema', async () => {
+    inserirDividaComSistema('price', 0.02, contaId, 'Financiamento Moto');
+    const tool = criarToolSimularAmortizacao(db);
+
+    const resultado = await tool.handler(
+      { tipo_divida: 'emprestimo', valor: 2000, modo: 'reduzir_parcelas' },
+      { chatId: 1 },
+    );
+
+    expect(resultado).toContain('Simulação (nada foi alterado)');
+  });
+
+  it('sem conta informada e mais de uma dívida do mesmo tipo em contas diferentes, pede pra especificar', async () => {
+    const outraContaId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PJ', apelido: 'PJ' }).id;
+    inserirDividaComSistema('price', 0.02, contaId, 'Financiamento Moto');
+    inserirDividaComSistema('sac', 0.01, outraContaId, 'Financiamento Carro');
+    const tool = criarToolSimularAmortizacao(db);
+
+    const resultado = await tool.handler(
+      { tipo_divida: 'emprestimo', valor: 2000, modo: 'reduzir_parcelas' },
+      { chatId: 1 },
+    );
+
+    expect(resultado).toContain('Encontrei mais de uma dívida');
+  });
+
+  it('sem conta informada e nenhuma dívida do tipo, avisa que não encontrou', async () => {
+    const tool = criarToolSimularAmortizacao(db);
+
+    const resultado = await tool.handler(
+      { tipo_divida: 'consignado', valor: 2000, modo: 'reduzir_parcelas' },
+      { chatId: 1 },
+    );
+
+    expect(resultado).toContain('Não encontrei nenhuma dívida ativa do tipo');
   });
 });
