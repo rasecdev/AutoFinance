@@ -80,13 +80,13 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Novo `src/ai/tools/projecaoFinanceira.ts` (arquivo compartilhado pelas três tools desta rodada — Tarefas 64/65/66). `criarToolProjetarFluxoCaixa(db)`: schema `{ dias: z.number().int().positive(), conta_id?, conta_apelido? }`, resolve conta (opcional, mesmo padrão de `resumo_dividas`), chama `projetarFluxoCaixa`, formata texto: saldo atual, saldo projetado, lista de eventos (data, descrição, valor) e — quando `dataFicaNegativo` não é `null` — um aviso destacado com a data. Consulta, sem efeito colateral — não exige confirmação.
 
 **Acceptance criteria:**
-- [ ] Chamada sem eventos na janela retorna só saldo atual = saldo projetado, sem lista
-- [ ] Chamada com `dataFicaNegativo` preenchido inclui aviso destacado citando a data
-- [ ] `conta_id`/`conta_apelido` invalidos retornam a mensagem de erro de `resolverContaId` (mesmo padrão de outras tools)
+- [x] Chamada sem eventos na janela retorna só saldo atual = saldo projetado, sem lista
+- [x] Chamada com `dataFicaNegativo` preenchido inclui aviso destacado citando a data
+- [x] `conta_id`/`conta_apelido` invalidos retornam a mensagem de erro de `resolverContaId` (mesmo padrão de outras tools)
 
 **Verification:**
-- [ ] `npm test -- tests/ai/tools/projecaoFinanceira.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/ai/tools/projecaoFinanceira.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 63
 
