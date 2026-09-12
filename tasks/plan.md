@@ -1,42 +1,41 @@
-# Implementation Plan: Fase 6 (parte 6) — Categorização automática assistida
+# Implementation Plan: Fase 6 (parte 7) — Job mensal de despesas fixas
 
-Ver PLANO.md, seção "Cache" (linhas ~155-198), pro desenho original — adaptado aqui após decisão explícita do usuário (ver Architecture Decisions). Fluxo de branch/PR/merge por tarefa é o já descrito em `CLAUDE.md`.
+Ver PLANO.md, linha 574 (item da Fase 6) e linha 108 (design original, seção "Modelo de dados") pro desenho completo. Fluxo de branch/PR/merge por tarefa é o já descrito em `CLAUDE.md`.
 
 ## Overview
 
-Hoje `categoria` em `registrar_transacao`/`editar_transacao` é texto livre decidido pela IA a cada chamada, sem memória entre transações — a mesma descrição ("Uber") pode receber categorias levemente diferentes em turnos diferentes, e a IA sempre re-decide do zero. Esta rodada implementa `cache_categorizacao` (descrição normalizada → categoria), que passa a resolver a categoria de forma determinística no backend quando a descrição já foi vista antes — a IA só decide categoria pra descrições novas, e toda correção do usuário via `editar_transacao` vira a categoria definitiva daquela descrição, nunca mais re-decidida pela IA.
+`despesas_fixas` (Fase 1) e a tool `criar_despesa_fixa`/`editar_despesa_fixa` já existem, mas nada hoje verifica se uma despesa fixa ativa (aluguel, mensalidade paga fora do cartão) de fato apareceu como transação no mês — se o usuário esquecer de registrar, ninguém percebe. Esta rodada implementa o job mensal descrito no PLANO.md: ao final de cada mês, compara cada `despesas_fixas` com `status = 'ativa'` contra `transacoes` ativas do período (mesma conta + mesma categoria, case-insensitive) e avisa no Telegram só quando alguma não apareceu — mesmo princípio de "só alerta quando há algo a decidir" já usado em `monitorarPrecos.ts` (só envia mensagem quando `detectarOportunidades` encontra algo), não um relatório que sempre dispara como `relatorioMensal.ts`.
 
 ## Architecture Decisions
 
-- **`categoria` continua `TEXT` livre, sem tabela `categorias` nem FK** — decisão explícita do usuário após pesquisa (ver conversa: Firefly III/Actual Budget também não têm taxonomia fixa hardcoded; Open Finance Brasil/Bacen não padroniza categoria de gasto, só mecanismo de transação (PIX/TED/boleto); Plaid PFC é taxonomia de mercado americano, sem uso pelo Pluggy). Decisão explícita: usar texto livre agora, entender a taxonomia real de categorias com o uso, revisitar tabela formal mais adiante (possivelmente na Fase 8, cruzando com o que o Pluggy devolver de fato).
-- **O cache passa a ser autoritativo, não uma sugestão que a IA pode ignorar.** Pra cumprir literalmente "a IA nunca mais tenta re-adivinhar aquela descrição", `registrar_transacao` não pode só *sugerir* o valor cacheado no prompt — o handler da tool precisa **resolver a categoria no backend** quando há cache-hit, ignorando o que a IA eventualmente mandar de diferente naquela chamada. Isso exige tornar `categoria` opcional no schema de `registrar_transacao` (a IA só precisa informar categoria quando a descrição é nova/sem cache).
-- **Correspondência é por descrição normalizada exata (trim + lowercase + remoção de acento), não semântica.** RAG/embeddings/`sqlite-vec` (citado no PLANO.md como melhoria futura) fica fora de escopo — mesmo risco de falso-positivo já documentado no PLANO.md, sem necessidade validada ainda.
-- **`modelo_sugeriu` exige threading do id do modelo até o handler da tool**, que hoje só recebe `chatId` via `ToolContext` (`src/ai/tools/types.ts`). `gerarResposta` (`src/ai/openrouter.ts`) já tem a variável `modelo` no escopo de onde `executarToolCall` é chamado — menor mudança é adicionar `modelo?: string` a `ToolContext` e passar `{ ...ctx, modelo }` nessa chamada, tarefa isolada antes de tocar as tools em si.
-- **Sem descrição informada na transação, não há chave pra cache** — nesse caso o fluxo continua exatamente como hoje (IA decide, sem gravar/ler cache). Não é regressão: hoje já não há cache nenhum.
-- **Nenhuma tool de chat nova.** É infraestrutura interna de `registrar_transacao`/`editar_transacao`, não uma ação que o usuário aciona diretamente — evita escopo além do pedido.
+- **Matching por conta + categoria (case-insensitive), não por descrição exata.** `listarTransacoesAtivas` já filtra por `contaId`/`categoria`(`LOWER(categoria) = LOWER(?)`)/`dataInicio`/`dataFim` — reaproveitado sem mudança de assinatura. Descrição não entra no match porque o texto exato varia mais que a categoria (ex.: despesa fixa "Aluguel" categoria "Moradia", transação registrada como "aluguel de setembro" mesma categoria) — mesmo critério "case-insensitive, texto livre" já usado em outras partes do projeto (cache de categorização).
+- **Despesa fixa vinculada a cartão (`cartao_id` preenchido) fica fora da checagem** — o próprio PLANO.md (linha 108) já registra que assinatura cobrada dentro da fatura do cartão "continua sem rastreio individual, por já estar coberta pelo controle agregado de fatura". Não existe hoje filtro de `cartaoId` em `listarTransacoesAtivas`, e criar um pra um caso já declarado fora de escopo seria trabalho não pedido — a checagem roda só para despesas com `cartaoId === null`.
+- **Alerta só dispara quando há despesa fixa faltante** (mesmo padrão de `monitorarPrecos.ts`) — job silencioso em mês sem pendência, evita ruído mensal de "está tudo certo" que nenhum outro job de anomalia deste projeto envia.
+- **Mesma janela de agendamento do `relatorioMensal.ts`** (`calcularProximoUltimoDiaDoMesAs23h`, já exportada de lá) — reaproveitada por import direto, sem duplicar a lógica de "próximo último dia do mês às 23h" num novo módulo.
+- **Nenhuma tool de chat nova.** É um job de background que só lê `despesas_fixas`/`transacoes` e manda mensagem — não uma ação que o usuário aciona.
 
 ## Task List
 
-### Fase S: Categorização automática assistida
+### Fase T: Job mensal de despesas fixas
 
-- [x] Tarefa 45: migração `0009_cache_categorizacao.sql` + repositório `cacheCategorizacao` (`buscarCategoriaCache`, `upsertCategoriaCache`)
-- [x] Tarefa 46: função `normalizarDescricao` (trim + lowercase + remoção de acento) + testes
-- [x] Tarefa 47: `ToolContext.modelo` — thread do id do modelo até o handler da tool via `gerarResposta`/`executarToolCall`
-- [x] Tarefa 48: `registrar_transacao` resolve categoria via cache quando há hit; sem hit, usa a categoria da IA e grava no cache (`origem: ia`)
-- [x] Tarefa 49: `editar_transacao` sobrescreve o cache da descrição da transação com `origem: usuario` quando a categoria é alterada
+- [ ] Tarefa 50: `listarDespesasFixasAtivas(db)` no repositório `despesasFixas.ts`
+- [ ] Tarefa 51: `detectarDespesasFixasFaltantes(db, janela)` — lógica pura de comparação
+- [ ] Tarefa 52: `formatarAlertaDespesasFixas(faltantes, janela)` — formatação da mensagem
+- [ ] Tarefa 53: script `src/scripts/verificarDespesasFixas.ts` (agendamento + envio + `tratarErroCriticoJob`)
+- [ ] Tarefa 54: `docker-compose.yml` — serviços `verificar-despesas-fixas-producao`/`-homologacao`
 
-### Checkpoint: Categorização assistida funcional
-- [x] `npm run build`/`lint`/`test` sem erro
-- [x] Teste manual em Homologação via Telegram: registrar transação com descrição nova (confirmar categoria da IA e linha nova em `cache_categorizacao` via consulta direta); registrar outra transação com a mesma descrição pedindo explicitamente uma categoria diferente (confirmar que o sistema ignora e reaproveita a cacheada); corrigir a categoria via `editar_transacao`; registrar de novo a mesma descrição e confirmar que agora usa a categoria corrigida (`origem: usuario`) — achado real: descrição nova sem cache fez a IA usar o nome do estabelecimento como categoria, corrigido via regra 11 no `SYSTEM_PROMPT` (PR #74, fora do ciclo das 5 tarefas planejadas)
-- [x] PROGRESSO.md atualizado com o marco
-- [x] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
+### Checkpoint: Job mensal de despesas fixas funcional
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação via Telegram: cadastrar uma despesa fixa ativa via `criar_despesa_fixa` (conta sem cartão); rodar `node dist/scripts/verificarDespesasFixas.js --agora` sem nenhuma transação lançada no mês — confirmar que chega alerta citando a despesa; registrar uma transação da mesma conta/categoria dentro do mês e rodar de novo — confirmar que **não** chega alerta dessa vez (nenhuma pendência)
+- [ ] PROGRESSO.md atualizado com o marco
+- [ ] Revisão com o usuário antes de prosseguir (próxima fatia da Fase 6, ou outra fase)
 
 ## Risks and Mitigations
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Tornar `categoria` opcional em `registrar_transacao` pode fazer a IA omitir categoria mesmo em descrição nova (sem cache), deixando a transação sem categoria | Médio | Handler retorna erro de texto claro pedindo a categoria quando não há cache e a IA não informou nada — mesmo padrão de erro já usado em `resolverContaId`/`resolverCartaoId` (nunca lança exceção, sempre mensagem que a IA pode repassar/corrigir) |
-| Descrições parecidas mas não idênticas após normalização ("Uber" vs "UBER *TRIP") continuam sem cache-hit, comportamento igual ao de hoje | Baixo | Já documentado como limitação conhecida no PLANO.md (RAG semântico é melhoria futura, fora de escopo); sem regressão, só não resolve o que já não era resolvido |
-| `editar_transacao` sobrescrevendo cache pode reforçar uma correção pontual (ex: transação específica que era exceção) como regra geral pra toda futura ocorrência da mesma descrição | Baixo | Mesmo comportamento pedido explicitamente pelo usuário/PLANO.md ("toda correção sobrescreve o cache") — se isso incomodar na prática, ajustar depois com dado real, não antecipar agora |
+| Categoria da transação registrada não bater exatamente com a categoria cadastrada na despesa fixa (texto livre nos dois lados) gera falso alerta | Médio | Comportamento já esperado de texto livre no projeto (mesma limitação documentada no cache de categorização) — se incomodar na prática, ajustar com dado real depois, não antecipar agora |
+| Despesa fixa com `cartao_id` preenchido nunca é verificada, mesmo se o usuário esperar que fosse | Baixo | Já é comportamento explicitamente definido no PLANO.md (linha 108) — assinatura de cartão é coberta pelo controle de fatura, não por este job |
+| Rodar o job múltiplas vezes no mesmo mês (ex. depois de reiniciar o container) reenvia alerta repetido pra despesa ainda não corrigida | Baixo | Mesmo comportamento já aceito em `monitorarPrecos.ts` (idempotência de alerta não é garantida ali também) — não é regressão, e a mensagem serve de lembrete, repetir não é incorreto |
 
 ## Open Questions
-Nenhuma — desenho revisado e decisões de escopo (texto livre, sem tabela `categorias`) confirmadas explicitamente pelo usuário nesta rodada.
+Nenhuma — desenho e critério de matching (conta+categoria, ignorando despesa vinculada a cartão) derivados diretamente do que já está registrado no PLANO.md.
