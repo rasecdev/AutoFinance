@@ -6,6 +6,7 @@ import { createHandlerModelo } from './bot/handlers/modelo.js';
 import { createHandlerModelos } from './bot/handlers/modelos.js';
 import { createHandlerNaoSuportado } from './bot/handlers/naoSuportado.js';
 import { createHandlerTexto } from './bot/handlers/texto.js';
+import { createHandlerVoz } from './bot/handlers/voz.js';
 import { loadEnv } from './config/env.js';
 import { getDb } from './db/client.js';
 import { migrate } from './db/migrate.js';
@@ -23,6 +24,7 @@ migrate(db);
 const openRouterClient = createOpenRouterClient(env.openrouterApiKey);
 const handlerTexto = createHandlerTexto(openRouterClient, db, logger);
 const handlerMidia = createHandlerMidia(logger);
+const handlerVoz = createHandlerVoz(openRouterClient, db, logger, env.telegramBotToken);
 const handlerNaoSuportado = createHandlerNaoSuportado(logger);
 const handlerFeedback = createHandlerFeedback(db, logger, 'incorreto');
 const handlerFeedbackCorreto = createHandlerFeedback(db, logger, 'correto');
@@ -34,6 +36,7 @@ const bot = createBot(
   logger,
   handlerTexto,
   handlerMidia,
+  handlerVoz,
   handlerNaoSuportado,
   handlerFeedback,
   handlerFeedbackCorreto,
