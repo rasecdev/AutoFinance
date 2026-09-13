@@ -31,6 +31,7 @@ Ver PLANO.md, "Relatórios (diário, semanal, mensal) e metas", itens 8 a 8.4 (l
 - [x] Tarefa 73: tool `gerar_grafico` (`src/ai/tools/grafico.ts`) — valida shape de `dados`, devolve `{texto, imagem}`
 - [x] Tarefa 74: tool `consultar_e_graficar` — reaproveita `executarConsultaDinamica` + `renderizarGrafico` numa só chamada
 - [x] Achado real de teste manual (issue #205): `consultar_dados_dinamico`/`consultar_e_graficar` não aplicavam mês atual como padrão sem período informado (diferente de `consultar_extrato`/`resumo_mensal`) — corrigido com default de mês atual (exceto quando `agrupar_por` inclui `mes`) + eco sempre mostrando o período efetivo usado. Bug lateral corrigido junto: filtro de `data_hora` (uso_ia) por comparação léxica de string excluía o último dia do período.
+- [x] Achado real de teste manual (issue #207): pedindo gráfico, o modelo chamava `consultar_e_graficar` e `gerar_grafico` juntas na mesma resposta (mandava a foto duplicada) e ainda tentava desenhar a imagem ele mesmo em base64 alucinado no texto (nunca é o PNG real — a imagem nunca chega ao contexto do modelo). Corrigido com descrição explícita nas duas tools (nunca chamar juntas) + regra 13 nova no SYSTEM_PROMPT (nunca embutir/codificar imagem no texto).
 
 ### Checkpoint: Consulta dinâmica + gráfico funcional
 - [ ] `npm run build`/`lint`/`test` sem erro
