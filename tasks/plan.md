@@ -23,13 +23,14 @@ Ver PLANO.md, "Relatórios (diário, semanal, mensal) e metas", itens 8 a 8.4 (l
 
 ### Fase VI: Consulta dinâmica + gráfico
 
-- [ ] Tarefa 68: `src/relatorios/consultaDinamica.ts` — motor de query domínio `financeiro` (`executarConsultaDinamica`, whitelist, 1-2 dimensões, ordenação cronológica pra mes/dia_semana)
-- [ ] Tarefa 69: extensão do motor pro domínio `uso_ia` (mesma função, nova branch de query contra `uso_tokens`)
-- [ ] Tarefa 70: tool `consultar_dados_dinamico` (`src/ai/tools/consultaDinamica.ts`) — schema Zod, eco de interpretação, mensagem de recusa fora da whitelist
-- [ ] Tarefa 71: mudança de arquitetura — `ToolDefinition.handler` pode devolver imagem; `gerarResposta` acumula `imagens: Buffer[]`; `src/bot/handlers/texto.ts` manda `ctx.replyWithPhoto`
-- [ ] Tarefa 72: `src/relatorios/grafico.ts` — `renderizarGrafico(tipo, dados)` via `chartjs-node-canvas` (nova dependência), tipo barra/linha/pizza, 1 ou 2 séries
-- [ ] Tarefa 73: tool `gerar_grafico` (`src/ai/tools/grafico.ts`) — valida shape de `dados`, devolve `{texto, imagem}`
-- [ ] Tarefa 74: tool `consultar_e_graficar` — reaproveita `executarConsultaDinamica` + `renderizarGrafico` numa só chamada
+- [x] Tarefa 68: `src/relatorios/consultaDinamica.ts` — motor de query domínio `financeiro` (`executarConsultaDinamica`, whitelist, 1-2 dimensões, ordenação cronológica pra mes/dia_semana)
+- [x] Tarefa 69: extensão do motor pro domínio `uso_ia` (mesma função, nova branch de query contra `uso_tokens`)
+- [x] Tarefa 70: tool `consultar_dados_dinamico` (`src/ai/tools/consultaDinamica.ts`) — schema Zod, eco de interpretação, mensagem de recusa fora da whitelist
+- [x] Tarefa 71: mudança de arquitetura — `ToolDefinition.handler` pode devolver imagem; `gerarResposta` acumula `imagens: Buffer[]`; `src/bot/handlers/texto.ts` manda `ctx.replyWithPhoto`
+- [x] Tarefa 72: `src/relatorios/grafico.ts` — `renderizarGrafico(tipo, dados)` via `chartjs-node-canvas` (nova dependência), tipo barra/linha/pizza, 1 ou 2 séries
+- [x] Tarefa 73: tool `gerar_grafico` (`src/ai/tools/grafico.ts`) — valida shape de `dados`, devolve `{texto, imagem}`
+- [x] Tarefa 74: tool `consultar_e_graficar` — reaproveita `executarConsultaDinamica` + `renderizarGrafico` numa só chamada
+- [x] Achado real de teste manual (issue #205): `consultar_dados_dinamico`/`consultar_e_graficar` não aplicavam mês atual como padrão sem período informado (diferente de `consultar_extrato`/`resumo_mensal`) — corrigido com default de mês atual (exceto quando `agrupar_por` inclui `mes`) + eco sempre mostrando o período efetivo usado. Bug lateral corrigido junto: filtro de `data_hora` (uso_ia) por comparação léxica de string excluía o último dia do período.
 
 ### Checkpoint: Consulta dinâmica + gráfico funcional
 - [ ] `npm run build`/`lint`/`test` sem erro

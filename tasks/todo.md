@@ -191,8 +191,8 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Estimated scope:** Small (combina duas funções já existentes numa tool nova)
 
 ## Checkpoint: Consulta dinâmica + gráfico funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
+- [x] `npm run build`/`lint`/`test` sem erro (668/668, depois 670/670 com o fix)
 - [ ] PROGRESSO.md atualizado com o marco
-- [ ] Teste manual em Homologação via Telegram: pergunta livre, gráfico e um caso fora da whitelist (confirmar recusa)
+- [x] Teste manual em Homologação via Telegram: pergunta livre, gráfico e um caso fora da whitelist — achado real, ver issue #205 (`consultar_dados_dinamico`/`consultar_e_graficar` não aplicavam mês atual como padrão de período), corrigido e reconfirmado
 - [ ] Milestone "Fase 6 (parte 10)" fechado — issues todas fechadas via `Closes #N`, e com isso a Fase 6 inteira fecha
 - [ ] Revisão com o usuário antes de prosseguir (Fase 7)
