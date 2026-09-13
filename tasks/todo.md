@@ -88,14 +88,16 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Mudança de arquitetura mínima. Em `src/ai/tools/types.ts`, `handler` passa a `(args, ctx) => Promise<string | { texto: string; imagem?: Buffer }>`. Em `src/ai/openrouter.ts`: `executarToolCall` extrai `texto` (vira `conteudo`, igual hoje, vai pro `role: 'tool'`) e, se houver `imagem`, acumula; `gerarResposta` ganha campo novo `imagens: Buffer[]` no retorno (`RespostaGerada`), juntando as imagens de todas as tool calls do turno. Em `src/bot/handlers/texto.ts`, depois do `ctx.reply(resposta.resposta)` já existente, se `resposta.imagens.length > 0`, manda cada uma via `ctx.replyWithPhoto({ source: buffer })`. Nenhuma tool existente muda de comportamento (todas continuam retornando `string` puro, caso válido da união).
 
 **Acceptance criteria:**
-- [ ] Tool que retorna `string` (todas as existentes) continua funcionando sem mudança de teste
-- [ ] Tool que retorna `{texto, imagem}` — o texto vai pro modelo via `role: 'tool'`, a imagem nunca é serializada pro modelo
-- [ ] `gerarResposta` acumula imagens de múltiplas tool calls no mesmo turno, se houver mais de uma
-- [ ] `src/bot/handlers/texto.ts` manda foto(s) depois do texto, só quando existirem
+- [x] Tool que retorna `string` (todas as existentes) continua funcionando sem mudança de teste
+- [x] Tool que retorna `{texto, imagem}` — o texto vai pro modelo via `role: 'tool'`, a imagem nunca é serializada pro modelo
+- [x] `gerarResposta` acumula imagens de múltiplas tool calls no mesmo turno, se houver mais de uma
+- [x] `src/bot/handlers/texto.ts` manda foto(s) depois do texto, só quando existirem
+
+**Nota de implementação:** `src/bot/handlers/texto.ts` não tem teste unitário dedicado (`tests/bot/handlers/texto.test.ts` citado no plano não existe — esse handler já não era testado unitariamente antes desta tarefa, diferente de `midia.ts`/`modelo.ts`/etc; a lógica nova (separar texto/imagem, mandar foto) é só wiring fino em cima do que `openrouter.ts` já expõe e testa). Fotos usam `new InputFile(buffer)` do grammy, não `{source: buffer}` (erro de tipo corrigido durante a implementação).
 
 **Verification:**
-- [ ] `npm test -- tests/ai/openrouter.test.ts tests/bot/handlers/texto.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/ai/openrouter.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** None (paralelizável com 68-70)
 

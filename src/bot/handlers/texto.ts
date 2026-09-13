@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import type { Context } from 'grammy';
+import { InputFile, type Context } from 'grammy';
 import type OpenAI from 'openai';
 import { montarHistorico } from '../../ai/contexto.js';
-import { gerarResposta, MODELO_PADRAO } from '../../ai/openrouter.js';
+import { extrairTextoEImagem, gerarResposta, MODELO_PADRAO } from '../../ai/openrouter.js';
 import { verificarGatilhoResumo } from '../../ai/resumirContexto.js';
 import { montarToolsConversa } from '../../ai/tools/conversaTools.js';
 import type { DbClient } from '../../db/client.js';
@@ -72,7 +72,9 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
           pendencia.tool.handler(pendencia.argumentos, { chatId }),
           logger,
         );
-        await ctx.reply(resultado);
+        const { texto, imagem } = extrairTextoEImagem(resultado);
+        await ctx.reply(texto);
+        if (imagem) await ctx.replyWithPhoto(new InputFile(imagem));
       } catch (erro) {
         logger.error({ err: erro }, 'falha ao executar ação confirmada pelo usuário');
         await ctx.reply('Não consegui concluir a ação confirmada, tente novamente.');
@@ -89,6 +91,7 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
         modelo,
         resposta,
         toolCalls,
+        imagens,
         tokensPrompt,
         tokensCompletion,
         cachedTokens,
@@ -136,6 +139,9 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
         resposta.trim().length > 0 ? resposta : 'Não entendi, pode reformular?',
       );
       definirRastroResposta(mensagemEnviada.message_id, traceId);
+      for (const imagem of imagens) {
+        await ctx.replyWithPhoto(new InputFile(imagem));
+      }
 
       // Roda depois de a resposta já ter sido enviada — não adiciona latência
       // perceptível à resposta atual (PLANO.md, mecanismo de resumo cumulativo).
