@@ -5,6 +5,7 @@ import { montarHistorico } from '../../ai/contexto.js';
 import { extrairTextoEImagem, gerarResposta, MODELO_PADRAO } from '../../ai/openrouter.js';
 import { verificarGatilhoResumo } from '../../ai/resumirContexto.js';
 import { montarToolsConversa } from '../../ai/tools/conversaTools.js';
+import type { ToolDefinition } from '../../ai/tools/types.js';
 import type { DbClient } from '../../db/client.js';
 import { registrarInteracaoIa } from '../../db/repositories/interacoesIa.js';
 import { registrarUsoTokens } from '../../db/repositories/usoTokens.js';
@@ -46,6 +47,131 @@ async function comIndicadorDigitando<T>(ctx: Context, tarefa: Promise<T>, logger
   }
 }
 
+// Núcleo do fluxo conversa_texto, extraído pra ser reaproveitado por qualquer
+// handler que já tenha uma string de mensagem pronta — hoje texto.ts (direto
+// do Telegram) e voz.ts (Fase 6 parte 11, texto vindo de transcrição), sem
+// duplicar histórico/registro/resumo/tratamento de erro entre os dois.
+export async function processarMensagemTexto(
+  ctx: Context,
+  db: DbClient,
+  client: OpenAI,
+  logger: Logger,
+  tools: ToolDefinition[],
+  mensagemUsuario: string,
+  chatId: number,
+): Promise<void> {
+  const pendencia = obterPendencia(chatId);
+  if (pendencia) {
+    removerPendencia(chatId);
+
+    if (!ehConfirmacaoAfirmativa(mensagemUsuario)) {
+      await ctx.reply('Ação cancelada.');
+      return;
+    }
+
+    try {
+      const resultado = await comIndicadorDigitando(
+        ctx,
+        pendencia.tool.handler(pendencia.argumentos, { chatId }),
+        logger,
+      );
+      const { texto, imagem } = extrairTextoEImagem(resultado);
+      await ctx.reply(texto);
+      if (imagem) await ctx.replyWithPhoto(new InputFile(imagem));
+    } catch (erro) {
+      logger.error({ err: erro }, 'falha ao executar ação confirmada pelo usuário');
+      await ctx.reply('Não consegui concluir a ação confirmada, tente novamente.');
+    }
+    return;
+  }
+
+  const traceId = randomUUID();
+  const log = logger.child({ traceId });
+
+  try {
+    const historico = montarHistorico(db, chatId);
+    const {
+      modelo,
+      resposta,
+      toolCalls,
+      imagens,
+      tokensPrompt,
+      tokensCompletion,
+      cachedTokens,
+      cacheWriteTokens,
+      custoReal,
+      duracaoMs,
+      pendenciaConfirmacao,
+    } = await comIndicadorDigitando(
+      ctx,
+      gerarResposta(client, mensagemUsuario, tools, { chatId }, historico, resolverModeloConversa(db, chatId)),
+      log,
+    );
+
+    if (pendenciaConfirmacao) {
+      definirPendencia(chatId, pendenciaConfirmacao);
+    }
+
+    registrarInteracaoIa(db, {
+      traceId,
+      fluxo: FLUXO,
+      modelo,
+      mensagemUsuario,
+      respostaModelo: resposta,
+      toolCalls,
+      resultado: 'sucesso',
+      chatId,
+      tokensPrompt,
+      tokensCompletion,
+    });
+
+    registrarUsoTokens(db, {
+      fluxo: FLUXO,
+      modelo,
+      tokensPrompt,
+      tokensCompletion,
+      custoEstimado: custoReal,
+      origem: 'uso_real',
+    });
+
+    log.info(
+      { modelo, tokensPrompt, tokensCompletion, cachedTokens, cacheWriteTokens, duracaoMs },
+      'interação com IA registrada',
+    );
+    const mensagemEnviada = await ctx.reply(
+      resposta.trim().length > 0 ? resposta : 'Não entendi, pode reformular?',
+    );
+    definirRastroResposta(mensagemEnviada.message_id, traceId);
+    for (const imagem of imagens) {
+      await ctx.replyWithPhoto(new InputFile(imagem));
+    }
+
+    // Roda depois de a resposta já ter sido enviada — não adiciona latência
+    // perceptível à resposta atual (PLANO.md, mecanismo de resumo cumulativo).
+    try {
+      await verificarGatilhoResumo(db, client, chatId);
+    } catch (erroResumo) {
+      log.error({ err: erroResumo }, 'falha ao gerar resumo de contexto');
+    }
+  } catch (erro) {
+    registrarInteracaoIa(db, {
+      traceId,
+      fluxo: FLUXO,
+      modelo: MODELO_PADRAO,
+      mensagemUsuario,
+      resultado: 'erro',
+      chatId,
+    });
+
+    log.error({ err: erro }, 'falha ao chamar OpenRouter');
+    await ctx.reply(
+      ehErroModeloInvalido(erro)
+        ? 'Não consegui usar o modelo configurado nesse chat — o OpenRouter recusou, provavelmente porque o nome não é um slug válido. Confira com /modelo, ou troque de novo usando o slug do OpenRouter (ex: "openai/gpt-4o-mini", "qwen/qwen3-32b"), não o nome de exibição.'
+        : 'Não consegui processar sua mensagem agora, tente de novo em instantes.',
+    );
+  }
+}
+
 export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger) {
   const tools = montarToolsConversa(db, client);
 
@@ -57,115 +183,6 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
       return;
     }
 
-    const pendencia = obterPendencia(chatId);
-    if (pendencia) {
-      removerPendencia(chatId);
-
-      if (!ehConfirmacaoAfirmativa(mensagemUsuario)) {
-        await ctx.reply('Ação cancelada.');
-        return;
-      }
-
-      try {
-        const resultado = await comIndicadorDigitando(
-          ctx,
-          pendencia.tool.handler(pendencia.argumentos, { chatId }),
-          logger,
-        );
-        const { texto, imagem } = extrairTextoEImagem(resultado);
-        await ctx.reply(texto);
-        if (imagem) await ctx.replyWithPhoto(new InputFile(imagem));
-      } catch (erro) {
-        logger.error({ err: erro }, 'falha ao executar ação confirmada pelo usuário');
-        await ctx.reply('Não consegui concluir a ação confirmada, tente novamente.');
-      }
-      return;
-    }
-
-    const traceId = randomUUID();
-    const log = logger.child({ traceId });
-
-    try {
-      const historico = montarHistorico(db, chatId);
-      const {
-        modelo,
-        resposta,
-        toolCalls,
-        imagens,
-        tokensPrompt,
-        tokensCompletion,
-        cachedTokens,
-        cacheWriteTokens,
-        custoReal,
-        duracaoMs,
-        pendenciaConfirmacao,
-      } = await comIndicadorDigitando(
-        ctx,
-        gerarResposta(client, mensagemUsuario, tools, { chatId }, historico, resolverModeloConversa(db, chatId)),
-        log,
-      );
-
-      if (pendenciaConfirmacao) {
-        definirPendencia(chatId, pendenciaConfirmacao);
-      }
-
-      registrarInteracaoIa(db, {
-        traceId,
-        fluxo: FLUXO,
-        modelo,
-        mensagemUsuario,
-        respostaModelo: resposta,
-        toolCalls,
-        resultado: 'sucesso',
-        chatId,
-        tokensPrompt,
-        tokensCompletion,
-      });
-
-      registrarUsoTokens(db, {
-        fluxo: FLUXO,
-        modelo,
-        tokensPrompt,
-        tokensCompletion,
-        custoEstimado: custoReal,
-        origem: 'uso_real',
-      });
-
-      log.info(
-        { modelo, tokensPrompt, tokensCompletion, cachedTokens, cacheWriteTokens, duracaoMs },
-        'interação com IA registrada',
-      );
-      const mensagemEnviada = await ctx.reply(
-        resposta.trim().length > 0 ? resposta : 'Não entendi, pode reformular?',
-      );
-      definirRastroResposta(mensagemEnviada.message_id, traceId);
-      for (const imagem of imagens) {
-        await ctx.replyWithPhoto(new InputFile(imagem));
-      }
-
-      // Roda depois de a resposta já ter sido enviada — não adiciona latência
-      // perceptível à resposta atual (PLANO.md, mecanismo de resumo cumulativo).
-      try {
-        await verificarGatilhoResumo(db, client, chatId);
-      } catch (erroResumo) {
-        log.error({ err: erroResumo }, 'falha ao gerar resumo de contexto');
-      }
-    } catch (erro) {
-      registrarInteracaoIa(db, {
-        traceId,
-        fluxo: FLUXO,
-        modelo: MODELO_PADRAO,
-        mensagemUsuario,
-        resultado: 'erro',
-        chatId,
-      });
-
-      log.error({ err: erro }, 'falha ao chamar OpenRouter');
-      await ctx.reply(
-        ehErroModeloInvalido(erro)
-          ? 'Não consegui usar o modelo configurado nesse chat — o OpenRouter recusou, provavelmente porque o nome não é um slug válido. Confira com /modelo, ou troque de novo usando o slug do OpenRouter (ex: "openai/gpt-4o-mini", "qwen/qwen3-32b"), não o nome de exibição.'
-          : 'Não consegui processar sua mensagem agora, tente de novo em instantes.',
-      );
-    }
+    await processarMensagemTexto(ctx, db, client, logger, tools, mensagemUsuario, chatId);
   };
 }
