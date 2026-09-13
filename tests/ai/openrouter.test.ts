@@ -88,6 +88,7 @@ describe('gerarResposta — sem ferramentas (compatibilidade)', () => {
       modelo: MODELO_PADRAO,
       resposta: 'olá!',
       toolCalls: [],
+      imagens: [],
       tokensPrompt: 0,
       tokensCompletion: 0,
       cachedTokens: 0,
@@ -194,6 +195,32 @@ describe('gerarResposta — loop de tool calling', () => {
     expect(resultado.toolCalls).toEqual([{ nome: 'ecoar', argumentos: { texto: 'oi' } }]);
     expect(resultado.tokensPrompt).toBe(30);
     expect(resultado.tokensCompletion).toBe(13);
+    expect(resultado.imagens).toEqual([]);
+  });
+
+  it('ferramenta que devolve {texto, imagem} manda só o texto pro modelo e acumula a imagem em imagens', async () => {
+    const buffer = Buffer.from('fake-png');
+    const toolComImagem: ToolDefinition = {
+      name: 'gerar_imagem',
+      description: 'Gera uma imagem de teste',
+      schema: z.object({}),
+      handler: async () => ({ texto: 'gráfico gerado', imagem: buffer }),
+    };
+    const create = vi.fn();
+    create.mockImplementationOnce(async () => respostaToolCall('gerar_imagem', {}));
+    create.mockImplementationOnce(async (params: { messages: unknown[] }) => {
+      const mensagemTool = params.messages.find(
+        (m): m is { role: string; content: unknown } => (m as { role?: string }).role === 'tool',
+      );
+      expect(mensagemTool?.content).toBe('gráfico gerado');
+      return respostaTexto('aqui está o gráfico');
+    });
+    const client = { chat: { completions: { create } } } as unknown as OpenAI;
+
+    const resultado = await gerarResposta(client, 'gera o gráfico', [toolComImagem]);
+
+    expect(resultado.resposta).toBe('aqui está o gráfico');
+    expect(resultado.imagens).toEqual([buffer]);
   });
 
   it('passa o modelo usado no turno pro ctx recebido pelo handler da ferramenta', async () => {
