@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import { SYSTEM_PROMPT } from './systemPrompt.js';
 import { paraDefinicaoOpenAI } from './tools/registry.js';
-import type { ToolContext, ToolDefinition } from './tools/types.js';
+import type { ResultadoTool, ToolContext, ToolDefinition } from './tools/types.js';
 
 export const MODELO_PADRAO = 'openai/gpt-4o-mini';
 
@@ -29,6 +29,7 @@ export type RespostaGerada = {
   modelo: string;
   resposta: string;
   toolCalls: ToolCallRegistrada[];
+  imagens: Buffer[];
   tokensPrompt: number;
   tokensCompletion: number;
   cachedTokens: number;
@@ -39,8 +40,14 @@ export type RespostaGerada = {
 };
 
 type ResultadoToolCall =
-  | { tipo: 'executado'; conteudo: string; argumentos: unknown }
+  | { tipo: 'executado'; conteudo: string; imagem?: Buffer; argumentos: unknown }
   | { tipo: 'pendente_confirmacao'; tool: ToolDefinition; argumentos: unknown };
+
+// Separa o texto (vai pro modelo via role: 'tool') da imagem (nunca vai pro
+// modelo, só é acumulada pra virar foto no Telegram) de um retorno de tool.
+export function extrairTextoEImagem(resultado: ResultadoTool): { texto: string; imagem?: Buffer } {
+  return typeof resultado === 'string' ? { texto: resultado } : resultado;
+}
 
 function gerarPerguntaConfirmacao(tool: ToolDefinition, argumentos: unknown): string {
   const base = `Confirma a ação "${tool.name}" com os parâmetros ${JSON.stringify(argumentos)}? Responda "sim" para confirmar, ou qualquer outra coisa para cancelar.`;
@@ -98,6 +105,7 @@ export async function gerarResposta(
     { role: 'user', content: mensagemUsuario },
   ];
   const toolCallsRegistradas: ToolCallRegistrada[] = [];
+  const imagens: Buffer[] = [];
   let tokensPrompt = 0;
   let tokensCompletion = 0;
   let cachedTokens = 0;
@@ -141,6 +149,7 @@ export async function gerarResposta(
         modelo,
         resposta: mensagem?.content ?? '',
         toolCalls: toolCallsRegistradas,
+        imagens,
         tokensPrompt,
         tokensCompletion,
         cachedTokens,
@@ -165,6 +174,7 @@ export async function gerarResposta(
           modelo,
           resposta: gerarPerguntaConfirmacao(resultado.tool, resultado.argumentos),
           toolCalls: [...toolCallsRegistradas, { nome: resultado.tool.name, argumentos: resultado.argumentos }],
+          imagens,
           tokensPrompt,
           tokensCompletion,
           cachedTokens,
@@ -176,6 +186,7 @@ export async function gerarResposta(
       }
 
       toolCallsRegistradas.push({ nome: toolCall.function.name, argumentos: resultado.argumentos });
+      if (resultado.imagem) imagens.push(resultado.imagem);
       mensagens.push({ role: 'tool', tool_call_id: toolCall.id, content: resultado.conteudo });
     }
   }
@@ -249,8 +260,9 @@ async function executarToolCall(
   }
 
   try {
-    const conteudo = await tool.handler(validacao.data, ctx);
-    return { tipo: 'executado', conteudo, argumentos: validacao.data };
+    const retorno = await tool.handler(validacao.data, ctx);
+    const { texto, imagem } = extrairTextoEImagem(retorno);
+    return { tipo: 'executado', conteudo: texto, imagem, argumentos: validacao.data };
   } catch (erro) {
     const mensagemErro = erro instanceof Error ? erro.message : String(erro);
     return {
