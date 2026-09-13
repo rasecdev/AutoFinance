@@ -3,6 +3,7 @@ import { FLUXO_ANALISAR_QUALIDADE, MODELO_ANALISAR_QUALIDADE } from '../../ai/an
 import { MODELO_PADRAO } from '../../ai/openrouter.js';
 import { FLUXO_RELATORIO_MENSAL, MODELO_RELATORIO_MENSAL } from '../../ai/relatorioMensal.js';
 import { FLUXO_RESUMIR_CONTEXTO, MODELO_RESUMO } from '../../ai/resumirContexto.js';
+import { FLUXO_TRANSCRICAO_VOZ, MODELO_TRANSCRICAO_VOZ } from '../../ai/transcricao.js';
 import type { DbClient } from '../../db/client.js';
 import { obterModeloRoteamento } from '../../db/repositories/roteamentoTarefas.js';
 import { obterOverrideModelo } from '../modeloAtivo.js';
@@ -17,6 +18,7 @@ const FLUXOS_ROTEADOS: Array<{ fluxo: string; padrao: string }> = [
   { fluxo: FLUXO_RESUMIR_CONTEXTO, padrao: MODELO_RESUMO },
   { fluxo: FLUXO_RELATORIO_MENSAL, padrao: MODELO_RELATORIO_MENSAL },
   { fluxo: FLUXO_ANALISAR_QUALIDADE, padrao: MODELO_ANALISAR_QUALIDADE },
+  { fluxo: FLUXO_TRANSCRICAO_VOZ, padrao: MODELO_TRANSCRICAO_VOZ },
 ];
 
 export function createHandlerModelos(db: DbClient) {
