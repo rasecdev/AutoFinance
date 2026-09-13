@@ -1,52 +1,52 @@
-# Implementation Plan: Fase 6 (parte 10) — Consulta dinâmica + gráfico
+# Implementation Plan: Fase 6 (parte 11) — Transcrição de voz
 
-Ver PLANO.md, "Relatórios (diário, semanal, mensal) e metas", itens 8 a 8.4 (linhas 315-362), pro desenho completo. Fluxo de branch/PR/merge por tarefa é o já descrito em `CLAUDE.md`.
+Nova fase entre Fase 6 e Fase 7, a pedido do usuário — cobre entrada por voz e por foto/PDF de comprovante, hoje ambas só stub (`handlerMidia`) ou catch-all (`handlerNaoSuportado`). Ver PLANO.md linha 475 (Fase 1, "handlers já separados por tipo de entrada desde o início") e linha 575 (Fase 6, "transcrição de áudio... nunca agendada como parte"). Fluxo de branch/PR/merge por tarefa é o já descrito em `CLAUDE.md`.
 
-## Overview
+## Overview do conjunto (2 partes, ordem decidida por facilidade)
 
-Última peça da Fase 6: três ferramentas novas de consulta livre — `consultar_dados_dinamico` (parâmetros estruturados com whitelist fixa de métrica/dimensão/domínio, nunca SQL livre gerado pela IA), `gerar_grafico` (renderiza imagem a partir de dado já calculado, nunca inventado pela IA) e `consultar_e_graficar` (atalho combinando as duas numa só chamada quando não há ambiguidade). Exige uma mudança pequena de arquitetura: hoje o contrato de `ToolDefinition.handler` só devolve texto — `gerar_grafico`/`consultar_e_graficar` precisam devolver também uma imagem, que o bot manda como foto no Telegram.
+- **Parte 11 (esta rodada) — Transcrição de voz.** Mais simples: transcreve o áudio e alimenta o pipeline de `conversa_texto` já existente por completo — zero tool nova, zero fluxo de confirmação novo.
+- **Parte 12 (próxima rodada) — Leitura de comprovante (foto/PDF).** Mais complexa: extrai dado estruturado de imagem, e por vir de fonte externa não confiável (PLANO.md, item 6 do OWASP) precisa de confirmação explícita antes de gravar — mecanismo detalhado abaixo, pra já deixar decidido antes de começar aquela rodada. Também é pré-requisito real da Fase 7 (que reaproveita esta mesma extração pra anexo de e-mail).
 
-## Architecture Decisions
+Pesquisa de modelo (feita antes deste plano, ver PROGRESSO.md/conversa): **voz → Whisper Large V3 Turbo via `/api/v1/audio/transcriptions` do próprio OpenRouter** (mesma chave já usada, mais barato que a Groq direta: ~$0,0108/hora vs $0,04/hora) — corrige suposição desatualizada do PLANO.md ("STT é fora do OpenRouter"); **foto/PDF → Gemini 2.5 Flash Lite** ($0,05/$0,20 por M tokens, mais barato entre os candidatos com vision, recomendado pelo próprio Google pra extração de alto volume).
 
-- **`consultar_dados_dinamico` nunca gera SQL livre.** `metricas` (`soma_valor`, `media_valor`, `contagem`, `saldo`), `agrupar_por` (até 2 dimensões: `categoria`, `conta_id`, `cartao_id`, `dia_semana`, `mes`, `tipo_transacao` no domínio financeiro; `fluxo`, `modelo` no domínio `uso_ia`) e `dominio` (`financeiro`|`uso_ia`) são todos whitelist fixa no código — a IA só escolhe entre opções existentes, nunca monta cláusula. Valores de filtro (categoria digitada em linguagem natural, datas) sempre vão pra query via bind parameter (`?`), nunca concatenação de string — mesmo padrão já usado em `listarTransacoesAtivas`.
-- **Dois domínios, dois motores de query, uma função de entrada.** `financeiro` consulta `transacoes` (reaproveita o padrão de `FiltroTransacoes`), `uso_ia` consulta `uso_tokens`. Cruzar os dois domínios na mesma pergunta não vira uma query nova — a IA faz duas chamadas separadas da mesma tool (já suportado pelo tool calling), mesma decisão do PLANO.md (item 8.1).
-- **Formato de saída uniforme: `{rotulo, valor}[]` (1 dimensão) ou `{serie, rotulo, valor}[]` (2 dimensões).** `gerar_grafico` nunca precisa saber o que "categoria" ou "mês" significam — só recebe essa lista genérica. Isso também define o contrato entre `consultar_dados_dinamico` e `gerar_grafico`.
-- **Ordenação cronológica fixa pra dimensão de tempo.** `mes`/`dia_semana` sempre ordenam por calendário (jan→dez, dom→sáb), nunca alfabético — `ordenar_por` nessas dimensões só controla a **direção** (asc/desc), não o critério. Dimensões sem ordem natural (`categoria`, `conta_id`, `cartao_id`, `fluxo`, `modelo`) usam `ordenar_por`/`limite` livremente por valor (cobre "top 5").
-- **Eco de interpretação em toda resposta, nunca escrita.** Mitigação de Misinformation (PLANO.md item 8.4) — como essas três tools só leem, a resposta sempre inclui os parâmetros que a IA usou pra interpretar o pedido (período, filtro, agrupamento, métrica) em texto simples, mesma lógica passiva de revisão já usada em `registrar_transacao`, adaptada pra leitura.
-- **Fora da whitelist → recusa explícita, nunca estimativa.** Mesmo Princípio de confirmação por dúvida já usado no projeto — pedir algo fora da lista fixa de métrica/dimensão retorna aviso, não invenção.
-- **Mudança de arquitetura mínima pra suportar imagem:** `ToolDefinition.handler` passa a poder devolver `string | { texto: string; imagem?: Buffer }` em vez de só `string`. `executarToolCall`/`gerarResposta` (`src/ai/openrouter.ts`) extraem o texto (vai pro modelo normalmente, via `role: 'tool'`) e acumulam as imagens num campo novo `imagens: Buffer[]` no retorno de `gerarResposta` — a IA nunca vê a imagem, só o texto. `src/bot/handlers/texto.ts` manda `ctx.replyWithPhoto` pra cada imagem acumulada, além do `ctx.reply` de texto já existente. Escolhido em vez de um canal paralelo (ex: side-effect direto pro Telegram dentro do handler da tool) porque mantém o handler de tool puro/testável (retorna valor, não manda mensagem) — mesmo princípio já seguido pelo resto do projeto (nenhuma tool hoje chama `ctx.reply` diretamente).
-- **`gerar_grafico` recebe `dados` já formatado, não recalcula nada.** É só um renderizador — valida o shape (`{rotulo,valor}[]` ou `{serie,rotulo,valor}[]`) via Zod e desenha. Biblioteca: `chartjs-node-canvas` + `chart.js` (server-side, sem serviço externo) — nenhuma dependência de gráfico existe hoje no projeto, será adicionada.
-- **`metrica` é singular na função/engine, não `metricas` (plural) como o texto do PLANO.md sugere.** Mantém o shape de saída simples (`{rotulo,valor}`/`{serie,rotulo,valor}`) sem precisar de uma dimensão extra pra distinguir métrica quando há mais de uma — perguntar duas métricas ao mesmo tempo vira duas chamadas da tool, mesmo padrão já aceito pra cruzar domínio (item 8.1). A tool (`consultar_dados_dinamico`, Tarefa 70) pode expor `metrica` no singular também, sem tradução de nome.
-- **`consultar_e_graficar` não é implementada chamando as outras duas tools internamente como "sub-tools"** — é uma terceira função que reaproveita as mesmas funções puras (`executarConsultaDinamica` + `renderizarGrafico`) direto, sem overhead de outro turno de IA. As três tools continuam registradas separadamente (útil quando só quer o número, ou quando precisa cruzar domínio antes de decidir visualizar — PLANO.md item 8.3).
+## Architecture Decisions (parte 11 — voz)
 
-## Task List
+- **Sem tool nova, sem tabela nova.** `client.audio.transcriptions.create(...)` (SDK `openai`, já usado pro client do OpenRouter) transcreve o áudio; o texto resultante entra no MESMO `gerarResposta`/`montarToolsConversa` já usado por mensagem de texto — a partir do texto transcrito, é a mesma coisa que o usuário ter digitado. Reaproveita 100% do tool-calling, do resumo de contexto, da observabilidade (`interacoes_ia`) já existentes.
+- **Refatoração mínima em `texto.ts`**: a lógica hoje começa em "tenho uma string, processo" (`mensagemUsuario = ctx.message?.text`) — extraída pra uma função `processarMensagemTexto(ctx, db, client, logger, mensagemUsuario, chatId)` reaproveitável pelo novo handler de voz, sem duplicar histórico/registro/resumo/tratamento de erro.
+- **Novo fluxo `transcricao_voz` em `roteamento_tarefas`**, resolvido do mesmo jeito que os outros (`obterModeloRoteamento`/fallback pro modelo padrão do fluxo) — aparece em `/modelos`. Custo registrado em `uso_tokens` como qualquer outro fluxo (`origem: 'uso_real'`); transcrição é cobrada por segundo de áudio, não por token de texto — `tokensPrompt`/`tokensCompletion` ficam 0, `custoEstimado` vem de `usage.cost` da resposta (mesmo campo já usado nos outros fluxos).
+- **Sem transcrever duas vezes.** Depois de transcrever, a mensagem grava em `interacoes_ia` com `fluxo: 'conversa_texto'` (é isso que ela é, semanticamente) — o custo/registro do próprio ato de transcrever grava separado, fluxo `transcricao_voz`, na mesma chamada.
+- **Erro de transcrição (áudio incompreensível, silêncio, formato não suportado) não trava o bot** — mensagem clara ("não consegui entender o áudio, tenta de novo ou manda por texto") em vez de propagar erro cru.
+- **Correção de doc**: PLANO.md (linhas 121, 141, 150) dizia STT ficar fora do OpenRouter — corrigido nesta rodada (achado real, ver pesquisa registrada no PROGRESSO.md).
 
-### Fase VI: Consulta dinâmica + gráfico
+## Architecture Decisions (parte 12 — leitura de comprovante, decidido agora pra não travar o início daquela rodada)
 
-- [x] Tarefa 68: `src/relatorios/consultaDinamica.ts` — motor de query domínio `financeiro` (`executarConsultaDinamica`, whitelist, 1-2 dimensões, ordenação cronológica pra mes/dia_semana)
-- [x] Tarefa 69: extensão do motor pro domínio `uso_ia` (mesma função, nova branch de query contra `uso_tokens`)
-- [x] Tarefa 70: tool `consultar_dados_dinamico` (`src/ai/tools/consultaDinamica.ts`) — schema Zod, eco de interpretação, mensagem de recusa fora da whitelist
-- [x] Tarefa 71: mudança de arquitetura — `ToolDefinition.handler` pode devolver imagem; `gerarResposta` acumula `imagens: Buffer[]`; `src/bot/handlers/texto.ts` manda `ctx.replyWithPhoto`
-- [x] Tarefa 72: `src/relatorios/grafico.ts` — `renderizarGrafico(tipo, dados)` via `chartjs-node-canvas` (nova dependência), tipo barra/linha/pizza, 1 ou 2 séries
-- [x] Tarefa 73: tool `gerar_grafico` (`src/ai/tools/grafico.ts`) — valida shape de `dados`, devolve `{texto, imagem}`
-- [x] Tarefa 74: tool `consultar_e_graficar` — reaproveita `executarConsultaDinamica` + `renderizarGrafico` numa só chamada
-- [x] Achado real de teste manual (issue #205): `consultar_dados_dinamico`/`consultar_e_graficar` não aplicavam mês atual como padrão sem período informado (diferente de `consultar_extrato`/`resumo_mensal`) — corrigido com default de mês atual (exceto quando `agrupar_por` inclui `mes`) + eco sempre mostrando o período efetivo usado. Bug lateral corrigido junto: filtro de `data_hora` (uso_ia) por comparação léxica de string excluía o último dia do período.
-- [x] Achado real de teste manual (issue #207): pedindo gráfico, o modelo chamava `consultar_e_graficar` e `gerar_grafico` juntas na mesma resposta (mandava a foto duplicada) e ainda tentava desenhar a imagem ele mesmo em base64 alucinado no texto (nunca é o PNG real — a imagem nunca chega ao contexto do modelo). Corrigido com descrição explícita nas duas tools (nunca chamar juntas) + regra 13 nova no SYSTEM_PROMPT (nunca embutir/codificar imagem no texto).
+- **Extração NÃO é uma tool exposta ao modelo de `conversa_texto`** — é uma chamada de IA dedicada (mesmo padrão de `resumirContexto`/`analisarQualidade`: função própria, modelo próprio via `roteamento_tarefas` fluxo `leitura_comprovante`, fora do loop de tool calling), porque a decisão "isso é uma transação, tenta registrar" não é uma escolha ambígua de ferramenta — é sempre a mesma ação disparada pela chegada da imagem, não pela interpretação de uma frase.
+- **Confirmação obrigatória via reaproveitamento do mecanismo já existente (Fase 3), não um mecanismo novo.** Depois de extrair os campos, o handler monta uma mensagem sintética descrevendo o que foi lido ("Comprovante lido: R$ 45,00, categoria sugerida Mercado, descrição 'Mercado Central', data 2026-09-10.") e chama `gerarResposta` com essa mensagem como se fosse a mensagem do usuário, usando os MESMOS `tools` de `conversa_texto` — **exceto** que, só pra esta chamada, a tool `registrar_transacao` recebe `requerConfirmacao: true` (normalmente é `false` — baixo impacto, escrita direta com eco). Isso é feito com uma função pura `exigirConfirmacaoDeRegistro(tools)` que mapeia a lista trocando só essa flag, sem duplicar a tool. O modelo então segue as regras já existentes do SYSTEM_PROMPT sozinho: pergunta a conta/cartão se não estiver claro (regra 3, dúvida real — a foto nunca diz qual conta pagou), e o mecanismo de confirmação síncrona já existente (`definirPendencia`/`gerarPerguntaConfirmacao`) cobre o "confirma?" antes de gravar — cumpre o item 6 do OWASP (conteúdo externo não confiável nunca grava sem confirmação explícita) sem estado novo, sem tabela nova, sem tool nova.
+- **Sem correspondência com fatura/parcela existente nesta rodada** — reconhecer "isso é o boleto da parcela 3 do financiamento X" e atualizar o registro certo é a lógica de correspondência já desenhada pra Fase 7 (linha 581 do PLANO.md), não desta. Se a extração identificar que a imagem parece ser fatura de cartão ou boleto de dívida (não um comprovante de compra do dia a dia), a resposta é uma mensagem explicando isso, sem tentar registrar como transação — degrada com aviso claro, não confirmação errada.
+- **PDF é tarefa separada dentro da parte 12**, isolando o risco: nem todo provedor aceita PDF do mesmo jeito que imagem via OpenRouter — se não funcionar de primeira com Gemini 2.5 Flash Lite, essa tarefa específica documenta o achado e degrada (“ainda não leio PDF, manda foto”) sem bloquear a foto, que é o caso comum.
+- **Imagem que não é comprovante nenhum** — a extração devolve um campo explícito (`e_comprovante: false` ou similar) e o handler responde direto, sem tentar montar mensagem sintética nem chamar `gerarResposta`.
 
-### Checkpoint: Consulta dinâmica + gráfico funcional
-- [x] `npm run build`/`lint`/`test` sem erro (668/668, depois 670/670 com os fixes)
-- [x] PROGRESSO.md atualizado com o marco
-- [x] Teste manual em Homologação via Telegram: pergunta livre (`consultar_dados_dinamico`), gráfico (`consultar_e_graficar`) e um caso fora da whitelist — dois achados reais (issues #205, #207), corrigidos e reconfirmados
-- [x] Fecha o milestone "Fase 6 (parte 10)" e, com isso, a Fase 6 inteira — 9 issues fechadas (#191-197, #205, #207)
-- [x] Revisão com o usuário antes de prosseguir (Fase 7)
+## Task List (parte 11 — Transcrição de voz)
 
-## Risks and Mitigations
+### Fase VI: Transcrição de voz
+- [ ] Tarefa 75: `transcreverAudio(client, buffer, nomeArquivo, modelo)` em `src/ai/transcricao.ts` — chama `client.audio.transcriptions.create`, `FLUXO_TRANSCRICAO_VOZ`/`MODELO_TRANSCRICAO_VOZ` (Whisper Large V3 Turbo), resolução via `roteamento_tarefas`
+- [ ] Tarefa 76: refatora `src/bot/handlers/texto.ts` extraindo `processarMensagemTexto(...)` reaproveitável
+- [ ] Tarefa 77: novo `src/bot/handlers/voz.ts` — baixa o áudio (`ctx.getFile`), chama `transcreverAudio`, chama `processarMensagemTexto` com o texto resultante; erro de transcrição não propaga
+- [ ] Tarefa 78: registra `message:voice` em `router.ts`/`bot.ts`/`index.ts`; adiciona `transcricao_voz` em `FLUXOS_ROTEADOS` (`/modelos`)
+
+### Checkpoint: Transcrição de voz funcional
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] PLANO.md corrigido (STT via OpenRouter, não mais "fora do OpenRouter") — porquê registrado no PROGRESSO.md
+- [ ] Teste manual em Homologação via Telegram: mandar um áudio real com um pedido simples (ex: "registra 20 reais de Uber") e confirmar que a ação certa é executada
+- [ ] PROGRESSO.md atualizado com o marco
+- [ ] Revisão com o usuário antes de prosseguir (parte 12 — leitura de comprovante)
+
+## Risks and Mitigations (parte 11)
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Mudança no contrato de `ToolDefinition.handler` (Tarefa 71) quebra alguma tool existente | Médio | Tipo mantém `string` como caso válido (união, não substituição) — todas as tools atuais continuam retornando `string` sem alteração; só as duas novas usam o formato objeto |
-| `chartjs-node-canvas` exigir dependência nativa (`canvas`) pesada na imagem Docker | Médio | Testar `npm run build`/Docker build já na Tarefa 72 antes de seguir; se o binário nativo não instalar limpo no Dockerfile atual, documentar e ajustar `Dockerfile` na mesma tarefa (não deixar pra depois) |
-| Pergunta cruza domínio financeiro + uso_ia e a IA tenta uma única chamada em vez de duas | Baixo | Comportamento esperado (documentado no PLANO.md 8.1) — descrição da tool deixa explícito que domínio é sempre um só por chamada |
-| `agrupar_por` com 2 dimensões de tempo simultâneas (ex: `[mes, dia_semana]`) sem sentido de ordenação clara | Baixo | Fora de escopo — whitelist não impede combinação estranha, mas caso de uso real não pede isso; se aparecer, tratar como achado real depois |
+| Whisper transcrever mal PT-BR com ruído de fundo/sotaque | Médio | Mensagem de baixa confiança faz o bot pedir pra repetir por texto, em vez de agir sobre transcrição ruim — a validar na prática |
+| `client.audio.transcriptions.create` não aceitar .ogg/opus do Telegram direto | Baixo | Formato Opus em contêiner OGG é amplamente suportado por Whisper; se não funcionar, converter fica documentado como achado real na Tarefa 75 |
+| Custo de transcrição não bater no mesmo campo `usage.cost` dos outros fluxos | Baixo | Confirmar na Tarefa 75; se a resposta não trouxer `cost`, registrar `custoEstimado: 0` documentado como limitação, não bloquear a tarefa |
 
 ## Open Questions
-Nenhuma — desenho derivado do PLANO.md (itens 8 a 8.4) com a mudança de arquitetura do handler explicada acima.
+Nenhuma pra parte 11 — decisões de arquitetura da parte 12 já registradas acima pra não travar o início daquela rodada, mas o detalhamento tarefa-a-tarefa dela só é escrito quando a parte 11 fechar checkpoint.
