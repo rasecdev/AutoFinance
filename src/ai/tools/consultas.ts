@@ -38,12 +38,12 @@ const schemaResumoMensal = z.object({
   conta_apelido: z.string().min(1).optional(),
 });
 
-function mesAtualISO(): string {
+export function mesAtualISO(): string {
   const agora = new Date();
   return `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`;
 }
 
-function limitesDoMes(mes: string): { inicio: string; fim: string } {
+export function limitesDoMes(mes: string): { inicio: string; fim: string } {
   const [anoStr, mesStr] = mes.split('-');
   const ano = Number(anoStr);
   const numeroMes = Number(mesStr);
