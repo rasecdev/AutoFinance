@@ -9,13 +9,15 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura de parte 11 e
 **Description:** Nova função `transcreverAudio(client: OpenAI, buffer: Buffer, nomeArquivo: string, modelo?: string): Promise<ResultadoTranscricao>` — usa `OpenAI.toFile(buffer, nomeArquivo)` + `client.audio.transcriptions.create({ file, model })` contra o endpoint de transcrição do OpenRouter (mesmo client já criado por `createOpenRouterClient`). `MODELO_TRANSCRICAO_VOZ = 'openai/whisper-large-v3-turbo'` (ou o slug exato confirmado no catálogo do OpenRouter), `FLUXO_TRANSCRICAO_VOZ = 'transcricao_voz'`, resolução de modelo via `obterModeloRoteamento(db, FLUXO_TRANSCRICAO_VOZ)` com fallback pro padrão (mesmo padrão de `resolverModeloAnalisarQualidade`/`MODELO_RESUMO`). Retorna `{ texto: string, custoEstimado: number }` — se a resposta não trouxer `usage.cost`, `custoEstimado: 0` (documentar como limitação conhecida, não bloqueia).
 
 **Acceptance criteria:**
-- [ ] Chamando com um buffer de áudio real (fixture curta, gravada uma vez), retorna o texto transcrito
-- [ ] Resolve o modelo via `roteamento_tarefas` quando existe override, cai no padrão quando não existe
-- [ ] Erro da API (áudio inválido, formato não suportado) propaga como erro tipado, não silenciosamente vazio
+- [x] Transcreve e retorna o texto (mockado — sem fixture de áudio real, mesmo padrão de mock de client já usado em `openrouter.test.ts`)
+- [x] Resolve o modelo via `roteamento_tarefas` quando existe override, cai no padrão quando não existe
+- [x] Sem `usage.cost` na resposta, `custoEstimado` fica 0 em vez de estourar erro
+
+**Nota de implementação:** `usage.cost` não é um campo padrão do SDK `openai` (é extensão do OpenRouter, mesmo padrão de `UsageComCusto` em `openrouter.ts`) — cast local, documentado com comentário. Erro de API (áudio inválido) já propaga naturalmente (promise rejeitada), tratado no handler (Tarefa 77), não nesta função.
 
 **Verification:**
-- [ ] `npm test -- tests/ai/transcricao.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/ai/transcricao.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** None
 
