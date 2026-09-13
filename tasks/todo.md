@@ -80,12 +80,12 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura de parte 11 e
 **Description:** `src/bot/router.ts` ganha `bot.on('message:voice', handlerVoz)` (antes do catch-all `handlerNaoSuportado`); `bot.ts`/`index.ts` passam o novo handler pela cadeia de criação (mesmo padrão de `handlerModelos`, Fase 6 parte 8). `src/bot/handlers/modelos.ts` (`FLUXOS_ROTEADOS`) ganha a linha `transcricao_voz`/`MODELO_TRANSCRICAO_VOZ`, aparecendo em `/modelos`.
 
 **Acceptance criteria:**
-- [ ] Mensagem de voz roteia pro novo handler, não mais pro catch-all
-- [ ] `/modelos` lista o fluxo `transcricao_voz` e o modelo resolvido (com override, se houver)
+- [x] Mensagem de voz roteia pro novo handler, não mais pro catch-all
+- [x] `/modelos` lista o fluxo `transcricao_voz` e o modelo resolvido (com override, se houver)
 
 **Verification:**
-- [ ] `npm test -- tests/bot/router.test.ts tests/bot/modelos.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/bot/router.test.ts tests/bot/modelos.test.ts` (suite completa: 681/681, 1 flake isolado de timeout já documentado)
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 77
 

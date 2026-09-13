@@ -18,6 +18,7 @@ export function registerRoutes(
   bot: Bot,
   handlerTexto: Handler,
   handlerMidia: Handler,
+  handlerVoz: Handler,
   handlerNaoSuportado: Handler,
   handlerFeedback: Handler,
   handlerFeedbackCorreto: Handler,
@@ -42,5 +43,6 @@ export function registerRoutes(
   );
   bot.on('message:text', handlerTexto);
   bot.on(['message:photo', 'message:document'], handlerMidia);
+  bot.on('message:voice', handlerVoz);
   bot.on('message', handlerNaoSuportado);
 }

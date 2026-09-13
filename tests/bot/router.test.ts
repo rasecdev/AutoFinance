@@ -21,6 +21,7 @@ describe('registerRoutes', () => {
     const bot = criarBotFake();
     const handlerTexto = vi.fn();
     const handlerMidia = vi.fn();
+    const handlerVoz = vi.fn();
     const handlerNaoSuportado = vi.fn();
     const handlerFeedback = vi.fn();
     const handlerFeedbackCorreto = vi.fn();
@@ -31,6 +32,7 @@ describe('registerRoutes', () => {
       bot,
       handlerTexto,
       handlerMidia,
+      handlerVoz,
       handlerNaoSuportado,
       handlerFeedback,
       handlerFeedbackCorreto,
@@ -45,6 +47,7 @@ describe('registerRoutes', () => {
     const bot = criarBotFake();
     const handlerTexto = vi.fn();
     const handlerMidia = vi.fn();
+    const handlerVoz = vi.fn();
     const handlerNaoSuportado = vi.fn();
     const handlerFeedback = vi.fn();
     const handlerFeedbackCorreto = vi.fn();
@@ -55,6 +58,7 @@ describe('registerRoutes', () => {
       bot,
       handlerTexto,
       handlerMidia,
+      handlerVoz,
       handlerNaoSuportado,
       handlerFeedback,
       handlerFeedbackCorreto,
@@ -65,10 +69,11 @@ describe('registerRoutes', () => {
     expect(bot.on).toHaveBeenCalledWith(['message:photo', 'message:document'], handlerMidia);
   });
 
-  it('registra o handler de fallback para qualquer outro tipo de mensagem', () => {
+  it('registra o handler de voz para mensagem de voz', () => {
     const bot = criarBotFake();
     const handlerTexto = vi.fn();
     const handlerMidia = vi.fn();
+    const handlerVoz = vi.fn();
     const handlerNaoSuportado = vi.fn();
     const handlerFeedback = vi.fn();
     const handlerFeedbackCorreto = vi.fn();
@@ -79,6 +84,33 @@ describe('registerRoutes', () => {
       bot,
       handlerTexto,
       handlerMidia,
+      handlerVoz,
+      handlerNaoSuportado,
+      handlerFeedback,
+      handlerFeedbackCorreto,
+      handlerModelo,
+      handlerModelos,
+    );
+
+    expect(bot.on).toHaveBeenCalledWith('message:voice', handlerVoz);
+  });
+
+  it('registra o handler de fallback para qualquer outro tipo de mensagem', () => {
+    const bot = criarBotFake();
+    const handlerTexto = vi.fn();
+    const handlerMidia = vi.fn();
+    const handlerVoz = vi.fn();
+    const handlerNaoSuportado = vi.fn();
+    const handlerFeedback = vi.fn();
+    const handlerFeedbackCorreto = vi.fn();
+    const handlerModelo = vi.fn();
+    const handlerModelos = vi.fn();
+
+    registerRoutes(
+      bot,
+      handlerTexto,
+      handlerMidia,
+      handlerVoz,
       handlerNaoSuportado,
       handlerFeedback,
       handlerFeedbackCorreto,
@@ -93,6 +125,7 @@ describe('registerRoutes', () => {
     const bot = criarBotFake();
     const handlerTexto = vi.fn();
     const handlerMidia = vi.fn();
+    const handlerVoz = vi.fn();
     const handlerNaoSuportado = vi.fn();
     const handlerFeedback = vi.fn();
     const handlerFeedbackCorreto = vi.fn();
@@ -103,6 +136,7 @@ describe('registerRoutes', () => {
       bot,
       handlerTexto,
       handlerMidia,
+      handlerVoz,
       handlerNaoSuportado,
       handlerFeedback,
       handlerFeedbackCorreto,
@@ -122,6 +156,7 @@ describe('registerRoutes', () => {
     const bot = criarBotFake();
     const handlerTexto = vi.fn();
     const handlerMidia = vi.fn();
+    const handlerVoz = vi.fn();
     const handlerNaoSuportado = vi.fn();
     const handlerFeedback = vi.fn();
     const handlerFeedbackCorreto = vi.fn();
@@ -132,6 +167,7 @@ describe('registerRoutes', () => {
       bot,
       handlerTexto,
       handlerMidia,
+      handlerVoz,
       handlerNaoSuportado,
       handlerFeedback,
       handlerFeedbackCorreto,
@@ -152,6 +188,7 @@ describe('registerRoutes', () => {
     const bot = criarBotFake();
     const handlerTexto = vi.fn();
     const handlerMidia = vi.fn();
+    const handlerVoz = vi.fn();
     const handlerNaoSuportado = vi.fn();
     const handlerFeedback = vi.fn();
     const handlerFeedbackCorreto = vi.fn();
@@ -162,6 +199,7 @@ describe('registerRoutes', () => {
       bot,
       handlerTexto,
       handlerMidia,
+      handlerVoz,
       handlerNaoSuportado,
       handlerFeedback,
       handlerFeedbackCorreto,
@@ -181,6 +219,7 @@ describe('registerRoutes', () => {
     const bot = criarBotFake();
     const handlerTexto = vi.fn();
     const handlerMidia = vi.fn();
+    const handlerVoz = vi.fn();
     const handlerNaoSuportado = vi.fn();
     const handlerFeedback = vi.fn();
     const handlerFeedbackCorreto = vi.fn();
@@ -191,6 +230,7 @@ describe('registerRoutes', () => {
       bot,
       handlerTexto,
       handlerMidia,
+      handlerVoz,
       handlerNaoSuportado,
       handlerFeedback,
       handlerFeedbackCorreto,
