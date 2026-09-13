@@ -4,6 +4,7 @@ import { criarToolCriarCasoTesteBenchmark, criarToolRodarBenchmarkInterno } from
 import { criarToolCriarCartao, criarToolCriarConta, criarToolEditarConta, criarToolListarContas } from './contas.js';
 import { criarToolConsultarSaldo, criarToolConsultarExtrato, criarToolResumoMensal } from './consultas.js';
 import { criarToolConsultarDadosDinamico } from './consultaDinamica.js';
+import { criarToolGerarGrafico } from './grafico.js';
 import {
   criarToolConsultarDividasAtivas,
   criarToolConsultarFatura,
@@ -62,5 +63,6 @@ export function montarToolsConversa(db: DbClient, client: OpenAI): ToolDefinitio
     criarToolCriarCasoTesteBenchmark(db),
     criarToolRodarBenchmarkInterno(client, db),
     criarToolConsultarDadosDinamico(db),
+    criarToolGerarGrafico(),
   ];
 }
