@@ -34,11 +34,11 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura de parte 11 e
 **Description:** Refatoração pura (sem mudança de comportamento) — extrai o corpo de `handlerTexto` (a partir de "tenho uma string `mensagemUsuario`, processo") pra uma função exportada `processarMensagemTexto(ctx: Context, db: DbClient, client: OpenAI, logger: Logger, mensagemUsuario: string, chatId: number): Promise<void>`, cobrindo: checar pendência de confirmação, chamar `gerarResposta`, registrar `interacoes_ia`/`uso_tokens`, mandar imagem(ns) se houver, disparar `verificarGatilhoResumo`, tratamento de erro. `handlerTexto` passa a só extrair `mensagemUsuario`/`chatId` do `ctx` e chamar essa função — nenhum teste existente de `texto.ts` deveria precisar mudar (mesmo comportamento, só reorganização).
 
 **Acceptance criteria:**
-- [ ] `handlerTexto` continua funcionando exatamente igual (nenhum teste existente quebra)
-- [ ] `processarMensagemTexto` é exportada e chamável independente do `ctx.message.text` (recebe a string já pronta)
+- [x] `handlerTexto` continua funcionando exatamente igual (nenhum teste existente quebra — 675/675, 1 flake isolado de timeout já documentado, confirmado não-relacionado rodando isolado)
+- [x] `processarMensagemTexto` é exportada e chamável independente do `ctx.message.text` (recebe `tools`/`mensagemUsuario`/`chatId` já prontos)
 
 **Verification:**
-- [ ] `npm run build`/`lint`/`test` (suite completa, garantindo zero regressão)
+- [x] `npm run build`/`lint`/`test` (suite completa, garantindo zero regressão)
 
 **Dependencies:** None (paralelizável com Tarefa 75)
 
