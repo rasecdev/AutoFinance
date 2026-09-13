@@ -1,10 +1,11 @@
 import type { DbClient } from '../db/client.js';
 import type { TipoTransacao } from '../db/repositories/transacoes.js';
 
-export type DominioConsulta = 'financeiro';
+export type DominioConsulta = 'financeiro' | 'uso_ia';
 export type MetricaConsulta = 'soma_valor' | 'media_valor' | 'contagem' | 'saldo';
 export type DimensaoFinanceiro = 'categoria' | 'conta_id' | 'cartao_id' | 'dia_semana' | 'mes' | 'tipo_transacao';
-export type Dimensao = DimensaoFinanceiro;
+export type DimensaoUsoIa = 'fluxo' | 'modelo';
+export type Dimensao = DimensaoFinanceiro | DimensaoUsoIa;
 
 export type FiltrosConsultaDinamica = {
   dataInicio?: string;
@@ -43,6 +44,8 @@ const DIMENSOES_FINANCEIRO: readonly DimensaoFinanceiro[] = [
   'tipo_transacao',
 ];
 
+const DIMENSOES_USO_IA: readonly DimensaoUsoIa[] = ['fluxo', 'modelo'];
+
 const DIMENSOES_TEMPO: readonly Dimensao[] = ['mes', 'dia_semana'];
 
 const NOMES_MES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
@@ -50,18 +53,19 @@ const NOMES_DIA_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 
 export class ParametroConsultaInvalidoError extends Error {}
 
-function validarDimensoes(agruparPor: Dimensao[]): void {
+function validarDimensoes(dominio: DominioConsulta, agruparPor: Dimensao[]): void {
   if (agruparPor.length === 0 || agruparPor.length > 2) {
     throw new ParametroConsultaInvalidoError('agrupar_por precisa ter 1 ou 2 dimensões.');
   }
+  const permitidas: readonly Dimensao[] = dominio === 'financeiro' ? DIMENSOES_FINANCEIRO : DIMENSOES_USO_IA;
   for (const dimensao of agruparPor) {
-    if (!DIMENSOES_FINANCEIRO.includes(dimensao)) {
-      throw new ParametroConsultaInvalidoError(`Dimensão "${dimensao}" não é permitida no domínio "financeiro".`);
+    if (!permitidas.includes(dimensao)) {
+      throw new ParametroConsultaInvalidoError(`Dimensão "${dimensao}" não é permitida no domínio "${dominio}".`);
     }
   }
 }
 
-function colunaAgrupamento(dimensao: DimensaoFinanceiro): string {
+function colunaAgrupamentoFinanceiro(dimensao: DimensaoFinanceiro): string {
   switch (dimensao) {
     case 'categoria':
       return 'categoria';
@@ -78,7 +82,22 @@ function colunaAgrupamento(dimensao: DimensaoFinanceiro): string {
   }
 }
 
-function expressaoMetrica(metrica: MetricaConsulta): string {
+function colunaAgrupamentoUsoIa(dimensao: DimensaoUsoIa): string {
+  switch (dimensao) {
+    case 'fluxo':
+      return 'fluxo';
+    case 'modelo':
+      return 'modelo';
+  }
+}
+
+function colunaAgrupamento(dominio: DominioConsulta, dimensao: Dimensao): string {
+  return dominio === 'financeiro'
+    ? colunaAgrupamentoFinanceiro(dimensao as DimensaoFinanceiro)
+    : colunaAgrupamentoUsoIa(dimensao as DimensaoUsoIa);
+}
+
+function expressaoMetricaFinanceiro(metrica: MetricaConsulta): string {
   switch (metrica) {
     case 'soma_valor':
       return 'SUM(valor)';
@@ -89,6 +108,23 @@ function expressaoMetrica(metrica: MetricaConsulta): string {
     case 'saldo':
       return "SUM(CASE WHEN tipo = 'receita' THEN valor ELSE -valor END)";
   }
+}
+
+function expressaoMetricaUsoIa(metrica: MetricaConsulta): string {
+  switch (metrica) {
+    case 'soma_valor':
+      return 'SUM(custo_estimado)';
+    case 'media_valor':
+      return 'AVG(custo_estimado)';
+    case 'contagem':
+      return 'COUNT(*)';
+    case 'saldo':
+      throw new ParametroConsultaInvalidoError('Métrica "saldo" não existe no domínio "uso_ia".');
+  }
+}
+
+function expressaoMetrica(dominio: DominioConsulta, metrica: MetricaConsulta): string {
+  return dominio === 'financeiro' ? expressaoMetricaFinanceiro(metrica) : expressaoMetricaUsoIa(metrica);
 }
 
 function rotuloDimensao(dimensao: Dimensao, valorBruto: unknown): string {
@@ -111,7 +147,7 @@ function chaveOrdemTempo(dimensao: Dimensao, valorBruto: unknown): number {
   return Number(valorBruto);
 }
 
-function montarFiltros(filtros: FiltrosConsultaDinamica): { condicoes: string[]; params: unknown[] } {
+function montarFiltrosFinanceiro(filtros: FiltrosConsultaDinamica): { condicoes: string[]; params: unknown[] } {
   const condicoes: string[] = ["status = 'ativa'"];
   const params: unknown[] = [];
 
@@ -143,18 +179,44 @@ function montarFiltros(filtros: FiltrosConsultaDinamica): { condicoes: string[];
   return { condicoes, params };
 }
 
+function montarFiltrosUsoIa(filtros: FiltrosConsultaDinamica): { condicoes: string[]; params: unknown[] } {
+  // origem 'benchmark_interno' nunca entra num agregado de uso real — mesmo
+  // filtro já aplicado em relatorioMensal/analisarQualidade (ver benchmark.ts).
+  const condicoes: string[] = ["origem = 'uso_real'"];
+  const params: unknown[] = [];
+
+  if (filtros.dataInicio !== undefined) {
+    condicoes.push('data_hora >= ?');
+    params.push(filtros.dataInicio);
+  }
+  if (filtros.dataFim !== undefined) {
+    condicoes.push('data_hora <= ?');
+    params.push(filtros.dataFim);
+  }
+
+  return { condicoes, params };
+}
+
+function montarFiltros(
+  dominio: DominioConsulta,
+  filtros: FiltrosConsultaDinamica,
+): { condicoes: string[]; params: unknown[] } {
+  return dominio === 'financeiro' ? montarFiltrosFinanceiro(filtros) : montarFiltrosUsoIa(filtros);
+}
+
 type LinhaBruta = Record<string, unknown> & { metrica_valor: number };
 type LinhaResultadoComChave = LinhaResultadoConsultaDinamica & { chaveOrdem: number };
 
 function executarQuery(db: DbClient, params: ParamsConsultaDinamica): LinhaBruta[] {
-  const { metrica, agruparPor, filtros = {} } = params;
+  const { dominio, metrica, agruparPor, filtros = {} } = params;
 
-  const colunasAgrupamento = agruparPor.map(colunaAgrupamento);
+  const tabela = dominio === 'financeiro' ? 'transacoes' : 'uso_tokens';
+  const colunasAgrupamento = agruparPor.map((dimensao) => colunaAgrupamento(dominio, dimensao));
   const selectDimensoes = colunasAgrupamento.map((coluna, indice) => `${coluna} AS dim_${indice}`).join(', ');
-  const { condicoes, params: paramsFiltro } = montarFiltros(filtros);
+  const { condicoes, params: paramsFiltro } = montarFiltros(dominio, filtros);
 
-  const sql = `SELECT ${selectDimensoes}, ${expressaoMetrica(metrica)} AS metrica_valor
-    FROM transacoes
+  const sql = `SELECT ${selectDimensoes}, ${expressaoMetrica(dominio, metrica)} AS metrica_valor
+    FROM ${tabela}
     WHERE ${condicoes.join(' AND ')}
     GROUP BY ${colunasAgrupamento.join(', ')}`;
 
@@ -181,7 +243,7 @@ function aplicarOrdenacaoELimite(
 }
 
 export function executarConsultaDinamica(db: DbClient, params: ParamsConsultaDinamica): ResultadoConsultaDinamica {
-  validarDimensoes(params.agruparPor);
+  validarDimensoes(params.dominio, params.agruparPor);
 
   const linhasBrutas = executarQuery(db, params);
 
