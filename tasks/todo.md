@@ -62,15 +62,15 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Nova tool em `src/ai/tools/consultaDinamica.ts` — `schema` Zod com `dominio` (enum), `metricas` (array de enum), `agrupar_por` (array de enum, máx. 2 itens), `filtros` (objeto opcional), `ordenar_por` (opcional, com direção quando dimensão de tempo), `limite` (opcional). Handler chama `executarConsultaDinamica`, formata a lista de resultado em texto (tabela simples) e sempre prefixa/sufixa com o eco de interpretação (período, filtro, agrupamento, métrica usados) — mitigação de Misinformation do PLANO.md item 8.4. Fora da whitelist: a validação Zod já recusa (enum), então o erro do schema chega como mensagem de "não consegui interpretar", nunca como exceção não tratada.
 
 **Acceptance criteria:**
-- [ ] Pergunta simples (1 métrica, 1 dimensão) retorna texto com resultado + eco de interpretação
-- [ ] Pergunta composta (2 dimensões) retorna texto agrupado por série, ainda com eco
-- [ ] `dominio: 'uso_ia'` funciona igual, chamando o mesmo motor
-- [ ] Parâmetro inválido (fora do enum) retorna mensagem de recusa clara, sem estourar erro pro usuário
-- [ ] Tool marcada como consulta pura (`requerConfirmacao` ausente/false)
+- [x] Pergunta simples (1 métrica, 1 dimensão) retorna texto com resultado + eco de interpretação
+- [x] Pergunta composta (2 dimensões) retorna texto agrupado por série, ainda com eco
+- [x] `dominio: 'uso_ia'` funciona igual, chamando o mesmo motor
+- [x] Parâmetro inválido (fora do enum, ou combinação inválida capturada pelo motor) retorna mensagem de recusa clara, sem estourar erro pro usuário
+- [x] Tool marcada como consulta pura (`requerConfirmacao` ausente/false)
 
 **Verification:**
-- [ ] `npm test -- tests/ai/tools/consultaDinamica.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/ai/tools/consultaDinamica.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 69
 
