@@ -171,13 +171,15 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Nova tool em `src/ai/tools/consultaEGraficar.ts` — schema combina os parâmetros de `consultar_dados_dinamico` (Tarefa 70) com `tipo_grafico` (mesmo enum de `gerar_grafico`). Handler chama `executarConsultaDinamica` e `renderizarGrafico` na mesma função, sem round-trip novo pro modelo, devolvendo `{texto: <resultado numérico + eco de interpretação>, imagem: buffer}`. Descrição da tool deixa claro que é atalho pro caso comum e inequívoco (pedido já vem sem ambiguidade sobre o que visualizar) — não substitui as duas tools separadas.
 
 **Acceptance criteria:**
-- [ ] Chamada única retorna texto (com eco de interpretação) + imagem, sem exigir uma segunda chamada de tool
-- [ ] Mesmas validações de whitelist de `consultar_dados_dinamico` aplicadas aqui
-- [ ] Parâmetro de gráfico inválido (`tipo_grafico` fora do enum) recusa com clareza
+- [x] Chamada única retorna texto (com eco de interpretação) + imagem, sem exigir uma segunda chamada de tool
+- [x] Mesmas validações de whitelist de `consultar_dados_dinamico` aplicadas aqui
+- [x] Parâmetro de gráfico inválido (`tipo_grafico` fora do enum) recusa com clareza
+
+**Nota de implementação:** `consultaDinamica.ts` foi refatorado nesta tarefa pra extrair `resolverEExecutarConsulta` (resolução de conta + execução + formatação de eco/texto), compartilhado entre `consultar_dados_dinamico` e `consultar_e_graficar` — evita duplicar a lógica de whitelist/eco nas duas tools (mesmo princípio já registrado no PLANO.md item 8.2, "evita duplicar em dois lugares a lógica do que é permitido perguntar").
 
 **Verification:**
-- [ ] `npm test -- tests/ai/tools/consultaEGraficar.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/ai/tools/consultaEGraficar.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 70, Tarefa 73
 
