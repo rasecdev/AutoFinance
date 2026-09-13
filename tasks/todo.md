@@ -191,8 +191,8 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Estimated scope:** Small (combina duas funções já existentes numa tool nova)
 
 ## Checkpoint: Consulta dinâmica + gráfico funcional
-- [x] `npm run build`/`lint`/`test` sem erro (668/668, depois 670/670 com o fix)
-- [ ] PROGRESSO.md atualizado com o marco
-- [x] Teste manual em Homologação via Telegram: pergunta livre, gráfico e um caso fora da whitelist — dois achados reais corrigidos: issue #205 (período padrão) e issue #207 (gráfico duplicado + base64 alucinado no texto)
-- [ ] Milestone "Fase 6 (parte 10)" fechado — issues todas fechadas via `Closes #N`, e com isso a Fase 6 inteira fecha
-- [ ] Revisão com o usuário antes de prosseguir (Fase 7)
+- [x] `npm run build`/`lint`/`test` sem erro (668/668, depois 670/670 com os fixes)
+- [x] PROGRESSO.md atualizado com o marco
+- [x] Teste manual em Homologação via Telegram: pergunta livre, gráfico e um caso fora da whitelist — dois achados reais corrigidos e reconfirmados: issue #205 (período padrão) e issue #207 (gráfico duplicado + base64 alucinado no texto)
+- [x] Milestone "Fase 6 (parte 10)" fechado (9 issues: #191-197 das tarefas + #205/#207 dos bugs) — e com isso a Fase 6 inteira fecha
+- [x] Revisão com o usuário antes de prosseguir (Fase 7)

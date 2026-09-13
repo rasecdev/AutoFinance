@@ -34,11 +34,11 @@ Ver PLANO.md, "Relatórios (diário, semanal, mensal) e metas", itens 8 a 8.4 (l
 - [x] Achado real de teste manual (issue #207): pedindo gráfico, o modelo chamava `consultar_e_graficar` e `gerar_grafico` juntas na mesma resposta (mandava a foto duplicada) e ainda tentava desenhar a imagem ele mesmo em base64 alucinado no texto (nunca é o PNG real — a imagem nunca chega ao contexto do modelo). Corrigido com descrição explícita nas duas tools (nunca chamar juntas) + regra 13 nova no SYSTEM_PROMPT (nunca embutir/codificar imagem no texto).
 
 ### Checkpoint: Consulta dinâmica + gráfico funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] PROGRESSO.md atualizado com o marco
-- [ ] Teste manual em Homologação via Telegram: pergunta livre (`consultar_dados_dinamico`, ex: "gastei mais aos sábados?"), gráfico (`gerar_grafico` ou `consultar_e_graficar`, ex: "gráfico de gasto por categoria este mês") e um caso fora da whitelist (confirmar recusa em vez de invenção)
-- [ ] Fecha o milestone "Fase 6 (parte 10)" e, com isso, a Fase 6 inteira — confirmar issues do milestone todas fechadas
-- [ ] Revisão com o usuário antes de prosseguir (Fase 7)
+- [x] `npm run build`/`lint`/`test` sem erro (668/668, depois 670/670 com os fixes)
+- [x] PROGRESSO.md atualizado com o marco
+- [x] Teste manual em Homologação via Telegram: pergunta livre (`consultar_dados_dinamico`), gráfico (`consultar_e_graficar`) e um caso fora da whitelist — dois achados reais (issues #205, #207), corrigidos e reconfirmados
+- [x] Fecha o milestone "Fase 6 (parte 10)" e, com isso, a Fase 6 inteira — 9 issues fechadas (#191-197, #205, #207)
+- [x] Revisão com o usuário antes de prosseguir (Fase 7)
 
 ## Risks and Mitigations
 | Risk | Impact | Mitigation |
