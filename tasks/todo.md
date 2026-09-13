@@ -117,14 +117,16 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Adicionar `chartjs-node-canvas` + `chart.js` como dependência. Nova função pura `renderizarGrafico(tipo: 'barra'|'linha'|'pizza', dados: DadoGrafico[]): Buffer` em `src/relatorios/grafico.ts` — recebe o mesmo formato de saída da Tarefa 68 (`{rotulo,valor}[]` ou `{serie,rotulo,valor}[]`), monta a config do Chart.js (dataset único ou múltiplo por série) e renderiza a imagem em PNG via canvas server-side. Confirmar que o build Docker aceita a dependência nativa (`canvas`) — se não aceitar de primeira, ajustar `Dockerfile` nesta mesma tarefa.
 
 **Acceptance criteria:**
-- [ ] `tipo: 'barra'`/`'linha'`/`'pizza'` com dado de 1 série renderiza sem erro, retorna `Buffer` não vazio válido como PNG
-- [ ] Dado com 2+ séries (`serie` presente) renderiza múltiplos datasets/cores
-- [ ] `npm run build` (Docker) continua funcionando com a dependência nova
+- [x] `tipo: 'barra'`/`'linha'`/`'pizza'` com dado de 1 série renderiza sem erro, retorna `Buffer` não vazio válido como PNG
+- [x] Dado com 2+ séries (`serie` presente) renderiza múltiplos datasets/cores
+- [x] `npm run build` (TS) continua funcionando com a dependência nova; build Docker ajustado (ver nota) e validado pelo check `docker` do CI
+
+**Nota de implementação:** `canvas` (dependência transitiva de `chartjs-node-canvas`) precisa do próprio install script (`prebuild-install`/`node-gyp`) — o `Dockerfile` usa `npm ci --ignore-scripts` globalmente, então precisou de `RUN npm rebuild canvas` explícito no builder. O binário linka contra libs de sistema em tempo de execução, não só de build — a imagem `runtime` ganhou `libcairo2 libpango-1.0-0 libjpeg62-turbo libgif7 librsvg2-2` via `apt-get`. Docker não disponível neste ambiente de desenvolvimento pra testar localmente — validado pelo check `docker` do CI no PR.
 
 **Verification:**
-- [ ] `npm test -- tests/relatorios/grafico.test.ts`
-- [ ] `npm run build`
-- [ ] `docker compose build homologacao` (confirmar que a dependência nativa instala na imagem)
+- [x] `npm test -- tests/relatorios/grafico.test.ts`
+- [x] `npm run build`
+- [x] Check `docker` do CI (build da imagem)
 
 **Dependencies:** None (paralelizável com 68-71)
 
