@@ -28,6 +28,8 @@
   "homepage": "https://github.com/rasecdev/AutoFinance#readme",
   "dependencies": {
     "better-sqlite3-multiple-ciphers": "^13.0.3",
+    "chart.js": "^4.5.1",
+    "chartjs-node-canvas": "^5.0.0",
     "grammy": "^1.46.0",
     "openai": "^7.8.0",
     "pino": "^10.3.1",
