@@ -100,8 +100,8 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura de parte 11 e
 **Estimated scope:** Small (wiring, mesmo padrão já usado 3 vezes no projeto)
 
 ## Checkpoint: Transcrição de voz funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] PLANO.md corrigido (STT via OpenRouter — linhas 121/141/150 desatualizadas)
-- [ ] Teste manual em Homologação via Telegram: áudio real com pedido simples, confirmar ação certa executada
-- [ ] PROGRESSO.md atualizado com o marco
-- [ ] Revisão com o usuário antes de prosseguir (parte 12 — leitura de comprovante)
+- [x] `npm run build`/`lint`/`test` sem erro (681/681, 1 flake isolado de timeout já documentado)
+- [x] PLANO.md corrigido (STT via OpenRouter — linhas 121/150 atualizadas)
+- [x] Teste manual em Homologação via Telegram: áudio real com pedido simples, ação certa executada — confirmado pelo usuário
+- [x] PROGRESSO.md atualizado com o marco
+- [x] Revisão com o usuário antes de prosseguir (parte 12 — leitura de comprovante)

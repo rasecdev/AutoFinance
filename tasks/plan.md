@@ -29,17 +29,17 @@ Pesquisa de modelo (feita antes deste plano, ver PROGRESSO.md/conversa): **voz �
 ## Task List (parte 11 — Transcrição de voz)
 
 ### Fase VI: Transcrição de voz
-- [ ] Tarefa 75: `transcreverAudio(client, buffer, nomeArquivo, modelo)` em `src/ai/transcricao.ts` — chama `client.audio.transcriptions.create`, `FLUXO_TRANSCRICAO_VOZ`/`MODELO_TRANSCRICAO_VOZ` (Whisper Large V3 Turbo), resolução via `roteamento_tarefas`
-- [ ] Tarefa 76: refatora `src/bot/handlers/texto.ts` extraindo `processarMensagemTexto(...)` reaproveitável
-- [ ] Tarefa 77: novo `src/bot/handlers/voz.ts` — baixa o áudio (`ctx.getFile`), chama `transcreverAudio`, chama `processarMensagemTexto` com o texto resultante; erro de transcrição não propaga
-- [ ] Tarefa 78: registra `message:voice` em `router.ts`/`bot.ts`/`index.ts`; adiciona `transcricao_voz` em `FLUXOS_ROTEADOS` (`/modelos`)
+- [x] Tarefa 75: `transcreverAudio(client, buffer, nomeArquivo, modelo)` em `src/ai/transcricao.ts` — chama `client.audio.transcriptions.create`, `FLUXO_TRANSCRICAO_VOZ`/`MODELO_TRANSCRICAO_VOZ` (Whisper Large V3 Turbo), resolução via `roteamento_tarefas`
+- [x] Tarefa 76: refatora `src/bot/handlers/texto.ts` extraindo `processarMensagemTexto(...)` reaproveitável
+- [x] Tarefa 77: novo `src/bot/handlers/voz.ts` — baixa o áudio (`ctx.getFile`), chama `transcreverAudio`, chama `processarMensagemTexto` com o texto resultante; erro de transcrição não propaga
+- [x] Tarefa 78: registra `message:voice` em `router.ts`/`bot.ts`/`index.ts`; adiciona `transcricao_voz` em `FLUXOS_ROTEADOS` (`/modelos`)
 
 ### Checkpoint: Transcrição de voz funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] PLANO.md corrigido (STT via OpenRouter, não mais "fora do OpenRouter") — porquê registrado no PROGRESSO.md
-- [ ] Teste manual em Homologação via Telegram: mandar um áudio real com um pedido simples (ex: "registra 20 reais de Uber") e confirmar que a ação certa é executada
-- [ ] PROGRESSO.md atualizado com o marco
-- [ ] Revisão com o usuário antes de prosseguir (parte 12 — leitura de comprovante)
+- [x] `npm run build`/`lint`/`test` sem erro (681/681, 1 flake isolado de timeout já documentado)
+- [x] PLANO.md corrigido (STT via OpenRouter, não mais "fora do OpenRouter") — porquê registrado no PROGRESSO.md
+- [x] Teste manual em Homologação via Telegram: áudio real com pedido simples, ação certa executada — confirmado pelo usuário
+- [x] PROGRESSO.md atualizado com o marco
+- [x] Revisão com o usuário antes de prosseguir (parte 12 — leitura de comprovante)
 
 ## Risks and Mitigations (parte 11)
 | Risk | Impact | Mitigation |
