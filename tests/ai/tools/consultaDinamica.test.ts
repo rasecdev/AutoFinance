@@ -42,8 +42,40 @@ describe('tool consultar_dados_dinamico', () => {
 
     expect(resultado).toContain('Interpretação:');
     expect(resultado).toContain('domínio "financeiro"');
+    expect(resultado).toContain('mês atual, nenhum período foi informado');
     expect(resultado).toContain('Transporte: 300.00');
     expect(resultado).not.toContain('Mercado');
+  });
+
+  it('sem período informado e sem "mes" em agrupar_por, aplica mês atual como padrão (nunca some sem eco)', async () => {
+    const mesPassado = new Date();
+    mesPassado.setMonth(mesPassado.getMonth() - 2);
+    const dataAntiga = `${mesPassado.getFullYear()}-${String(mesPassado.getMonth() + 1).padStart(2, '0')}-01`;
+    criarTransacao(db, { contaId, tipo: 'despesa', valor: 999, categoria: 'ForaDoMes', data: dataAntiga });
+
+    const tool = criarToolConsultarDadosDinamico(db);
+    const resultado = await tool.handler(
+      { dominio: 'financeiro', metrica: 'soma_valor', agrupar_por: ['categoria'] },
+      { chatId: 1 },
+    );
+
+    expect(resultado).toContain('mês atual');
+    expect(resultado).not.toContain('ForaDoMes');
+  });
+
+  it('sem período informado, mas com "mes" em agrupar_por, não aplica default (é tendência multi-mês)', async () => {
+    criarTransacao(db, { contaId, tipo: 'despesa', valor: 100, categoria: 'Mercado', data: '2026-01-01' });
+    criarTransacao(db, { contaId, tipo: 'despesa', valor: 200, categoria: 'Mercado', data: '2026-09-01' });
+
+    const tool = criarToolConsultarDadosDinamico(db);
+    const resultado = await tool.handler(
+      { dominio: 'financeiro', metrica: 'soma_valor', agrupar_por: ['categoria', 'mes'] },
+      { chatId: 1 },
+    );
+
+    expect(resultado).toContain('sem filtro de período (todo o histórico)');
+    expect(resultado).toContain('jan/26');
+    expect(resultado).toContain('set/26');
   });
 
   it('pergunta composta (2 dimensões) retorna resultado agrupado por série', async () => {
