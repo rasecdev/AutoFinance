@@ -187,11 +187,14 @@ function montarFiltrosUsoIa(filtros: FiltrosConsultaDinamica): { condicoes: stri
 
   if (filtros.dataInicio !== undefined) {
     condicoes.push('data_hora >= ?');
-    params.push(filtros.dataInicio);
+    params.push(`${filtros.dataInicio}T00:00:00.000Z`);
   }
   if (filtros.dataFim !== undefined) {
+    // data_hora é timestamp completo (ISO) — comparar contra só "AAAA-MM-DD"
+    // excluiria (por comparação léxica de string) qualquer registro do
+    // próprio dia final, já que "2026-09-30" < "2026-09-30T14:00:00.000Z".
     condicoes.push('data_hora <= ?');
-    params.push(filtros.dataFim);
+    params.push(`${filtros.dataFim}T23:59:59.999Z`);
   }
 
   return { condicoes, params };
