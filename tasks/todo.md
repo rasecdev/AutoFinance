@@ -54,13 +54,16 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura de parte 11 e
 **Description:** `createHandlerVoz(client, db, logger, botToken)` — baixa o arquivo de voz (`ctx.getFile()` + fetch em `https://api.telegram.org/file/bot<token>/<file_path>`), chama `transcreverAudio` (Tarefa 75), registra o uso em `uso_tokens`/fluxo `transcricao_voz`, e chama `processarMensagemTexto` (Tarefa 76) com o texto transcrito. Erro de transcrição (áudio incompreensível, API fora) responde mensagem clara ("não consegui entender o áudio, tenta de novo ou manda por texto") sem propagar exceção pro handler global.
 
 **Acceptance criteria:**
-- [ ] Áudio transcrito com sucesso dispara o mesmo pipeline de uma mensagem de texto equivalente (mesma tool chamada, mesmo registro em `interacoes_ia`)
-- [ ] Falha na transcrição responde mensagem de erro amigável, não propaga exceção
-- [ ] Uso da transcrição em si (custo/modelo) registrado separado em `uso_tokens` com fluxo `transcricao_voz`
+- [x] Áudio transcrito com sucesso delega pro pipeline de texto (`processarMensagemTexto`) com o texto transcrito
+- [x] Falha na transcrição responde mensagem de erro amigável, não propaga exceção
+- [x] Transcrição vazia (silêncio) responde a mesma mensagem de erro, sem delegar pro pipeline
+- [x] Uso da transcrição em si (custo/modelo) registrado separado em `uso_tokens` com fluxo `transcricao_voz`
+
+**Nota de implementação:** `processarMensagemTexto` (Tarefa 76) é mockado no teste (`vi.mock`) — testa só a lógica nova do handler (download, transcrição, erro, uso_tokens), não repete o teste do pipeline de texto (que também não tem teste dedicado, mesmo padrão de `texto.ts`).
 
 **Verification:**
-- [ ] `npm test -- tests/bot/handlers/voz.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/bot/handlers/voz.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 75, Tarefa 76
 
