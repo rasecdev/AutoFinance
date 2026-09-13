@@ -145,13 +145,15 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Nova tool em `src/ai/tools/grafico.ts` — schema Zod valida `tipo` (enum) e `dados` (union de `{rotulo,valor}[]`/`{serie,rotulo,valor}[]`, tudo numérico validado). Handler chama `renderizarGrafico` e devolve `{texto: <descrição curta do gráfico gerado>, imagem: buffer}` (formato da Tarefa 71). Descrição da tool deixa explícito que `dados` deve vir do resultado de `consultar_dados_dinamico` (ou outra fonte determinística), nunca inventado pela IA.
 
 **Acceptance criteria:**
-- [ ] `dados` no formato esperado gera imagem e texto de acompanhamento
-- [ ] `dados` fora do shape esperado (ex: valor não numérico) recusa com mensagem clara, não estoura erro
-- [ ] Tool marcada como consulta pura (sem `requerConfirmacao`)
+- [x] `dados` no formato esperado gera imagem e texto de acompanhamento
+- [x] `dados` fora do shape esperado (ex: valor não numérico, lista vazia) recusa via validação Zod, não estoura erro
+- [x] Tool marcada como consulta pura (sem `requerConfirmacao`)
+
+**Nota de implementação:** tool não recebe `db` (não toca no banco, é só renderizador) — `criarToolGerarGrafico()` sem parâmetro, diferente do padrão `criarToolX(db)` das outras.
 
 **Verification:**
-- [ ] `npm test -- tests/ai/tools/grafico.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/ai/tools/grafico.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 71, Tarefa 72
 
