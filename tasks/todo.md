@@ -36,14 +36,16 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Mesma função `executarConsultaDinamica`, nova branch pra `dominio: 'uso_ia'` — consulta `uso_tokens` (colunas `fluxo`, `modelo`, `tokens_prompt`, `tokens_completion`, `custo_estimado`, `data_hora`), com whitelist própria de dimensão (`fluxo`, `modelo`) e métrica restrita ao que faz sentido pra essa tabela (`soma_valor` soma `custo_estimado` ou `tokens_prompt+tokens_completion` — decidir e documentar qual; `contagem`, `media_valor` idem). Reaproveita o mesmo formato de saída e mecanismo de filtro/ordenação da Tarefa 68.
 
 **Acceptance criteria:**
-- [ ] `dominio: 'uso_ia'` com `agrupar_por: [fluxo]` retorna custo/uso agregado por fluxo
-- [ ] `dominio: 'uso_ia'` com `agrupar_por: [modelo]` retorna agregado por modelo
-- [ ] Filtro de período (`dataInicio`/`dataFim`) funciona igual ao domínio financeiro
-- [ ] Dimensão/métrica do domínio financeiro (ex: `categoria`) rejeitada quando `dominio: 'uso_ia'` (whitelists são independentes por domínio)
+- [x] `dominio: 'uso_ia'` com `agrupar_por: [fluxo]` retorna custo/uso agregado por fluxo
+- [x] `dominio: 'uso_ia'` com `agrupar_por: [modelo]` retorna agregado por modelo
+- [x] Filtro de período (`dataInicio`/`dataFim`) funciona igual ao domínio financeiro
+- [x] Dimensão/métrica do domínio financeiro (ex: `categoria`) rejeitada quando `dominio: 'uso_ia'` (whitelists são independentes por domínio)
+
+**Nota de implementação:** métrica `soma_valor`/`media_valor` usa `custo_estimado` (não tokens) — mais direto pra responder "quanto gastei com IA". `saldo` não existe nesse domínio (lança erro). Registros de `origem = 'benchmark_interno'` sempre excluídos do agregado, mesmo filtro já aplicado em `relatorioMensal`/`analisarQualidade`.
 
 **Verification:**
-- [ ] `npm test -- tests/relatorios/consultaDinamica.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/relatorios/consultaDinamica.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 68
 
