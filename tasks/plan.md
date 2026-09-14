@@ -34,10 +34,10 @@ Continuação da Fase 6 (parte 11, concluída — transcrição de voz). Ver PLA
 - [x] Tarefa 83: wiring (`bot.ts`/`index.ts` passam `client`/`db`/`botToken` pro handler; `/modelos` ganha `leitura_comprovante`)
 
 ### Checkpoint: Leitura de comprovante funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação via Telegram: foto real de comprovante, extração correta, confirmação exigida antes de gravar
-- [ ] PROGRESSO.md atualizado com o marco
-- [ ] Revisão com o usuário antes de prosseguir (Fase 7)
+- [x] `npm run build`/`lint`/`test` sem erro (701/701, 1 flake isolado de timeout já documentado)
+- [x] Teste manual em Homologação via Telegram: foto real de comprovante, extração correta — confirmado pelo usuário. PDF: rejeitado pelo provedor, degradou como projetado (achado real, documentado no PROGRESSO.md)
+- [x] PROGRESSO.md atualizado com o marco
+- [x] Revisão com o usuário antes de prosseguir (Fase 7) — usuário levantou pedido novo (leitura de Excel), em discussão antes de decidir avançar pra Fase 7
 
 ## Risks and Mitigations
 | Risk | Impact | Mitigation |
