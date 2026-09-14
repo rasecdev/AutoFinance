@@ -28,25 +28,25 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos). Flu
 
 ### Tarefa 85: `interpretarPlanilha` em `src/ai/interpretacaoPlanilha.ts`
 
-**Description:** Nova função `interpretarPlanilha(client: OpenAI, buffer: Buffer, modelo?: string): Promise<ResultadoInterpretacaoPlanilha>` — usa a lib `xlsx` (`XLSX.read(buffer)` + `XLSX.utils.sheet_to_json` na primeira aba) pra extrair cabeçalhos + linhas como JSON compacto, manda pra uma chamada de texto dedicada (sem tool calling, sem visão) pedindo JSON estrito com a lista de transações identificadas (`tipo`, `valor`, `categoria`, `descricao`, `data`) — mesmo padrão de prompt/parse defensivo de `extrairComprovante` (remove cercado markdown, valida com Zod, falha vira lista vazia). `MODELO_INTERPRETAR_PLANILHA` (mesmo padrão de modelo-texto barato já usado em `analisarQualidade`/`resumirContexto` — não é caso de visão, não precisa do modelo caro de imagem), `FLUXO_INTERPRETAR_PLANILHA = 'interpretar_planilha'`, `resolverModeloInterpretarPlanilha(db)`. Limite de linhas processadas (documentar a constante escolhida) pra não estourar contexto em planilhas muito grandes — linhas além do limite são ignoradas, resultado indica isso.
+**Description:** Nova função `interpretarPlanilha(client: OpenAI, buffer: Buffer, modelo?: string): Promise<ResultadoInterpretacaoPlanilha>` — usa a lib `read-excel-file` (`readXlsxFile(buffer)` na primeira aba; **só `.xlsx`** — `xlsx`/SheetJS tinha vulnerabilidade de alta severidade sem correção, `exceljs` trouxe vulnerabilidade transitiva, ver achado real em `tasks/plan.md`) pra extrair cabeçalhos (primeira linha) + linhas como JSON compacto, manda pra uma chamada de texto dedicada (sem tool calling, sem visão) pedindo JSON estrito com a lista de transações identificadas (`tipo`, `valor`, `categoria`, `descricao`, `data`) — mesmo padrão de prompt/parse defensivo de `extrairComprovante` (remove cercado markdown, valida com Zod, falha vira lista vazia). `MODELO_INTERPRETAR_PLANILHA` (mesmo padrão de modelo-texto barato já usado em `analisarQualidade`/`resumirContexto` — não é caso de visão, não precisa do modelo caro de imagem), `FLUXO_INTERPRETAR_PLANILHA = 'interpretar_planilha'`, `resolverModeloInterpretarPlanilha(db)`. Limite de linhas processadas (documentar a constante escolhida) pra não estourar contexto em planilhas muito grandes — linhas além do limite são ignoradas, resultado indica isso.
 
 **Acceptance criteria:**
-- [ ] Planilha com linhas de transação válidas retorna a lista mapeada corretamente (mock de buffer .xlsx real, gerado em memória com a própria lib `xlsx` no teste)
-- [ ] Planilha sem dado financeiro reconhecível retorna lista vazia, sem lançar exceção
-- [ ] JSON malformado ou fora do schema na resposta da IA retorna lista vazia (mesmo tratamento defensivo de `extracaoComprovante.ts`)
-- [ ] Planilha maior que o limite de linhas processa só até o limite, resultado sinaliza o corte
-- [ ] Resolve o modelo via `roteamento_tarefas` quando existe override, cai no padrão quando não existe
+- [x] Planilha com linhas de transação válidas retorna a lista mapeada corretamente (mock de buffer .xlsx real, gerado em memória com `write-excel-file` no teste)
+- [x] Planilha sem dado financeiro reconhecível retorna lista vazia, sem lançar exceção
+- [x] JSON malformado ou fora do schema na resposta da IA retorna lista vazia (mesmo tratamento defensivo de `extracaoComprovante.ts`)
+- [x] Planilha maior que o limite de linhas processa só até o limite, resultado sinaliza o corte
+- [x] Resolve o modelo via `roteamento_tarefas` quando existe override, cai no padrão quando não existe
 
 **Verification:**
-- [ ] `npm test -- tests/ai/interpretacaoPlanilha.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/ai/interpretacaoPlanilha.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** None (paralelizável com Tarefa 84)
 
 **Files likely touched:**
 - `src/ai/interpretacaoPlanilha.ts`
 - `tests/ai/interpretacaoPlanilha.test.ts`
-- `package.json` (dependência `xlsx`)
+- `package.json` (dependência `read-excel-file`)
 
 **Estimated scope:** Medium (parser + chamada de IA + schema novo)
 
@@ -80,7 +80,7 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos). Flu
 
 ### Tarefa 87: `handlerMidia` ganha branch de planilha
 
-**Description:** `resolverMimeType` (ou lógica equivalente) passa a reconhecer mime types de planilha (`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, `application/vnd.ms-excel`, `text/csv`) e desviar pra um caminho novo, separado do de comprovante: resolve conta/cartão a partir de `ctx.message.caption` (via `resolverContaId`/`resolverCartaoId`, mesma resolução usada em `registrar_transacao`) — sem legenda ou sem resolução, responde pedindo pra reenviar com a legenda, sem tentar de novo sozinho. Com conta/cartão resolvido, chama `interpretarPlanilha` (Tarefa 85); lista vazia responde explicando; lista não vazia monta a pendência DIRETO via `definirPendencia(chatId, { tool: <tool da Tarefa 86>, argumentos })` (sem passar pelo modelo de `conversa_texto`) e responde com um resumo (quantidade + total, não o JSON cru) pedindo confirmação — o mecanismo já existente em `processarMensagemTexto` cobre a execução quando o usuário confirmar.
+**Description:** `resolverMimeType` (ou lógica equivalente) passa a reconhecer o mime type de planilha `.xlsx` (`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` — único suportado nesta rodada, ver `tasks/plan.md`) e desviar pra um caminho novo, separado do de comprovante: resolve conta/cartão a partir de `ctx.message.caption` (via `resolverContaId`/`resolverCartaoId`, mesma resolução usada em `registrar_transacao`) — sem legenda ou sem resolução, responde pedindo pra reenviar com a legenda, sem tentar de novo sozinho. Com conta/cartão resolvido, chama `interpretarPlanilha` (Tarefa 85); lista vazia responde explicando; lista não vazia monta a pendência DIRETO via `definirPendencia(chatId, { tool: <tool da Tarefa 86>, argumentos })` (sem passar pelo modelo de `conversa_texto`) e responde com um resumo (quantidade + total, não o JSON cru) pedindo confirmação — o mecanismo já existente em `processarMensagemTexto` cobre a execução quando o usuário confirmar.
 
 **Acceptance criteria:**
 - [ ] Planilha com legenda de conta válida e transações reconhecidas → pendência registrada, mensagem de confirmação com resumo (quantidade + total), sem registrar nada ainda
