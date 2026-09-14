@@ -49,6 +49,7 @@ describe('handlerModelos (/modelos)', () => {
     expect(texto).toContain('relatorio_mensal: openai/gpt-4o-mini');
     expect(texto).toContain('analisar_qualidade: openai/gpt-4o-mini');
     expect(texto).toContain('transcricao_voz: openai/whisper-large-v3-turbo');
+    expect(texto).toContain('leitura_comprovante: google/gemini-2.5-flash-lite');
   });
 
   it('reflete o roteamento configurado por fluxo', async () => {
