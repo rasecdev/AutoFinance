@@ -61,15 +61,17 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 Documento (`message:document`) com `mime_type` de imagem (`image/*`) segue o mesmo caminho da foto; PDF (`application/pdf`) fica sem tratamento nesta tarefa (cai no branch padrão "ainda não suportado", substituído na Tarefa 82); qualquer outro `mime_type` responde "tipo de arquivo não suportado".
 
 **Acceptance criteria:**
-- [ ] Foto de comprovante de compra válido → mensagem sintética processada, confirmação exigida antes de `registrar_transacao` executar de fato (reaproveita `definirPendencia`/`ehConfirmacaoAfirmativa` sem mudança nesses arquivos)
-- [ ] Foto que não é comprovante → mensagem de explicação direta, sem chamar `processarMensagemTexto`
-- [ ] Foto de fatura/boleto → mensagem de degradação clara, sem registrar transação
-- [ ] Documento de imagem (`image/*`) segue o mesmo fluxo da foto
-- [ ] Uso da extração registrado em `uso_tokens` com fluxo `leitura_comprovante`
+- [x] Foto de comprovante de compra válido → mensagem sintética processada, confirmação exigida antes de `registrar_transacao` executar de fato (reaproveita `definirPendencia`/`ehConfirmacaoAfirmativa` sem mudança nesses arquivos)
+- [x] Foto que não é comprovante → mensagem de explicação direta, sem chamar `processarMensagemTexto`
+- [x] Foto de fatura/boleto → mensagem de degradação clara, sem registrar transação
+- [x] Documento de imagem (`image/*`) segue o mesmo fluxo da foto
+- [x] Uso da extração registrado em `uso_tokens` com fluxo `leitura_comprovante`
+
+**Nota de implementação:** documento PDF e "tipo não suportado" já ganharam branches nesta tarefa (`resolverMimeType`) pra deixar o `handlerMidia` completo de uma vez — a mensagem de PDF ainda é o placeholder fixo "ainda não consigo ler PDF, manda como foto", substituído de fato (tentando a extração) na Tarefa 82.
 
 **Verification:**
-- [ ] `npm test -- tests/bot/handlers/midia.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/bot/handlers/midia.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 79, Tarefa 80
 
