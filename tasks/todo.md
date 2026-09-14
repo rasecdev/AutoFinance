@@ -114,12 +114,12 @@ Documento (`message:document`) com `mime_type` de imagem (`image/*`) segue o mes
 **Description:** `src/bot/bot.ts` e `src/index.ts` passam a criar `handlerMidia` com a nova assinatura `createHandlerMidia(client, db, logger, botToken)` (mesmo padrão já usado pra `handlerVoz` na parte 11) — `router.ts` não muda (já roteia `message:photo`/`message:document` pro `handlerMidia` desde a Fase 1). `src/bot/handlers/modelos.ts` (`FLUXOS_ROTEADOS`) ganha a linha `leitura_comprovante`/`MODELO_LEITURA_COMPROVANTE`, aparecendo em `/modelos`.
 
 **Acceptance criteria:**
-- [ ] Bot sobe normalmente com a nova assinatura de `createHandlerMidia`
-- [ ] `/modelos` lista o fluxo `leitura_comprovante` e o modelo resolvido (com override, se houver)
+- [x] Bot sobe normalmente com a nova assinatura de `createHandlerMidia`
+- [x] `/modelos` lista o fluxo `leitura_comprovante` e o modelo resolvido (com override, se houver)
 
 **Verification:**
-- [ ] `npm test -- tests/bot/modelos.test.ts` (suite completa antes de fechar o checkpoint)
-- [ ] `npm run build`
+- [x] `npm test -- tests/bot/modelos.test.ts` (suite completa: 700/700, 1 flake isolado de timeout já documentado, confirmado não-relacionado rodando isolado)
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 81
 
