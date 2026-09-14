@@ -1,6 +1,7 @@
 import type { Context } from 'grammy';
 import { FLUXO_ANALISAR_QUALIDADE, MODELO_ANALISAR_QUALIDADE } from '../../ai/analisarQualidade.js';
 import { FLUXO_LEITURA_COMPROVANTE, MODELO_LEITURA_COMPROVANTE } from '../../ai/extracaoComprovante.js';
+import { FLUXO_INTERPRETAR_PLANILHA, MODELO_INTERPRETAR_PLANILHA } from '../../ai/interpretacaoPlanilha.js';
 import { MODELO_PADRAO } from '../../ai/openrouter.js';
 import { FLUXO_RELATORIO_MENSAL, MODELO_RELATORIO_MENSAL } from '../../ai/relatorioMensal.js';
 import { FLUXO_RESUMIR_CONTEXTO, MODELO_RESUMO } from '../../ai/resumirContexto.js';
@@ -21,6 +22,7 @@ const FLUXOS_ROTEADOS: Array<{ fluxo: string; padrao: string }> = [
   { fluxo: FLUXO_ANALISAR_QUALIDADE, padrao: MODELO_ANALISAR_QUALIDADE },
   { fluxo: FLUXO_TRANSCRICAO_VOZ, padrao: MODELO_TRANSCRICAO_VOZ },
   { fluxo: FLUXO_LEITURA_COMPROVANTE, padrao: MODELO_LEITURA_COMPROVANTE },
+  { fluxo: FLUXO_INTERPRETAR_PLANILHA, padrao: MODELO_INTERPRETAR_PLANILHA },
 ];
 
 export function createHandlerModelos(db: DbClient) {
