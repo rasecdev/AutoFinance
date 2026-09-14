@@ -57,14 +57,14 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos). Flu
 **Description:** Nova tool `registrar_transacoes_em_lote` — schema aceita `conta_id`/`conta_apelido`/`cartao_id`/`cartao_nome` (mesmo padrão de `registrar_transacao`, uma conta/cartão pro lote inteiro) mais `transacoes: Array<{ tipo, valor, categoria, descricao?, data }>`. `requerConfirmacao: true` sempre (diferente de `registrar_transacao`, que só exige confirmação quando forçada externamente — aqui é sempre alto impacto). Handler resolve conta/cartão uma vez, chama `criarTransacao` (repository) num loop pra cada item, retorna resumo (quantidade registrada + total). Incluída em `montarToolsConversa` (mesma lista de sempre).
 
 **Acceptance criteria:**
-- [ ] Registra todas as transações da lista, vinculadas à mesma conta/cartão resolvido
-- [ ] `requerConfirmacao` é sempre `true`, independente de argumento
-- [ ] Conta/cartão não resolvido retorna mensagem de erro, sem registrar nada (nem parcialmente)
-- [ ] Resumo do retorno inclui quantidade e total
+- [x] Registra todas as transações da lista, vinculadas à mesma conta/cartão resolvido
+- [x] `requerConfirmacao` é sempre `true`, independente de argumento
+- [x] Conta/cartão não resolvido retorna mensagem de erro, sem registrar nada (nem parcialmente)
+- [x] Resumo do retorno inclui quantidade e total
 
 **Verification:**
-- [ ] `npm test -- tests/ai/tools/transacoesEmLote.test.ts tests/ai/tools/conversaTools.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/ai/tools/transacoesEmLote.test.ts tests/ai/tools/conversaTools.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** None (paralelizável com Tarefas 84/85)
 
