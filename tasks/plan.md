@@ -1,51 +1,52 @@
-# Implementation Plan: Fase 6 (parte 12) — Leitura de comprovante (foto/PDF)
+# Implementation Plan: Fase 6 (parte 13) — Leitura de planilha (Excel) + correção de PDF
 
-Continuação da Fase 6 (parte 11, concluída — transcrição de voz). Ver PLANO.md linha 475 ("handlers já separados por tipo de entrada desde o início") e linha 581 (correspondência com fatura/parcela, fora de escopo aqui — fica pra Fase 7). Fluxo de branch/PR/merge por tarefa é o já descrito em CLAUDE.md.
+Continuação da Fase 6 (parte 12, concluída — leitura de comprovante por foto). O teste manual da parte 12 revelou que PDF não funcionava (achado real, ver PROGRESSO.md) — a causa raiz foi encontrada (formato de chamada errado, não limitação do modelo) e tem correção simples, feita aqui. O usuário também pediu leitura de planilha (Excel) — extrato bancário, resumos financeiros, controle de empréstimos — um caso de uso genuinamente diferente de "1 comprovante = 1 transação": geralmente tem várias linhas (uma planilha de extrato pode ter dezenas de transações).
 
 ## Overview
 
-`handlerMidia` hoje é só stub (`src/bot/handlers/midia.ts`) — responde "processamento de imagem/PDF ainda não implementado" pra qualquer foto ou documento. Esta rodada implementa de verdade: extrai dado estruturado de uma foto de comprovante via IA com visão (Gemini 2.5 Flash Lite, pesquisa já feita na parte 11 — ver PROGRESSO.md), e só registra a transação depois de confirmação explícita do usuário, reaproveitando 100% do mecanismo de confirmação síncrona já existente (Fase 3). PDF é isolado numa tarefa separada por ser o ponto de maior incerteza técnica.
+Duas peças independentes nesta rodada:
+1. **Correção de PDF** (Tarefa 84) — bug real, causa raiz identificada via pesquisa, correção isolada e pequena.
+2. **Leitura de planilha (Excel/CSV)** — parser estruturado (não IA de visão, a planilha já é dado tabular, não imagem), interpretação por IA de texto (barato, sem tool calling) pra mapear colunas em transações, e confirmação em lote (nova, mas reaproveitando o MESMO mecanismo síncrono de confirmação já existente desde a Fase 3 — `definirPendencia`/`obterPendencia`, sem tabela nova, sem estado novo).
 
 ## Architecture Decisions
 
-(Decididas na rodada anterior, parte 11, pra não travar o início desta — repetidas aqui como referência única desta rodada.)
+### PDF (Tarefa 84)
 
-- **Extração NÃO é uma tool exposta ao modelo de `conversa_texto`** — é uma chamada de IA dedicada (mesmo padrão de `gerarAnaliseQualidade`/`resumirContexto`: função própria em `src/ai/`, modelo próprio via `roteamento_tarefas` fluxo `leitura_comprovante`, fora do loop de tool calling). A decisão "isso é uma transação, tenta registrar" não é uma escolha ambígua de ferramenta — é sempre a mesma ação disparada pela chegada da imagem.
-- **Confirmação obrigatória via reaproveitamento do mecanismo já existente (Fase 3), não um mecanismo novo.** Depois de extrair os campos, o handler monta uma mensagem sintética descrevendo o que foi lido ("Comprovante lido: R$ 45,00, categoria sugerida Mercado, descrição 'Mercado Central', data 2026-09-10.") e chama `gerarResposta` (via `processarMensagemTexto`, já reaproveitado por voz.ts) com essa mensagem como se fosse a mensagem do usuário, usando os MESMOS `tools` de `conversa_texto` — **exceto** que, só pra esta chamada, a tool `registrar_transacao` recebe `requerConfirmacao: true` (normalmente `false`). Função pura `exigirConfirmacaoDeRegistro(tools)` mapeia a lista trocando só essa flag, sem duplicar a tool. O modelo segue as regras já existentes do SYSTEM_PROMPT sozinho (pergunta conta/cartão se não estiver claro — regra 3), e o mecanismo de confirmação síncrona já existente (`definirPendencia`/`gerarPerguntaConfirmacao`) cobre o "confirma?" antes de gravar — cumpre o item 6 do OWASP (conteúdo externo não confiável nunca grava sem confirmação explícita) sem estado novo, sem tabela nova, sem tool nova.
-- **Sem correspondência com fatura/parcela existente nesta rodada** — reconhecer "isso é o boleto da parcela 3 do financiamento X" é lógica já desenhada pra Fase 7 (linha 581 do PLANO.md), não desta. Se a extração identificar que a imagem é fatura de cartão ou boleto de dívida (não um comprovante de compra do dia a dia), a resposta explica isso sem tentar registrar como transação — degrada com aviso claro.
-- **PDF é tarefa separada**, isolando o risco: nem todo provedor aceita PDF do mesmo jeito que imagem via OpenRouter — se não funcionar de primeira com Gemini 2.5 Flash Lite, essa tarefa documenta o achado e degrada ("ainda não leio PDF, manda foto") sem bloquear a foto, caso comum.
-- **Imagem que não é comprovante nenhum** — a extração devolve um campo explícito (`eComprovante: false`) e o handler responde direto, sem montar mensagem sintética nem chamar `gerarResposta`.
+- **Causa raiz real, confirmada por pesquisa (documentação oficial do OpenRouter, 2026-09-13)**: PDF não usa o mesmo content type de imagem (`image_url` com data URI) — o OpenRouter expõe um content type próprio, `{"type": "file", "file": {"filename": "...", "file_data": "data:application/pdf;base64,..."}}`. Modelos sem suporte nativo a arquivo têm o PDF pré-processado por um parser do próprio OpenRouter (`mistral-ocr` por padrão) antes de chegar no modelo — não precisamos escolher o parser explicitamente, o padrão já resolve. `extrairComprovante` passa a montar o bloco `file` em vez de `image_url` quando `mimeType === 'application/pdf'`, mantendo `image_url` pras imagens (sem mudança aí).
 
-### Decisões novas desta rodada (detalhamento de implementação)
+### Leitura de planilha (Excel/CSV)
 
-- **Chamada multimodal via `chat.completions.create` padrão OpenAI-compatible** (não há endpoint de visão dedicado no client `openai`, diferente de transcrição): mensagem `user` com `content` array `[{type: 'text', text: prompt}, {type: 'image_url', image_url: {url: 'data:<mime>;base64,<...>'}}]`. Resposta esperada em JSON (pedido explícito no prompt); parse com `JSON.parse` + `zod` `safeParse` — falha de parse ou schema vira `eComprovante: false` com mensagem de degradação genérica (mesmo princípio de "nunca propagar erro cru pro usuário" da Tarefa 75/77).
-- **`src/ai/extracaoComprovante.ts`** segue o mesmo esqueleto de `analisarQualidade.ts`: constantes `MODELO_LEITURA_COMPROVANTE`/`FLUXO_LEITURA_COMPROVANTE`, função `resolverModeloLeituraComprovante(db)`, função principal `extrairComprovante(client, buffer, mimeType, modelo?)` retornando `{ resultado: ResultadoExtracaoComprovante, tokensPrompt, tokensCompletion, custoReal }`.
-- **`exigirConfirmacaoDeRegistro`** vive em `src/ai/tools/conversaTools.ts` (mesmo arquivo de `montarToolsConversa`, é uma transformação da mesma lista).
-- **`handlerMidia` reescrito** com assinatura `createHandlerMidia(client, db, logger, botToken)` (mesmo padrão de `createHandlerVoz`) — baixa o maior tamanho de foto (`ctx.message.photo.at(-1)`) ou o documento (checando `mime_type`), chama `extrairComprovante`, decide entre 4 saídas: não é comprovante / é fatura-boleto (degrada com aviso) / PDF ainda não suportado (Tarefa 82) / é comprovante de compra (monta mensagem sintética + `processarMensagemTexto` com tools ajustadas). Uso da extração em si registrado em `uso_tokens` (fluxo `leitura_comprovante`), mesmo padrão de `transcricao_voz`.
+- **Parser estruturado, não IA de visão.** Planilha é dado tabular, não uma imagem — usar uma lib de parsing (`xlsx`, SheetJS, só leitura — a limitação conhecida da edição community é em escrita, que não usamos) é mais barato, mais confiável e não depende do modelo "ler" uma tabela visualmente. `xlsx` lê `.xlsx`, `.xls` e `.csv` com a mesma API.
+- **Interpretação via IA de texto dedicada** (mesmo padrão de `gerarAnaliseQualidade`/`extrairComprovante`: função própria, modelo próprio via `roteamento_tarefas`, fluxo `interpretar_planilha`, fora do loop de tool calling) — recebe as linhas já parseadas (JSON compacto: cabeçalhos + linhas), devolve uma lista de transações estruturadas (`tipo`, `valor`, `categoria`, `descricao`, `data`) mais um resumo. Cabe à IA mapear colunas arbitrárias (ex: "Data", "Histórico", "Valor (R$)") pro formato interno — não é um mapeamento fixo de coluna, porque cada banco/planilha nomeia diferente.
+- **Conta/cartão vem da legenda (caption) da mensagem do Telegram, não de uma pergunta de acompanhamento.** Diferente do fluxo de foto/PDF (que passa pelo modelo de `conversa_texto` via `processarMensagemTexto`, e por isso o modelo pode perguntar a conta sozinho seguindo a regra 3 do SYSTEM_PROMPT), a leitura de planilha NÃO passa pelo modelo de conversa — vai direto pra confirmação (ver próximo ponto), então não há "turno de modelo" pra fazer essa pergunta. Resolução: usuário manda a legenda junto do arquivo (ex: legenda "conta corrente"), resolvida com o mesmo `resolverContaId`/`resolverCartaoId` já usado em `registrar_transacao` (aceita nome parcial/aproximado). Sem legenda ou sem resolução, o handler responde pedindo pra reenviar com a legenda, sem tentar novamente sozinho (sem estado de "pergunta pendente" novo).
+- **Confirmação em lote reaproveita o mecanismo síncrono já existente (Fase 3), sem tool calling extra.** Diferente do fluxo de foto (que monta uma mensagem sintética e deixa o modelo decidir chamar `registrar_transacao`), aqui já sabemos exatamente qual ação executar (registrar N transações extraídas) — fazer o modelo de `conversa_texto` re-serializar uma lista grande de volta numa chamada de tool é desnecessário e arriscado (custo de token, chance de alucinação/corte na lista). Em vez disso, o handler monta a pendência DIRETO: `definirPendencia(chatId, { tool: toolRegistrarLote, argumentos: {...} })` e responde com uma mensagem de confirmação própria (resumo: quantidade de transações + total, não o JSON cru dos argumentos — evita estourar o limite de mensagem do Telegram com uma lista grande). Quando o usuário responder "sim", o mecanismo já existente em `processarMensagemTexto` (`obterPendencia`/`ehConfirmacaoAfirmativa`) executa a ação, sem mudança nenhuma nesse arquivo.
+- **Nova tool `registrar_transacoes_em_lote`**, com `requerConfirmacao: true` sempre (diferente de `registrar_transacao`, que só exige confirmação quando forçado por `exigirConfirmacaoDeRegistro` — aqui é sempre alto impacto, é escrita em lote). Reaproveita `criarTransacao` (repository) num loop; resolve conta/cartão uma vez só pro lote inteiro (todas as transações da planilha são da mesma conta). Incluída em `montarToolsConversa` (mesma lista de sempre, sem tool paralela) — mesmo que hoje só seja usada por este fluxo, mantém uma única fonte de verdade de tools.
+- **Planilha que não parece ter dado financeiro** (colunas sem sentido, vazia) — a interpretação devolve lista vazia, handler responde explicando sem tentar confirmar nada.
+- **Escopo desta rodada**: extrato bancário e dados equivalentes (linha = 1 transação). "Resumos financeiros" e "controle de empréstimos" citados pelo usuário como formatos livres de planilha ficam fora do escopo desta rodada — o parser/interpretação lida com qualquer estrutura tabular genérica de transações, mas não tenta reconhecer formatos de resumo/relatório (que não têm "1 linha = 1 transação"); se a IA não conseguir mapear pra transações, degrada explicando, sem inventar.
 
 ## Task List
 
-### Fase VI: Leitura de comprovante (foto/PDF)
+### Fase VI: Leitura de planilha + correção de PDF
 
-- [x] Tarefa 79: `extrairComprovante` em `src/ai/extracaoComprovante.ts`
-- [x] Tarefa 80: `exigirConfirmacaoDeRegistro(tools)` em `src/ai/tools/conversaTools.ts`
-- [x] Tarefa 81: reescreve `src/bot/handlers/midia.ts` pra foto (comprovante de compra, fatura/boleto, não-comprovante)
-- [x] Tarefa 82: suporte a PDF em `handlerMidia` (isolado — degrada com aviso se Gemini não aceitar bem)
-- [x] Tarefa 83: wiring (`bot.ts`/`index.ts` passam `client`/`db`/`botToken` pro handler; `/modelos` ganha `leitura_comprovante`)
+- [x] Tarefa 84: corrige `extrairComprovante` pra usar content type `file` (não `image_url`) em PDF
+- [ ] Tarefa 85: `interpretarPlanilha` em `src/ai/interpretacaoPlanilha.ts` (parser `xlsx` + IA de texto dedicada)
+- [ ] Tarefa 86: `criarToolRegistrarTransacoesEmLote` em `src/ai/tools/transacoesEmLote.ts`
+- [ ] Tarefa 87: `handlerMidia` ganha branch de planilha (legenda → conta/cartão, pendência direta, confirmação em lote)
+- [ ] Tarefa 88: wiring (`package.json` ganha `xlsx`; `/modelos` ganha `interpretar_planilha`)
 
-### Checkpoint: Leitura de comprovante funcional
-- [x] `npm run build`/`lint`/`test` sem erro (701/701, 1 flake isolado de timeout já documentado)
-- [x] Teste manual em Homologação via Telegram: foto real de comprovante, extração correta — confirmado pelo usuário. PDF: rejeitado pelo provedor, degradou como projetado (achado real, documentado no PROGRESSO.md)
-- [x] PROGRESSO.md atualizado com o marco
-- [x] Revisão com o usuário antes de prosseguir (Fase 7) — usuário levantou pedido novo (leitura de Excel), em discussão antes de decidir avançar pra Fase 7
+### Checkpoint: Leitura de planilha + PDF corrigido
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação via Telegram: PDF real de comprovante (confirma se a correção resolveu), planilha real de extrato com legenda de conta (fluxo completo até confirmação e registro)
+- [ ] PROGRESSO.md atualizado com o marco
+- [ ] Revisão com o usuário antes de prosseguir (Fase 7)
 
 ## Risks and Mitigations
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Gemini 2.5 Flash Lite não aceitar PDF via `image_url`/base64 no formato esperado pelo OpenRouter | Médio | Isolado na Tarefa 82 — se falhar, documenta achado real e degrada, não bloqueia a foto (caso comum, Tarefa 81) |
-| Extração devolver JSON malformado ou fora do schema esperado | Médio | `safeParse` falho vira `eComprovante: false` + mensagem de degradação, nunca propaga erro cru nem tenta registrar com dado incompleto |
-| Modelo de visão "alucinar" valor/categoria de comprovante ilegível | Médio | Mensagem sintética + confirmação obrigatória (`exigirConfirmacaoDeRegistro`) é exatamente a mitigação — usuário sempre vê o que foi lido antes de gravar |
-| Custo da chamada de visão não vir em `usage.cost` (mesma limitação já vista em transcrição) | Baixo | Mesmo tratamento da Tarefa 75: `custoEstimado: 0` documentado como limitação conhecida, não bloqueia |
+| Correção de PDF (content type `file`) ainda não funcionar com Gemini 2.5 Flash Lite (mesmo sendo o formato documentado) | Médio | Isolado numa tarefa própria (84) — se ainda falhar, é achado real documentado, mensagem de degradação já existente continua cobrindo o caso |
+| IA de interpretação mapear colunas erradas (ex: confundir "saldo" com "valor da transação") | Médio | Confirmação obrigatória antes de gravar é a mitigação — usuário vê o resumo (quantidade + total) antes de aceitar; se o total parecer errado, usuário cancela |
+| Planilha muito grande (milhares de linhas) estourar limite de contexto da chamada de interpretação | Médio | Sem paginação nesta rodada — limite de linhas processadas (a definir na Tarefa 85, ex: primeiras N linhas) documentado como limitação conhecida se ultrapassado, não trava o bot |
+| Formato de arquivo `.xls` legado (binário antigo) ter suporte pior na lib `xlsx` que `.xlsx` moderno | Baixo | `xlsx` (SheetJS) documenta suporte a ambos — não é uma preocupação nova, mas fica registrado caso surja na prática |
 
 ## Open Questions
-Nenhuma — decisões de arquitetura completas (herdadas da parte 11 + detalhamento de implementação acima).
+Nenhuma — decisões de arquitetura completas.
