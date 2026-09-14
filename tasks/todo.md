@@ -34,13 +34,13 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, orde
 **Description:** Função pura `exigirConfirmacaoDeRegistro(tools: ToolDefinition[]): ToolDefinition[]` — retorna uma nova lista igual à recebida, exceto que a tool `registrar_transacao` ganha `requerConfirmacao: true` (as demais tools passam intactas). Não muta a lista original (`montarToolsConversa` continua servindo `conversa_texto`/`voz.ts` sem confirmação, comportamento inalterado).
 
 **Acceptance criteria:**
-- [ ] Lista retornada tem o mesmo tamanho e ordem da lista recebida
-- [ ] Só `registrar_transacao` tem `requerConfirmacao: true` na lista retornada
-- [ ] Lista original (parâmetro) não é mutada — outras tools mantêm suas flags originais
+- [x] Lista retornada tem o mesmo tamanho e ordem da lista recebida
+- [x] Só `registrar_transacao` tem `requerConfirmacao: true` na lista retornada
+- [x] Lista original (parâmetro) não é mutada — outras tools mantêm suas flags originais
 
 **Verification:**
-- [ ] `npm test -- tests/ai/tools/conversaTools.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/ai/tools/conversaTools.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** None (paralelizável com Tarefa 79)
 
