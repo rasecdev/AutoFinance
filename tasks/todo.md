@@ -88,14 +88,14 @@ Documento (`message:document`) com `mime_type` de imagem (`image/*`) segue o mes
 **Description:** Documento com `mime_type === 'application/pdf'` passa a tentar o mesmo caminho de extração (`extrairComprovante`, base64 do PDF como `image_url` data URI com mime `application/pdf` — testar se o OpenRouter/Gemini aceita nesse formato). Se a chamada funcionar (resposta coerente, sem erro de formato rejeitado pela API), segue o mesmo fluxo de decisão da Tarefa 81. Se a API rejeitar o formato (erro claro de tipo de conteúdo não suportado), documenta o achado real no PROGRESSO.md e o handler degrada com mensagem fixa ("ainda não consigo ler PDF, manda como foto") — sem tentar de novo, sem bloquear o caminho de foto.
 
 **Acceptance criteria:**
-- [ ] PDF é tentado via `extrairComprovante` (não cai direto no "não suportado" que a Tarefa 81 usa como placeholder)
-- [ ] Se a API aceitar, comportamento igual ao de foto (mesmos 3 branches de decisão)
-- [ ] Se a API rejeitar o formato, mensagem de degradação clara e específica pra PDF, distinta da mensagem de "tipo de arquivo não suportado" genérica
-- [ ] Achado real (aceitou ou não) documentado no PROGRESSO.md
+- [x] PDF é tentado via `extrairComprovante` (não cai direto no "não suportado" que a Tarefa 81 usa como placeholder)
+- [x] Se a API aceitar, comportamento igual ao de foto (mesmos 3 branches de decisão)
+- [x] Se a API rejeitar o formato, mensagem de degradação clara e específica pra PDF, distinta da mensagem de "tipo de arquivo não suportado" genérica
+- [ ] Achado real (aceitou ou não) documentado no PROGRESSO.md — pendente do teste manual em Homologação (checkpoint)
 
 **Verification:**
-- [ ] `npm test -- tests/bot/handlers/midia.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/bot/handlers/midia.test.ts`
+- [x] `npm run build`
 - [ ] Teste manual: mandar um PDF real de comprovante em Homologação, confirmar comportamento (aceito ou degradado) antes de fechar o checkpoint
 
 **Dependencies:** Tarefa 81
