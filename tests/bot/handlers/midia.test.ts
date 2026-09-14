@@ -164,8 +164,22 @@ describe('handlerMidia', () => {
     expect(processarMensagemTextoMock).toHaveBeenCalledTimes(1);
   });
 
-  it('documento PDF responde com mensagem específica de PDF não suportado', async () => {
-    const client = criarClienteFalso(JSON.stringify({ eComprovante: false }));
+  it('documento PDF aceito pelo provedor segue o mesmo fluxo de decisão da foto', async () => {
+    const client = criarClienteFalso(
+      JSON.stringify({ eComprovante: true, tipoDocumento: 'compra', valor: 10 }),
+    );
+    const handler = createHandlerMidia(client, db, createLogger({ write() {} }), BOT_TOKEN);
+    const ctx = criarContextoDocumento('application/pdf');
+
+    await handler(ctx);
+
+    expect(processarMensagemTextoMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('documento PDF rejeitado pelo provedor (erro na chamada) responde mensagem específica de PDF, não a genérica', async () => {
+    const client = {
+      chat: { completions: { create: vi.fn(async () => Promise.reject(new Error('formato não suportado'))) } },
+    } as unknown as OpenAI;
     const handler = createHandlerMidia(client, db, createLogger({ write() {} }), BOT_TOKEN);
     const ctx = criarContextoDocumento('application/pdf');
 

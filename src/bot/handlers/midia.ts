@@ -29,21 +29,20 @@ async function baixarArquivo(ctx: Context, botToken: string): Promise<Buffer> {
 }
 
 // Fotos do Telegram chegam sempre como JPEG; documento com mime_type de
-// imagem (ex: PNG enviado como arquivo, não como foto comprimida) segue o
-// mesmo caminho. PDF é tratado à parte (Tarefa 82) — aqui ainda degrada.
-function resolverMimeType(ctx: Context): { mimeType: string } | { tipoNaoSuportado: 'pdf' | 'outro' } {
+// imagem (ex: PNG enviado como arquivo, não como foto comprimida) ou PDF
+// seguem o mesmo caminho de extração — PDF é tentado de verdade (Tarefa 82;
+// se o provedor rejeitar o formato, o catch em handlerMidia degrada com
+// MENSAGEM_PDF_NAO_SUPORTADO, distinta da mensagem genérica de erro).
+function resolverMimeType(ctx: Context): { mimeType: string } | { tipoNaoSuportado: true } {
   if (ctx.message?.photo) {
     return { mimeType: 'image/jpeg' };
   }
 
   const mimeDocumento = ctx.message?.document?.mime_type;
-  if (mimeDocumento?.startsWith('image/')) {
+  if (mimeDocumento?.startsWith('image/') || mimeDocumento === 'application/pdf') {
     return { mimeType: mimeDocumento };
   }
-  if (mimeDocumento === 'application/pdf') {
-    return { tipoNaoSuportado: 'pdf' };
-  }
-  return { tipoNaoSuportado: 'outro' };
+  return { tipoNaoSuportado: true };
 }
 
 // Mensagem sintética que alimenta o MESMO pipeline de conversa_texto (via
@@ -70,7 +69,7 @@ export function createHandlerMidia(client: OpenAI, db: DbClient, logger: Logger,
 
     const tipo = resolverMimeType(ctx);
     if ('tipoNaoSuportado' in tipo) {
-      await ctx.reply(tipo.tipoNaoSuportado === 'pdf' ? MENSAGEM_PDF_NAO_SUPORTADO : MENSAGEM_TIPO_NAO_SUPORTADO);
+      await ctx.reply(MENSAGEM_TIPO_NAO_SUPORTADO);
       return;
     }
 
@@ -91,7 +90,10 @@ export function createHandlerMidia(client: OpenAI, db: DbClient, logger: Logger,
       });
     } catch (erro) {
       log.error({ err: erro }, 'falha ao extrair dados do comprovante');
-      await ctx.reply(MENSAGEM_ERRO_EXTRACAO);
+      // Achado a confirmar em teste manual (Tarefa 82): se o provedor rejeitar
+      // PDF (formato ainda não aceito na chamada multimodal), a falha cai aqui
+      // — mensagem específica de PDF em vez da genérica, sem tentar de novo.
+      await ctx.reply(tipo.mimeType === 'application/pdf' ? MENSAGEM_PDF_NAO_SUPORTADO : MENSAGEM_ERRO_EXTRACAO);
       return;
     }
 
