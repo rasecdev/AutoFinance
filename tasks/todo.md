@@ -1,107 +1,136 @@
-# Tarefas: Fase 6 (parte 11) — Transcrição de voz
+# Tarefas: Fase 6 (parte 12) — Leitura de comprovante (foto/PDF)
 
-Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura de parte 11 e parte 12, riscos, ordem, pesquisa de modelo). Fluxo de branch/PR/merge por tarefa é o já descrito em `CLAUDE.md` — não repetido aqui.
+Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos, ordem). Fluxo de branch/PR/merge por tarefa é o já descrito em `CLAUDE.md` — não repetido aqui.
 
-## Fase VI: Transcrição de voz
+## Fase VI: Leitura de comprovante (foto/PDF)
 
-### Tarefa 75: `transcreverAudio` em `src/ai/transcricao.ts`
+### Tarefa 79: `extrairComprovante` em `src/ai/extracaoComprovante.ts`
 
-**Description:** Nova função `transcreverAudio(client: OpenAI, buffer: Buffer, nomeArquivo: string, modelo?: string): Promise<ResultadoTranscricao>` — usa `OpenAI.toFile(buffer, nomeArquivo)` + `client.audio.transcriptions.create({ file, model })` contra o endpoint de transcrição do OpenRouter (mesmo client já criado por `createOpenRouterClient`). `MODELO_TRANSCRICAO_VOZ = 'openai/whisper-large-v3-turbo'` (ou o slug exato confirmado no catálogo do OpenRouter), `FLUXO_TRANSCRICAO_VOZ = 'transcricao_voz'`, resolução de modelo via `obterModeloRoteamento(db, FLUXO_TRANSCRICAO_VOZ)` com fallback pro padrão (mesmo padrão de `resolverModeloAnalisarQualidade`/`MODELO_RESUMO`). Retorna `{ texto: string, custoEstimado: number }` — se a resposta não trouxer `usage.cost`, `custoEstimado: 0` (documentar como limitação conhecida, não bloqueia).
+**Description:** Nova função `extrairComprovante(client: OpenAI, buffer: Buffer, mimeType: string, modelo?: string): Promise<ResultadoExtracao>` — monta uma chamada multimodal (`chat.completions.create`, content array com `{type:'text'}` + `{type:'image_url', image_url:{url:'data:<mime>;base64,<...>'}}`), prompt pedindo JSON estrito com os campos: `eComprovante: boolean`, `tipoDocumento: 'compra' | 'fatura_cartao' | 'boleto_divida' | 'outro'`, `valor?: number`, `categoriaSugerida?: string`, `descricao?: string`, `data?: string` (ISO). Resposta parseada com `JSON.parse` + schema Zod local — falha de parse/schema retorna `{ eComprovante: false }` (degradação, não propaga erro). `MODELO_LEITURA_COMPROVANTE = 'google/gemini-2.5-flash-lite'` (confirmar slug exato no catálogo do OpenRouter), `FLUXO_LEITURA_COMPROVANTE = 'leitura_comprovante'`, `resolverModeloLeituraComprovante(db)` seguindo o padrão de `resolverModeloAnalisarQualidade`. Retorna também `tokensPrompt`/`tokensCompletion`/`custoReal` (mesmo padrão de `gerarAnaliseQualidade`) pra o handler registrar em `uso_tokens`.
 
 **Acceptance criteria:**
-- [x] Transcreve e retorna o texto (mockado — sem fixture de áudio real, mesmo padrão de mock de client já usado em `openrouter.test.ts`)
+- [x] Chamada multimodal montada corretamente (mock do client, mesmo padrão de `openrouter.test.ts`/`transcricao.test.ts`)
+- [x] JSON válido e dentro do schema retorna os campos extraídos
+- [x] JSON malformado ou fora do schema retorna `{ eComprovante: false }` sem lançar exceção
 - [x] Resolve o modelo via `roteamento_tarefas` quando existe override, cai no padrão quando não existe
-- [x] Sem `usage.cost` na resposta, `custoEstimado` fica 0 em vez de estourar erro
-
-**Nota de implementação:** `usage.cost` não é um campo padrão do SDK `openai` (é extensão do OpenRouter, mesmo padrão de `UsageComCusto` em `openrouter.ts`) — cast local, documentado com comentário. Erro de API (áudio inválido) já propaga naturalmente (promise rejeitada), tratado no handler (Tarefa 77), não nesta função.
+- [x] Sem `usage.cost` na resposta, `custoReal` fica 0 (mesma limitação já documentada em `transcricao.ts`)
 
 **Verification:**
-- [x] `npm test -- tests/ai/transcricao.test.ts`
+- [x] `npm test -- tests/ai/extracaoComprovante.test.ts`
 - [x] `npm run build`
 
 **Dependencies:** None
 
 **Files likely touched:**
-- `src/ai/transcricao.ts`
-- `tests/ai/transcricao.test.ts`
+- `src/ai/extracaoComprovante.ts`
+- `tests/ai/extracaoComprovante.test.ts`
 
-**Estimated scope:** Small (uma função, reaproveita client já existente)
-
----
-
-### Tarefa 76: extrai `processarMensagemTexto` de `handlers/texto.ts`
-
-**Description:** Refatoração pura (sem mudança de comportamento) — extrai o corpo de `handlerTexto` (a partir de "tenho uma string `mensagemUsuario`, processo") pra uma função exportada `processarMensagemTexto(ctx: Context, db: DbClient, client: OpenAI, logger: Logger, mensagemUsuario: string, chatId: number): Promise<void>`, cobrindo: checar pendência de confirmação, chamar `gerarResposta`, registrar `interacoes_ia`/`uso_tokens`, mandar imagem(ns) se houver, disparar `verificarGatilhoResumo`, tratamento de erro. `handlerTexto` passa a só extrair `mensagemUsuario`/`chatId` do `ctx` e chamar essa função — nenhum teste existente de `texto.ts` deveria precisar mudar (mesmo comportamento, só reorganização).
-
-**Acceptance criteria:**
-- [x] `handlerTexto` continua funcionando exatamente igual (nenhum teste existente quebra — 675/675, 1 flake isolado de timeout já documentado, confirmado não-relacionado rodando isolado)
-- [x] `processarMensagemTexto` é exportada e chamável independente do `ctx.message.text` (recebe `tools`/`mensagemUsuario`/`chatId` já prontos)
-
-**Verification:**
-- [x] `npm run build`/`lint`/`test` (suite completa, garantindo zero regressão)
-
-**Dependencies:** None (paralelizável com Tarefa 75)
-
-**Files likely touched:**
-- `src/bot/handlers/texto.ts`
-
-**Estimated scope:** Small (refatoração, sem lógica nova)
+**Estimated scope:** Small-Medium (uma função, schema novo, sem tabela/tool nova)
 
 ---
 
-### Tarefa 77: novo handler `src/bot/handlers/voz.ts`
+### Tarefa 80: `exigirConfirmacaoDeRegistro(tools)` em `src/ai/tools/conversaTools.ts`
 
-**Description:** `createHandlerVoz(client, db, logger, botToken)` — baixa o arquivo de voz (`ctx.getFile()` + fetch em `https://api.telegram.org/file/bot<token>/<file_path>`), chama `transcreverAudio` (Tarefa 75), registra o uso em `uso_tokens`/fluxo `transcricao_voz`, e chama `processarMensagemTexto` (Tarefa 76) com o texto transcrito. Erro de transcrição (áudio incompreensível, API fora) responde mensagem clara ("não consegui entender o áudio, tenta de novo ou manda por texto") sem propagar exceção pro handler global.
+**Description:** Função pura `exigirConfirmacaoDeRegistro(tools: ToolDefinition[]): ToolDefinition[]` — retorna uma nova lista igual à recebida, exceto que a tool `registrar_transacao` ganha `requerConfirmacao: true` (as demais tools passam intactas). Não muta a lista original (`montarToolsConversa` continua servindo `conversa_texto`/`voz.ts` sem confirmação, comportamento inalterado).
 
 **Acceptance criteria:**
-- [x] Áudio transcrito com sucesso delega pro pipeline de texto (`processarMensagemTexto`) com o texto transcrito
-- [x] Falha na transcrição responde mensagem de erro amigável, não propaga exceção
-- [x] Transcrição vazia (silêncio) responde a mesma mensagem de erro, sem delegar pro pipeline
-- [x] Uso da transcrição em si (custo/modelo) registrado separado em `uso_tokens` com fluxo `transcricao_voz`
-
-**Nota de implementação:** `processarMensagemTexto` (Tarefa 76) é mockado no teste (`vi.mock`) — testa só a lógica nova do handler (download, transcrição, erro, uso_tokens), não repete o teste do pipeline de texto (que também não tem teste dedicado, mesmo padrão de `texto.ts`).
+- [ ] Lista retornada tem o mesmo tamanho e ordem da lista recebida
+- [ ] Só `registrar_transacao` tem `requerConfirmacao: true` na lista retornada
+- [ ] Lista original (parâmetro) não é mutada — outras tools mantêm suas flags originais
 
 **Verification:**
-- [x] `npm test -- tests/bot/handlers/voz.test.ts`
-- [x] `npm run build`
+- [ ] `npm test -- tests/ai/tools/conversaTools.test.ts`
+- [ ] `npm run build`
 
-**Dependencies:** Tarefa 75, Tarefa 76
+**Dependencies:** None (paralelizável com Tarefa 79)
 
 **Files likely touched:**
-- `src/bot/handlers/voz.ts`
-- `tests/bot/handlers/voz.test.ts`
+- `src/ai/tools/conversaTools.ts`
+- `tests/ai/tools/conversaTools.test.ts`
 
-**Estimated scope:** Medium (novo handler + download de arquivo + integração dos dois pontos anteriores)
+**Estimated scope:** Small (uma função pura, sem estado)
 
 ---
 
-### Tarefa 78: registra `message:voice` e fluxo em `/modelos`
+### Tarefa 81: reescreve `src/bot/handlers/midia.ts` — foto de comprovante
 
-**Description:** `src/bot/router.ts` ganha `bot.on('message:voice', handlerVoz)` (antes do catch-all `handlerNaoSuportado`); `bot.ts`/`index.ts` passam o novo handler pela cadeia de criação (mesmo padrão de `handlerModelos`, Fase 6 parte 8). `src/bot/handlers/modelos.ts` (`FLUXOS_ROTEADOS`) ganha a linha `transcricao_voz`/`MODELO_TRANSCRICAO_VOZ`, aparecendo em `/modelos`.
+**Description:** `createHandlerMidia(client: OpenAI, db: DbClient, logger: Logger, botToken: string)` — baixa a foto de maior resolução (`ctx.message.photo?.at(-1)`, mesmo mecanismo de download de `voz.ts`), chama `extrairComprovante` (Tarefa 79), registra o uso em `uso_tokens`/fluxo `leitura_comprovante`, e decide:
+- `!eComprovante` → responde mensagem explicando que não reconheceu a imagem como comprovante, sem chamar IA de novo.
+- `tipoDocumento` é `fatura_cartao` ou `boleto_divida` → responde mensagem explicando que ainda não trata esse tipo de documento (correspondência com fatura/parcela é Fase 7), sem registrar nada.
+- `tipoDocumento === 'compra'` → monta mensagem sintética ("Comprovante lido: R$ X, categoria sugerida Y, descrição 'Z', data W.") e chama `processarMensagemTexto(ctx, db, client, logger, exigirConfirmacaoDeRegistro(montarToolsConversa(db, client)), mensagemSintetica, chatId)` — o mecanismo de confirmação síncrona já existente cobre o "confirma?" antes de gravar.
+Documento (`message:document`) com `mime_type` de imagem (`image/*`) segue o mesmo caminho da foto; PDF (`application/pdf`) fica sem tratamento nesta tarefa (cai no branch padrão "ainda não suportado", substituído na Tarefa 82); qualquer outro `mime_type` responde "tipo de arquivo não suportado".
 
 **Acceptance criteria:**
-- [x] Mensagem de voz roteia pro novo handler, não mais pro catch-all
-- [x] `/modelos` lista o fluxo `transcricao_voz` e o modelo resolvido (com override, se houver)
+- [ ] Foto de comprovante de compra válido → mensagem sintética processada, confirmação exigida antes de `registrar_transacao` executar de fato (reaproveita `definirPendencia`/`ehConfirmacaoAfirmativa` sem mudança nesses arquivos)
+- [ ] Foto que não é comprovante → mensagem de explicação direta, sem chamar `processarMensagemTexto`
+- [ ] Foto de fatura/boleto → mensagem de degradação clara, sem registrar transação
+- [ ] Documento de imagem (`image/*`) segue o mesmo fluxo da foto
+- [ ] Uso da extração registrado em `uso_tokens` com fluxo `leitura_comprovante`
 
 **Verification:**
-- [x] `npm test -- tests/bot/router.test.ts tests/bot/modelos.test.ts` (suite completa: 681/681, 1 flake isolado de timeout já documentado)
-- [x] `npm run build`
+- [ ] `npm test -- tests/bot/handlers/midia.test.ts`
+- [ ] `npm run build`
 
-**Dependencies:** Tarefa 77
+**Dependencies:** Tarefa 79, Tarefa 80
 
 **Files likely touched:**
-- `src/bot/router.ts`
+- `src/bot/handlers/midia.ts`
+- `tests/bot/handlers/midia.test.ts`
+
+**Estimated scope:** Medium (handler novo com múltiplos branches, integra as duas tarefas anteriores)
+
+---
+
+### Tarefa 82: suporte a PDF em `handlerMidia`
+
+**Description:** Documento com `mime_type === 'application/pdf'` passa a tentar o mesmo caminho de extração (`extrairComprovante`, base64 do PDF como `image_url` data URI com mime `application/pdf` — testar se o OpenRouter/Gemini aceita nesse formato). Se a chamada funcionar (resposta coerente, sem erro de formato rejeitado pela API), segue o mesmo fluxo de decisão da Tarefa 81. Se a API rejeitar o formato (erro claro de tipo de conteúdo não suportado), documenta o achado real no PROGRESSO.md e o handler degrada com mensagem fixa ("ainda não consigo ler PDF, manda como foto") — sem tentar de novo, sem bloquear o caminho de foto.
+
+**Acceptance criteria:**
+- [ ] PDF é tentado via `extrairComprovante` (não cai direto no "não suportado" que a Tarefa 81 usa como placeholder)
+- [ ] Se a API aceitar, comportamento igual ao de foto (mesmos 3 branches de decisão)
+- [ ] Se a API rejeitar o formato, mensagem de degradação clara e específica pra PDF, distinta da mensagem de "tipo de arquivo não suportado" genérica
+- [ ] Achado real (aceitou ou não) documentado no PROGRESSO.md
+
+**Verification:**
+- [ ] `npm test -- tests/bot/handlers/midia.test.ts`
+- [ ] `npm run build`
+- [ ] Teste manual: mandar um PDF real de comprovante em Homologação, confirmar comportamento (aceito ou degradado) antes de fechar o checkpoint
+
+**Dependencies:** Tarefa 81
+
+**Files likely touched:**
+- `src/bot/handlers/midia.ts`
+- `tests/bot/handlers/midia.test.ts`
+- `PROGRESSO.md`
+
+**Estimated scope:** Small-Medium (mesma lógica da Tarefa 81, isolando o risco real: formato PDF aceito ou não pela API)
+
+---
+
+### Tarefa 83: wiring (`bot.ts`/`index.ts`/`/modelos`)
+
+**Description:** `src/bot/bot.ts` e `src/index.ts` passam a criar `handlerMidia` com a nova assinatura `createHandlerMidia(client, db, logger, botToken)` (mesmo padrão já usado pra `handlerVoz` na parte 11) — `router.ts` não muda (já roteia `message:photo`/`message:document` pro `handlerMidia` desde a Fase 1). `src/bot/handlers/modelos.ts` (`FLUXOS_ROTEADOS`) ganha a linha `leitura_comprovante`/`MODELO_LEITURA_COMPROVANTE`, aparecendo em `/modelos`.
+
+**Acceptance criteria:**
+- [ ] Bot sobe normalmente com a nova assinatura de `createHandlerMidia`
+- [ ] `/modelos` lista o fluxo `leitura_comprovante` e o modelo resolvido (com override, se houver)
+
+**Verification:**
+- [ ] `npm test -- tests/bot/modelos.test.ts` (suite completa antes de fechar o checkpoint)
+- [ ] `npm run build`
+
+**Dependencies:** Tarefa 81
+
+**Files likely touched:**
 - `src/bot/bot.ts`
 - `src/index.ts`
 - `src/bot/handlers/modelos.ts`
-- `tests/bot/router.test.ts`
 - `tests/bot/modelos.test.ts`
 
-**Estimated scope:** Small (wiring, mesmo padrão já usado 3 vezes no projeto)
+**Estimated scope:** Small (wiring, mesmo padrão já usado 4 vezes no projeto)
 
-## Checkpoint: Transcrição de voz funcional
-- [x] `npm run build`/`lint`/`test` sem erro (681/681, 1 flake isolado de timeout já documentado)
-- [x] PLANO.md corrigido (STT via OpenRouter — linhas 121/150 atualizadas)
-- [x] Teste manual em Homologação via Telegram: áudio real com pedido simples, ação certa executada — confirmado pelo usuário
-- [x] PROGRESSO.md atualizado com o marco
-- [x] Revisão com o usuário antes de prosseguir (parte 12 — leitura de comprovante)
+## Checkpoint: Leitura de comprovante funcional
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação via Telegram: foto real de comprovante, extração correta, confirmação exigida antes de gravar
+- [ ] PROGRESSO.md atualizado com o marco
+- [ ] Revisão com o usuário antes de prosseguir (Fase 7)
