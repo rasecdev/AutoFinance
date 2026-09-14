@@ -35,10 +35,10 @@ Duas peças independentes nesta rodada:
 - [x] Tarefa 88: wiring (`package.json` ganha `read-excel-file`; `/modelos` ganha `interpretar_planilha`)
 
 ### Checkpoint: Leitura de planilha + PDF corrigido
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação via Telegram: PDF real de comprovante (confirma se a correção resolveu), planilha real de extrato com legenda de conta (fluxo completo até confirmação e registro)
-- [ ] PROGRESSO.md atualizado com o marco
-- [ ] Revisão com o usuário antes de prosseguir (Fase 7)
+- [x] `npm run build`/`lint`/`test` sem erro (721/721)
+- [x] Teste manual em Homologação via Telegram: PDF real de comprovante lido corretamente, planilha `.xlsx` de teste com legenda de conta até confirmação e registro — confirmado pelo usuário ("feito e testado, deu certo")
+- [x] PROGRESSO.md atualizado com o marco
+- [x] Revisão com o usuário antes de prosseguir (Fase 7)
 
 ## Risks and Mitigations
 | Risk | Impact | Mitigation |
