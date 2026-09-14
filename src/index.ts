@@ -23,7 +23,7 @@ migrate(db);
 
 const openRouterClient = createOpenRouterClient(env.openrouterApiKey);
 const handlerTexto = createHandlerTexto(openRouterClient, db, logger);
-const handlerMidia = createHandlerMidia(logger);
+const handlerMidia = createHandlerMidia(openRouterClient, db, logger, env.telegramBotToken);
 const handlerVoz = createHandlerVoz(openRouterClient, db, logger, env.telegramBotToken);
 const handlerNaoSuportado = createHandlerNaoSuportado(logger);
 const handlerFeedback = createHandlerFeedback(db, logger, 'incorreto');
