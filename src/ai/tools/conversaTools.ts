@@ -68,3 +68,16 @@ export function montarToolsConversa(db: DbClient, client: OpenAI): ToolDefinitio
     criarToolConsultarEGraficar(db),
   ];
 }
+
+// Leitura de comprovante (Fase 6, parte 12): a mensagem sintética montada a
+// partir de uma foto/PDF externo passa pelas MESMAS tools de conversa_texto,
+// exceto que registrar_transacao precisa de confirmação explícita antes de
+// gravar (item 6 do OWASP — conteúdo externo não confiável nunca escreve
+// dado financeiro sem confirmação), diferente do uso normal por texto/voz
+// (baixo impacto, escrita direta com eco). Função pura: não muta a lista
+// recebida, só troca a flag na cópia da tool `registrar_transacao`.
+export function exigirConfirmacaoDeRegistro(tools: ToolDefinition[]): ToolDefinition[] {
+  return tools.map((tool) =>
+    tool.name === 'registrar_transacao' ? { ...tool, requerConfirmacao: true } : tool,
+  );
+}
