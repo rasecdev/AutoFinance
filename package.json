@@ -33,6 +33,7 @@
     "grammy": "^1.46.0",
     "openai": "^7.8.0",
     "pino": "^10.3.1",
+    "read-excel-file": "^9.3.10",
     "zod": "^4.5.4"
   },
   "devDependencies": {
@@ -44,7 +45,8 @@
     "tsx": "^4.23.13",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.68.0",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "write-excel-file": "^4.1.1"
   },
   "allowScripts": {
     "esbuild@0.28.2": true
