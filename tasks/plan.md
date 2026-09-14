@@ -1,52 +1,51 @@
-# Implementation Plan: Fase 6 (parte 11) — Transcrição de voz
+# Implementation Plan: Fase 6 (parte 12) — Leitura de comprovante (foto/PDF)
 
-Nova fase entre Fase 6 e Fase 7, a pedido do usuário — cobre entrada por voz e por foto/PDF de comprovante, hoje ambas só stub (`handlerMidia`) ou catch-all (`handlerNaoSuportado`). Ver PLANO.md linha 475 (Fase 1, "handlers já separados por tipo de entrada desde o início") e linha 575 (Fase 6, "transcrição de áudio... nunca agendada como parte"). Fluxo de branch/PR/merge por tarefa é o já descrito em `CLAUDE.md`.
+Continuação da Fase 6 (parte 11, concluída — transcrição de voz). Ver PLANO.md linha 475 ("handlers já separados por tipo de entrada desde o início") e linha 581 (correspondência com fatura/parcela, fora de escopo aqui — fica pra Fase 7). Fluxo de branch/PR/merge por tarefa é o já descrito em CLAUDE.md.
 
-## Overview do conjunto (2 partes, ordem decidida por facilidade)
+## Overview
 
-- **Parte 11 (esta rodada) — Transcrição de voz.** Mais simples: transcreve o áudio e alimenta o pipeline de `conversa_texto` já existente por completo — zero tool nova, zero fluxo de confirmação novo.
-- **Parte 12 (próxima rodada) — Leitura de comprovante (foto/PDF).** Mais complexa: extrai dado estruturado de imagem, e por vir de fonte externa não confiável (PLANO.md, item 6 do OWASP) precisa de confirmação explícita antes de gravar — mecanismo detalhado abaixo, pra já deixar decidido antes de começar aquela rodada. Também é pré-requisito real da Fase 7 (que reaproveita esta mesma extração pra anexo de e-mail).
+`handlerMidia` hoje é só stub (`src/bot/handlers/midia.ts`) — responde "processamento de imagem/PDF ainda não implementado" pra qualquer foto ou documento. Esta rodada implementa de verdade: extrai dado estruturado de uma foto de comprovante via IA com visão (Gemini 2.5 Flash Lite, pesquisa já feita na parte 11 — ver PROGRESSO.md), e só registra a transação depois de confirmação explícita do usuário, reaproveitando 100% do mecanismo de confirmação síncrona já existente (Fase 3). PDF é isolado numa tarefa separada por ser o ponto de maior incerteza técnica.
 
-Pesquisa de modelo (feita antes deste plano, ver PROGRESSO.md/conversa): **voz → Whisper Large V3 Turbo via `/api/v1/audio/transcriptions` do próprio OpenRouter** (mesma chave já usada, mais barato que a Groq direta: ~$0,0108/hora vs $0,04/hora) — corrige suposição desatualizada do PLANO.md ("STT é fora do OpenRouter"); **foto/PDF → Gemini 2.5 Flash Lite** ($0,05/$0,20 por M tokens, mais barato entre os candidatos com vision, recomendado pelo próprio Google pra extração de alto volume).
+## Architecture Decisions
 
-## Architecture Decisions (parte 11 — voz)
+(Decididas na rodada anterior, parte 11, pra não travar o início desta — repetidas aqui como referência única desta rodada.)
 
-- **Sem tool nova, sem tabela nova.** `client.audio.transcriptions.create(...)` (SDK `openai`, já usado pro client do OpenRouter) transcreve o áudio; o texto resultante entra no MESMO `gerarResposta`/`montarToolsConversa` já usado por mensagem de texto — a partir do texto transcrito, é a mesma coisa que o usuário ter digitado. Reaproveita 100% do tool-calling, do resumo de contexto, da observabilidade (`interacoes_ia`) já existentes.
-- **Refatoração mínima em `texto.ts`**: a lógica hoje começa em "tenho uma string, processo" (`mensagemUsuario = ctx.message?.text`) — extraída pra uma função `processarMensagemTexto(ctx, db, client, logger, mensagemUsuario, chatId)` reaproveitável pelo novo handler de voz, sem duplicar histórico/registro/resumo/tratamento de erro.
-- **Novo fluxo `transcricao_voz` em `roteamento_tarefas`**, resolvido do mesmo jeito que os outros (`obterModeloRoteamento`/fallback pro modelo padrão do fluxo) — aparece em `/modelos`. Custo registrado em `uso_tokens` como qualquer outro fluxo (`origem: 'uso_real'`); transcrição é cobrada por segundo de áudio, não por token de texto — `tokensPrompt`/`tokensCompletion` ficam 0, `custoEstimado` vem de `usage.cost` da resposta (mesmo campo já usado nos outros fluxos).
-- **Sem transcrever duas vezes.** Depois de transcrever, a mensagem grava em `interacoes_ia` com `fluxo: 'conversa_texto'` (é isso que ela é, semanticamente) — o custo/registro do próprio ato de transcrever grava separado, fluxo `transcricao_voz`, na mesma chamada.
-- **Erro de transcrição (áudio incompreensível, silêncio, formato não suportado) não trava o bot** — mensagem clara ("não consegui entender o áudio, tenta de novo ou manda por texto") em vez de propagar erro cru.
-- **Correção de doc**: PLANO.md (linhas 121, 141, 150) dizia STT ficar fora do OpenRouter — corrigido nesta rodada (achado real, ver pesquisa registrada no PROGRESSO.md).
+- **Extração NÃO é uma tool exposta ao modelo de `conversa_texto`** — é uma chamada de IA dedicada (mesmo padrão de `gerarAnaliseQualidade`/`resumirContexto`: função própria em `src/ai/`, modelo próprio via `roteamento_tarefas` fluxo `leitura_comprovante`, fora do loop de tool calling). A decisão "isso é uma transação, tenta registrar" não é uma escolha ambígua de ferramenta — é sempre a mesma ação disparada pela chegada da imagem.
+- **Confirmação obrigatória via reaproveitamento do mecanismo já existente (Fase 3), não um mecanismo novo.** Depois de extrair os campos, o handler monta uma mensagem sintética descrevendo o que foi lido ("Comprovante lido: R$ 45,00, categoria sugerida Mercado, descrição 'Mercado Central', data 2026-09-10.") e chama `gerarResposta` (via `processarMensagemTexto`, já reaproveitado por voz.ts) com essa mensagem como se fosse a mensagem do usuário, usando os MESMOS `tools` de `conversa_texto` — **exceto** que, só pra esta chamada, a tool `registrar_transacao` recebe `requerConfirmacao: true` (normalmente `false`). Função pura `exigirConfirmacaoDeRegistro(tools)` mapeia a lista trocando só essa flag, sem duplicar a tool. O modelo segue as regras já existentes do SYSTEM_PROMPT sozinho (pergunta conta/cartão se não estiver claro — regra 3), e o mecanismo de confirmação síncrona já existente (`definirPendencia`/`gerarPerguntaConfirmacao`) cobre o "confirma?" antes de gravar — cumpre o item 6 do OWASP (conteúdo externo não confiável nunca grava sem confirmação explícita) sem estado novo, sem tabela nova, sem tool nova.
+- **Sem correspondência com fatura/parcela existente nesta rodada** — reconhecer "isso é o boleto da parcela 3 do financiamento X" é lógica já desenhada pra Fase 7 (linha 581 do PLANO.md), não desta. Se a extração identificar que a imagem é fatura de cartão ou boleto de dívida (não um comprovante de compra do dia a dia), a resposta explica isso sem tentar registrar como transação — degrada com aviso claro.
+- **PDF é tarefa separada**, isolando o risco: nem todo provedor aceita PDF do mesmo jeito que imagem via OpenRouter — se não funcionar de primeira com Gemini 2.5 Flash Lite, essa tarefa documenta o achado e degrada ("ainda não leio PDF, manda foto") sem bloquear a foto, caso comum.
+- **Imagem que não é comprovante nenhum** — a extração devolve um campo explícito (`eComprovante: false`) e o handler responde direto, sem montar mensagem sintética nem chamar `gerarResposta`.
 
-## Architecture Decisions (parte 12 — leitura de comprovante, decidido agora pra não travar o início daquela rodada)
+### Decisões novas desta rodada (detalhamento de implementação)
 
-- **Extração NÃO é uma tool exposta ao modelo de `conversa_texto`** — é uma chamada de IA dedicada (mesmo padrão de `resumirContexto`/`analisarQualidade`: função própria, modelo próprio via `roteamento_tarefas` fluxo `leitura_comprovante`, fora do loop de tool calling), porque a decisão "isso é uma transação, tenta registrar" não é uma escolha ambígua de ferramenta — é sempre a mesma ação disparada pela chegada da imagem, não pela interpretação de uma frase.
-- **Confirmação obrigatória via reaproveitamento do mecanismo já existente (Fase 3), não um mecanismo novo.** Depois de extrair os campos, o handler monta uma mensagem sintética descrevendo o que foi lido ("Comprovante lido: R$ 45,00, categoria sugerida Mercado, descrição 'Mercado Central', data 2026-09-10.") e chama `gerarResposta` com essa mensagem como se fosse a mensagem do usuário, usando os MESMOS `tools` de `conversa_texto` — **exceto** que, só pra esta chamada, a tool `registrar_transacao` recebe `requerConfirmacao: true` (normalmente é `false` — baixo impacto, escrita direta com eco). Isso é feito com uma função pura `exigirConfirmacaoDeRegistro(tools)` que mapeia a lista trocando só essa flag, sem duplicar a tool. O modelo então segue as regras já existentes do SYSTEM_PROMPT sozinho: pergunta a conta/cartão se não estiver claro (regra 3, dúvida real — a foto nunca diz qual conta pagou), e o mecanismo de confirmação síncrona já existente (`definirPendencia`/`gerarPerguntaConfirmacao`) cobre o "confirma?" antes de gravar — cumpre o item 6 do OWASP (conteúdo externo não confiável nunca grava sem confirmação explícita) sem estado novo, sem tabela nova, sem tool nova.
-- **Sem correspondência com fatura/parcela existente nesta rodada** — reconhecer "isso é o boleto da parcela 3 do financiamento X" e atualizar o registro certo é a lógica de correspondência já desenhada pra Fase 7 (linha 581 do PLANO.md), não desta. Se a extração identificar que a imagem parece ser fatura de cartão ou boleto de dívida (não um comprovante de compra do dia a dia), a resposta é uma mensagem explicando isso, sem tentar registrar como transação — degrada com aviso claro, não confirmação errada.
-- **PDF é tarefa separada dentro da parte 12**, isolando o risco: nem todo provedor aceita PDF do mesmo jeito que imagem via OpenRouter — se não funcionar de primeira com Gemini 2.5 Flash Lite, essa tarefa específica documenta o achado e degrada (“ainda não leio PDF, manda foto”) sem bloquear a foto, que é o caso comum.
-- **Imagem que não é comprovante nenhum** — a extração devolve um campo explícito (`e_comprovante: false` ou similar) e o handler responde direto, sem tentar montar mensagem sintética nem chamar `gerarResposta`.
+- **Chamada multimodal via `chat.completions.create` padrão OpenAI-compatible** (não há endpoint de visão dedicado no client `openai`, diferente de transcrição): mensagem `user` com `content` array `[{type: 'text', text: prompt}, {type: 'image_url', image_url: {url: 'data:<mime>;base64,<...>'}}]`. Resposta esperada em JSON (pedido explícito no prompt); parse com `JSON.parse` + `zod` `safeParse` — falha de parse ou schema vira `eComprovante: false` com mensagem de degradação genérica (mesmo princípio de "nunca propagar erro cru pro usuário" da Tarefa 75/77).
+- **`src/ai/extracaoComprovante.ts`** segue o mesmo esqueleto de `analisarQualidade.ts`: constantes `MODELO_LEITURA_COMPROVANTE`/`FLUXO_LEITURA_COMPROVANTE`, função `resolverModeloLeituraComprovante(db)`, função principal `extrairComprovante(client, buffer, mimeType, modelo?)` retornando `{ resultado: ResultadoExtracaoComprovante, tokensPrompt, tokensCompletion, custoReal }`.
+- **`exigirConfirmacaoDeRegistro`** vive em `src/ai/tools/conversaTools.ts` (mesmo arquivo de `montarToolsConversa`, é uma transformação da mesma lista).
+- **`handlerMidia` reescrito** com assinatura `createHandlerMidia(client, db, logger, botToken)` (mesmo padrão de `createHandlerVoz`) — baixa o maior tamanho de foto (`ctx.message.photo.at(-1)`) ou o documento (checando `mime_type`), chama `extrairComprovante`, decide entre 4 saídas: não é comprovante / é fatura-boleto (degrada com aviso) / PDF ainda não suportado (Tarefa 82) / é comprovante de compra (monta mensagem sintética + `processarMensagemTexto` com tools ajustadas). Uso da extração em si registrado em `uso_tokens` (fluxo `leitura_comprovante`), mesmo padrão de `transcricao_voz`.
 
-## Task List (parte 11 — Transcrição de voz)
+## Task List
 
-### Fase VI: Transcrição de voz
-- [x] Tarefa 75: `transcreverAudio(client, buffer, nomeArquivo, modelo)` em `src/ai/transcricao.ts` — chama `client.audio.transcriptions.create`, `FLUXO_TRANSCRICAO_VOZ`/`MODELO_TRANSCRICAO_VOZ` (Whisper Large V3 Turbo), resolução via `roteamento_tarefas`
-- [x] Tarefa 76: refatora `src/bot/handlers/texto.ts` extraindo `processarMensagemTexto(...)` reaproveitável
-- [x] Tarefa 77: novo `src/bot/handlers/voz.ts` — baixa o áudio (`ctx.getFile`), chama `transcreverAudio`, chama `processarMensagemTexto` com o texto resultante; erro de transcrição não propaga
-- [x] Tarefa 78: registra `message:voice` em `router.ts`/`bot.ts`/`index.ts`; adiciona `transcricao_voz` em `FLUXOS_ROTEADOS` (`/modelos`)
+### Fase VI: Leitura de comprovante (foto/PDF)
 
-### Checkpoint: Transcrição de voz funcional
-- [x] `npm run build`/`lint`/`test` sem erro (681/681, 1 flake isolado de timeout já documentado)
-- [x] PLANO.md corrigido (STT via OpenRouter, não mais "fora do OpenRouter") — porquê registrado no PROGRESSO.md
-- [x] Teste manual em Homologação via Telegram: áudio real com pedido simples, ação certa executada — confirmado pelo usuário
-- [x] PROGRESSO.md atualizado com o marco
-- [x] Revisão com o usuário antes de prosseguir (parte 12 — leitura de comprovante)
+- [x] Tarefa 79: `extrairComprovante` em `src/ai/extracaoComprovante.ts`
+- [ ] Tarefa 80: `exigirConfirmacaoDeRegistro(tools)` em `src/ai/tools/conversaTools.ts`
+- [ ] Tarefa 81: reescreve `src/bot/handlers/midia.ts` pra foto (comprovante de compra, fatura/boleto, não-comprovante)
+- [ ] Tarefa 82: suporte a PDF em `handlerMidia` (isolado — degrada com aviso se Gemini não aceitar bem)
+- [ ] Tarefa 83: wiring (`bot.ts`/`index.ts` passam `client`/`db`/`botToken` pro handler; `/modelos` ganha `leitura_comprovante`)
 
-## Risks and Mitigations (parte 11)
+### Checkpoint: Leitura de comprovante funcional
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação via Telegram: foto real de comprovante, extração correta, confirmação exigida antes de gravar
+- [ ] PROGRESSO.md atualizado com o marco
+- [ ] Revisão com o usuário antes de prosseguir (Fase 7)
+
+## Risks and Mitigations
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Whisper transcrever mal PT-BR com ruído de fundo/sotaque | Médio | Mensagem de baixa confiança faz o bot pedir pra repetir por texto, em vez de agir sobre transcrição ruim — a validar na prática |
-| `client.audio.transcriptions.create` não aceitar .ogg/opus do Telegram direto | Baixo | Formato Opus em contêiner OGG é amplamente suportado por Whisper; se não funcionar, converter fica documentado como achado real na Tarefa 75 |
-| Custo de transcrição não bater no mesmo campo `usage.cost` dos outros fluxos | Baixo | Confirmar na Tarefa 75; se a resposta não trouxer `cost`, registrar `custoEstimado: 0` documentado como limitação, não bloquear a tarefa |
+| Gemini 2.5 Flash Lite não aceitar PDF via `image_url`/base64 no formato esperado pelo OpenRouter | Médio | Isolado na Tarefa 82 — se falhar, documenta achado real e degrada, não bloqueia a foto (caso comum, Tarefa 81) |
+| Extração devolver JSON malformado ou fora do schema esperado | Médio | `safeParse` falho vira `eComprovante: false` + mensagem de degradação, nunca propaga erro cru nem tenta registrar com dado incompleto |
+| Modelo de visão "alucinar" valor/categoria de comprovante ilegível | Médio | Mensagem sintética + confirmação obrigatória (`exigirConfirmacaoDeRegistro`) é exatamente a mitigação — usuário sempre vê o que foi lido antes de gravar |
+| Custo da chamada de visão não vir em `usage.cost` (mesma limitação já vista em transcrição) | Baixo | Mesmo tratamento da Tarefa 75: `custoEstimado: 0` documentado como limitação conhecida, não bloqueia |
 
 ## Open Questions
-Nenhuma pra parte 11 — decisões de arquitetura da parte 12 já registradas acima pra não travar o início daquela rodada, mas o detalhamento tarefa-a-tarefa dela só é escrito quando a parte 11 fechar checkpoint.
+Nenhuma — decisões de arquitetura completas (herdadas da parte 11 + detalhamento de implementação acima).
