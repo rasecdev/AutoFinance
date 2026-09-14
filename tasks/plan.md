@@ -29,7 +29,7 @@ Continuação da Fase 6 (parte 11, concluída — transcrição de voz). Ver PLA
 
 - [x] Tarefa 79: `extrairComprovante` em `src/ai/extracaoComprovante.ts`
 - [x] Tarefa 80: `exigirConfirmacaoDeRegistro(tools)` em `src/ai/tools/conversaTools.ts`
-- [ ] Tarefa 81: reescreve `src/bot/handlers/midia.ts` pra foto (comprovante de compra, fatura/boleto, não-comprovante)
+- [x] Tarefa 81: reescreve `src/bot/handlers/midia.ts` pra foto (comprovante de compra, fatura/boleto, não-comprovante)
 - [ ] Tarefa 82: suporte a PDF em `handlerMidia` (isolado — degrada com aviso se Gemini não aceitar bem)
 - [ ] Tarefa 83: wiring (`bot.ts`/`index.ts` passam `client`/`db`/`botToken` pro handler; `/modelos` ganha `leitura_comprovante`)
 
