@@ -23,6 +23,7 @@ import {
 import { criarToolAnalisarQualidade } from './qualidade.js';
 import { criarToolRelatorio } from './relatorios.js';
 import { criarToolEditarTransacao, criarToolExcluirTransacao, criarToolRegistrarTransacao } from './transacoes.js';
+import { criarToolRegistrarTransacoesEmLote } from './transacoesEmLote.js';
 import { criarToolRegistrarTransferencia } from './transferencias.js';
 import type { ToolDefinition } from './types.js';
 
@@ -66,6 +67,7 @@ export function montarToolsConversa(db: DbClient, client: OpenAI): ToolDefinitio
     criarToolConsultarDadosDinamico(db),
     criarToolGerarGrafico(),
     criarToolConsultarEGraficar(db),
+    criarToolRegistrarTransacoesEmLote(db),
   ];
 }
 
