@@ -107,11 +107,11 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos). Flu
 **Description:** `src/bot/handlers/modelos.ts` (`FLUXOS_ROTEADOS`) ganha a linha `interpretar_planilha`/`MODELO_INTERPRETAR_PLANILHA`.
 
 **Acceptance criteria:**
-- [ ] `/modelos` lista o fluxo `interpretar_planilha` e o modelo resolvido (com override, se houver)
+- [x] `/modelos` lista o fluxo `interpretar_planilha` e o modelo resolvido (com override, se houver)
 
 **Verification:**
-- [ ] `npm test -- tests/bot/modelos.test.ts` (suite completa antes de fechar o checkpoint)
-- [ ] `npm run build`
+- [x] `npm test -- tests/bot/modelos.test.ts` (suite completa: 721/721, build/lint limpos)
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 85
 

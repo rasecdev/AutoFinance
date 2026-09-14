@@ -32,7 +32,7 @@ Duas peças independentes nesta rodada:
 - [x] Tarefa 85: `interpretarPlanilha` em `src/ai/interpretacaoPlanilha.ts` (parser `read-excel-file` + IA de texto dedicada)
 - [x] Tarefa 86: `criarToolRegistrarTransacoesEmLote` em `src/ai/tools/transacoesEmLote.ts`
 - [x] Tarefa 87: `handlerMidia` ganha branch de planilha (legenda → conta/cartão, pendência direta, confirmação em lote)
-- [ ] Tarefa 88: wiring (`package.json` ganha `xlsx`; `/modelos` ganha `interpretar_planilha`)
+- [x] Tarefa 88: wiring (`package.json` ganha `read-excel-file`; `/modelos` ganha `interpretar_planilha`)
 
 ### Checkpoint: Leitura de planilha + PDF corrigido
 - [ ] `npm run build`/`lint`/`test` sem erro
