@@ -50,6 +50,27 @@ function montarDataUri(buffer: Buffer, mimeType: string): string {
   return `data:${mimeType};base64,${buffer.toString('base64')}`;
 }
 
+// PDF não usa o mesmo content type de imagem — achado real confirmado em
+// teste manual (image_url era rejeitado pelo provedor pra PDF), corrigido
+// via documentação oficial do OpenRouter: PDF usa um content type "file"
+// próprio ({type: 'file', file: {filename, file_data}}), extensão do
+// OpenRouter que não faz parte do tipo padrão do SDK openai (mesmo padrão
+// de cast local de BlocoTextoComCache em openrouter.ts). Modelos sem
+// suporte nativo a arquivo têm o PDF pré-processado pelo parser padrão do
+// próprio OpenRouter (mistral-ocr) antes de chegar no modelo.
+type BlocoArquivo = { type: 'file'; file: { filename: string; file_data: string } };
+
+function montarBlocoConteudo(
+  buffer: Buffer,
+  mimeType: string,
+): OpenAI.Chat.Completions.ChatCompletionContentPartImage | BlocoArquivo {
+  const dataUri = montarDataUri(buffer, mimeType);
+  if (mimeType === 'application/pdf') {
+    return { type: 'file', file: { filename: 'comprovante.pdf', file_data: dataUri } };
+  }
+  return { type: 'image_url', image_url: { url: dataUri } };
+}
+
 function extrairJson(conteudo: string): unknown {
   // Achado esperado: modelos de visão às vezes envolvem o JSON em ```json apesar
   // do pedido explícito de "sem markdown" no prompt — remove o cercado antes de
@@ -69,10 +90,7 @@ export async function extrairComprovante(
     messages: [
       {
         role: 'user',
-        content: [
-          { type: 'text', text: PROMPT_EXTRACAO },
-          { type: 'image_url', image_url: { url: montarDataUri(buffer, mimeType) } },
-        ],
+        content: [{ type: 'text', text: PROMPT_EXTRACAO }, montarBlocoConteudo(buffer, mimeType)],
       },
     ],
   });

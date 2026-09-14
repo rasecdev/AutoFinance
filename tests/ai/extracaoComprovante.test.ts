@@ -129,6 +129,35 @@ describe('extrairComprovante', () => {
       }),
     );
   });
+
+  it('PDF monta o content type "file" (não "image_url") — content type dedicado do OpenRouter', async () => {
+    const create = vi.fn(async () => ({
+      choices: [{ message: { content: JSON.stringify({ eComprovante: false }) } }],
+    }));
+    const client = { chat: { completions: { create } } } as unknown as OpenAI;
+
+    await extrairComprovante(client, Buffer.from('fake-pdf'), 'application/pdf');
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messages: [
+          expect.objectContaining({
+            role: 'user',
+            content: expect.arrayContaining([
+              expect.objectContaining({ type: 'text' }),
+              expect.objectContaining({
+                type: 'file',
+                file: expect.objectContaining({
+                  filename: expect.any(String),
+                  file_data: expect.stringContaining('data:application/pdf;base64,'),
+                }),
+              }),
+            ]),
+          }),
+        ],
+      }),
+    );
+  });
 });
 
 describe('resolverModeloLeituraComprovante', () => {
