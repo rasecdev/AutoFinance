@@ -83,14 +83,14 @@ Ver `tasks/plan.md` pro desenho completo (decisões de arquitetura, riscos). Flu
 **Description:** `resolverMimeType` (ou lógica equivalente) passa a reconhecer o mime type de planilha `.xlsx` (`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` — único suportado nesta rodada, ver `tasks/plan.md`) e desviar pra um caminho novo, separado do de comprovante: resolve conta/cartão a partir de `ctx.message.caption` (via `resolverContaId`/`resolverCartaoId`, mesma resolução usada em `registrar_transacao`) — sem legenda ou sem resolução, responde pedindo pra reenviar com a legenda, sem tentar de novo sozinho. Com conta/cartão resolvido, chama `interpretarPlanilha` (Tarefa 85); lista vazia responde explicando; lista não vazia monta a pendência DIRETO via `definirPendencia(chatId, { tool: <tool da Tarefa 86>, argumentos })` (sem passar pelo modelo de `conversa_texto`) e responde com um resumo (quantidade + total, não o JSON cru) pedindo confirmação — o mecanismo já existente em `processarMensagemTexto` cobre a execução quando o usuário confirmar.
 
 **Acceptance criteria:**
-- [ ] Planilha com legenda de conta válida e transações reconhecidas → pendência registrada, mensagem de confirmação com resumo (quantidade + total), sem registrar nada ainda
-- [ ] Confirmação do usuário (mensagem de texto normal, fluxo já existente) executa o registro em lote de fato
-- [ ] Sem legenda, ou legenda não resolvida → mensagem pedindo pra reenviar com a legenda, sem chamar `interpretarPlanilha`
-- [ ] Planilha sem transações reconhecidas → mensagem explicando, sem montar pendência
+- [x] Planilha com legenda de conta válida e transações reconhecidas → pendência registrada, mensagem de confirmação com resumo (quantidade + total), sem registrar nada ainda
+- [x] Confirmação do usuário (mensagem de texto normal, fluxo já existente) executa o registro em lote de fato — mecanismo já existente em `processarMensagemTexto`, sem mudança nesse arquivo
+- [x] Sem legenda, ou legenda não resolvida → mensagem pedindo pra reenviar com a legenda, sem chamar `interpretarPlanilha`
+- [x] Planilha sem transações reconhecidas → mensagem explicando, sem montar pendência
 
 **Verification:**
-- [ ] `npm test -- tests/bot/handlers/midia.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/bot/handlers/midia.test.ts` (15/15)
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 85, Tarefa 86
 

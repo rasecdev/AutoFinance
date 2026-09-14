@@ -4,11 +4,21 @@ import { join } from 'node:path';
 import Database from 'better-sqlite3-multiple-ciphers';
 import type { Context } from 'grammy';
 import type OpenAI from 'openai';
+import writeXlsxFile from 'write-excel-file/node';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { obterPendencia, removerPendencia } from '../../../src/bot/confirmacao.js';
 import type { DbClient } from '../../../src/db/client.js';
 import { migrate } from '../../../src/db/migrate.js';
+import { criarConta } from '../../../src/db/repositories/contas.js';
 import { listarUsoTokensPeriodo } from '../../../src/db/repositories/usoTokens.js';
 import { createLogger } from '../../../src/logging/logger.js';
+
+const MIME_PLANILHA_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+async function xlsxParaArrayBuffer(linhas: string[][]): Promise<ArrayBuffer> {
+  const buffer = await writeXlsxFile(linhas).toBuffer();
+  return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
+}
 
 const processarMensagemTextoMock = vi.fn(async () => undefined);
 vi.mock('../../../src/bot/handlers/texto.js', () => ({
@@ -41,6 +51,15 @@ function criarContextoDocumento(mimeType: string) {
   } as unknown as Context & { reply: ReturnType<typeof vi.fn> };
 }
 
+function criarContextoPlanilha(caption?: string) {
+  return {
+    chat: { id: 123 },
+    message: { document: { file_id: 'abc', mime_type: MIME_PLANILHA_XLSX }, caption },
+    getFile: vi.fn(async () => ({ file_path: 'documents/extrato.xlsx' })),
+    reply: vi.fn(),
+  } as unknown as Context & { reply: ReturnType<typeof vi.fn> };
+}
+
 function criarClienteFalso(conteudo: string, usage?: unknown) {
   return {
     chat: {
@@ -66,6 +85,7 @@ afterEach(() => {
   db.close();
   rmSync(dir, { recursive: true, force: true });
   vi.unstubAllGlobals();
+  removerPendencia(123);
 });
 
 describe('handlerMidia', () => {
@@ -211,6 +231,86 @@ describe('handlerMidia', () => {
 
     expect(ctx.reply).toHaveBeenCalledWith('Não consegui processar essa imagem agora, tente de novo em instantes.');
     expect(processarMensagemTextoMock).not.toHaveBeenCalled();
+  });
+
+  it('planilha .xlsx com legenda de conta válida monta pendência de registro em lote e responde com resumo', async () => {
+    criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Principal' });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        arrayBuffer: async () =>
+          xlsxParaArrayBuffer([
+            ['Data', 'Histórico', 'Valor'],
+            ['10/09/2026', 'Mercado Central', '-45.00'],
+          ]),
+      }) as unknown as Response),
+    );
+    const client = criarClienteFalso(
+      JSON.stringify({
+        transacoes: [
+          { tipo: 'despesa', valor: 45, categoria: 'Mercado', descricao: 'Mercado Central', data: '2026-09-10' },
+        ],
+      }),
+      { cost: 0.0003 },
+    );
+    const handler = createHandlerMidia(client, db, createLogger({ write() {} }), BOT_TOKEN);
+    const ctx = criarContextoPlanilha('Principal');
+
+    await handler(ctx);
+
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('1 transações'));
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Confirma?'));
+
+    const pendencia = obterPendencia(123);
+    expect(pendencia?.tool.name).toBe('registrar_transacoes_em_lote');
+
+    const registros = listarUsoTokensPeriodo(db, { inicio: '1970-01-01', fim: '2999-01-01' });
+    expect(registros).toEqual([
+      expect.objectContaining({ fluxo: 'interpretar_planilha', custoEstimado: 0.0003 }),
+    ]);
+  });
+
+  it('planilha sem legenda pede pra reenviar com a legenda, sem chamar a IA', async () => {
+    const create = vi.fn();
+    const client = { chat: { completions: { create } } } as unknown as OpenAI;
+    const handler = createHandlerMidia(client, db, createLogger({ write() {} }), BOT_TOKEN);
+    const ctx = criarContextoPlanilha(undefined);
+
+    await handler(ctx);
+
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('legenda'));
+    expect(create).not.toHaveBeenCalled();
+    expect(obterPendencia(123)).toBeUndefined();
+  });
+
+  it('planilha com legenda que não resolve conta nem cartão pede pra reenviar com a legenda', async () => {
+    const create = vi.fn();
+    const client = { chat: { completions: { create } } } as unknown as OpenAI;
+    const handler = createHandlerMidia(client, db, createLogger({ write() {} }), BOT_TOKEN);
+    const ctx = criarContextoPlanilha('Conta Inexistente');
+
+    await handler(ctx);
+
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('legenda'));
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('planilha sem transações reconhecidas responde explicando, sem montar pendência', async () => {
+    criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Principal' });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        arrayBuffer: async () => xlsxParaArrayBuffer([['Coluna A', 'Coluna B'], ['x', 'y']]),
+      }) as unknown as Response),
+    );
+    const client = criarClienteFalso(JSON.stringify({ transacoes: [] }));
+    const handler = createHandlerMidia(client, db, createLogger({ write() {} }), BOT_TOKEN);
+    const ctx = criarContextoPlanilha('Principal');
+
+    await handler(ctx);
+
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Não encontrei nenhuma transação'));
+    expect(obterPendencia(123)).toBeUndefined();
   });
 
   it('sem chatId, não faz nada', async () => {
