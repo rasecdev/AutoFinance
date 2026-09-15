@@ -132,15 +132,15 @@ Ver `tasks/plan.md` pro racional completo de arquitetura.
 **Description:** Novo script em `src/scripts/lerEmailFaturas.ts`, seguindo o padrão de `verificarDespesasFixas.ts` (`loadEnv`, `createLogger`, `getDb`, `new Bot`, `dormirAte` num intervalo curto e regular — não "próximo horário fixo" como os relatórios, é polling periódico —, `tratarErroCriticoJob` no catch, guard `--agora` pra teste manual). Se `env.google === null`, loga que a integração está desligada e sai sem erro (guard logo no início do `main`). Orquestra: busca e-mails com anexo desde o último `gmail_message_id` processado (`emails_processados`, ordenado por data), ignora os que já estão na tabela; pra cada novo, baixa o anexo (PDF/imagem), chama `extrairComprovante` (Fase 6, sem alteração de assinatura); se não for `fatura_cartao`/`boleto_divida`, marca `ignorado_nao_e_fatura` e segue; se for, resolve cartão/dívida por texto e roda a correspondência (Tarefa 92), monta a tool certa (Tarefa 93) com os argumentos, `definirPendencia(chatId, {...})` pra cada chat permitido (mesmo padrão de `verificarDespesasFixas`, que itera `telegramAllowedChatIds`) e manda a pergunta de confirmação via `bot.api.sendMessage`; marca `emails_processados` com o resultado (`pendente_confirmacao` nesse ponto — o resultado final de fato só é sabido quando o usuário confirmar depois, e o registro de "processado" aqui é sobre não reler o e-mail, não sobre o desfecho da confirmação).
 
 **Acceptance criteria:**
-- [ ] `env.google === null` → job loga e sai, sem chamar Gmail, sem erro
-- [ ] E-mail já em `emails_processados` → ignorado, não reprocessado
-- [ ] E-mail novo com anexo reconhecido como fatura/boleto → pendência criada, mensagem de confirmação enviada ao(s) chat(s) permitido(s), e-mail marcado como processado
-- [ ] E-mail novo sem anexo reconhecível como fatura/boleto (ex: `extrairComprovante` devolve "não é comprovante") → marcado `ignorado_nao_e_fatura`, sem mensagem enviada
-- [ ] Erro em qualquer etapa → `tratarErroCriticoJob` chamado, processo sai com erro (loop do compose reinicia)
+- [x] `env.google === null` → job loga e sai, sem chamar Gmail, sem erro
+- [x] E-mail já em `emails_processados` → ignorado, não reprocessado
+- [x] E-mail novo com anexo reconhecido como fatura/boleto → pendência criada, mensagem de confirmação enviada ao(s) chat(s) permitido(s), e-mail marcado como processado
+- [x] E-mail novo sem anexo reconhecível como fatura/boleto (ex: `extrairComprovante` devolve "não é comprovante") → marcado `ignorado_nao_e_fatura`, sem mensagem enviada
+- [x] Erro em qualquer etapa → `tratarErroCriticoJob` chamado, processo sai com erro (loop do compose reinicia)
 
 **Verification:**
-- [ ] `npm test -- tests/scripts/lerEmailFaturas.test.ts` (Gmail client e `extrairComprovante` mockados)
-- [ ] `npm run build`
+- [x] `npm test -- tests/scripts/lerEmailFaturas.test.ts` (Gmail client e `extrairComprovante` mockados)
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 91, Tarefa 93
 
@@ -149,6 +149,8 @@ Ver `tasks/plan.md` pro racional completo de arquitetura.
 - `tests/scripts/lerEmailFaturas.test.ts`
 
 **Estimated scope:** Large (orquestra várias peças — se ao implementar ficar claro que precisa quebrar em mais de uma tarefa, ajustar `tasks/todo.md` antes de seguir, conforme a diretriz de tamanho da skill de planejamento)
+
+**Nota de implementação:** não precisou quebrar em mais tarefas, mas revelou uma lacuna real no schema de extração — `extrairComprovante` (Fase 6) não capturava nenhum dado que identificasse QUAL cartão/dívida um documento se refere, essencial pra rodar a correspondência da Tarefa 92. Resolvido com um campo novo opcional `identificador` (nome do banco/cartão/credor visível no documento) em `ResultadoExtracaoComprovante` — não quebra a Fase 6 (campo opcional, prompt só pede quando `tipoDocumento` é fatura/boleto). Também precisou de `resolverDividaPorIdentificador` novo em `resolucao.ts` (busca por texto livre entre todas as dívidas ativas, sem exigir `tipo` — diferente de `resolverDividaGlobal`, que sempre sabe o tipo pela intenção do chat) e do repositório `src/db/repositories/emailsProcessados.ts` (não previsto na lista de arquivos, necessário pra marcar `emails_processados`).
 
 ---
 

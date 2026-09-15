@@ -3,7 +3,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { resolverCartaoId, resolverContaId, resolverDividaGlobal, resolverDividaId } from '../../../src/ai/tools/resolucao.js';
+import {
+  resolverCartaoId,
+  resolverContaId,
+  resolverDividaGlobal,
+  resolverDividaId,
+  resolverDividaPorIdentificador,
+} from '../../../src/ai/tools/resolucao.js';
 import type { DbClient } from '../../../src/db/client.js';
 import { criarCartao } from '../../../src/db/repositories/cartoes.js';
 import { criarConta } from '../../../src/db/repositories/contas.js';
@@ -194,6 +200,49 @@ describe('resolverDividaGlobal — busca sem conta (Fase 6, Tarefa 66/simular_am
 
   it('retorna erro quando não há nenhuma dívida ativa do tipo', () => {
     const resultado = resolverDividaGlobal(db, 'consignado');
+
+    expect(resultado.ok).toBe(false);
+  });
+});
+
+describe('resolverDividaPorIdentificador — busca por texto livre, sem tipo (Fase 7, lerEmailFaturas)', () => {
+  it('resolve por substring do identificador contra a descrição, sem depender do tipo', () => {
+    const contaId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Principal' }).id;
+    const divida = criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 12000,
+      numParcelas: 12,
+      dataInicio: '2026-09-01',
+      descricao: 'Itaú Financiamento Veículo',
+    });
+
+    const resultado = resolverDividaPorIdentificador(db, 'Itaú Financiamento Veículo - Parcela 3');
+
+    expect(resultado).toEqual({ ok: true, id: divida.divida.id });
+  });
+
+  it('não resolve quando nenhuma dívida ativa tem descrição parecida', () => {
+    const contaId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Principal' }).id;
+    criarDivida(db, { contaId, tipo: 'emprestimo', valorTotal: 1000, numParcelas: 4, dataInicio: '2026-09-01', descricao: 'Empréstimo Pessoal' });
+
+    const resultado = resolverDividaPorIdentificador(db, 'Banco Totalmente Diferente');
+
+    expect(resultado.ok).toBe(false);
+  });
+
+  it('pede pra especificar quando mais de uma dívida ativa tem descrição parecida', () => {
+    const contaId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Principal' }).id;
+    criarDivida(db, { contaId, tipo: 'financiamento', valorTotal: 5000, numParcelas: 10, dataInicio: '2026-09-01', descricao: 'Nubank Financiamento Moto' });
+    criarDivida(db, { contaId, tipo: 'emprestimo', valorTotal: 3000, numParcelas: 6, dataInicio: '2026-09-01', descricao: 'Nubank Empréstimo Pessoal' });
+
+    const resultado = resolverDividaPorIdentificador(db, 'Nubank');
+
+    expect(resultado.ok).toBe(false);
+  });
+
+  it('retorna erro quando não há nenhuma dívida ativa com descrição cadastrada', () => {
+    const resultado = resolverDividaPorIdentificador(db, 'Qualquer coisa');
 
     expect(resultado.ok).toBe(false);
   });

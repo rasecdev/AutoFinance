@@ -20,6 +20,12 @@ const schemaResultadoExtracao = z.object({
   categoriaSugerida: z.string().min(1).optional(),
   descricao: z.string().optional(),
   data: z.string().min(1).optional(),
+  // Nome do banco/cartão/credor mencionado no documento (ex: "Nubank",
+  // "Itaú Financiamento") — só relevante pra fatura_cartao/boleto_divida,
+  // usado pelo job de leitura de e-mail (Fase 7) pra resolver o cartão/dívida
+  // correspondente contra o cadastro existente por semelhança de nome, sem
+  // exigir que o e-mail traga um id que ele nunca teria.
+  identificador: z.string().min(1).optional(),
 });
 
 export type ResultadoExtracaoComprovante = z.infer<typeof schemaResultadoExtracao>;
@@ -36,15 +42,16 @@ export type ResultadoExtracao = {
 // — mas o resultado nunca grava nada sozinho: a extração só alimenta a
 // mensagem sintética + confirmação obrigatória (ver tasks/plan.md, parte 12).
 const PROMPT_EXTRACAO = `Você extrai dados de um comprovante financeiro (nota fiscal, recibo, comprovante de pagamento) a partir de uma imagem. Responda APENAS com um JSON válido, sem markdown, sem texto antes ou depois, no formato exato:
-{"eComprovante": boolean, "tipoDocumento": "compra" | "fatura_cartao" | "boleto_divida" | "outro", "valor": number, "categoriaSugerida": string, "descricao": string, "data": "AAAA-MM-DD"}
+{"eComprovante": boolean, "tipoDocumento": "compra" | "fatura_cartao" | "boleto_divida" | "outro", "valor": number, "categoriaSugerida": string, "descricao": string, "data": "AAAA-MM-DD", "identificador": string}
 
 Regras:
 - Se a imagem não for um comprovante financeiro (foto qualquer, documento ilegível, etc.), responda {"eComprovante": false}.
 - "tipoDocumento": "compra" para comprovante de compra do dia a dia (mercado, restaurante, loja); "fatura_cartao" para fatura de cartão de crédito; "boleto_divida" para boleto de dívida/financiamento/empréstimo; "outro" quando não se encaixa em nenhum desses mas ainda é um documento financeiro.
 - "valor" é o valor total pago/a pagar, sempre positivo.
 - "categoriaSugerida" é uma categoria curta em português (ex: "Mercado", "Restaurante", "Transporte").
-- "data" é a data da transação no comprovante, formato AAAA-MM-DD; se não conseguir identificar, omita o campo.
-- Nunca invente valor ou data que não estejam legíveis na imagem — nesse caso, omita o campo em vez de adivinhar.`;
+- "data" é a data da transação/vencimento no comprovante, formato AAAA-MM-DD; se não conseguir identificar, omita o campo.
+- "identificador" só se aplica a "fatura_cartao"/"boleto_divida": nome do banco, cartão ou credor associado ao documento (ex: "Nubank", "Itaú Financiamento Veículo"), como aparece no documento; omita se não for um desses dois tipos ou se não conseguir identificar.
+- Nunca invente valor, data ou identificador que não estejam legíveis na imagem — nesse caso, omita o campo em vez de adivinhar.`;
 
 function montarDataUri(buffer: Buffer, mimeType: string): string {
   return `data:${mimeType};base64,${buffer.toString('base64')}`;
