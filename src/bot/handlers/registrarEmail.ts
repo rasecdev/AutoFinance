@@ -25,6 +25,21 @@ const REDIRECT_URI = 'http://localhost';
 
 const PEDE_REAUTORIZACAO = /\bconfirmar\b/i;
 
+// Quem tiver esse valor lê o Gmail e mexe no Calendar da conta vinculada até
+// alguém revogar o acesso — a mensagem com o token não deveria ficar parada
+// no histórico do chat. Auto-apagar é best-effort (setTimeout em memória: se
+// o bot reiniciar antes de disparar, a mensagem fica — por isso o aviso pra
+// apagar na hora também, não só o timer).
+const TEMPO_AUTO_APAGAR_MS = 5 * 60 * 1000;
+
+function agendarAutoApagar(ctx: Context, chatId: number, messageId: number, logger: Logger): void {
+  setTimeout(() => {
+    ctx.api.deleteMessage(chatId, messageId).catch((erro: unknown) => {
+      logger.error({ err: erro, chatId, messageId }, 'falha ao auto-apagar mensagem com refresh_token');
+    });
+  }, TEMPO_AUTO_APAGAR_MS);
+}
+
 export function createHandlerRegistrarEmail(env: Env) {
   return async function handlerRegistrarEmail(ctx: Context): Promise<void> {
     const chatId = ctx.chat?.id;
@@ -114,11 +129,15 @@ export function createHandlerCodigoOAuthGoogle(logger: Logger) {
       return;
     }
 
-    await ctx.reply(
+    const mensagemComToken = await ctx.reply(
       'Autorização concluída dos dois lados (Gmail + Calendar). Falta só um passo manual: alguém com acesso ao ' +
         'servidor precisa colar isto em GOOGLE_REFRESH_TOKEN no .env deste ambiente e reiniciar os serviços ' +
         '"ler-email-faturas" e "sincronizar-calendario". Depois disso os dois recursos passam a funcionar sozinhos, ' +
-        `sem precisar rodar esse comando de novo:\n\n${tokens.refresh_token}`,
+        `sem precisar rodar esse comando de novo:\n\n${tokens.refresh_token}\n\n` +
+        '⚠️ Assim que copiar, apague esta mensagem (quem tiver esse valor acessa seu Gmail/Calendar até você ' +
+        'revogar o acesso) — como garantia extra, ela se apaga sozinha em 5 minutos.',
     );
+
+    agendarAutoApagar(ctx, chatId, mensagemComToken.message_id, logger);
   };
 }
