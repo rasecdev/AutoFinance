@@ -33,7 +33,7 @@ Fase 7 fecha o ciclo de automação de fatura/parcela: hoje isso só entra no si
 - [x] Tarefa 92: lógica de correspondência de fatura/parcela (`src/db/repositories/correspondenciaFaturaParcela.ts` ou equivalente)
 - [x] Tarefa 93: tools `registrar_fatura_email` e `registrar_parcela_email`
 - [x] Tarefa 94: job `lerEmailFaturas.ts` (orquestração: Gmail → extração → correspondência → pendência)
-- [ ] Tarefa 95: job `sincronizarCalendario.ts` (varredura de vencimentos → criar/atualizar/remover evento)
+- [x] Tarefa 95: job `sincronizarCalendario.ts` (varredura de vencimentos → criar/atualizar/remover evento)
 - [ ] Tarefa 96: wiring (`docker-compose.yml` com os 2 jobs × 2 ambientes, `googleapis` no `package.json`)
 
 ### Checkpoint: Leitura de e-mail + sincronização de calendário funcionais
