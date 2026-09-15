@@ -17,9 +17,11 @@ export type Parcela = {
   dataVencimento: string;
   status: StatusParcela;
   dataPagamento: string | null;
+  eventoCalendarioId: string | null;
 };
 
-const COLUNAS_PARCELA = 'id, divida_id, numero_parcela, valor, data_vencimento, status, data_pagamento';
+const COLUNAS_PARCELA =
+  'id, divida_id, numero_parcela, valor, data_vencimento, status, data_pagamento, evento_calendario_id';
 
 type LinhaParcela = {
   id: number;
@@ -29,6 +31,7 @@ type LinhaParcela = {
   data_vencimento: string;
   status: StatusParcela;
   data_pagamento: string | null;
+  evento_calendario_id: string | null;
 };
 
 function paraParcela(linha: LinhaParcela): Parcela {
@@ -40,6 +43,7 @@ function paraParcela(linha: LinhaParcela): Parcela {
     dataVencimento: linha.data_vencimento,
     status: linha.status,
     dataPagamento: linha.data_pagamento,
+    eventoCalendarioId: linha.evento_calendario_id,
   };
 }
 
@@ -56,7 +60,12 @@ export function criarParcela(db: DbClient, parcela: NovaParcela): Parcela {
     dataVencimento: parcela.dataVencimento,
     status: 'pendente',
     dataPagamento: null,
+    eventoCalendarioId: null,
   };
+}
+
+export function atualizarEventoCalendarioParcela(db: DbClient, id: number, eventoCalendarioId: string | null): void {
+  db.prepare('UPDATE parcelas SET evento_calendario_id = ? WHERE id = ?').run(eventoCalendarioId, id);
 }
 
 export type NovaParcelaEmail = {
@@ -87,6 +96,7 @@ export function criarParcelaEmail(db: DbClient, parcela: NovaParcelaEmail): Parc
     dataVencimento: parcela.dataVencimento,
     status: 'pendente',
     dataPagamento: null,
+    eventoCalendarioId: null,
   };
 }
 
@@ -146,5 +156,17 @@ export function listarParcelasPendentes(db: DbClient, dividaId: number): Parcela
       `SELECT ${COLUNAS_PARCELA} FROM parcelas WHERE divida_id = ? AND status = 'pendente' ORDER BY numero_parcela`,
     )
     .all(dividaId) as LinhaParcela[];
+  return linhas.map(paraParcela);
+}
+
+// Usado por sincronizarCalendario (Fase 7): parcelas que já tiveram evento
+// criado, mas deixaram de estar pendentes (paga/cancelada) desde o último
+// ciclo — o evento de vencimento precisa ser removido.
+export function listarParcelasComEventoParaRemover(db: DbClient): Parcela[] {
+  const linhas = db
+    .prepare(
+      `SELECT ${COLUNAS_PARCELA} FROM parcelas WHERE status != 'pendente' AND evento_calendario_id IS NOT NULL`,
+    )
+    .all() as LinhaParcela[];
   return linhas.map(paraParcela);
 }
