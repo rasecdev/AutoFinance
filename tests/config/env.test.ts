@@ -23,6 +23,7 @@ describe('loadEnv', () => {
       databaseEncryptionKey: 'chave-cifragem-teste',
       logLevel: 'info',
       google: null,
+      googleOAuthClient: null,
     });
   });
 
@@ -66,10 +67,16 @@ describe('loadEnv', () => {
     });
   });
 
-  it('grupo Google incompleto lança erro explicando o que falta', () => {
+  it('par cliente incompleto (só CLIENT_ID) lança erro explicando o que falta', () => {
     expect(() =>
       loadEnv({ ...validEnv, GOOGLE_CLIENT_ID: 'client-id-teste' }),
-    ).toThrowError(/GOOGLE_CLIENT_SECRET.*GOOGLE_REFRESH_TOKEN/);
+    ).toThrowError(/GOOGLE_CLIENT_SECRET/);
+  });
+
+  it('GOOGLE_REFRESH_TOKEN sozinho (sem o par cliente) lança erro', () => {
+    expect(() =>
+      loadEnv({ ...validEnv, GOOGLE_REFRESH_TOKEN: 'refresh-token-teste' }),
+    ).toThrowError(/GOOGLE_REFRESH_TOKEN/);
   });
 
   it('grupo Google completo com GOOGLE_CALENDAR_ID customizado', () => {
@@ -82,5 +89,27 @@ describe('loadEnv', () => {
     });
 
     expect(env.google?.calendarId).toBe('calendario-teste@group.calendar.google.com');
+  });
+
+  it('só o par cliente (sem refresh token) é válido — google null, googleOAuthClient preenchido', () => {
+    const env = loadEnv({
+      ...validEnv,
+      GOOGLE_CLIENT_ID: 'client-id-teste',
+      GOOGLE_CLIENT_SECRET: 'client-secret-teste',
+    });
+
+    expect(env.google).toBeNull();
+    expect(env.googleOAuthClient).toEqual({ clientId: 'client-id-teste', clientSecret: 'client-secret-teste' });
+  });
+
+  it('grupo completo também preenche googleOAuthClient com o mesmo par', () => {
+    const env = loadEnv({
+      ...validEnv,
+      GOOGLE_CLIENT_ID: 'client-id-teste',
+      GOOGLE_CLIENT_SECRET: 'client-secret-teste',
+      GOOGLE_REFRESH_TOKEN: 'refresh-token-teste',
+    });
+
+    expect(env.googleOAuthClient).toEqual({ clientId: 'client-id-teste', clientSecret: 'client-secret-teste' });
   });
 });

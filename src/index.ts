@@ -5,6 +5,7 @@ import { createHandlerMidia } from './bot/handlers/midia.js';
 import { createHandlerModelo } from './bot/handlers/modelo.js';
 import { createHandlerModelos } from './bot/handlers/modelos.js';
 import { createHandlerNaoSuportado } from './bot/handlers/naoSuportado.js';
+import { createHandlerCodigoOAuthGoogle, createHandlerRegistrarEmail } from './bot/handlers/registrarEmail.js';
 import { createHandlerTexto } from './bot/handlers/texto.js';
 import { createHandlerVoz } from './bot/handlers/voz.js';
 import { loadEnv } from './config/env.js';
@@ -30,6 +31,8 @@ const handlerFeedback = createHandlerFeedback(db, logger, 'incorreto');
 const handlerFeedbackCorreto = createHandlerFeedback(db, logger, 'correto');
 const handlerModelo = createHandlerModelo(db);
 const handlerModelos = createHandlerModelos(db);
+const handlerRegistrarEmail = createHandlerRegistrarEmail(env);
+const handlerCodigoOAuthGoogle = createHandlerCodigoOAuthGoogle(logger);
 
 const bot = createBot(
   env,
@@ -42,6 +45,8 @@ const bot = createBot(
   handlerFeedbackCorreto,
   handlerModelo,
   handlerModelos,
+  handlerRegistrarEmail,
+  handlerCodigoOAuthGoogle,
 );
 
 bot.start({

@@ -15,6 +15,8 @@ export function createBot(
   handlerFeedbackCorreto: Handler,
   handlerModelo: Handler,
   handlerModelos: Handler,
+  handlerRegistrarEmail: Handler,
+  handlerCodigoOAuthGoogle: Handler,
 ): Bot {
   const bot = new Bot(env.telegramBotToken);
 
@@ -30,6 +32,8 @@ export function createBot(
     handlerFeedbackCorreto,
     handlerModelo,
     handlerModelos,
+    handlerRegistrarEmail,
+    handlerCodigoOAuthGoogle,
   );
 
   bot.catch((erro) => {
