@@ -56,13 +56,13 @@ Ver `tasks/plan.md` pro racional completo de arquitetura.
 **Description:** `src/integracoes/google/auth.ts` expõe uma factory que recebe `Env['google']` (não nulo) e devolve clients autenticados de Gmail (`gmail.readonly`) e Calendar (`calendar.events`) via `googleapis`, usando um `OAuth2Client` configurado com o refresh token — sem fluxo de consentimento embutido (isso é o script manual). `src/scripts/configurarGoogleOAuth.ts` é um script de linha de comando rodado manualmente uma vez por ambiente: imprime a URL de consentimento OAuth (com os dois scopes), lê o código de autorização colado pelo usuário via stdin, troca por tokens e imprime o `refresh_token` resultante pra o usuário colar em `.env.producao`/`.env.homologacao` — não grava nada em disco, não é chamado por nenhum job.
 
 **Acceptance criteria:**
-- [ ] `criarClientesGoogle(googleEnv)` devolve um client Gmail e um client Calendar autenticados, ambos usando o mesmo `OAuth2Client`
-- [ ] `configurarGoogleOAuth.ts` imprime a URL de consentimento com os scopes corretos (`gmail.readonly`, `calendar.events`) antes de pedir o código
-- [ ] Troca de código por token usa o SDK oficial (`google-auth-library`/`googleapis`), sem chamada HTTP manual
+- [x] `criarClientesGoogle(googleEnv)` devolve um client Gmail e um client Calendar autenticados, ambos usando o mesmo `OAuth2Client`
+- [x] `configurarGoogleOAuth.ts` imprime a URL de consentimento com os scopes corretos (`gmail.readonly`, `calendar.events`) antes de pedir o código
+- [x] Troca de código por token usa o SDK oficial (`google-auth-library`/`googleapis`), sem chamada HTTP manual
 
 **Verification:**
-- [ ] `npm test -- tests/integracoes/google/auth.test.ts` (client OAuth mockado, sem chamada de rede real)
-- [ ] `npm run build`
+- [x] `npm test -- tests/integracoes/google/auth.test.ts` (client OAuth mockado, sem chamada de rede real)
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 90
 
