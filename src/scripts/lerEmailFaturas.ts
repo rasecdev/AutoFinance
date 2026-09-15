@@ -175,7 +175,12 @@ async function main(): Promise<void> {
   const bot = new Bot(env.telegramBotToken);
 
   if (env.google === null) {
+    // Sem sleep aqui, o loop `while true; do node ...; done` do compose
+    // reiniciaria o processo instantaneamente pra sempre (busy-loop) — dorme
+    // pelo mesmo intervalo do polling normal antes de sair, mesmo com --agora
+    // (não faz sentido "testar agora" um caminho que não faz nada).
     logger.info('integração Google desligada (env.google === null) — job de leitura de e-mail não vai rodar');
+    await dormirAte(Date.now() + INTERVALO_POLLING_MS);
     return;
   }
 

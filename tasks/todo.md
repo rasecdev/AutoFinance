@@ -186,13 +186,15 @@ Ver `tasks/plan.md` pro racional completo de arquitetura.
 **Description:** `package.json` ganha `googleapis` (avaliar `npm audit` antes de fechar — se vier vulnerabilidade sem correção, considerar `google-auth-library` sozinho + chamadas REST diretas como Plano B, mesmo critério já usado na Fase 6 parte 13 pra trocar `xlsx` por `read-excel-file`). `docker-compose.yml` ganha 4 serviços novos (`ler-email-faturas-producao`/`-homologacao`, `sincronizar-calendario-producao`/`-homologacao`), mesmo padrão `while true; do node dist/scripts/<job>.js; done` dos jobs existentes.
 
 **Acceptance criteria:**
-- [ ] `npm audit` sem vulnerabilidade alta/crítica sem correção após adicionar a dependência escolhida
-- [ ] 4 serviços novos no `docker-compose.yml`, cada um com seu `env_file` e volume corretos (mesmo padrão dos serviços existentes)
-- [ ] `docker compose config` (ou equivalente de validação de sintaxe) sem erro
+- [x] `npm audit` sem vulnerabilidade alta/crítica sem correção após adicionar a dependência escolhida (já resolvido na Tarefa 91 — `googleapis`, 0 vulnerabilidades)
+- [x] 4 serviços novos no `docker-compose.yml`, cada um com seu `env_file` e volume corretos (mesmo padrão dos serviços existentes)
+- [x] `docker compose config` (ou equivalente de validação de sintaxe) sem erro — validado via `python -c "yaml.safe_load(...)"` (Docker CLI não disponível neste ambiente)
 
 **Verification:**
-- [ ] `npm run build`/`lint`/`test` (suite completa)
-- [ ] `npm audit`
+- [x] `npm run build`/`lint`/`test` (suite completa — 760 testes, 2 flakes isolados de timeout já documentados, confirmados passando isolados)
+- [x] `npm audit`
+
+**Nota de implementação:** achado real ao revisar o wiring — `lerEmailFaturas.ts`/`sincronizarCalendario.ts` saíam imediatamente quando `env.google === null`, sem dormir. Combinado com o loop `while true; do node ...; done` do compose, isso viraria um busy-loop reiniciando o processo sem parar (gasto de CPU/log à toa) assim que a integração estivesse desligada — corrigido com `dormirAte` no mesmo intervalo do polling normal antes de sair nesse caminho, nas duas jobs.
 
 **Dependencies:** Tarefa 94, Tarefa 95
 
