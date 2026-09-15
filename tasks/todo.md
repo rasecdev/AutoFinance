@@ -80,15 +80,15 @@ Ver `tasks/plan.md` pro racional completo de arquitetura.
 **Description:** Funções puras de correspondência, testáveis sem Gmail/IA envolvidos: `encontrarFaturaCorrespondente(db, { cartaoId, mesReferencia })` (busca exata) e `encontrarParcelaCorrespondente(db, { dividaId, numeroParcela, valor, dataVencimento })` (busca exata por número quando disponível; senão aproximação por valor ±1% e janela de data dentro das parcelas `pendente` da dívida). Reaproveita `resolverCartaoId`/`resolverContaId`/equivalente de dívida já existentes em `src/ai/tools/resolucao.ts` pra resolver o cartão/dívida a partir do texto extraído do e-mail antes de chamar essas funções.
 
 **Acceptance criteria:**
-- [ ] Fatura existente com `cartao_id`+`mes_referencia` iguais → encontrada
-- [ ] Sem fatura correspondente pro par → `undefined`/`null`, sem lançar erro
-- [ ] Parcela com número informado e batendo → encontrada por número, ignora aproximação
-- [ ] Parcela sem número, valor dentro da tolerância e data dentro da janela, dívida com só uma parcela `pendente` candidata → encontrada por aproximação
-- [ ] Parcela sem número e mais de uma parcela `pendente` candidata dentro da tolerância (ambíguo) → não resolve sozinho, devolve indicação de ambiguidade em vez de escolher errado
+- [x] Fatura existente com `cartao_id`+`mes_referencia` iguais → encontrada
+- [x] Sem fatura correspondente pro par → `undefined`/`null`, sem lançar erro
+- [x] Parcela com número informado e batendo → encontrada por número, ignora aproximação
+- [x] Parcela sem número, valor dentro da tolerância e data dentro da janela, dívida com só uma parcela `pendente` candidata → encontrada por aproximação
+- [x] Parcela sem número e mais de uma parcela `pendente` candidata dentro da tolerância (ambíguo) → não resolve sozinho, devolve indicação de ambiguidade em vez de escolher errado
 
 **Verification:**
-- [ ] `npm test -- tests/db/correspondenciaFaturaParcela.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/db/correspondenciaFaturaParcela.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** None (independente da Tarefa 89-91, só precisa do schema já existente de faturas/parcelas)
 
