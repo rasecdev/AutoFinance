@@ -91,7 +91,7 @@ Dos capas independientes, cada una resolviendo un problema distinto:
 | 4 | Contexto y memoria de conversación | ✅ Completada |
 | 5 | Enrutamiento de IA por flujo + monitoreo de precio | 🚧 Parcial |
 | 6 | Reportes automáticos, benchmark interno, categorización asistida | 🚧 En curso |
-| 7 | Integración con correo (factura/cuota) y Google Calendar | ⬜ No iniciada |
+| 7 | Integración con correo (factura/cuota) y Google Calendar | 🚧 En curso |
 | 8 | Agregación bancaria vía Open Finance (Pluggy) | ⬜ No iniciada |
 
 > **Nota sobre la Fase 5:** el mecanismo de enrutamiento por flujo (tabla `roteamento_tarefas`) está implementado y probado, pero hoy ningún flujo tiene un modelo distinto configurado — todos caen en el mismo modelo por defecto (`openai/gpt-4o-mini`). En la práctica, un único modelo atiende todo hasta que la tabla se pueble de verdad.
