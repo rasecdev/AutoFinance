@@ -24,11 +24,13 @@ const ENV_BASE: Env = {
 };
 
 function criarContextoFake(texto: string, chatId: number) {
+  const deleteMessage = vi.fn(async () => true);
   return {
     message: { text: texto },
     chat: { id: chatId },
-    reply: vi.fn(),
-  } as unknown as Context & { reply: ReturnType<typeof vi.fn> };
+    reply: vi.fn(async () => ({ message_id: 4242 })),
+    api: { deleteMessage },
+  } as unknown as Context & { reply: ReturnType<typeof vi.fn>; api: { deleteMessage: typeof deleteMessage } };
 }
 
 afterEach(() => {
@@ -116,7 +118,31 @@ describe('handlerCodigoOAuthGoogle', () => {
     expect(getToken).toHaveBeenCalledWith('4/0Acodigo');
     expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('refresh-novo-123'));
     expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('GOOGLE_REFRESH_TOKEN'));
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('apague esta mensagem'));
     expect(obterPendenciaOAuthGoogle(6002)).toBeUndefined();
+  });
+
+  it('agenda o auto-apagar da mensagem com o token pra 5 minutos depois, não antes', async () => {
+    vi.useFakeTimers();
+    try {
+      const getToken = vi.fn(async () => ({ tokens: { refresh_token: 'refresh-novo-123' } }));
+      definirPendenciaOAuthGoogle(6002, { getToken } as never);
+
+      const handler = createHandlerCodigoOAuthGoogle(logger);
+      const ctx = criarContextoFake('4/0Acodigo', 6002);
+
+      await handler(ctx);
+
+      expect(ctx.api.deleteMessage).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(5 * 60 * 1000 - 1);
+      expect(ctx.api.deleteMessage).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1);
+      expect(ctx.api.deleteMessage).toHaveBeenCalledWith(6002, 4242);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('sucesso sem refresh_token (conta já autorizada antes): orienta a revogar o acesso', async () => {
