@@ -174,7 +174,12 @@ async function main(): Promise<void> {
   const db = getDb(env);
 
   if (env.google === null) {
+    // Sem sleep aqui, o loop `while true; do node ...; done` do compose
+    // reiniciaria o processo instantaneamente pra sempre (busy-loop) — dorme
+    // pelo mesmo intervalo do polling normal antes de sair, mesmo com --agora
+    // (não faz sentido "testar agora" um caminho que não faz nada).
     logger.info('integração Google desligada (env.google === null) — sincronização de calendário não vai rodar');
+    await dormirAte(Date.now() + INTERVALO_SINCRONIZACAO_MS);
     return;
   }
 

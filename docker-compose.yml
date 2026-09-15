@@ -93,6 +93,38 @@ services:
     command: sh -c "while true; do node dist/scripts/verificarDespesasFixas.js; done"
     restart: unless-stopped
 
+  ler-email-faturas-producao:
+    build: .
+    env_file: .env.producao
+    volumes:
+      - producao-db:/app/data
+    command: sh -c "while true; do node dist/scripts/lerEmailFaturas.js; done"
+    restart: unless-stopped
+
+  ler-email-faturas-homologacao:
+    build: .
+    env_file: .env.homologacao
+    volumes:
+      - homologacao-db:/app/data
+    command: sh -c "while true; do node dist/scripts/lerEmailFaturas.js; done"
+    restart: unless-stopped
+
+  sincronizar-calendario-producao:
+    build: .
+    env_file: .env.producao
+    volumes:
+      - producao-db:/app/data
+    command: sh -c "while true; do node dist/scripts/sincronizarCalendario.js; done"
+    restart: unless-stopped
+
+  sincronizar-calendario-homologacao:
+    build: .
+    env_file: .env.homologacao
+    volumes:
+      - homologacao-db:/app/data
+    command: sh -c "while true; do node dist/scripts/sincronizarCalendario.js; done"
+    restart: unless-stopped
+
 volumes:
   producao-db:
   homologacao-db:
