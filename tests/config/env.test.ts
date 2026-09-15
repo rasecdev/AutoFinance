@@ -22,6 +22,7 @@ describe('loadEnv', () => {
       databasePath: './data/teste.db',
       databaseEncryptionKey: 'chave-cifragem-teste',
       logLevel: 'info',
+      google: null,
     });
   });
 
@@ -42,5 +43,44 @@ describe('loadEnv', () => {
 
   it('rejeita AMBIENTE fora de producao/homologacao', () => {
     expect(() => loadEnv({ ...validEnv, AMBIENTE: 'staging' })).toThrowError();
+  });
+
+  it('sem nenhuma variável Google, env.google é null', () => {
+    const env = loadEnv(validEnv);
+    expect(env.google).toBeNull();
+  });
+
+  it('grupo Google completo sem GOOGLE_CALENDAR_ID usa default primary', () => {
+    const env = loadEnv({
+      ...validEnv,
+      GOOGLE_CLIENT_ID: 'client-id-teste',
+      GOOGLE_CLIENT_SECRET: 'client-secret-teste',
+      GOOGLE_REFRESH_TOKEN: 'refresh-token-teste',
+    });
+
+    expect(env.google).toEqual({
+      clientId: 'client-id-teste',
+      clientSecret: 'client-secret-teste',
+      refreshToken: 'refresh-token-teste',
+      calendarId: 'primary',
+    });
+  });
+
+  it('grupo Google incompleto lança erro explicando o que falta', () => {
+    expect(() =>
+      loadEnv({ ...validEnv, GOOGLE_CLIENT_ID: 'client-id-teste' }),
+    ).toThrowError(/GOOGLE_CLIENT_SECRET.*GOOGLE_REFRESH_TOKEN/);
+  });
+
+  it('grupo Google completo com GOOGLE_CALENDAR_ID customizado', () => {
+    const env = loadEnv({
+      ...validEnv,
+      GOOGLE_CLIENT_ID: 'client-id-teste',
+      GOOGLE_CLIENT_SECRET: 'client-secret-teste',
+      GOOGLE_REFRESH_TOKEN: 'refresh-token-teste',
+      GOOGLE_CALENDAR_ID: 'calendario-teste@group.calendar.google.com',
+    });
+
+    expect(env.google?.calendarId).toBe('calendario-teste@group.calendar.google.com');
   });
 });
