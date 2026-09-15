@@ -21,6 +21,8 @@ import {
   criarToolSimularAmortizacao,
 } from './projecaoFinanceira.js';
 import { criarToolAnalisarQualidade } from './qualidade.js';
+import { criarToolRegistrarFaturaEmail } from './registrarFaturaEmail.js';
+import { criarToolRegistrarParcelaEmail } from './registrarParcelaEmail.js';
 import { criarToolRelatorio } from './relatorios.js';
 import { criarToolEditarTransacao, criarToolExcluirTransacao, criarToolRegistrarTransacao } from './transacoes.js';
 import { criarToolRegistrarTransacoesEmLote } from './transacoesEmLote.js';
@@ -68,6 +70,8 @@ export function montarToolsConversa(db: DbClient, client: OpenAI): ToolDefinitio
     criarToolGerarGrafico(),
     criarToolConsultarEGraficar(db),
     criarToolRegistrarTransacoesEmLote(db),
+    criarToolRegistrarFaturaEmail(db),
+    criarToolRegistrarParcelaEmail(db),
   ];
 }
 

@@ -59,6 +59,49 @@ export function criarParcela(db: DbClient, parcela: NovaParcela): Parcela {
   };
 }
 
+export type NovaParcelaEmail = {
+  dividaId: number;
+  numeroParcela: number;
+  valor: number;
+  dataVencimento: string;
+  traceId: string;
+};
+
+// Usado por registrar_parcela_email (Fase 7): diferente de criarParcela
+// (geração automática no cadastro da dívida, origem 'calculada' via
+// DEFAULT), esta grava origem='email' + trace_id sempre — rastreia que o
+// registro veio de extração de e-mail, não de cálculo interno.
+export function criarParcelaEmail(db: DbClient, parcela: NovaParcelaEmail): Parcela {
+  const resultado = db
+    .prepare(
+      `INSERT INTO parcelas (divida_id, numero_parcela, valor, data_vencimento, origem, trace_id)
+       VALUES (?, ?, ?, ?, 'email', ?)`,
+    )
+    .run(parcela.dividaId, parcela.numeroParcela, parcela.valor, parcela.dataVencimento, parcela.traceId);
+
+  return {
+    id: Number(resultado.lastInsertRowid),
+    dividaId: parcela.dividaId,
+    numeroParcela: parcela.numeroParcela,
+    valor: parcela.valor,
+    dataVencimento: parcela.dataVencimento,
+    status: 'pendente',
+    dataPagamento: null,
+  };
+}
+
+export type AtualizacaoParcelaEmail = {
+  valor: number;
+  dataVencimento: string;
+  traceId: string;
+};
+
+export function atualizarParcelaEmail(db: DbClient, id: number, dados: AtualizacaoParcelaEmail): void {
+  db.prepare(
+    `UPDATE parcelas SET valor = ?, data_vencimento = ?, origem = 'email', trace_id = ? WHERE id = ?`,
+  ).run(dados.valor, dados.dataVencimento, dados.traceId, id);
+}
+
 export function listarParcelas(db: DbClient, dividaId: number): Parcela[] {
   const linhas = db
     .prepare(`SELECT ${COLUNAS_PARCELA} FROM parcelas WHERE divida_id = ? ORDER BY numero_parcela`)
