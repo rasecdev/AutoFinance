@@ -91,7 +91,7 @@ Duas camadas independentes, cada uma resolvendo um problema diferente:
 | 4 | Contexto e memória de conversa | ✅ Concluída |
 | 5 | Roteamento de IA por fluxo + monitoramento de preço | 🚧 Parcial |
 | 6 | Relatórios automáticos, benchmark interno, categorização assistida | 🚧 Em andamento |
-| 7 | Integração com e-mail (fatura/boleto) e Google Calendar | ⬜ Não iniciada |
+| 7 | Integração com e-mail (fatura/boleto) e Google Calendar | 🚧 Em andamento |
 | 8 | Agregação bancária via Open Finance (Pluggy) | ⬜ Não iniciada |
 
 > **Nota sobre a Fase 5:** o mecanismo de roteamento por fluxo (tabela `roteamento_tarefas`) está implementado e testado, mas hoje nenhum fluxo tem modelo diferente configurado — todos caem no mesmo fallback (`openai/gpt-4o-mini`). Na prática, um único modelo atende tudo até a tabela ser populada de verdade.
