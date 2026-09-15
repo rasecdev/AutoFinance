@@ -32,14 +32,14 @@ Ver `tasks/plan.md` pro racional completo de arquitetura.
 **Description:** `envSchema` ganha `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN`, `GOOGLE_CALENDAR_ID`, todas opcionais individualmente no schema Zod, mas validadas como grupo em `loadEnv`: se as três primeiras (`CLIENT_ID`/`CLIENT_SECRET`/`REFRESH_TOKEN`) estiverem todas ausentes, `env.google` é `null` (integração desligada, caminho válido conforme Ambientes no PLANO.md); se qualquer uma estiver presente mas não todas, lança erro de configuração explícito (mesmo padrão de mensagem agregada já usado pro resto do arquivo). `GOOGLE_CALENDAR_ID` só é exigido quando o grupo está presente (default aceitável: `'primary'`, já que é a mesma conta do Gmail).
 
 **Acceptance criteria:**
-- [ ] Nenhuma variável Google definida → `loadEnv(...).google === null`, sem erro
-- [ ] As três obrigatórias do grupo presentes, sem `GOOGLE_CALENDAR_ID` → `google.calendarId === 'primary'`
-- [ ] Só `GOOGLE_CLIENT_ID` presente (grupo incompleto) → `loadEnv` lança erro explicando quais variáveis faltam
-- [ ] Grupo completo → `env.google` com os 4 campos em camelCase, mesmo padrão do resto do `Env`
+- [x] Nenhuma variável Google definida → `loadEnv(...).google === null`, sem erro
+- [x] As três obrigatórias do grupo presentes, sem `GOOGLE_CALENDAR_ID` → `google.calendarId === 'primary'`
+- [x] Só `GOOGLE_CLIENT_ID` presente (grupo incompleto) → `loadEnv` lança erro explicando quais variáveis faltam
+- [x] Grupo completo → `env.google` com os 4 campos em camelCase, mesmo padrão do resto do `Env`
 
 **Verification:**
-- [ ] `npm test -- tests/config/env.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/config/env.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** None
 
