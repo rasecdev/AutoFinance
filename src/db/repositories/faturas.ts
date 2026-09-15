@@ -46,6 +46,32 @@ export function obterFatura(db: DbClient, id: number): Fatura | undefined {
   return linha ? paraFatura(linha) : undefined;
 }
 
+export type NovaFatura = {
+  cartaoId: number;
+  mesReferencia: string;
+  valor: number;
+  status?: StatusFatura;
+};
+
+// Usado por registrar_fatura_email (Fase 7): primeira vez que uma fatura é
+// criada fora de seed/renegociação — até então faturas só existiam via
+// dado inicial ou nova dívida de renegociação.
+export function criarFatura(db: DbClient, fatura: NovaFatura): Fatura {
+  const resultado = db
+    .prepare('INSERT INTO faturas (cartao_id, mes_referencia, valor, status) VALUES (?, ?, ?, ?)')
+    .run(fatura.cartaoId, fatura.mesReferencia, fatura.valor, fatura.status ?? 'aberta');
+
+  const criada = obterFatura(db, Number(resultado.lastInsertRowid));
+  if (!criada) {
+    throw new Error('fatura recém-criada não encontrada');
+  }
+  return criada;
+}
+
+export function atualizarValorFatura(db: DbClient, id: number, valor: number): void {
+  db.prepare('UPDATE faturas SET valor = ? WHERE id = ?').run(valor, id);
+}
+
 export function marcarFaturaRenegociada(db: DbClient, id: number): void {
   db.prepare("UPDATE faturas SET status = 'renegociada' WHERE id = ?").run(id);
 }

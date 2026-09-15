@@ -105,14 +105,14 @@ Ver `tasks/plan.md` pro racional completo de arquitetura.
 **Description:** Duas tools novas em `src/ai/tools/`, seguindo o padrão de `transacoesEmLote.ts` (`requerConfirmacao: true` fixo, `avisoConfirmacao` monta resumo legível pra mensagem de confirmação). `registrar_fatura_email`: recebe cartão/mês/valor/status já resolvidos, faz upsert em `faturas` usando `encontrarFaturaCorrespondente` (Tarefa 92) — atualiza se achou, cria se não achou (e o argumento já veio com confirmação explícita do usuário pra criar). `registrar_parcela_email`: mesma ideia pra `parcelas`, sempre grava `origem: 'email'` e `trace_id` (referência à extração que originou o registro, mesmo campo já previsto no schema desde a Tarefa 1). Ambas entram em `montarToolsConversa`.
 
 **Acceptance criteria:**
-- [ ] `registrar_fatura_email` com correspondência encontrada → atualiza a linha existente, não cria duplicata
-- [ ] `registrar_fatura_email` sem correspondência → cria linha nova em `faturas`
-- [ ] `registrar_parcela_email` grava `origem='email'` e `trace_id` sempre
-- [ ] `avisoConfirmacao` de cada tool deixa explícito se é atualização ou criação nova (informação que o usuário usa pra decidir confirmar ou não)
+- [x] `registrar_fatura_email` com correspondência encontrada → atualiza a linha existente, não cria duplicata
+- [x] `registrar_fatura_email` sem correspondência → cria linha nova em `faturas`
+- [x] `registrar_parcela_email` grava `origem='email'` e `trace_id` sempre
+- [x] `avisoConfirmacao` de cada tool deixa explícito se é atualização ou criação nova (informação que o usuário usa pra decidir confirmar ou não)
 
 **Verification:**
-- [ ] `npm test -- tests/ai/tools/registrarFaturaEmail.test.ts tests/ai/tools/registrarParcelaEmail.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/ai/tools/registrarFaturaEmail.test.ts tests/ai/tools/registrarParcelaEmail.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** Tarefa 92
 
