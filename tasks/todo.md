@@ -9,13 +9,13 @@ Ver `tasks/plan.md` pro racional completo de arquitetura.
 **Description:** Nova migration `src/db/migrations/0011_google_integracao.sql` cria a tabela `emails_processados` (`id`, `gmail_message_id TEXT NOT NULL UNIQUE`, `processado_em TEXT NOT NULL`, `resultado TEXT NOT NULL CHECK (resultado IN ('fatura_registrada', 'parcela_registrada', 'pendente_confirmacao', 'sem_correspondencia', 'ignorado_nao_e_fatura'))`) e adiciona a coluna `evento_calendario_id TEXT` (nullable) em `faturas` e `parcelas` via `ALTER TABLE`.
 
 **Acceptance criteria:**
-- [ ] `emails_processados` criada com `gmail_message_id` único (constraint garante que o mesmo e-mail nunca é processado duas vezes)
-- [ ] `faturas.evento_calendario_id` e `parcelas.evento_calendario_id` existem, nullable, sem default
-- [ ] Migration roda em banco já existente (com dado) sem quebrar nenhuma tabela existente
+- [x] `emails_processados` criada com `gmail_message_id` único (constraint garante que o mesmo e-mail nunca é processado duas vezes)
+- [x] `faturas.evento_calendario_id` e `parcelas.evento_calendario_id` existem, nullable, sem default
+- [x] Migration roda em banco já existente (com dado) sem quebrar nenhuma tabela existente
 
 **Verification:**
-- [ ] `npm test -- tests/db/migrate.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/db/migrate.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** None
 
