@@ -159,15 +159,17 @@ Ver `tasks/plan.md` pro racional completo de arquitetura.
 **Description:** Novo script em `src/scripts/sincronizarCalendario.ts`, mesmo esqueleto de job (`loadEnv`/`dormirAte`/`tratarErroCriticoJob`/guard `env.google === null`/guard `--agora`). Varre `faturas` com `status='aberta'` e `parcelas` com `status='pendente'` cujo vencimento cai dentro de uma janela de lookahead (constante configurável no código, ex. 60 dias — não é variável de ambiente, não foi pedido). Pra cada item: `evento_calendario_id` nulo → `calendar.events.insert` (título com cartão/dívida + valor, data = vencimento), persiste o id retornado na linha imediatamente; `evento_calendario_id` presente → `calendar.events.update` só se valor/data mudaram desde a última sincronização (evita chamada desnecessária). Também varre faturas/parcelas com `evento_calendario_id` não nulo cujo status virou `paga`/`cancelada`/`renegociada` desde o último ciclo → `calendar.events.delete` + limpa a coluna.
 
 **Acceptance criteria:**
-- [ ] Fatura `aberta` sem `evento_calendario_id`, vencimento dentro da janela → evento criado, id persistido
-- [ ] Fatura já com `evento_calendario_id`, sem mudança de valor/data → nenhuma chamada de update feita
-- [ ] Fatura com `evento_calendario_id` que virou `paga` → evento removido do Calendar, coluna volta a `null`
-- [ ] Item fora da janela de lookahead → ignorado nesse ciclo (não cria evento cedo demais)
-- [ ] `env.google === null` → job sai sem chamar Calendar
+- [x] Fatura `aberta` sem `evento_calendario_id`, vencimento dentro da janela → evento criado, id persistido
+- [x] Fatura já com `evento_calendario_id`, sem mudança de valor/data → nenhuma chamada de update feita
+- [x] Fatura com `evento_calendario_id` que virou `paga` → evento removido do Calendar, coluna volta a `null`
+- [x] Item fora da janela de lookahead → ignorado nesse ciclo (não cria evento cedo demais)
+- [x] `env.google === null` → job sai sem chamar Calendar
 
 **Verification:**
-- [ ] `npm test -- tests/scripts/sincronizarCalendario.test.ts` (Calendar client mockado)
-- [ ] `npm run build`
+- [x] `npm test -- tests/scripts/sincronizarCalendario.test.ts` (Calendar client mockado)
+- [x] `npm run build`
+
+**Nota de implementação:** "sem mudança → nenhum update" checado via `calendar.events.get` (busca o evento salvo, compara `summary`/`start.date` contra o que seria gravado agora, só chama `events.update` se algo mudou) — uma leitura a mais por item com evento existente, troca aceitável pra evitar escrita desnecessária de verdade. Também precisou expor `eventoCalendarioId` em `Fatura`/`Parcela` (novas colunas da Tarefa 89 ainda não estavam nos tipos de repositório) e novas `atualizarEventoCalendarioFatura`/`atualizarEventoCalendarioParcela`/`listarFaturasComEventoParaRemover`/`listarParcelasComEventoParaRemover`, não previstas na lista de arquivos.
 
 **Dependencies:** Tarefa 91
 
