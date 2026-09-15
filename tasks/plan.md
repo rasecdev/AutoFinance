@@ -34,10 +34,10 @@ Fase 7 fecha o ciclo de automação de fatura/parcela: hoje isso só entra no si
 - [x] Tarefa 93: tools `registrar_fatura_email` e `registrar_parcela_email`
 - [x] Tarefa 94: job `lerEmailFaturas.ts` (orquestração: Gmail → extração → correspondência → pendência)
 - [x] Tarefa 95: job `sincronizarCalendario.ts` (varredura de vencimentos → criar/atualizar/remover evento)
-- [ ] Tarefa 96: wiring (`docker-compose.yml` com os 2 jobs × 2 ambientes, `googleapis` no `package.json`)
+- [x] Tarefa 96: wiring (`docker-compose.yml` com os 2 jobs × 2 ambientes, `googleapis` no `package.json`)
 
 ### Checkpoint: Leitura de e-mail + sincronização de calendário funcionais
-- [ ] `npm run build`/`lint`/`test` sem erro
+- [x] `npm run build`/`lint`/`test` sem erro
 - [ ] Teste manual em Homologação: `configurarGoogleOAuth.js` rodado com conta de teste (ou integração mantida desligada, conforme decisão do usuário nesse momento), e-mail de teste com fatura/boleto anexado lido e reconhecido, pendência recebida no Telegram, confirmação grava/atualiza `faturas`/`parcelas` corretamente, evento aparece no Google Calendar de teste sem duplicar em execuções seguintes
 - [ ] PROGRESSO.md atualizado com o marco
 - [ ] Revisão com o usuário antes de prosseguir (Fase 8)
