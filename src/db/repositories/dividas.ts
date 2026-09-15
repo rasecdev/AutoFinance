@@ -167,6 +167,7 @@ type LinhaParcelaComDivida = {
   data_vencimento: string;
   status: Parcela['status'];
   data_pagamento: string | null;
+  evento_calendario_id: string | null;
   divida_tipo: TipoDivida;
   divida_descricao: string | null;
   conta_id: number;
@@ -175,9 +176,10 @@ type LinhaParcelaComDivida = {
 // Usado por resumo_dividas: todas as parcelas ainda pendentes de dívidas
 // ativas, já ordenadas por vencimento (mais próxima primeiro) — dá pra tirar
 // tanto o saldo devedor total (soma) quanto as próximas a vencer (primeiras N)
-// de uma única consulta.
+// de uma única consulta. Também usado por sincronizarCalendario (Fase 7).
 export function listarParcelasPendentesDividasAtivas(db: DbClient, contaId?: number): ParcelaPendenteComDivida[] {
   const sql = `SELECT p.id, p.divida_id, p.numero_parcela, p.valor, p.data_vencimento, p.status, p.data_pagamento,
+                      p.evento_calendario_id,
                       d.tipo AS divida_tipo, d.descricao AS divida_descricao, d.conta_id AS conta_id
                FROM parcelas p
                JOIN dividas d ON d.id = p.divida_id
@@ -194,6 +196,7 @@ export function listarParcelasPendentesDividasAtivas(db: DbClient, contaId?: num
       dataVencimento: linha.data_vencimento,
       status: linha.status,
       dataPagamento: linha.data_pagamento,
+      eventoCalendarioId: linha.evento_calendario_id,
     },
     dividaTipo: linha.divida_tipo,
     dividaDescricao: linha.divida_descricao,
