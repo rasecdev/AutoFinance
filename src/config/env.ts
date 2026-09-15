@@ -8,7 +8,7 @@ const chatIdListSchema = z
 
 const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace'] as const;
 
-const GOOGLE_GRUPO = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN'] as const;
+const GOOGLE_PAR_CLIENTE = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'] as const;
 
 const envSchema = z
   .object({
@@ -28,14 +28,26 @@ const envSchema = z
     GOOGLE_CALENDAR_ID: z.string().min(1).optional(),
   })
   .superRefine((data, ctx) => {
-    const presentes = GOOGLE_GRUPO.filter((nome) => data[nome] !== undefined);
-
-    if (presentes.length > 0 && presentes.length < GOOGLE_GRUPO.length) {
-      const faltando = GOOGLE_GRUPO.filter((nome) => data[nome] === undefined);
+    // CLIENT_ID/CLIENT_SECRET sempre juntos ou nenhum dos dois — mas sem
+    // REFRESH_TOKEN ainda é um estado válido (par cadastrado no Google Cloud,
+    // vínculo ainda não feito via /registrar_email — ver googleOAuthClient).
+    const parPresente = GOOGLE_PAR_CLIENTE.filter((nome) => data[nome] !== undefined);
+    if (parPresente.length > 0 && parPresente.length < GOOGLE_PAR_CLIENTE.length) {
+      const faltando = GOOGLE_PAR_CLIENTE.filter((nome) => data[nome] === undefined);
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['GOOGLE'],
         message: `integração Google incompleta — faltando: ${faltando.join(', ')}`,
+      });
+    }
+
+    // REFRESH_TOKEN sozinho não faz sentido — token pertence a um par
+    // cliente específico, exige os dois presentes.
+    if (data.GOOGLE_REFRESH_TOKEN !== undefined && parPresente.length < GOOGLE_PAR_CLIENTE.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['GOOGLE'],
+        message: 'GOOGLE_REFRESH_TOKEN exige GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET configurados',
       });
     }
   });
@@ -54,6 +66,13 @@ export type Env = {
     refreshToken: string;
     calendarId: string;
   } | null;
+  // Presente sempre que o par cliente OAuth existe, mesmo sem refresh token
+  // ainda — é o que o comando /registrar_email usa pra saber se pode iniciar
+  // um vínculo novo (google, acima, só fica preenchido depois de vinculado).
+  googleOAuthClient: {
+    clientId: string;
+    clientSecret: string;
+  } | null;
 };
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
@@ -68,11 +87,15 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
 
   const parsed = result.data;
 
+  const googleOAuthClient =
+    parsed.GOOGLE_CLIENT_ID && parsed.GOOGLE_CLIENT_SECRET
+      ? { clientId: parsed.GOOGLE_CLIENT_ID, clientSecret: parsed.GOOGLE_CLIENT_SECRET }
+      : null;
+
   const google =
-    parsed.GOOGLE_CLIENT_ID && parsed.GOOGLE_CLIENT_SECRET && parsed.GOOGLE_REFRESH_TOKEN
+    googleOAuthClient && parsed.GOOGLE_REFRESH_TOKEN
       ? {
-          clientId: parsed.GOOGLE_CLIENT_ID,
-          clientSecret: parsed.GOOGLE_CLIENT_SECRET,
+          ...googleOAuthClient,
           refreshToken: parsed.GOOGLE_REFRESH_TOKEN,
           calendarId: parsed.GOOGLE_CALENDAR_ID ?? 'primary',
         }
@@ -87,5 +110,6 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     databaseEncryptionKey: parsed.DATABASE_ENCRYPTION_KEY,
     logLevel: parsed.LOG_LEVEL,
     google,
+    googleOAuthClient,
   };
 }
