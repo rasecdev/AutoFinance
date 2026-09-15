@@ -28,7 +28,7 @@ Fase 7 fecha o ciclo de automação de fatura/parcela: hoje isso só entra no si
 ### Fase VII: Integração com e-mail e calendário
 
 - [x] Tarefa 89: migration 0011 — `emails_processados` + `evento_calendario_id` em `faturas`/`parcelas`
-- [ ] Tarefa 90: `env.ts` — grupo opcional de variáveis Google (`GOOGLE_CLIENT_ID`/`SECRET`/`REFRESH_TOKEN`/`CALENDAR_ID`)
+- [x] Tarefa 90: `env.ts` — grupo opcional de variáveis Google (`GOOGLE_CLIENT_ID`/`SECRET`/`REFRESH_TOKEN`/`CALENDAR_ID`)
 - [ ] Tarefa 91: módulo de autenticação Google (`src/integracoes/google/auth.ts`) + script manual `configurarGoogleOAuth.ts`
 - [ ] Tarefa 92: lógica de correspondência de fatura/parcela (`src/db/repositories/correspondenciaFaturaParcela.ts` ou equivalente)
 - [ ] Tarefa 93: tools `registrar_fatura_email` e `registrar_parcela_email`
