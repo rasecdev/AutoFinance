@@ -91,7 +91,7 @@ Two independent layers, each solving a different problem:
 | 4 | Conversation context and memory | ✅ Done |
 | 5 | AI routing by flow + price monitoring | 🚧 Partial |
 | 6 | Automated reports, internal benchmark, assisted categorization | 🚧 In progress |
-| 7 | Email integration (invoices/installments) and Google Calendar | ⬜ Not started |
+| 7 | Email integration (invoices/installments) and Google Calendar | 🚧 In progress |
 | 8 | Bank aggregation via Open Finance (Pluggy) | ⬜ Not started |
 
 > **Note on Phase 5:** the flow-based routing mechanism (`roteamento_tarefas` table) is implemented and tested, but today no flow has a different model configured — everything falls back to the same default (`openai/gpt-4o-mini`). In practice, a single model handles everything until the table is actually populated.

@@ -253,6 +253,54 @@ export function resolverDividaGlobal(db: DbClient, tipo: TipoDivida, descricao?:
   };
 }
 
+// Usado por lerEmailFaturas (Fase 7): diferente de resolverDividaGlobal
+// (exige tipo, porque o chat sempre sabe o tipo pela intenção da mensagem),
+// aqui não há tipo algum — só um texto livre extraído do documento (ex:
+// "Itaú Financiamento Veículo") — busca entre TODAS as dívidas ativas,
+// qualquer tipo, só por descrição.
+export function resolverDividaPorIdentificador(db: DbClient, identificador: string): ResolucaoId {
+  const ativas = listarDividasAtivas(db);
+  const comDescricao = ativas.filter((divida): divida is typeof divida & { descricao: string } => divida.descricao !== null);
+
+  if (comDescricao.length === 0) {
+    return { ok: false, mensagem: 'Não encontrei nenhuma dívida ativa com descrição cadastrada pra comparar.' };
+  }
+
+  const alvo = identificador.toLowerCase();
+  let candidatas = comDescricao.filter(
+    (divida) =>
+      divida.descricao.toLowerCase() === alvo ||
+      divida.descricao.toLowerCase().includes(alvo) ||
+      alvo.includes(divida.descricao.toLowerCase()),
+  );
+
+  if (candidatas.length === 0) {
+    const aproximado = encontrarPorSemelhanca(
+      identificador,
+      comDescricao.map((divida) => divida.descricao),
+    );
+    if (aproximado !== undefined) {
+      candidatas = comDescricao.filter((divida) => divida.descricao.toLowerCase() === aproximado.toLowerCase());
+    }
+  }
+
+  if (candidatas.length === 0) {
+    return { ok: false, mensagem: `Não encontrei nenhuma dívida ativa parecida com "${identificador}".` };
+  }
+  if (candidatas.length === 1) {
+    const unica = candidatas[0];
+    if (unica) return { ok: true, id: unica.id };
+  }
+
+  const opcoes = candidatas
+    .map((divida) => `"${divida.descricao}" na conta ${apelidoDaConta(db, divida.contaId)}`)
+    .join(', ');
+  return {
+    ok: false,
+    mensagem: `Encontrei mais de uma dívida parecida com "${identificador}": ${opcoes}.`,
+  };
+}
+
 // Despesa fixa não tem apelido próprio — identificada por conta + descrição
 // (mesmo princípio de referência por conta+contexto de resolverDividaId).
 export function resolverDespesaFixaId(db: DbClient, contaId: number, descricao: string): ResolucaoId {
