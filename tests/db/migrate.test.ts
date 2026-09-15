@@ -91,6 +91,52 @@ describe('migrate', () => {
     db.close();
   });
 
+  it('cria emails_processados e evento_calendario_id em faturas/parcelas (Fase 7, Tarefa 89)', () => {
+    const db = new Database(caminhoBanco);
+    db.pragma("cipher='sqlcipher'");
+    db.pragma(`key='${CHAVE_TESTE}'`);
+
+    migrate(db);
+
+    const tabelas = db
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
+      .all()
+      .map((row) => (row as { name: string }).name);
+    expect(tabelas).toContain('emails_processados');
+
+    expect(() =>
+      db
+        .prepare(
+          `INSERT INTO emails_processados (gmail_message_id, processado_em, resultado)
+           VALUES ('msg-1', datetime('now'), 'pendente_confirmacao')`,
+        )
+        .run(),
+    ).not.toThrow();
+
+    expect(() =>
+      db
+        .prepare(
+          `INSERT INTO emails_processados (gmail_message_id, processado_em, resultado)
+           VALUES ('msg-1', datetime('now'), 'sem_correspondencia')`,
+        )
+        .run(),
+    ).toThrow();
+
+    const colunasFaturas = db
+      .prepare('PRAGMA table_info(faturas)')
+      .all()
+      .map((row) => (row as { name: string }).name);
+    expect(colunasFaturas).toContain('evento_calendario_id');
+
+    const colunasParcelas = db
+      .prepare('PRAGMA table_info(parcelas)')
+      .all()
+      .map((row) => (row as { name: string }).name);
+    expect(colunasParcelas).toContain('evento_calendario_id');
+
+    db.close();
+  });
+
   it('banco cifrado não pode ser lido sem a chave correta', () => {
     const db = new Database(caminhoBanco);
     db.pragma("cipher='sqlcipher'");
