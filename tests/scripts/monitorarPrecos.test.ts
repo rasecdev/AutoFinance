@@ -10,8 +10,10 @@ import { definirRoteamento } from '../../src/db/repositories/roteamentoTarefas.j
 
 const enviarMensagem = vi.fn().mockResolvedValue(undefined);
 vi.mock('grammy', () => ({
-  Bot: vi.fn().mockImplementation(function BotFalso(this: { api: { sendMessage: typeof enviarMensagem } }) {
-    this.api = { sendMessage: enviarMensagem };
+  Bot: vi.fn().mockImplementation(function BotFalso(this: {
+    api: { sendMessage: typeof enviarMensagem; config: { use: () => void } };
+  }) {
+    this.api = { sendMessage: enviarMensagem, config: { use: vi.fn() } };
   }),
 }));
 

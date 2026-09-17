@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { Bot } from 'grammy';
+import { configurarFormatacaoPadrao } from '../bot/formatoMensagens.js';
 import { loadEnv } from '../config/env.js';
 import { getDb, type DbClient } from '../db/client.js';
 import { contarErrosPeriodo } from '../db/repositories/errosExecucao.js';
@@ -52,7 +53,7 @@ export function montarRelatorioSemanal(db: DbClient, agora: Date = new Date()): 
 
   const comparacao = [
     '',
-    '**Comparação com a semana anterior**',
+    '<b>Comparação com a semana anterior</b>',
     `Receita: ${formatarDelta(financeiro.totalReceita - financeiroAnterior.totalReceita)}`,
     `Despesa: ${formatarDelta(financeiro.totalDespesa - financeiroAnterior.totalDespesa)}`,
     `Custo de IA: ${formatarDelta(usoIa.totalCustoEstimado - usoIaAnterior.totalCustoEstimado)}`,
@@ -66,6 +67,7 @@ async function main(): Promise<void> {
   const logger = createLogger(undefined, env.logLevel);
   const db = getDb(env);
   const bot = new Bot(env.telegramBotToken);
+  configurarFormatacaoPadrao(bot);
 
   try {
     // --agora pula a espera pra permitir teste manual sem esperar o domingo

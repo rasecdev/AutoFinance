@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { Bot } from 'grammy';
 import type OpenAI from 'openai';
 import { createOpenRouterClient } from '../ai/openrouter.js';
+import { configurarFormatacaoPadrao } from '../bot/formatoMensagens.js';
 import { FLUXO_RELATORIO_MENSAL, gerarResumoMensal, resolverModeloRelatorioMensal } from '../ai/relatorioMensal.js';
 import { loadEnv } from '../config/env.js';
 import { getDb, type DbClient } from '../db/client.js';
@@ -77,7 +78,7 @@ export async function montarRelatorioMensal(db: DbClient, client: OpenAI, agora:
     errosTecnicos,
   });
 
-  return `${relatorio}\n\n**Resumo do mês**\n${resultado.resumoTexto}`;
+  return `${relatorio}\n\n<b>Resumo do mês</b>\n${resultado.resumoTexto}`;
 }
 
 async function main(): Promise<void> {
@@ -86,6 +87,7 @@ async function main(): Promise<void> {
   const db = getDb(env);
   const client = createOpenRouterClient(env.openrouterApiKey);
   const bot = new Bot(env.telegramBotToken);
+  configurarFormatacaoPadrao(bot);
 
   try {
     // --agora pula a espera pra permitir teste manual sem esperar o último dia

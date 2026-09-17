@@ -9,6 +9,10 @@ export type DadosRelatorio = {
   errosTecnicos: number;
 };
 
+function escaparHtml(texto: string): string {
+  return texto.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 function formatarMoeda(valor: number): string {
   return `R$ ${valor.toFixed(2)}`;
 }
@@ -23,37 +27,37 @@ function formatarCustoUsd(valor: number): string {
 }
 
 function formatarSecaoFinanceira(financeiro: AgregacaoFinanceira): string[] {
-  const linhas = ['**Financeiro**'];
+  const linhas = ['💰 <b>Financeiro</b>'];
 
   if (financeiro.porCategoria.length === 0) {
     linhas.push('Nenhuma transação no período.');
   } else {
     linhas.push(`Receita total: ${formatarMoeda(financeiro.totalReceita)}`);
     linhas.push(`Despesa total: ${formatarMoeda(financeiro.totalDespesa)}`);
-    linhas.push('Por categoria:');
+    linhas.push('', 'Por categoria:');
     for (const categoria of financeiro.porCategoria) {
       linhas.push(
-        `- ${categoria.categoria}: receita ${formatarMoeda(categoria.totalReceita)}, despesa ${formatarMoeda(categoria.totalDespesa)}`,
+        `• ${escaparHtml(categoria.categoria)}: receita ${formatarMoeda(categoria.totalReceita)}, despesa ${formatarMoeda(categoria.totalDespesa)}`,
       );
     }
   }
 
   if (financeiro.porConta.length > 0) {
-    linhas.push('Por conta:');
+    linhas.push('', 'Por conta:');
     for (const conta of financeiro.porConta) {
       linhas.push(
-        `- ${conta.apelido}: receita ${formatarMoeda(conta.totalReceita)}, despesa ${formatarMoeda(conta.totalDespesa)}, saldo atual ${formatarMoeda(conta.saldoAtual)}`,
+        `• ${escaparHtml(conta.apelido)}: receita ${formatarMoeda(conta.totalReceita)}, despesa ${formatarMoeda(conta.totalDespesa)}, saldo atual ${formatarMoeda(conta.saldoAtual)}`,
       );
     }
   }
 
-  linhas.push(`Saldo consolidado (todas as contas): ${formatarMoeda(financeiro.saldoConsolidado)}`);
+  linhas.push('', `Saldo consolidado (todas as contas): ${formatarMoeda(financeiro.saldoConsolidado)}`);
 
   return linhas;
 }
 
 function formatarSecaoUsoIa(usoIa: AgregacaoUsoIa): string[] {
-  const linhas = ['**Uso de IA**'];
+  const linhas = ['🤖 <b>Uso de IA</b>'];
 
   if (usoIa.porFluxoModelo.length === 0) {
     linhas.push('Nenhum uso de IA registrado no período.');
@@ -63,36 +67,36 @@ function formatarSecaoUsoIa(usoIa: AgregacaoUsoIa): string[] {
   linhas.push(
     `Total: ${usoIa.totalTokensPrompt + usoIa.totalTokensCompletion} tokens, custo estimado ${formatarCustoUsd(usoIa.totalCustoEstimado)}`,
   );
-  linhas.push('Por fluxo/modelo:');
+  linhas.push('', 'Por fluxo/modelo:');
   for (const item of usoIa.porFluxoModelo) {
     linhas.push(
-      `- ${item.fluxo} (${item.modelo}): ${item.tokensPrompt + item.tokensCompletion} tokens, ${formatarCustoUsd(item.custoEstimado)}`,
+      `• ${escaparHtml(item.fluxo)} (${escaparHtml(item.modelo)}): ${item.tokensPrompt + item.tokensCompletion} tokens, ${formatarCustoUsd(item.custoEstimado)}`,
     );
   }
 
   if (usoIa.interacoesIncorretas > 0) {
-    linhas.push(`Respostas marcadas como incorretas no período: ${usoIa.interacoesIncorretas}`);
+    linhas.push('', `Respostas marcadas como incorretas no período: ${usoIa.interacoesIncorretas}`);
   }
 
   if (usoIa.metrica1.length > 0) {
-    linhas.push('Comparação hipotética (mesmo volume de tokens, preço de modelos de referência — estimativa):');
+    linhas.push('', 'Comparação hipotética (mesmo volume de tokens, preço de modelos de referência — estimativa):');
     for (const candidato of usoIa.metrica1) {
-      linhas.push(`- ${candidato.nomeExibicao}: ${formatarCustoUsd(candidato.custoEstimado)}`);
+      linhas.push(`• ${escaparHtml(candidato.nomeExibicao)}: ${formatarCustoUsd(candidato.custoEstimado)}`);
 
       for (const ajustado of usoIa.metrica2) {
         if (ajustado.modelo !== candidato.modelo) continue;
         linhas.push(
-          `  - ajustado por ${ajustado.metrica} em ${ajustado.fluxo}: ${formatarCustoUsd(ajustado.custoAjustado)} (estimativa)`,
+          `  ↳ ajustado por ${escaparHtml(ajustado.metrica)} em ${escaparHtml(ajustado.fluxo)}: ${formatarCustoUsd(ajustado.custoAjustado)} (estimativa)`,
         );
       }
     }
   }
 
   if (usoIa.metrica3.length > 0) {
-    linhas.push('Benchmark do modelo real em uso, por fluxo:');
+    linhas.push('', 'Benchmark do modelo real em uso, por fluxo:');
     for (const item of usoIa.metrica3) {
       linhas.push(
-        `- ${item.fluxo} (${item.modelo}): ${formatarCustoUsd(item.custoEstimado)} no período — ${item.metrica}: ${item.valor} (fonte: ${item.fonteUrl})`,
+        `• ${escaparHtml(item.fluxo)} (${escaparHtml(item.modelo)}): ${formatarCustoUsd(item.custoEstimado)} no período — ${escaparHtml(item.metrica)}: ${item.valor} (fonte: ${escaparHtml(item.fonteUrl)})`,
       );
     }
   }
@@ -103,8 +107,8 @@ function formatarSecaoUsoIa(usoIa: AgregacaoUsoIa): string[] {
 export function formatarRelatorio(dados: DadosRelatorio): string {
   const cabecalho =
     dados.inicio === dados.fim
-      ? `**Relatório — ${dados.inicio}**`
-      : `**Relatório — ${dados.inicio} a ${dados.fim}**`;
+      ? `📊 <b>Relatório — ${dados.inicio}</b>`
+      : `📊 <b>Relatório — ${dados.inicio} a ${dados.fim}</b>`;
 
   const linhas = [cabecalho, '', ...formatarSecaoFinanceira(dados.financeiro), '', ...formatarSecaoUsoIa(dados.usoIa)];
 
