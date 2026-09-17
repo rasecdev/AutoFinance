@@ -103,13 +103,13 @@ Log completo, com o porquê de cada decisão, em [PROGRESSO.md](PROGRESSO.md).
 <p align="center">
   <picture>
     <source media="(max-width: 600px)" srcset="docs/assets/infra-diagram.svg">
-    <img src="docs/assets/infra-diagram-wide.svg" alt="Diagrama de infraestrutura: usuário no Telegram trocando mensagens com a VM Oracle Cloud Always Free, que roda os ambientes de Homologação e Produção via Docker Compose, com chamadas roteadas pro OpenRouter" width="760" />
+    <img src="docs/assets/infra-diagram-wide.svg" alt="Diagrama de infraestrutura: usuário no Telegram trocando mensagens com a VM, que roda os ambientes de Homologação e Produção via Docker Compose, com chamadas roteadas pro OpenRouter" width="760" />
   </picture>
 </p>
 
 A VM é a única ponte entre o Telegram e o modelo — Telegram e OpenRouter nunca conversam diretamente entre si, tudo passa pelo bot rodando nela.
 
-Hospedagem na camada gratuita da Oracle Cloud ("Always Free") — uma única VM roda os dois ambientes lado a lado, cada um como um serviço separado do mesmo `docker-compose.yml`. A branch mapeia o ambiente: `development` sobe o serviço de Homologação, `master` sobe o de Produção — e a promoção de um pro outro nunca é automática, só acontece por decisão explícita depois de teste manual real.
+Uma única VM roda os dois ambientes lado a lado, cada um como um serviço separado do mesmo `docker-compose.yml`. A branch mapeia o ambiente: `development` sobe o serviço de Homologação, `master` sobe o de Produção — e a promoção de um pro outro nunca é automática, só acontece por decisão explícita depois de teste manual real.
 
 ## Rodando localmente
 
