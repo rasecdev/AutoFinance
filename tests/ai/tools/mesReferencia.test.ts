@@ -27,6 +27,10 @@ describe('normalizarMesReferencia', () => {
     it('nunca deixa o modelo inventar um ano diferente do atual', () => {
       expect(normalizarMesReferencia('08')).not.toBe('2023-08');
     });
+
+    it('sem nada informado, assume o mês atual de verdade (achado real Fase 7)', () => {
+      expect(normalizarMesReferencia(undefined)).toBe('2026-09');
+    });
   });
 
   it('formato desconhecido passa direto (deixa o "não encontrei" natural cuidar disso)', () => {
