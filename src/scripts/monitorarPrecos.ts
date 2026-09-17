@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { Bot } from 'grammy';
+import { configurarFormatacaoPadrao } from '../bot/formatoMensagens.js';
 import { loadEnv } from '../config/env.js';
 import { getDb, type DbClient } from '../db/client.js';
 import {
@@ -125,6 +126,7 @@ export function formatarMensagemAlerta(oportunidades: OportunidadePreco[]): stri
 
 export async function enviarAlertas(botToken: string, chatIds: string[], texto: string): Promise<void> {
   const bot = new Bot(botToken);
+  configurarFormatacaoPadrao(bot);
   for (const chatId of chatIds) {
     await bot.api.sendMessage(chatId, texto);
   }
