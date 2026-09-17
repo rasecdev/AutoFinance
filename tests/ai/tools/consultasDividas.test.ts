@@ -99,6 +99,31 @@ describe('tool consultar_fatura', () => {
       vi.useRealTimers();
     }
   });
+
+  it('sem mes_referencia informado: assume o mês atual sozinho (achado real Fase 7, 2026-09-17)', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 17));
+    try {
+      const cartaoId = criarCartao(db, { contaId, nome: 'Nubank', limite: 5000, diaFechamento: 5, diaVencimento: 10 }).id;
+      db.prepare("INSERT INTO faturas (cartao_id, mes_referencia, valor, status) VALUES (?, '2026-09', 1847.32, 'aberta')").run(
+        cartaoId,
+      );
+
+      const tool = criarToolConsultarFatura(db);
+      const args = tool.schema.parse({ cartao_nome: 'Nubank' });
+
+      const resultado = await tool.handler(args, { chatId: 1 });
+
+      expect(resultado).toContain('R$ 1847.32');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('schema aceita omitir mes_referencia (não é mais obrigatório)', () => {
+    const tool = criarToolConsultarFatura(db);
+    expect(() => tool.schema.parse({ cartao_nome: 'Nubank' })).not.toThrow();
+  });
 });
 
 describe('tool consultar_dividas_ativas', () => {
