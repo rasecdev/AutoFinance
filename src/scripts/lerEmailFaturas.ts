@@ -6,11 +6,11 @@ import { FLUXO_LEITURA_COMPROVANTE, extrairComprovante, resolverModeloLeituraCom
 import { criarToolRegistrarFaturaEmail } from '../ai/tools/registrarFaturaEmail.js';
 import { criarToolRegistrarParcelaEmail } from '../ai/tools/registrarParcelaEmail.js';
 import { resolverCartaoId, resolverDividaPorIdentificador } from '../ai/tools/resolucao.js';
-import { definirPendencia } from '../bot/confirmacao.js';
 import { configurarFormatacaoPadrao } from '../bot/formatoMensagens.js';
 import { loadEnv } from '../config/env.js';
 import { getDb, type DbClient } from '../db/client.js';
 import { criarClientesGoogle } from '../integracoes/google/auth.js';
+import { definirPendenciaPersistida } from '../db/repositories/confirmacoesPendentes.js';
 import { emailJaProcessado, marcarEmailProcessado } from '../db/repositories/emailsProcessados.js';
 import { registrarUsoTokens } from '../db/repositories/usoTokens.js';
 import { createLogger, type Logger } from '../logging/logger.js';
@@ -123,7 +123,12 @@ async function processarEmail(
 
     const resumo = tool.avisoConfirmacao?.(argumentos) ?? 'fatura de cartão extraída de e-mail';
     for (const chatId of chatIds) {
-      definirPendencia(Number(chatId), { tool, argumentos });
+      // Persistido no banco, não em memória: este processo (job em container
+      // separado) termina logo depois de mandar a mensagem — quem vai ler a
+      // resposta "sim" do usuário é o processo do bot principal, então a
+      // pendência precisa estar em algo que os dois processos compartilhem
+      // de verdade (achado real, ver migration 0012).
+      definirPendenciaPersistida(db, Number(chatId), { toolName: tool.name, argumentos });
       await bot.api.sendMessage(chatId, `📧 ${resumo} Confirma? Responda "sim" para registrar, ou qualquer outra coisa pra cancelar.`);
     }
     marcarEmailProcessado(db, messageId, 'pendente_confirmacao');
@@ -147,7 +152,7 @@ async function processarEmail(
 
   const resumo = tool.avisoConfirmacao?.(argumentos) ?? 'boleto de parcela extraído de e-mail';
   for (const chatId of chatIds) {
-    definirPendencia(Number(chatId), { tool, argumentos });
+    definirPendenciaPersistida(db, Number(chatId), { toolName: tool.name, argumentos });
     await bot.api.sendMessage(chatId, `📧 ${resumo} Confirma? Responda "sim" para registrar, ou qualquer outra coisa pra cancelar.`);
   }
   marcarEmailProcessado(db, messageId, 'pendente_confirmacao');

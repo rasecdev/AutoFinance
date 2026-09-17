@@ -7,6 +7,10 @@ import { verificarGatilhoResumo } from '../../ai/resumirContexto.js';
 import { montarToolsConversa } from '../../ai/tools/conversaTools.js';
 import type { ToolDefinition } from '../../ai/tools/types.js';
 import type { DbClient } from '../../db/client.js';
+import {
+  obterPendenciaPersistida,
+  removerPendenciaPersistida,
+} from '../../db/repositories/confirmacoesPendentes.js';
 import { registrarInteracaoIa } from '../../db/repositories/interacoesIa.js';
 import { registrarUsoTokens } from '../../db/repositories/usoTokens.js';
 import type { Logger } from '../../logging/logger.js';
@@ -80,6 +84,44 @@ export async function processarMensagemTexto(
       if (imagem) await ctx.replyWithPhoto(new InputFile(imagem));
     } catch (erro) {
       logger.error({ err: erro }, 'falha ao executar ação confirmada pelo usuário');
+      await ctx.reply('Não consegui concluir a ação confirmada, tente novamente.');
+    }
+    return;
+  }
+
+  // Pendência gravada por um processo separado do bot (ex: lerEmailFaturas.ts,
+  // Fase 7) — o Map em memória de confirmacao.ts não existe nesse outro
+  // processo, então essas pendências vêm do banco (achado real de teste
+  // manual, ver migration 0012). Reconstrói a tool a partir do nome porque só
+  // dado serializável (nome + argumentos) atravessa processos, nunca a
+  // função handler em si.
+  const pendenciaPersistida = obterPendenciaPersistida(db, chatId);
+  if (pendenciaPersistida) {
+    removerPendenciaPersistida(db, chatId);
+
+    if (!ehConfirmacaoAfirmativa(mensagemUsuario)) {
+      await ctx.reply('Ação cancelada.');
+      return;
+    }
+
+    const tool = tools.find((t) => t.name === pendenciaPersistida.toolName);
+    if (!tool) {
+      logger.error({ toolName: pendenciaPersistida.toolName }, 'pendência persistida referencia tool desconhecida');
+      await ctx.reply('Não consegui concluir a ação confirmada, tente novamente.');
+      return;
+    }
+
+    try {
+      const resultado = await comIndicadorDigitando(
+        ctx,
+        tool.handler(pendenciaPersistida.argumentos, { chatId }),
+        logger,
+      );
+      const { texto, imagem } = extrairTextoEImagem(resultado);
+      await ctx.reply(texto);
+      if (imagem) await ctx.replyWithPhoto(new InputFile(imagem));
+    } catch (erro) {
+      logger.error({ err: erro }, 'falha ao executar ação confirmada pelo usuário (pendência persistida)');
       await ctx.reply('Não consegui concluir a ação confirmada, tente novamente.');
     }
     return;
