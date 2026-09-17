@@ -2,6 +2,7 @@ import { Bot } from 'grammy';
 import type { Env } from '../config/env.js';
 import type { Logger } from '../logging/logger.js';
 import { createAllowlistMiddleware } from './middleware/allowlist.js';
+import { configurarFormatacaoPadrao } from './formatoMensagens.js';
 import { registerRoutes, type Handler } from './router.js';
 
 export function createBot(
@@ -20,6 +21,7 @@ export function createBot(
 ): Bot {
   const bot = new Bot(env.telegramBotToken);
 
+  configurarFormatacaoPadrao(bot);
   bot.use(createAllowlistMiddleware(env.telegramAllowedChatIds, logger));
 
   registerRoutes(

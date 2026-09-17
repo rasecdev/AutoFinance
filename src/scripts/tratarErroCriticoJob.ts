@@ -1,4 +1,5 @@
 import { Bot } from 'grammy';
+import { configurarFormatacaoPadrao } from '../bot/formatoMensagens.js';
 import type { DbClient } from '../db/client.js';
 import { registrarErro } from '../db/repositories/errosExecucao.js';
 import type { Logger } from '../logging/logger.js';
@@ -23,6 +24,7 @@ export async function tratarErroCriticoJob(
   logger.error({ err: erro, contexto }, 'erro crítico em job de fundo');
 
   const bot = new Bot(botToken);
+  configurarFormatacaoPadrao(bot);
   const texto = `⚠️ Erro crítico no job "${contexto}": ${mensagem}`;
 
   for (const chatId of chatIds) {
