@@ -137,6 +137,34 @@ describe('migrate', () => {
     db.close();
   });
 
+  it('cria confirmacoes_pendentes, chat_id único (upsert) (Fase 7, achado de teste manual 2026-09-17)', () => {
+    const db = new Database(caminhoBanco);
+    db.pragma("cipher='sqlcipher'");
+    db.pragma(`key='${CHAVE_TESTE}'`);
+
+    migrate(db);
+
+    const tabelas = db
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
+      .all()
+      .map((row) => (row as { name: string }).name);
+    expect(tabelas).toContain('confirmacoes_pendentes');
+
+    db.prepare(
+      "INSERT INTO confirmacoes_pendentes (chat_id, tool_name, argumentos, criado_em) VALUES (1, 'x', '{}', datetime('now'))",
+    ).run();
+
+    expect(() =>
+      db
+        .prepare(
+          "INSERT INTO confirmacoes_pendentes (chat_id, tool_name, argumentos, criado_em) VALUES (1, 'y', '{}', datetime('now'))",
+        )
+        .run(),
+    ).toThrow();
+
+    db.close();
+  });
+
   it('banco cifrado não pode ser lido sem a chave correta', () => {
     const db = new Database(caminhoBanco);
     db.pragma("cipher='sqlcipher'");
