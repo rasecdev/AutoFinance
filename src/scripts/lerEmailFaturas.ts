@@ -7,6 +7,7 @@ import { criarToolRegistrarFaturaEmail } from '../ai/tools/registrarFaturaEmail.
 import { criarToolRegistrarParcelaEmail } from '../ai/tools/registrarParcelaEmail.js';
 import { resolverCartaoId, resolverDividaPorIdentificador } from '../ai/tools/resolucao.js';
 import { definirPendencia } from '../bot/confirmacao.js';
+import { configurarFormatacaoPadrao } from '../bot/formatoMensagens.js';
 import { loadEnv } from '../config/env.js';
 import { getDb, type DbClient } from '../db/client.js';
 import { criarClientesGoogle } from '../integracoes/google/auth.js';
@@ -173,6 +174,7 @@ async function main(): Promise<void> {
   const logger = createLogger(undefined, env.logLevel);
   const db = getDb(env);
   const bot = new Bot(env.telegramBotToken);
+  configurarFormatacaoPadrao(bot);
 
   if (env.google === null) {
     // Sem sleep aqui, o loop `while true; do node ...; done` do compose

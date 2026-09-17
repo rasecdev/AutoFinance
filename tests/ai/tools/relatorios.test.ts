@@ -78,7 +78,7 @@ describe('tool relatorio', () => {
     const semana = await tool.handler({ periodo: 'semana' }, { chatId: 1 });
     const mes = await tool.handler({ periodo: 'mes' }, { chatId: 1 });
 
-    expect(semana).toContain('**Relatório');
-    expect(mes).toContain('**Relatório');
+    expect(semana).toContain('<b>Relatório');
+    expect(mes).toContain('<b>Relatório');
   });
 });

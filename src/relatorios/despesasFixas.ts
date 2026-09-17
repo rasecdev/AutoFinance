@@ -29,5 +29,5 @@ export function formatarAlertaDespesasFixas(faltantes: DespesaFixa[], janela: Pe
       `- ${despesa.descricao} (esperado: R$ ${despesa.valorEsperado.toFixed(2)}, todo dia ${despesa.diaVencimentoEsperado})`,
   );
 
-  return `⚠️ Despesas fixas que não apareceram em ${janela.inicio}–${janela.fim}:\n\n${linhas.join('\n')}`;
+  return `⚠️ <b>Despesas fixas que não apareceram em ${janela.inicio}–${janela.fim}</b>\n\n${linhas.join('\n')}`;
 }
