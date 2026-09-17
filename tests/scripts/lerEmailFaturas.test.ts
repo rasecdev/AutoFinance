@@ -13,7 +13,7 @@ import { criarCartao } from '../../src/db/repositories/cartoes.js';
 import { criarConta } from '../../src/db/repositories/contas.js';
 import { criarDivida } from '../../src/db/repositories/dividas.js';
 import { migrate } from '../../src/db/migrate.js';
-import { obterPendencia, removerPendencia } from '../../src/bot/confirmacao.js';
+import { obterPendenciaPersistida } from '../../src/db/repositories/confirmacoesPendentes.js';
 
 const CHAVE_TESTE = 'chave-teste-ler-email-faturas';
 const CHAT_IDS = ['111'];
@@ -47,7 +47,6 @@ beforeEach(() => {
 afterEach(() => {
   db.close();
   rmSync(dir, { recursive: true, force: true });
-  removerPendencia(Number(CHAT_IDS[0]));
 });
 
 function criarBotFalso(): { bot: Bot; sendMessage: ReturnType<typeof vi.fn> } {
@@ -115,8 +114,8 @@ describe('verificarEmails', () => {
     expect(sendMessage).toHaveBeenCalledTimes(1);
     expect(sendMessage.mock.calls[0]?.[1]).toContain('CRIAR');
 
-    const pendencia = obterPendencia(Number(CHAT_IDS[0]));
-    expect(pendencia?.tool.name).toBe('registrar_fatura_email');
+    const pendencia = obterPendenciaPersistida(db, Number(CHAT_IDS[0]));
+    expect(pendencia?.toolName).toBe('registrar_fatura_email');
     expect((pendencia?.argumentos as { cartao_id: number }).cartao_id).toBe(cartaoId);
 
     const linha = db.prepare('SELECT resultado FROM emails_processados WHERE gmail_message_id = ?').get('msg-2') as {
@@ -141,8 +140,8 @@ describe('verificarEmails', () => {
     await verificarEmails(db, gmail, bot, logger, CHAT_IDS, client);
 
     expect(sendMessage).toHaveBeenCalledTimes(1);
-    const pendencia = obterPendencia(Number(CHAT_IDS[0]));
-    expect(pendencia?.tool.name).toBe('registrar_parcela_email');
+    const pendencia = obterPendenciaPersistida(db, Number(CHAT_IDS[0]));
+    expect(pendencia?.toolName).toBe('registrar_parcela_email');
     expect((pendencia?.argumentos as { divida_id: number }).divida_id).toBe(dividaId);
   });
 
