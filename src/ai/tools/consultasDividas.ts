@@ -14,7 +14,8 @@ const schemaConsultarFatura = z
     cartao_nome: z.string().min(1).optional(),
     mes_referencia: z
       .string()
-      .regex(/^(\d{4}-\d{2}|\d{1,2})$/, 'Use "AAAA-MM", ou só o mês ("8"/"08") quando o usuário não disser o ano.'),
+      .regex(/^(\d{4}-\d{2}|\d{1,2})$/, 'Use "AAAA-MM", ou só o mês ("8"/"08") quando o usuário não disser o ano.')
+      .optional(),
   })
   .refine((valor) => valor.cartao_id !== undefined || valor.cartao_nome !== undefined, {
     message: 'Informe o cartão (id ou nome).',
@@ -24,7 +25,7 @@ export function criarToolConsultarFatura(db: DbClient): ToolDefinition {
   return {
     name: 'consultar_fatura',
     description:
-      'Consulta a fatura de um cartão num mês específico. Identifica a fatura por cartão (id ou nome) + mes_referencia, nunca por id de fatura. mes_referencia aceita "AAAA-MM" quando o usuário disser o ano, ou só o mês ("8"/"08") quando ele não disser — nesse caso NUNCA invente o ano sozinho, o sistema completa com o ano atual automaticamente. Consulta, sem efeito colateral — não exige confirmação.',
+      'Consulta a fatura de um cartão num mês. Identifica a fatura por cartão (id ou nome) + mes_referencia, nunca por id de fatura. mes_referencia aceita "AAAA-MM" quando o usuário disser o ano, ou só o mês ("8"/"08") quando ele não disser — nesse caso NUNCA invente o ano sozinho, o sistema completa com o ano atual automaticamente. Se o usuário não mencionar nenhum mês, OMITA o campo — o sistema assume o mês atual sozinho, nunca invente um mês. Consulta, sem efeito colateral — não exige confirmação.',
     schema: schemaConsultarFatura,
     handler: async (args) => {
       const {
