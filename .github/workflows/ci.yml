@@ -48,3 +48,34 @@ jobs:
         run: cp .env.example .env.producao && cp .env.example .env.homologacao
       - if: steps.has-dockerfile.outputs.exists == 'true'
         run: docker compose config
+
+  deploy:
+    needs: [gitleaks, node, docker]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/development' || github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Definir ambiente e serviços
+        id: ambiente
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/master" ]; then
+            echo "servicos=producao backup-producao monitor-precos-producao relatorio-semanal-producao relatorio-mensal-producao verificar-despesas-fixas-producao ler-email-faturas-producao sincronizar-calendario-producao" >> "$GITHUB_OUTPUT"
+          else
+            echo "servicos=homologacao backup-homologacao monitor-precos-homologacao relatorio-semanal-homologacao relatorio-mensal-homologacao verificar-despesas-fixas-homologacao ler-email-faturas-homologacao sincronizar-calendario-homologacao" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Configurar acesso SSH à VM
+        run: |
+          install -m 700 -d ~/.ssh
+          echo "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo "${{ secrets.VM_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+      - name: git pull + docker compose up --build na VM
+        run: |
+          ssh -i ~/.ssh/deploy_key -o UserKnownHostsFile=~/.ssh/known_hosts "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" '
+            set -e
+            cd /home/ubuntu/AutoFinance
+            git fetch origin ${{ github.ref_name }}
+            git checkout ${{ github.ref_name }}
+            git reset --hard origin/${{ github.ref_name }}
+            docker compose up -d --build ${{ steps.ambiente.outputs.servicos }}
+            docker image prune -f
+          '
