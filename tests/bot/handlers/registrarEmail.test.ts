@@ -1,5 +1,9 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import Database from 'better-sqlite3-multiple-ciphers';
 import type { Context } from 'grammy';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createHandlerCodigoOAuthGoogle, createHandlerRegistrarEmail } from '../../../src/bot/handlers/registrarEmail.js';
 import {
   definirPendenciaOAuthGoogle,
@@ -7,9 +11,28 @@ import {
   removerPendenciaOAuthGoogle,
 } from '../../../src/bot/googleOAuthPendencia.js';
 import type { Env } from '../../../src/config/env.js';
+import type { DbClient } from '../../../src/db/client.js';
+import { migrate } from '../../../src/db/migrate.js';
+import { listarVencidas } from '../../../src/db/repositories/mensagensPendentesApagar.js';
 import { createLogger } from '../../../src/logging/logger.js';
 
 const logger = createLogger(undefined, 'fatal');
+
+let dir: string;
+let db: DbClient;
+
+beforeAll(() => {
+  dir = mkdtempSync(join(tmpdir(), 'autofinance-registrar-email-test-'));
+  db = new Database(join(dir, 'teste.db'));
+  db.pragma("cipher='sqlcipher'");
+  db.pragma("key='chave-teste-registrar-email'");
+  migrate(db);
+});
+
+afterAll(() => {
+  db.close();
+  rmSync(dir, { recursive: true, force: true });
+});
 
 const ENV_BASE: Env = {
   ambiente: 'homologacao',
@@ -98,7 +121,7 @@ describe('handlerRegistrarEmail (/registrar_email)', () => {
 
 describe('handlerCodigoOAuthGoogle', () => {
   it('sem pendência pro chat, não faz nada', async () => {
-    const handler = createHandlerCodigoOAuthGoogle(logger);
+    const handler = createHandlerCodigoOAuthGoogle(db, logger);
     const ctx = criarContextoFake('algum-codigo', 6001);
 
     await handler(ctx);
@@ -110,7 +133,7 @@ describe('handlerCodigoOAuthGoogle', () => {
     const getToken = vi.fn(async () => ({ tokens: { refresh_token: 'refresh-novo-123' } }));
     definirPendenciaOAuthGoogle(6002, { getToken } as never);
 
-    const handler = createHandlerCodigoOAuthGoogle(logger);
+    const handler = createHandlerCodigoOAuthGoogle(db, logger);
     const ctx = criarContextoFake('4/0Acodigo', 6002);
 
     await handler(ctx);
@@ -128,7 +151,7 @@ describe('handlerCodigoOAuthGoogle', () => {
       const getToken = vi.fn(async () => ({ tokens: { refresh_token: 'refresh-novo-123' } }));
       definirPendenciaOAuthGoogle(6002, { getToken } as never);
 
-      const handler = createHandlerCodigoOAuthGoogle(logger);
+      const handler = createHandlerCodigoOAuthGoogle(db, logger);
       const ctx = criarContextoFake('4/0Acodigo', 6002);
 
       await handler(ctx);
@@ -145,11 +168,27 @@ describe('handlerCodigoOAuthGoogle', () => {
     }
   });
 
+  it('grava o agendamento no banco (achado real: sobrevive a restart do bot antes do setTimeout disparar)', async () => {
+    const getToken = vi.fn(async () => ({ tokens: { refresh_token: 'refresh-novo-123' } }));
+    definirPendenciaOAuthGoogle(6002, { getToken } as never);
+
+    const handler = createHandlerCodigoOAuthGoogle(db, logger);
+    const ctx = criarContextoFake('4/0Acodigo', 6002);
+
+    await handler(ctx);
+
+    expect(listarVencidas(db)).toEqual([]); // ainda não venceu, mas o registro existe (checado indiretamente abaixo)
+    expect(db.prepare('SELECT chat_id, message_id FROM mensagens_pendentes_apagar WHERE chat_id = ?').get(6002)).toEqual({
+      chat_id: 6002,
+      message_id: 4242,
+    });
+  });
+
   it('sucesso sem refresh_token (conta já autorizada antes): orienta a revogar o acesso', async () => {
     const getToken = vi.fn(async () => ({ tokens: {} }));
     definirPendenciaOAuthGoogle(6002, { getToken } as never);
 
-    const handler = createHandlerCodigoOAuthGoogle(logger);
+    const handler = createHandlerCodigoOAuthGoogle(db, logger);
     const ctx = criarContextoFake('4/0Acodigo', 6002);
 
     await handler(ctx);
@@ -163,7 +202,7 @@ describe('handlerCodigoOAuthGoogle', () => {
     });
     definirPendenciaOAuthGoogle(6002, { getToken } as never);
 
-    const handler = createHandlerCodigoOAuthGoogle(logger);
+    const handler = createHandlerCodigoOAuthGoogle(db, logger);
     const ctx = criarContextoFake('codigo-invalido', 6002);
 
     await handler(ctx);

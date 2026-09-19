@@ -1,6 +1,11 @@
 import type { Context } from 'grammy';
 import { google, type Auth } from 'googleapis';
 import type { Env } from '../../config/env.js';
+import type { DbClient } from '../../db/client.js';
+import {
+  agendarApagarPersistido,
+  removerAgendamento,
+} from '../../db/repositories/mensagensPendentesApagar.js';
 import type { Logger } from '../../logging/logger.js';
 import {
   definirPendenciaOAuthGoogle,
@@ -27,16 +32,30 @@ const PEDE_REAUTORIZACAO = /\bconfirmar\b/i;
 
 // Quem tiver esse valor lê o Gmail e mexe no Calendar da conta vinculada até
 // alguém revogar o acesso — a mensagem com o token não deveria ficar parada
-// no histórico do chat. Auto-apagar é best-effort (setTimeout em memória: se
-// o bot reiniciar antes de disparar, a mensagem fica — por isso o aviso pra
-// apagar na hora também, não só o timer).
+// no histórico do chat. setTimeout cobre o caso normal (apaga na hora certa,
+// sem esperar o bot subir de novo); o registro em mensagens_pendentes_apagar
+// (migration 0013) é o fallback pro caso do processo reiniciar antes do
+// timer disparar — varrido na subida do bot (ver index.ts).
 const TEMPO_AUTO_APAGAR_MS = 5 * 60 * 1000;
 
-function agendarAutoApagar(ctx: Context, chatId: number, messageId: number, logger: Logger): void {
+function agendarAutoApagar(
+  ctx: Context,
+  db: DbClient,
+  chatId: number,
+  messageId: number,
+  logger: Logger,
+): void {
+  agendarApagarPersistido(db, chatId, messageId, TEMPO_AUTO_APAGAR_MS);
+
   setTimeout(() => {
-    ctx.api.deleteMessage(chatId, messageId).catch((erro: unknown) => {
-      logger.error({ err: erro, chatId, messageId }, 'falha ao auto-apagar mensagem com refresh_token');
-    });
+    ctx.api
+      .deleteMessage(chatId, messageId)
+      .catch((erro: unknown) => {
+        logger.error({ err: erro, chatId, messageId }, 'falha ao auto-apagar mensagem com refresh_token');
+      })
+      .finally(() => {
+        removerAgendamento(db, chatId, messageId);
+      });
   }, TEMPO_AUTO_APAGAR_MS);
 }
 
@@ -94,7 +113,7 @@ export function createHandlerRegistrarEmail(env: Env) {
   };
 }
 
-export function createHandlerCodigoOAuthGoogle(logger: Logger) {
+export function createHandlerCodigoOAuthGoogle(db: DbClient, logger: Logger) {
   return async function handlerCodigoOAuthGoogle(ctx: Context): Promise<void> {
     const chatId = ctx.chat?.id;
     const codigo = ctx.message?.text?.trim();
@@ -138,6 +157,6 @@ export function createHandlerCodigoOAuthGoogle(logger: Logger) {
         'revogar o acesso) — como garantia extra, ela se apaga sozinha em 5 minutos.',
     );
 
-    agendarAutoApagar(ctx, chatId, mensagemComToken.message_id, logger);
+    agendarAutoApagar(ctx, db, chatId, mensagemComToken.message_id, logger);
   };
 }
