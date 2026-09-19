@@ -54,13 +54,13 @@ jobs:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/development' || github.ref == 'refs/heads/master')
     runs-on: ubuntu-latest
     steps:
-      - name: Definir ambiente e serviços
+      - name: Definir ambiente
         id: ambiente
         run: |
           if [ "${{ github.ref }}" = "refs/heads/master" ]; then
-            echo "servicos=producao backup-producao monitor-precos-producao relatorio-semanal-producao relatorio-mensal-producao verificar-despesas-fixas-producao ler-email-faturas-producao sincronizar-calendario-producao" >> "$GITHUB_OUTPUT"
+            echo "nome=producao" >> "$GITHUB_OUTPUT"
           else
-            echo "servicos=homologacao backup-homologacao monitor-precos-homologacao relatorio-semanal-homologacao relatorio-mensal-homologacao verificar-despesas-fixas-homologacao ler-email-faturas-homologacao sincronizar-calendario-homologacao" >> "$GITHUB_OUTPUT"
+            echo "nome=homologacao" >> "$GITHUB_OUTPUT"
           fi
       - name: Configurar acesso SSH à VM
         run: |
@@ -68,14 +68,9 @@ jobs:
           echo "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           echo "${{ secrets.VM_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-      - name: git pull + docker compose up --build na VM
+      - name: Disparar deploy na VM
         run: |
-          ssh -i ~/.ssh/deploy_key -o UserKnownHostsFile=~/.ssh/known_hosts "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" '
-            set -e
-            cd /home/ubuntu/AutoFinance
-            git fetch origin ${{ github.ref_name }}
-            git checkout ${{ github.ref_name }}
-            git reset --hard origin/${{ github.ref_name }}
-            docker compose up -d --build ${{ steps.ambiente.outputs.servicos }}
-            docker image prune -f
-          '
+          # A chave SSH usada aqui é restrita (via `command=` no authorized_keys, usuário
+          # dedicado sem sudo na VM) a rodar só /opt/autofinance-deploy/deploy.sh — o texto
+          # abaixo vira só o $SSH_ORIGINAL_COMMAND lido por esse script, não um comando livre.
+          ssh -i ~/.ssh/deploy_key -o UserKnownHostsFile=~/.ssh/known_hosts "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" "${{ steps.ambiente.outputs.nome }}"
