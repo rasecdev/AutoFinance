@@ -82,14 +82,16 @@ Ver `tasks/plan.md` pro racional completo de arquitetura e os achados de pesquis
 **Description:** `src/scripts/gerarConnectTokenPluggy.ts` — script de linha de comando rodado manualmente uma vez por conexão: autentica com `env.pluggy` (client id/secret), gera e imprime um `connect_token` novo (validade curta, mesma lógica de expiração do código OAuth do Google — token de uso único/curto). `scripts/pluggyConnectWidget.html` — página estática (não faz parte do build/deploy, não é servida por nenhum processo do AutoFinance) carregando o SDK do Pluggy Connect via CDN, com um campo pra colar o `connect_token` impresso pelo script e iniciar o widget; ao terminar (`onSuccess`), mostra o `item_id` na tela pra o usuário copiar. Documentar no próprio HTML (comentário visível) que esse arquivo NUNCA deve ser hospedado publicamente — é só pra abrir localmente.
 
 **Acceptance criteria:**
-- [ ] Script imprime um `connect_token` válido usando `env.pluggy`
-- [ ] Script sai com erro claro se `env.pluggy === null` (mesmo padrão de erro dos outros scripts manuais)
+- [x] Script imprime um `connect_token` válido usando `env.pluggy`
+- [x] Script sai com erro claro se `env.pluggy === null` (mesmo padrão de erro dos outros scripts manuais)
 - [ ] Página HTML abre localmente (`file://` ou servidor estático temporário) e carrega o widget sem erro de console — validado manualmente pelo usuário (não executável de forma automatizada, mesmo caso do consentimento OAuth da Fase 7)
 
 **Verification:**
-- [ ] `npm test -- tests/scripts/gerarConnectTokenPluggy.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/scripts/gerarConnectTokenPluggy.test.ts`
+- [x] `npm run build`
 - [ ] Manual: usuário abre a página, cola o token, testa a conexão com uma conta sandbox
+
+**Nota de implementação:** não há URL de CDN oficialmente documentada pela Pluggy pra uso via `<script>` puro — usado o pacote `pluggy-connect-sdk` publicado no npm, servido via jsDelivr (`cdn.jsdelivr.net/npm/pluggy-connect-sdk@2.14.2/dist/main/index.min.js`). Comentário no próprio HTML avisa pra conferir a versão atual em npmjs.com caso o console acuse `PluggyConnect` indefinido — só confirmável de verdade no teste manual (item pendente acima).
 
 **Dependencies:** Tarefa 99
 
