@@ -109,21 +109,27 @@ Ver `tasks/plan.md` pro racional completo de arquitetura e os achados de pesquis
 **Description:** Novo handler em `src/bot/handlers/registrarOpenFinance.ts`, seguindo o padrão de mensagens explicativas do `/registrar_email` (Fase 7): usuário cola `/registrar_open_finance <item_id>` depois de conectar pelo widget local (Tarefa 100). Handler chama `obterItem`+`listarContasDoItem` (Tarefa 99), monta uma mensagem listando as contas encontradas (banco, tipo, últimos dígitos) e pede pro usuário responder com o mapeamento pra `conta_id`/`cartao_id` já cadastrados (reaproveita `resolverCartaoId`/`resolverContaId` de `src/ai/tools/resolucao.ts` pra aceitar nome/apelido em vez de exigir id numérico). Confirmado o mapeamento, grava em `contas_open_finance`.
 
 **Acceptance criteria:**
-- [ ] `item_id` inválido/inexistente → mensagem de erro clara, nada gravado
-- [ ] `item_id` válido → lista as contas encontradas pelo Pluggy corretamente
-- [ ] Mapeamento confirmado pelo usuário → grava em `contas_open_finance`, sem duplicar se `pluggy_account_id` já existir (upsert)
-- [ ] Sem `env.pluggy` configurado → mesma mensagem de "precisa configurar no servidor" do `/registrar_email`
+- [x] `item_id` inválido/inexistente → mensagem de erro clara, nada gravado
+- [x] `item_id` válido → lista as contas encontradas pelo Pluggy corretamente
+- [x] Mapeamento confirmado pelo usuário → grava em `contas_open_finance`, sem duplicar se `pluggy_account_id` já existir (upsert)
+- [x] Sem `env.pluggy` configurado → mesma mensagem de "precisa configurar no servidor" do `/registrar_email`
 
 **Verification:**
-- [ ] `npm test -- tests/bot/handlers/registrarOpenFinance.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/bot/handlers/registrarOpenFinance.test.ts`
+- [x] `npm run build`
+
+**Nota de implementação:** o mapeamento pendente (contas listadas aguardando resposta) usa Map em memória (`src/bot/openFinancePendencia.ts`), mesmo padrão de `googleOAuthPendencia.ts` — todo o fluxo (comando lista, resposta seguinte confirma) acontece no mesmo processo do bot, sem o problema cross-processo da Fase 7. Repositório novo `src/db/repositories/contasOpenFinance.ts` (upsert por `pluggy_account_id`) e comando registrado em `comandos.ts` (menu "/" e `/ajuda` ganham a entrada automaticamente) — não previstos na lista de arquivos original.
 
 **Dependencies:** Tarefa 99
 
 **Files likely touched:**
 - `src/bot/handlers/registrarOpenFinance.ts`
+- `src/bot/openFinancePendencia.ts`
+- `src/db/repositories/contasOpenFinance.ts`
+- `src/bot/comandos.ts`
 - `src/bot/router.ts`, `src/bot/bot.ts`, `src/index.ts` (wiring do novo comando)
 - `tests/bot/handlers/registrarOpenFinance.test.ts`
+- `tests/db/contasOpenFinance.test.ts`
 
 **Estimated scope:** Medium (fluxo conversacional de mapeamento é a parte não trivial)
 
