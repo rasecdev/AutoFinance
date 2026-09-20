@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>AutoFinance — Conectar conta (Pluggy)</title>
+  <!--
+    ATENÇÃO: este arquivo NUNCA deve ser hospedado publicamente (sem acesso,
+    sem servidor, sem deploy). Ele é pra ser aberto SÓ localmente, no seu
+    próprio navegador (duplo clique / file://, ou "python -m http.server"
+    temporário na sua máquina). O connect_token colado abaixo é de uso único
+    e curto (~30min), mas ainda assim não deveria circular em lugar nenhum.
+
+    O login bancário em si acontece inteiramente aqui dentro, direto contra
+    os servidores da Pluggy — nada disso passa pelo backend do AutoFinance
+    (mesmo princípio do /registrar_email, Fase 7: sem servidor HTTP público
+    novo pra essa integração, ver tasks/plan.md da Fase 8).
+
+    Se o console mostrar "PluggyConnect não definido" ou similar, a versão
+    do SDK abaixo pode estar desatualizada — conferir a versão atual em
+    https://www.npmjs.com/package/pluggy-connect-sdk e ajustar a URL do
+    script (achado real ao implementar: não há URL de CDN documentada
+    oficialmente pela Pluggy, usamos o pacote npm publicado via jsDelivr).
+  -->
+  <script src="https://cdn.jsdelivr.net/npm/pluggy-connect-sdk@2.14.2/dist/main/index.min.js"></script>
+</head>
+<body>
+  <h1>AutoFinance — Conectar conta (Pluggy)</h1>
+  <p>
+    1. Cole abaixo o <code>connect_token</code> impresso por
+    <code>node dist/scripts/gerarConnectTokenPluggy.js</code> (válido por ~30 minutos).
+  </p>
+  <input id="connect-token" type="text" placeholder="connect_token" style="width: 400px;" />
+  <button id="conectar">Conectar conta</button>
+
+  <p>
+    2. Depois de autorizar sua conta no passo seguinte, o <code>item_id</code> aparece aqui embaixo —
+    copie e cole no bot: <code>/registrar_open_finance &lt;item_id&gt;</code>.
+  </p>
+  <pre id="resultado"></pre>
+
+  <script>
+    document.getElementById('conectar').addEventListener('click', () => {
+      const connectToken = document.getElementById('connect-token').value.trim();
+      const resultado = document.getElementById('resultado');
+
+      if (!connectToken) {
+        resultado.textContent = 'Cole o connect_token antes de continuar.';
+        return;
+      }
+
+      const pluggyConnect = new PluggyConnect({
+        connectToken,
+        includeSandbox: true, // Homologação usa sandbox da Pluggy (ver PLANO.md, "Ambientes")
+        onSuccess: (itemData) => {
+          resultado.textContent = `Conectado! item_id: ${itemData.item.id}\n\nCole no bot: /registrar_open_finance ${itemData.item.id}`;
+        },
+        onError: (erro) => {
+          resultado.textContent = `Erro ao conectar: ${JSON.stringify(erro)}`;
+        },
+      });
+
+      pluggyConnect.init();
+    });
+  </script>
+</body>
+</html>
