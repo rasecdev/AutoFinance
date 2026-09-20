@@ -38,6 +38,7 @@ describe('registerRoutes', () => {
     const handlerModelos = vi.fn();
     const handlerRegistrarEmail = vi.fn();
     const handlerCodigoOAuthGoogle = vi.fn();
+    const handlerAjuda = vi.fn();
 
     registerRoutes(
       bot,
@@ -51,6 +52,7 @@ describe('registerRoutes', () => {
       handlerModelos,
       handlerRegistrarEmail,
       handlerCodigoOAuthGoogle,
+      handlerAjuda,
     );
 
     expect(bot.on).toHaveBeenCalledWith('message:text', handlerTexto);
@@ -68,6 +70,7 @@ describe('registerRoutes', () => {
     const handlerModelos = vi.fn();
     const handlerRegistrarEmail = vi.fn();
     const handlerCodigoOAuthGoogle = vi.fn();
+    const handlerAjuda = vi.fn();
 
     registerRoutes(
       bot,
@@ -81,6 +84,7 @@ describe('registerRoutes', () => {
       handlerModelos,
       handlerRegistrarEmail,
       handlerCodigoOAuthGoogle,
+      handlerAjuda,
     );
 
     expect(bot.on).toHaveBeenCalledWith(['message:photo', 'message:document'], handlerMidia);
@@ -98,6 +102,7 @@ describe('registerRoutes', () => {
     const handlerModelos = vi.fn();
     const handlerRegistrarEmail = vi.fn();
     const handlerCodigoOAuthGoogle = vi.fn();
+    const handlerAjuda = vi.fn();
 
     registerRoutes(
       bot,
@@ -111,6 +116,7 @@ describe('registerRoutes', () => {
       handlerModelos,
       handlerRegistrarEmail,
       handlerCodigoOAuthGoogle,
+      handlerAjuda,
     );
 
     expect(bot.on).toHaveBeenCalledWith('message:voice', handlerVoz);
@@ -128,6 +134,7 @@ describe('registerRoutes', () => {
     const handlerModelos = vi.fn();
     const handlerRegistrarEmail = vi.fn();
     const handlerCodigoOAuthGoogle = vi.fn();
+    const handlerAjuda = vi.fn();
 
     registerRoutes(
       bot,
@@ -141,6 +148,7 @@ describe('registerRoutes', () => {
       handlerModelos,
       handlerRegistrarEmail,
       handlerCodigoOAuthGoogle,
+      handlerAjuda,
     );
 
     expect(bot.on).toHaveBeenCalledWith('message', handlerNaoSuportado);
@@ -158,6 +166,7 @@ describe('registerRoutes', () => {
     const handlerModelos = vi.fn();
     const handlerRegistrarEmail = vi.fn();
     const handlerCodigoOAuthGoogle = vi.fn();
+    const handlerAjuda = vi.fn();
 
     registerRoutes(
       bot,
@@ -171,6 +180,7 @@ describe('registerRoutes', () => {
       handlerModelos,
       handlerRegistrarEmail,
       handlerCodigoOAuthGoogle,
+      handlerAjuda,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerFeedback);
@@ -193,6 +203,7 @@ describe('registerRoutes', () => {
     const handlerModelos = vi.fn();
     const handlerRegistrarEmail = vi.fn();
     const handlerCodigoOAuthGoogle = vi.fn();
+    const handlerAjuda = vi.fn();
 
     registerRoutes(
       bot,
@@ -206,6 +217,7 @@ describe('registerRoutes', () => {
       handlerModelos,
       handlerRegistrarEmail,
       handlerCodigoOAuthGoogle,
+      handlerAjuda,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerFeedbackCorreto);
@@ -229,6 +241,7 @@ describe('registerRoutes', () => {
     const handlerModelos = vi.fn();
     const handlerRegistrarEmail = vi.fn();
     const handlerCodigoOAuthGoogle = vi.fn();
+    const handlerAjuda = vi.fn();
 
     registerRoutes(
       bot,
@@ -242,6 +255,7 @@ describe('registerRoutes', () => {
       handlerModelos,
       handlerRegistrarEmail,
       handlerCodigoOAuthGoogle,
+      handlerAjuda,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerModelos);
@@ -264,6 +278,7 @@ describe('registerRoutes', () => {
     const handlerModelos = vi.fn();
     const handlerRegistrarEmail = vi.fn();
     const handlerCodigoOAuthGoogle = vi.fn();
+    const handlerAjuda = vi.fn();
 
     registerRoutes(
       bot,
@@ -277,6 +292,7 @@ describe('registerRoutes', () => {
       handlerModelos,
       handlerRegistrarEmail,
       handlerCodigoOAuthGoogle,
+      handlerAjuda,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerModelo);
@@ -300,6 +316,7 @@ describe('registerRoutes', () => {
     const handlerModelos = vi.fn();
     const handlerRegistrarEmail = vi.fn();
     const handlerCodigoOAuthGoogle = vi.fn();
+    const handlerAjuda = vi.fn();
 
     registerRoutes(
       bot,
@@ -313,12 +330,49 @@ describe('registerRoutes', () => {
       handlerModelos,
       handlerRegistrarEmail,
       handlerCodigoOAuthGoogle,
+      handlerAjuda,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerRegistrarEmail);
     const predicado = bot.filter.mock.calls[4]?.[0] as (ctx: Context) => boolean;
     expect(predicado(criarCtxComTexto('/registrar_email'))).toBe(true);
     expect(predicado(criarCtxComTexto('/Registrar_email confirmar'))).toBe(true);
+    expect(predicado(criarCtxComTexto('não é o comando'))).toBe(false);
+  });
+
+  it('registra o handler de ajuda com um filtro pro comando /ajuda', () => {
+    const bot = criarBotFake();
+    const handlerTexto = vi.fn();
+    const handlerMidia = vi.fn();
+    const handlerVoz = vi.fn();
+    const handlerNaoSuportado = vi.fn();
+    const handlerFeedback = vi.fn();
+    const handlerFeedbackCorreto = vi.fn();
+    const handlerModelo = vi.fn();
+    const handlerModelos = vi.fn();
+    const handlerRegistrarEmail = vi.fn();
+    const handlerCodigoOAuthGoogle = vi.fn();
+    const handlerAjuda = vi.fn();
+
+    registerRoutes(
+      bot,
+      handlerTexto,
+      handlerMidia,
+      handlerVoz,
+      handlerNaoSuportado,
+      handlerFeedback,
+      handlerFeedbackCorreto,
+      handlerModelo,
+      handlerModelos,
+      handlerRegistrarEmail,
+      handlerCodigoOAuthGoogle,
+      handlerAjuda,
+    );
+
+    expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerAjuda);
+    const predicado = bot.filter.mock.calls[5]?.[0] as (ctx: Context) => boolean;
+    expect(predicado(criarCtxComTexto('/ajuda'))).toBe(true);
+    expect(predicado(criarCtxComTexto('/Ajuda'))).toBe(true);
     expect(predicado(criarCtxComTexto('não é o comando'))).toBe(false);
   });
 
@@ -334,6 +388,7 @@ describe('registerRoutes', () => {
     const handlerModelos = vi.fn();
     const handlerRegistrarEmail = vi.fn();
     const handlerCodigoOAuthGoogle = vi.fn();
+    const handlerAjuda = vi.fn();
 
     registerRoutes(
       bot,
@@ -347,10 +402,11 @@ describe('registerRoutes', () => {
       handlerModelos,
       handlerRegistrarEmail,
       handlerCodigoOAuthGoogle,
+      handlerAjuda,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerCodigoOAuthGoogle);
-    const predicado = bot.filter.mock.calls[5]?.[0] as (ctx: Context) => boolean;
+    const predicado = bot.filter.mock.calls[6]?.[0] as (ctx: Context) => boolean;
 
     expect(predicado(criarCtxComTextoEChat('4/0Acodigo-qualquer', 9999))).toBe(false);
 
