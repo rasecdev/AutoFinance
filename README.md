@@ -111,6 +111,19 @@ A VM é a única ponte entre o Telegram e o modelo — Telegram e OpenRouter nun
 
 Uma única VM roda os dois ambientes lado a lado, cada um como um serviço separado do mesmo `docker-compose.yml`. A branch mapeia o ambiente: `development` sobe o serviço de Homologação, `master` sobe o de Produção — e a promoção de um pro outro nunca é automática, só acontece por decisão explícita depois de teste manual real.
 
+## Processos
+
+<p align="center">
+  <picture>
+    <source media="(max-width: 600px)" srcset="docs/assets/process-diagram.svg">
+    <img src="docs/assets/process-diagram-wide.svg" alt="Diagrama de processos: o bot principal e os jobs agendados rodam em processos separados, ambos lendo e escrevendo no mesmo arquivo SQLite compartilhado" width="760" />
+  </picture>
+</p>
+
+Dentro da VM, o bot e os jobs agendados (leitura de e-mail, sincronização de calendário, relatório mensal etc.) são processos separados — cada um com sua própria memória. O único estado que os une é o arquivo SQLite compartilhado (cifrado com SQLCipher).
+
+Isso já gerou um bug real: uma confirmação pendente gravada em memória (`Map`) num processo nunca era vista pelo outro processo, que tratava a resposta do usuário como mensagem solta. A correção não foi um mecanismo novo — foi mover esse estado, que já devia ser durável, pro lugar certo: o banco compartilhado.
+
 ## Rodando localmente
 
 <details>

@@ -111,6 +111,19 @@ The VM is the only bridge between Telegram and the model — Telegram and OpenRo
 
 A single VM runs both environments side by side, each as a separate service in the same `docker-compose.yml`. The branch maps to the environment: `development` runs the Staging service, `master` runs Production — and promoting one to the other is never automatic, it only happens by explicit decision after real manual testing.
 
+## Processes
+
+<p align="center">
+  <picture>
+    <source media="(max-width: 600px)" srcset="docs/assets/process-diagram.svg">
+    <img src="docs/assets/process-diagram-wide.svg" alt="Process diagram: the main bot and the scheduled jobs run as separate processes, both reading and writing the same shared SQLite file" width="760" />
+  </picture>
+</p>
+
+Inside the VM, the bot and the scheduled jobs (email reading, calendar sync, monthly report, etc.) are separate processes — each with its own memory. The only state that connects them is the shared SQLite file (encrypted with SQLCipher).
+
+That already caused a real bug: a pending confirmation kept in memory (`Map`) in one process was never seen by the other, which treated the user's reply as a plain message. The fix wasn't a new mechanism — it was moving that state, which should have been durable all along, into the shared database.
+
 ## Running locally
 
 <details>
