@@ -198,13 +198,15 @@ Ver `tasks/plan.md` pro racional completo de arquitetura e os achados de pesquis
 **Description:** Novo script em `src/scripts/renovarSandboxPluggy.ts`, só relevante/ativo em Homologação (guard explícito por `env.ambiente`, não só por `env.pluggy === null` — em Produção não deve nem tentar rodar, mesmo com `env.pluggy` configurado). A cada 20 dias (constante no código, ver seção "Ambientes" do PLANO.md), `PATCH /items/{id}` pra cada item em `contas_open_finance` (distinct por `pluggy_item_id`), resetando a contagem de expiração do sandbox.
 
 **Acceptance criteria:**
-- [ ] Em Produção (`env.ambiente === 'producao'`), job sai imediatamente sem chamar a API, mesmo com `env.pluggy` configurado
-- [ ] Em Homologação, chama `PATCH /items/{id}` uma vez por `pluggy_item_id` distinto (não uma vez por conta/cartão mapeado, se o mesmo item tiver várias contas)
-- [ ] Erro em qualquer chamada → `tratarErroCriticoJob`, mas continua tentando os outros itens (uma falha não deve impedir renovar os demais)
+- [x] Em Produção (`env.ambiente === 'producao'`), job sai imediatamente sem chamar a API, mesmo com `env.pluggy` configurado
+- [x] Em Homologação, chama `PATCH /items/{id}` uma vez por `pluggy_item_id` distinto (não uma vez por conta/cartão mapeado, se o mesmo item tiver várias contas)
+- [x] Erro em qualquer chamada → `tratarErroCriticoJob`, mas continua tentando os outros itens (uma falha não deve impedir renovar os demais)
 
 **Verification:**
-- [ ] `npm test -- tests/scripts/renovarSandboxPluggy.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/scripts/renovarSandboxPluggy.test.ts`
+- [x] `npm run build`
+
+**Nota de implementação:** `atualizarItem`/`autenticar` já existiam em `src/integracoes/pluggy/cliente.ts` (Tarefa 99) e `listarContasOpenFinance` já existia em `contasOpenFinance.ts` (Tarefa 103) — nenhuma peça nova de infra precisou ser criada além do próprio script. `[...new Set(...)]` sobre `pluggyItemId` resolve o "distinct por item" sem precisar de SQL `DISTINCT` dedicado.
 
 **Dependencies:** Tarefa 99
 
