@@ -3,6 +3,13 @@ import type { DbClient } from '../client.js';
 
 export type ParametrosCorrespondencia = { contaId: number; valor: number; data: string };
 
+// Achado real (Tarefa 103): conta Pluggy do tipo CREDIT mapeia pra cartão,
+// não conta — uma compra de cartão em transacoes usa cartao_id, nunca
+// conta_id (mesma exclusividade já usada no schema desde a Fase 1). Só a
+// checagem 1 (manual) precisa dessa variante — checagem 2 (fatura/parcela
+// paga) só faz sentido no lado da conta bancária que debita o pagamento.
+export type IdentificadorTransacao = { contaId: number } | { cartaoId: number };
+
 export type ResultadoCorrespondencia = 'encontrada' | 'nao_encontrada' | 'ambigua';
 
 // Mesma tolerância de valor/data já usada na correspondência de parcela por
@@ -31,16 +38,19 @@ function classificar(candidatas: Array<{ data: string }>, dataAlvo: string): Res
 // Open Finance, que teria seu próprio pluggy_transaction_id de controle).
 export function encontrarTransacaoManualCorrespondente(
   db: DbClient,
-  params: ParametrosCorrespondencia,
+  params: IdentificadorTransacao & { valor: number; data: string },
 ): ResultadoCorrespondencia {
+  const coluna = 'contaId' in params ? 'conta_id' : 'cartao_id';
+  const idAlvo = 'contaId' in params ? params.contaId : params.cartaoId;
+
   const candidatas = db
     .prepare(
       `SELECT data FROM transacoes
-       WHERE conta_id = ? AND status = 'ativa' AND origem = 'manual'
+       WHERE ${coluna} = ? AND status = 'ativa' AND origem = 'manual'
          AND valor BETWEEN ? AND ?`,
     )
     .all(
-      params.contaId,
+      idAlvo,
       params.valor * (1 - TOLERANCIA_VALOR_PERCENTUAL),
       params.valor * (1 + TOLERANCIA_VALOR_PERCENTUAL),
     ) as Array<{ data: string }>;

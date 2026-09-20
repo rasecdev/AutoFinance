@@ -167,23 +167,29 @@ Ver `tasks/plan.md` pro racional completo de arquitetura e os achados de pesquis
 **Description:** Novo script em `src/scripts/sincronizarOpenFinance.ts`, mesmo esqueleto de job das Fases 6/7 (`loadEnv`/`createLogger`/`getDb`/`dormirAte`/`tratarErroCriticoJob`/guard `--agora`/guard `env.pluggy === null` sai sem erro, dormindo o intervalo normal antes de sair — mesmo achado real já corrigido na Fase 7 pro busy-loop do compose). Pra cada linha de `contas_open_finance`: lista transações novas via `listarTransacoes` (desde o último processamento), ignora as já em `transacoes_open_finance_processadas`; pra cada nova, roda a correspondência (Tarefa 102) na ordem definida; se "criar transação nova", grava direto em `transacoes` com `origem='open_finance'`+`trace_id`, sem `confirmacoes_pendentes` (fonte primária, eco simples via mensagem ao(s) chat(s) permitido(s), mesmo padrão de `registrar_transacao`); marca `transacoes_open_finance_processadas` com o resultado em qualquer um dos quatro desfechos.
 
 **Acceptance criteria:**
-- [ ] `env.pluggy === null` → job dorme o intervalo normal e sai, sem chamar a API
-- [ ] Transação já processada (`pluggy_transaction_id` na tabela) → ignorada, não reprocessada
-- [ ] Transação nova sem correspondência → `transacao` criada com `origem='open_finance'`, mensagem de eco enviada ao(s) chat(s) permitido(s)
-- [ ] Transação com correspondência (qualquer uma das checagens) → não cria `transacao` nova, sem mensagem enviada (silencioso, mesmo princípio de "só avisa quando há pendência" já usado em `verificarDespesasFixas`)
-- [ ] Erro em qualquer etapa → `tratarErroCriticoJob` chamado
+- [x] `env.pluggy === null` → job dorme o intervalo normal e sai, sem chamar a API (guard em `main()`, mesmo padrão visual dos outros jobs — não testado isoladamente, `main()` não é exportado, mesmo critério de `lerEmailFaturas.ts`/`sincronizarCalendario.ts`)
+- [x] Transação já processada (`pluggy_transaction_id` na tabela) → ignorada, não reprocessada
+- [x] Transação nova sem correspondência → `transacao` criada com `origem='open_finance'`, mensagem de eco enviada ao(s) chat(s) permitido(s)
+- [x] Transação com correspondência (qualquer uma das checagens) → não cria `transacao` nova, sem mensagem enviada (silencioso, mesmo princípio de "só avisa quando há pendência" já usado em `verificarDespesasFixas`)
+- [x] Erro em qualquer etapa → `tratarErroCriticoJob` chamado
 
 **Verification:**
-- [ ] `npm test -- tests/scripts/sincronizarOpenFinance.test.ts` (client Pluggy mockado)
-- [ ] `npm run build`
+- [x] `npm test -- tests/scripts/sincronizarOpenFinance.test.ts` (client Pluggy mockado)
+- [x] `npm run build`
+
+**Nota de implementação:** não precisou quebrar em mais tarefas. Achados reais durante a implementação: (1) conta Pluggy do tipo CREDIT mapeia pra cartão, não conta — `transacoes` usa `cartao_id` nesse caso (nunca `conta_id`), então `encontrarTransacaoManualCorrespondente` (Tarefa 102) precisou aceitar `{contaId} | {cartaoId}` retroativamente; a checagem 2 (fatura/parcela paga) só roda quando o mapeamento é de conta bancária (não faz sentido uma compra no extrato do próprio cartão ser o pagamento da fatura desse cartão); (2) resultado `'ambigua'` da correspondência (Tarefa 102) não tem uma coluna própria em `resultado` (só 4 valores fixos na migration 0014) — tratado como `correspondencia_manual` (mais seguro que arriscar duplicar), com log de aviso pra conferência manual; (3) uma conta com erro (token expirado, item desconectado) não derruba a sincronização das outras — `try/catch` por conta dentro do loop, log e segue. Repositórios novos não previstos na lista de arquivos: `listarContasOpenFinance` (`contasOpenFinance.ts`), `transacoesOpenFinanceProcessadas.ts` (idempotência) e `criarTransacaoOpenFinance` (`transacoes.ts`, mesmo princípio de `criarParcelaEmail` da Fase 7 — grava sempre `origem`+`trace_id`).
 
 **Dependencies:** Tarefa 101, Tarefa 102
 
 **Files likely touched:**
 - `src/scripts/sincronizarOpenFinance.ts`
+- `src/db/repositories/contasOpenFinance.ts` (`listarContasOpenFinance`)
+- `src/db/repositories/transacoesOpenFinanceProcessadas.ts`
+- `src/db/repositories/transacoes.ts` (`criarTransacaoOpenFinance`)
 - `tests/scripts/sincronizarOpenFinance.test.ts`
+- `tests/db/contasOpenFinance.test.ts`, `tests/db/transacoesOpenFinanceProcessadas.test.ts`
 
-**Estimated scope:** Large (orquestra várias peças, mesmo perfil da Tarefa 94 na Fase 7 — quebrar em mais tarefas se necessário ao implementar)
+**Estimated scope:** Large (orquestra várias peças, mesmo perfil da Tarefa 94 na Fase 7 — não precisou quebrar em mais tarefas)
 
 ---
 
