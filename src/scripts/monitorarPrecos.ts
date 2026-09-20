@@ -95,6 +95,13 @@ export function detectarOportunidades(db: DbClient): OportunidadePreco[] {
     const candidato = catalogoAtual
       .filter((m) => m.modelo !== roteamento.modeloPreferido)
       .filter((m) => atendeRequisitos(m, requisitosLista))
+      // Preço negativo é sentinela do OpenRouter pra modelo de preço variável
+      // (ex: "openrouter/auto", -1 em prompt e completion) — não é um valor
+      // comparável de verdade, nunca deveria "ganhar" a comparação de mais
+      // barato só por ser um número menor. Achado real a pedido do usuário
+      // (2026-09-20): sem esse filtro, "openrouter/auto" aparecia sempre
+      // como candidato mais barato pra qualquer fluxo.
+      .filter((m) => custoTotal(m) >= 0)
       .filter((m) => custoTotal(m) < precoAtual)
       .sort((a, b) => custoTotal(a) - custoTotal(b))[0];
 
@@ -113,12 +120,26 @@ export function detectarOportunidades(db: DbClient): OportunidadePreco[] {
   return oportunidades;
 }
 
+// OpenRouter devolve preço por TOKEN (ex: 0.00000075), que o JS imprime em
+// notação científica ("7.5e-7") a partir de ~1e-6 — ilegível numa mensagem
+// de alerta. Convertido pra USD por 1M tokens (mesma unidade que o próprio
+// site do OpenRouter usa pra exibir preço, ex: "$0.75/M tokens"), achado
+// real a pedido do usuário (2026-09-20). Preço negativo é sentinela do
+// OpenRouter pra modelo de preço variável (ex: "openrouter/auto", que
+// devolve -1 em prompt e completion) — não é um valor comparável de verdade.
+function formatarPreco(precoPorToken: number): string {
+  if (precoPorToken < 0) {
+    return 'preço variável (não fixo)';
+  }
+  return `US$ ${(precoPorToken * 1_000_000).toFixed(4)}/1M tokens`;
+}
+
 export function formatarMensagemAlerta(oportunidades: OportunidadePreco[]): string {
   const linhas = oportunidades.map((oportunidade) => {
     if (oportunidade.tipo === 'preco_mudou') {
-      return `💰 Preço mudou — fluxo "${oportunidade.fluxo}" (${oportunidade.modelo}): ${oportunidade.precoAntigo} → ${oportunidade.precoNovo} (USD por token, prompt+completion)`;
+      return `💰 Preço mudou — fluxo "${oportunidade.fluxo}" (${oportunidade.modelo}): ${formatarPreco(oportunidade.precoAntigo)} → ${formatarPreco(oportunidade.precoNovo)}`;
     }
-    return `🔎 Modelo mais barato disponível — fluxo "${oportunidade.fluxo}": "${oportunidade.modeloCandidato}" (${oportunidade.precoCandidato}) atende os requisitos e é mais barato que o atual "${oportunidade.modeloAtual}" (${oportunidade.precoAtual})`;
+    return `🔎 Modelo mais barato disponível — fluxo "${oportunidade.fluxo}": "${oportunidade.modeloCandidato}" (${formatarPreco(oportunidade.precoCandidato)}) atende os requisitos e é mais barato que o atual "${oportunidade.modeloAtual}" (${formatarPreco(oportunidade.precoAtual)})`;
   });
 
   return `Alerta de preço de modelos (OpenRouter):\n\n${linhas.join('\n')}\n\nNenhuma troca foi feita automaticamente — ajuste roteamento_tarefas manualmente se quiser.`;
