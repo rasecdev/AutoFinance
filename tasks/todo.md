@@ -140,15 +140,17 @@ Ver `tasks/plan.md` pro racional completo de arquitetura e os achados de pesquis
 **Description:** `src/db/repositories/correspondenciaOpenFinance.ts` — funções puras testáveis: `encontrarTransacaoManualCorrespondente(db, { contaId, valor, data })` (checagem 1, tolerância de data ±1-2 dias como já usado na Fase 7 pra parcela); `encontrarPagamentoFaturaOuParcelaCorrespondente(db, { contaId, valor, data })` (checagem 2, contra `faturas.data_pagamento`/`parcelas.data_pagamento` já pagas); `pareceSaque(transacaoPluggy)` (heurística por categoria/descrição — **valor exato da categoria a confirmar com dado real do sandbox nesta tarefa, documentar como achado real assim que descoberto**). As três chamadas nessa ordem antes de decidir criar `transacao` nova.
 
 **Acceptance criteria:**
-- [ ] Transação sincronizada batendo com uma manual existente (conta+valor+data aproximada) → não cria nova, marca `correspondencia_manual`
-- [ ] Transação sincronizada batendo com pagamento de fatura/parcela já paga → não cria `transacao` de despesa, marca `correspondencia_fatura_parcela`
-- [ ] Transação identificada como saque → não cria `transacao`, marca `saque_ignorado`
-- [ ] Sem nenhuma correspondência e não é saque → sinaliza "criar transação nova"
-- [ ] Ambiguidade entre múltiplas manuais candidatas → não resolve sozinho (mesmo princípio da Fase 7)
+- [x] Transação sincronizada batendo com uma manual existente (conta+valor+data aproximada) → `encontrarTransacaoManualCorrespondente` devolve `'encontrada'` (marcar `correspondencia_manual` de fato é responsabilidade do job, Tarefa 103, que consome este resultado)
+- [x] Transação sincronizada batendo com pagamento de fatura/parcela já paga → `encontrarPagamentoFaturaOuParcelaCorrespondente` devolve `'encontrada'`
+- [x] Transação identificada como saque → `pareceSaque` devolve `true`
+- [x] Sem nenhuma correspondência e não é saque → as duas funções devolvem `'nao_encontrada'` (job decide criar transação nova)
+- [x] Ambiguidade entre múltiplas manuais candidatas → devolve `'ambigua'`, não resolve sozinho (mesmo princípio da Fase 7)
 
 **Verification:**
-- [ ] `npm test -- tests/db/correspondenciaOpenFinance.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/db/correspondenciaOpenFinance.test.ts`
+- [x] `npm run build`
+
+**Nota de implementação:** achado real de pesquisa (docs.pluggy.ai) — o campo `category` exige plano Pro da Pluggy e não documenta valores fixos, não dá pra confiar nele sozinho pra detectar saque. `operationType` (ex: `"SAQUE"`) só existe em conectores Open Finance, mas é o sinal mais confiável quando presente; `pareceSaque` usa isso como sinal primário, com fallback por texto na descrição/categoria (cobre sandbox/conector legado sem `operationType`). `TransacaoPluggy` (Tarefa 99) ganhou o campo `operationType` retroativamente.
 
 **Dependencies:** Tarefa 98
 
