@@ -5,7 +5,7 @@ import Database from 'better-sqlite3-multiple-ciphers';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
-import { registrarMapeamentoOpenFinance } from '../../src/db/repositories/contasOpenFinance.js';
+import { listarContasOpenFinance, registrarMapeamentoOpenFinance } from '../../src/db/repositories/contasOpenFinance.js';
 import { criarConta } from '../../src/db/repositories/contas.js';
 
 const CHAVE_TESTE = 'chave-teste-contas-open-finance';
@@ -48,5 +48,21 @@ describe('registrarMapeamentoOpenFinance', () => {
     const linhas = lerMapeamentos();
     expect(linhas).toHaveLength(1);
     expect(linhas[0]).toMatchObject({ pluggy_item_id: 'item-2' });
+  });
+});
+
+describe('listarContasOpenFinance', () => {
+  it('lista os mapeamentos já gravados, com conta/cartão em camelCase', () => {
+    registrarMapeamentoOpenFinance(db, { pluggyItemId: 'item-1', pluggyAccountId: 'conta-pluggy-1', contaId });
+
+    const lista = listarContasOpenFinance(db);
+
+    expect(lista).toEqual([
+      { pluggyItemId: 'item-1', pluggyAccountId: 'conta-pluggy-1', contaId, cartaoId: null },
+    ]);
+  });
+
+  it('sem nenhum mapeamento gravado, devolve lista vazia', () => {
+    expect(listarContasOpenFinance(db)).toEqual([]);
   });
 });
