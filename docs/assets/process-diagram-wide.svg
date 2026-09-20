@@ -1,0 +1,66 @@
+<svg viewBox="0 0 960 350" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <clipPath id="procCardWide"><rect width="960" height="350" rx="16"/></clipPath>
+    <marker id="arrowProcWide" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6472"/>
+    </marker>
+  </defs>
+
+  <g clip-path="url(#procCardWide)">
+    <rect width="960" height="350" fill="#eef1f5"/>
+    <rect width="960" height="36" fill="#2f6fed"/>
+    <text x="20" y="23" fill="#ffffff" font-size="13" font-weight="700">AutoFinance &#183; processes</text>
+
+    <!-- ============ Bot card ============ -->
+    <rect x="24" y="64" width="260" height="232" rx="14" fill="#ffffff" stroke="#dde2e8"/>
+    <text x="44" y="94" font-size="13" fill="#1c2430" font-weight="700">Main bot</text>
+    <text x="44" y="112" font-size="10" fill="#4a5568" font-weight="700">single process</text>
+    <text x="44" y="140" font-size="10.5" fill="#1c2430" font-weight="700">Router / Telegram webhook</text>
+    <text x="44" y="160" font-size="10.5" fill="#1c2430" font-weight="700">conversa_texto / handlerMidia</text>
+    <text x="44" y="180" font-size="10.5" fill="#1c2430" font-weight="700">In-memory confirmation (Map)</text>
+
+    <!-- ============ Jobs card ============ -->
+    <rect x="676" y="64" width="260" height="232" rx="14" fill="#ffffff" stroke="#dde2e8"/>
+    <text x="696" y="94" font-size="13" fill="#1c2430" font-weight="700">Scheduled jobs</text>
+    <text x="696" y="112" font-size="10" fill="#4a5568" font-weight="700">separate processes (cron)</text>
+    <text x="696" y="140" font-size="10.5" fill="#1c2430" font-weight="700">lerEmailFaturas</text>
+    <text x="696" y="160" font-size="10.5" fill="#1c2430" font-weight="700">sincronizarCalendario</text>
+    <text x="696" y="180" font-size="10.5" fill="#1c2430" font-weight="700">relatorioMensal</text>
+    <text x="696" y="200" font-size="10.5" fill="#1c2430" font-weight="700">verificarDespesasFixas &#183; monitorarPrecos</text>
+    <text x="696" y="220" font-size="10" fill="#94a1b3" font-weight="700">Phase 8: Pluggy sync (planned)</text>
+
+    <!-- ============ Shared SQLite: chip with legs ============ -->
+    <rect x="395" y="84" width="6" height="10" fill="#1c2430"/>
+    <rect x="477" y="84" width="6" height="10" fill="#1c2430"/>
+    <rect x="559" y="84" width="6" height="10" fill="#1c2430"/>
+    <rect x="395" y="264" width="6" height="10" fill="#1c2430"/>
+    <rect x="477" y="264" width="6" height="10" fill="#1c2430"/>
+    <rect x="559" y="264" width="6" height="10" fill="#1c2430"/>
+    <rect x="332" y="142" width="12" height="6" fill="#1c2430"/>
+    <rect x="332" y="210" width="12" height="6" fill="#1c2430"/>
+    <rect x="616" y="142" width="12" height="6" fill="#1c2430"/>
+    <rect x="616" y="210" width="12" height="6" fill="#1c2430"/>
+    <rect x="344" y="94" width="272" height="170" rx="16" fill="#1c2430"/>
+    <text x="480" y="170" font-size="14" fill="#8fe3c0" text-anchor="middle" font-weight="700">Shared SQLite</text>
+    <text x="480" y="190" font-size="11" fill="#c7cfda" text-anchor="middle" font-weight="700">single file &#183; SQLCipher</text>
+    <text x="480" y="210" font-size="9.5" fill="#c7cfda" text-anchor="middle" font-weight="700">confirmacoes_pendentes &#183; mensagens_pendentes_apagar</text>
+    <text x="480" y="226" font-size="9.5" fill="#c7cfda" text-anchor="middle" font-weight="700">emails_processados</text>
+
+    <!-- arrows bot <-> db -->
+    <line x1="284" y1="150" x2="332" y2="150" stroke="#5b6472" stroke-width="1.5" marker-end="url(#arrowProcWide)"/>
+    <line x1="332" y1="175" x2="284" y2="175" stroke="#5b6472" stroke-width="1.5" marker-end="url(#arrowProcWide)"/>
+    <text x="308" y="140" font-size="9" fill="#5b6472" text-anchor="middle" font-weight="700">write/read</text>
+    <text x="308" y="189" font-size="9" fill="#5b6472" text-anchor="middle" font-weight="700">confirm</text>
+
+    <!-- arrows jobs <-> db -->
+    <line x1="676" y1="150" x2="628" y2="150" stroke="#5b6472" stroke-width="1.5" marker-end="url(#arrowProcWide)"/>
+    <line x1="628" y1="175" x2="676" y2="175" stroke="#5b6472" stroke-width="1.5" marker-end="url(#arrowProcWide)"/>
+    <text x="652" y="140" font-size="9" fill="#5b6472" text-anchor="middle" font-weight="700">write</text>
+    <text x="652" y="189" font-size="9" fill="#5b6472" text-anchor="middle" font-weight="700">read pending</text>
+
+    <!-- ============ callout: real finding ============ -->
+    <rect x="210" y="294" width="540" height="42" rx="10" fill="#fff6ec" stroke="#e3a45c" stroke-dasharray="5,4"/>
+    <text x="480" y="312" font-size="10" fill="#7a4b06" text-anchor="middle" font-weight="700">Real finding (2026-09-17):</text>
+    <text x="480" y="328" font-size="9.5" fill="#7a4b06" text-anchor="middle" font-weight="700">in-memory confirmation doesn't cross processes &#8212; moved into SQLite.</text>
+  </g>
+</svg>
