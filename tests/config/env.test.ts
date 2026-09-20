@@ -24,6 +24,7 @@ describe('loadEnv', () => {
       logLevel: 'info',
       google: null,
       googleOAuthClient: null,
+      pluggy: null,
     });
   });
 
@@ -111,5 +112,26 @@ describe('loadEnv', () => {
     });
 
     expect(env.googleOAuthClient).toEqual({ clientId: 'client-id-teste', clientSecret: 'client-secret-teste' });
+  });
+
+  it('sem nenhuma variável Pluggy, env.pluggy é null', () => {
+    const env = loadEnv(validEnv);
+    expect(env.pluggy).toBeNull();
+  });
+
+  it('par cliente Pluggy incompleto (só CLIENT_ID) lança erro explicando o que falta', () => {
+    expect(() =>
+      loadEnv({ ...validEnv, PLUGGY_CLIENT_ID: 'pluggy-id-teste' }),
+    ).toThrowError(/PLUGGY_CLIENT_SECRET/);
+  });
+
+  it('par cliente Pluggy completo preenche env.pluggy', () => {
+    const env = loadEnv({
+      ...validEnv,
+      PLUGGY_CLIENT_ID: 'pluggy-id-teste',
+      PLUGGY_CLIENT_SECRET: 'pluggy-secret-teste',
+    });
+
+    expect(env.pluggy).toEqual({ clientId: 'pluggy-id-teste', clientSecret: 'pluggy-secret-teste' });
   });
 });
