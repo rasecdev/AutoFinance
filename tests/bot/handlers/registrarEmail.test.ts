@@ -44,6 +44,7 @@ const ENV_BASE: Env = {
   logLevel: 'info',
   google: null,
   googleOAuthClient: null,
+  pluggy: null,
 };
 
 function criarContextoFake(texto: string, chatId: number) {
