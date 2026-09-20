@@ -125,6 +125,30 @@ services:
     command: sh -c "while true; do node dist/scripts/sincronizarCalendario.js; done"
     restart: unless-stopped
 
+  sincronizar-open-finance-producao:
+    build: .
+    env_file: .env.producao
+    volumes:
+      - producao-db:/app/data
+    command: sh -c "while true; do node dist/scripts/sincronizarOpenFinance.js; done"
+    restart: unless-stopped
+
+  sincronizar-open-finance-homologacao:
+    build: .
+    env_file: .env.homologacao
+    volumes:
+      - homologacao-db:/app/data
+    command: sh -c "while true; do node dist/scripts/sincronizarOpenFinance.js; done"
+    restart: unless-stopped
+
+  renovar-sandbox-pluggy-homologacao:
+    build: .
+    env_file: .env.homologacao
+    volumes:
+      - homologacao-db:/app/data
+    command: sh -c "while true; do node dist/scripts/renovarSandboxPluggy.js; done"
+    restart: unless-stopped
+
 volumes:
   producao-db:
   homologacao-db:
