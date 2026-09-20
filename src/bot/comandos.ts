@@ -45,4 +45,9 @@ export const COMANDOS_BOT: ComandoBot[] = [
     descricao: 'Lista os comandos e o que dá pra pedir conversando',
     regex: /^\/ajuda\b/i,
   },
+  {
+    comando: 'registrar_open_finance',
+    descricao: 'Vincula uma conta bancária conectada via Pluggy',
+    regex: /^\/registrar_open_finance\b/i,
+  },
 ];
