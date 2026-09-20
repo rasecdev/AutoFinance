@@ -7,8 +7,25 @@ import { createLogger } from '../logging/logger.js';
 import { detectarDespesasFixasFaltantes, formatarAlertaDespesasFixas } from '../relatorios/despesasFixas.js';
 import { calcularJanelaPeriodo } from '../relatorios/janela.js';
 import { dormirAte } from './dormirAte.js';
-import { calcularProximoUltimoDiaDoMesAs23h } from './relatorioMensal.js';
 import { tratarErroCriticoJob } from './tratarErroCriticoJob.js';
+
+// Próximo último dia do mês às 23h a partir de `agora` — este job continua
+// disparando no último dia do mês (não no dia 1, diferente do relatório
+// mensal desde 2026-09-20): faz sentido avisar sobre despesa fixa faltante
+// enquanto o mês ainda está correndo, não depois que ele já fechou. Se hoje
+// já é o último dia do mês e ainda não passou das 23h, dispara hoje; senão
+// vai pro último dia do mês seguinte.
+function calcularProximoUltimoDiaDoMesAs23h(agora: Date): Date {
+  const ultimoDiaMesAtual = new Date(agora.getFullYear(), agora.getMonth() + 1, 0).getDate();
+  const candidato = new Date(agora.getFullYear(), agora.getMonth(), ultimoDiaMesAtual, 23, 0, 0, 0);
+
+  if (candidato.getTime() > agora.getTime()) {
+    return candidato;
+  }
+
+  const ultimoDiaProximoMes = new Date(agora.getFullYear(), agora.getMonth() + 2, 0).getDate();
+  return new Date(agora.getFullYear(), agora.getMonth() + 1, ultimoDiaProximoMes, 23, 0, 0, 0);
+}
 
 // Retorna undefined quando não há despesa faltante no período — mesmo
 // princípio de "só alerta quando há algo a decidir" de detectarOportunidades

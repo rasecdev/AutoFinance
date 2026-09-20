@@ -7,7 +7,7 @@ import { criarConta } from '../../src/db/repositories/contas.js';
 import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
 import { criarTransacao } from '../../src/db/repositories/transacoes.js';
-import { calcularProximoDomingoAs23h, montarRelatorioSemanal } from '../../src/scripts/relatorioSemanal.js';
+import { calcularProximaSegundaAs23h, montarRelatorioSemanal } from '../../src/scripts/relatorioSemanal.js';
 
 const CHAVE_TESTE = 'chave-teste-relatorio-semanal';
 
@@ -27,29 +27,29 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-describe('calcularProximoDomingoAs23h', () => {
-  it('quarta-feira: calcula o domingo seguinte às 23h', () => {
-    const resultado = calcularProximoDomingoAs23h(new Date(2026, 2, 18, 10, 0)); // quarta
+describe('calcularProximaSegundaAs23h', () => {
+  it('quarta-feira: calcula a segunda seguinte às 23h', () => {
+    const resultado = calcularProximaSegundaAs23h(new Date(2026, 2, 18, 10, 0)); // quarta
 
-    expect(resultado).toEqual(new Date(2026, 2, 22, 23, 0, 0, 0));
+    expect(resultado).toEqual(new Date(2026, 2, 23, 23, 0, 0, 0));
   });
 
-  it('domingo antes das 23h: dispara hoje às 23h', () => {
-    const resultado = calcularProximoDomingoAs23h(new Date(2026, 2, 22, 20, 0)); // domingo
+  it('segunda antes das 23h: dispara hoje às 23h', () => {
+    const resultado = calcularProximaSegundaAs23h(new Date(2026, 2, 16, 20, 0)); // segunda
 
-    expect(resultado).toEqual(new Date(2026, 2, 22, 23, 0, 0, 0));
+    expect(resultado).toEqual(new Date(2026, 2, 16, 23, 0, 0, 0));
   });
 
-  it('domingo depois das 23h: dispara no domingo seguinte, não hoje de novo', () => {
-    const resultado = calcularProximoDomingoAs23h(new Date(2026, 2, 22, 23, 30)); // domingo, 23h30
+  it('segunda depois das 23h: dispara na segunda seguinte, não hoje de novo', () => {
+    const resultado = calcularProximaSegundaAs23h(new Date(2026, 2, 16, 23, 30)); // segunda, 23h30
 
-    expect(resultado).toEqual(new Date(2026, 2, 29, 23, 0, 0, 0));
+    expect(resultado).toEqual(new Date(2026, 2, 23, 23, 0, 0, 0));
   });
 
-  it('domingo exatamente às 23h: já conta como passado, vai pro próximo', () => {
-    const resultado = calcularProximoDomingoAs23h(new Date(2026, 2, 22, 23, 0, 0, 0));
+  it('segunda exatamente às 23h: já conta como passado, vai pra próxima', () => {
+    const resultado = calcularProximaSegundaAs23h(new Date(2026, 2, 16, 23, 0, 0, 0));
 
-    expect(resultado).toEqual(new Date(2026, 2, 29, 23, 0, 0, 0));
+    expect(resultado).toEqual(new Date(2026, 2, 23, 23, 0, 0, 0));
   });
 });
 
