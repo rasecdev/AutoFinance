@@ -18,20 +18,21 @@ import { agregarUsoIaPeriodo } from '../relatorios/usoIa.js';
 import { dormirAte } from './dormirAte.js';
 import { tratarErroCriticoJob } from './tratarErroCriticoJob.js';
 
-// Próximo último dia do mês às 23h a partir de `agora` — mesmo princípio de
-// calcularProximoDomingoAs23h (relatorioSemanal.ts): se hoje já é o último
-// dia do mês e ainda não passou das 23h, dispara hoje; senão vai pro último
-// dia do mês seguinte. Reavaliado a cada execução do processo (ver main()).
-export function calcularProximoUltimoDiaDoMesAs23h(agora: Date): Date {
-  const ultimoDiaMesAtual = new Date(agora.getFullYear(), agora.getMonth() + 1, 0).getDate();
-  const candidato = new Date(agora.getFullYear(), agora.getMonth(), ultimoDiaMesAtual, 23, 0, 0, 0);
+// Próximo dia 1 do mês às 23h a partir de `agora` — dispara um dia depois
+// do mês já ter fechado de vez, em vez de no próprio último dia à noite
+// (podia sair antes da última transação do dia entrar). Achado real a
+// pedido do usuário (2026-09-20). Mesmo princípio de calcularProximaSegundaAs23h
+// (relatorioSemanal.ts): se hoje já é dia 1 e ainda não passou das 23h,
+// dispara hoje; senão vai pro dia 1 do mês seguinte. Reavaliado a cada
+// execução do processo (ver main()).
+export function calcularProximoDia1DoMesAs23h(agora: Date): Date {
+  const candidato = new Date(agora.getFullYear(), agora.getMonth(), 1, 23, 0, 0, 0);
 
   if (candidato.getTime() > agora.getTime()) {
     return candidato;
   }
 
-  const ultimoDiaProximoMes = new Date(agora.getFullYear(), agora.getMonth() + 2, 0).getDate();
-  return new Date(agora.getFullYear(), agora.getMonth() + 1, ultimoDiaProximoMes, 23, 0, 0, 0);
+  return new Date(agora.getFullYear(), agora.getMonth() + 1, 1, 23, 0, 0, 0);
 }
 
 export async function montarRelatorioMensal(db: DbClient, client: OpenAI, agora: Date = new Date()): Promise<string> {
@@ -90,15 +91,21 @@ async function main(): Promise<void> {
   configurarFormatacaoPadrao(bot);
 
   try {
-    // --agora pula a espera pra permitir teste manual sem esperar o último dia
-    // do mês de verdade (node dist/scripts/relatorioMensal.js --agora).
+    // --agora pula a espera pra permitir teste manual sem esperar o dia 1 do
+    // mês de verdade (node dist/scripts/relatorioMensal.js --agora).
     if (!process.argv.includes('--agora')) {
-      const proximoDisparo = calcularProximoUltimoDiaDoMesAs23h(new Date());
+      const proximoDisparo = calcularProximoDia1DoMesAs23h(new Date());
       logger.info({ proximoDisparo: proximoDisparo.toISOString() }, 'aguardando próximo relatório mensal');
       await dormirAte(proximoDisparo.getTime());
     }
 
-    const texto = await montarRelatorioMensal(db, client);
+    // Dispara no dia 1, mas o relatório é do mês que fechou ontem (último
+    // dia do mês anterior) — usa "ontem" como referência pra
+    // calcularJanelaPeriodo resolver o mês certo, nunca o mês novo que
+    // começou hoje.
+    const ontem = new Date();
+    ontem.setDate(ontem.getDate() - 1);
+    const texto = await montarRelatorioMensal(db, client, ontem);
     for (const chatId of env.telegramAllowedChatIds) {
       await bot.api.sendMessage(chatId, texto);
     }
