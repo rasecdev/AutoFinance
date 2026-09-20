@@ -165,6 +165,72 @@ describe('migrate', () => {
     db.close();
   });
 
+  it('cria contas_open_finance, transacoes_open_finance_processadas e origem/trace_id em transacoes (Fase 8, Tarefa 98)', () => {
+    const db = new Database(caminhoBanco);
+    db.pragma("cipher='sqlcipher'");
+    db.pragma(`key='${CHAVE_TESTE}'`);
+
+    migrate(db);
+
+    const tabelas = db
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
+      .all()
+      .map((row) => (row as { name: string }).name);
+    expect(tabelas).toContain('contas_open_finance');
+    expect(tabelas).toContain('transacoes_open_finance_processadas');
+
+    db.prepare("INSERT INTO bancos (nome) VALUES ('Banco Teste')").run();
+    db.prepare("INSERT INTO contas (banco_id, tipo, apelido) VALUES (1, 'PF', 'Principal')").run();
+
+    // pluggy_account_id único
+    db.prepare(
+      "INSERT INTO contas_open_finance (pluggy_item_id, pluggy_account_id, conta_id, criado_em) VALUES ('item-1', 'conta-pluggy-1', 1, datetime('now'))",
+    ).run();
+    expect(() =>
+      db
+        .prepare(
+          "INSERT INTO contas_open_finance (pluggy_item_id, pluggy_account_id, conta_id, criado_em) VALUES ('item-2', 'conta-pluggy-1', 2, datetime('now'))",
+        )
+        .run(),
+    ).toThrow();
+
+    // exige conta_id OU cartao_id, nunca os dois nulos
+    expect(() =>
+      db
+        .prepare(
+          "INSERT INTO contas_open_finance (pluggy_item_id, pluggy_account_id, criado_em) VALUES ('item-3', 'conta-pluggy-2', datetime('now'))",
+        )
+        .run(),
+    ).toThrow();
+
+    // pluggy_transaction_id único
+    db.prepare(
+      "INSERT INTO transacoes_open_finance_processadas (pluggy_transaction_id, processado_em, resultado) VALUES ('tx-1', datetime('now'), 'transacao_criada')",
+    ).run();
+    expect(() =>
+      db
+        .prepare(
+          "INSERT INTO transacoes_open_finance_processadas (pluggy_transaction_id, processado_em, resultado) VALUES ('tx-1', datetime('now'), 'saque_ignorado')",
+        )
+        .run(),
+    ).toThrow();
+
+    const colunasTransacoes = db
+      .prepare('PRAGMA table_info(transacoes)')
+      .all()
+      .map((row) => (row as { name: string }).name);
+    expect(colunasTransacoes).toContain('origem');
+    expect(colunasTransacoes).toContain('trace_id');
+
+    db.prepare(
+      "INSERT INTO transacoes (conta_id, tipo, valor, categoria, data) VALUES (1, 'despesa', 10, 'mercado', '2026-09-20')",
+    ).run();
+    const origem = db.prepare('SELECT origem FROM transacoes').get() as { origem: string };
+    expect(origem.origem).toBe('manual');
+
+    db.close();
+  });
+
   it('banco cifrado não pode ser lido sem a chave correta', () => {
     const db = new Database(caminhoBanco);
     db.pragma("cipher='sqlcipher'");
