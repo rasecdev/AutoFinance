@@ -205,6 +205,24 @@ describe('detectarOportunidades', () => {
     expect(detectarOportunidades(db)).toEqual([]);
   });
 
+  it('não sugere modelo ":free" como "mais barato" (rate limit baixo, sem SLA, retenção de dados)', () => {
+    definirRoteamento(db, 'conversa_texto', 'openai/gpt-4o-mini', 'tools');
+    registrarSnapshotModelo(db, {
+      modelo: 'openai/gpt-4o-mini',
+      precoPrompt: 1,
+      precoCompletion: 1,
+      capacidades: ['tools'],
+    });
+    registrarSnapshotModelo(db, {
+      modelo: 'cohere/north-mini-code:free',
+      precoPrompt: 0,
+      precoCompletion: 0,
+      capacidades: ['tools'],
+    });
+
+    expect(detectarOportunidades(db)).toEqual([]);
+  });
+
   it('não quebra quando o fluxo roteado não tem snapshot ainda', () => {
     definirRoteamento(db, 'conversa_texto', 'modelo/inexistente-no-catalogo');
 
