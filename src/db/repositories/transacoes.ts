@@ -84,6 +84,42 @@ export function criarTransacao(db: DbClient, transacao: NovaTransacao): Transaca
   };
 }
 
+export type NovaTransacaoOpenFinance = NovaTransacao & { traceId: string };
+
+// Mesmo princípio de criarParcelaEmail (Fase 7, parcelas.ts): função
+// separada de criarTransacao (fluxo manual/tools) pra gravar sempre com
+// origem='open_finance'+trace_id, nunca deixando o chamador esquecer de
+// marcar a origem (sincronizarOpenFinance.ts, Tarefa 103).
+export function criarTransacaoOpenFinance(db: DbClient, transacao: NovaTransacaoOpenFinance): Transacao {
+  const resultado = db
+    .prepare(
+      `INSERT INTO transacoes (conta_id, cartao_id, tipo, valor, categoria, descricao, data, status, origem, trace_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'ativa', 'open_finance', ?)`,
+    )
+    .run(
+      transacao.contaId ?? null,
+      transacao.cartaoId ?? null,
+      transacao.tipo,
+      transacao.valor,
+      transacao.categoria,
+      transacao.descricao ?? null,
+      transacao.data,
+      transacao.traceId,
+    );
+
+  return {
+    id: Number(resultado.lastInsertRowid),
+    contaId: transacao.contaId ?? null,
+    cartaoId: transacao.cartaoId ?? null,
+    tipo: transacao.tipo,
+    valor: transacao.valor,
+    categoria: transacao.categoria,
+    descricao: transacao.descricao ?? null,
+    data: transacao.data,
+    status: 'ativa',
+  };
+}
+
 export function obterTransacao(db: DbClient, id: number): Transacao | undefined {
   const linha = db.prepare('SELECT * FROM transacoes WHERE id = ?').get(id) as
     | LinhaTransacao

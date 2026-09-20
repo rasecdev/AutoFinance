@@ -83,6 +83,17 @@ describe('encontrarTransacaoManualCorrespondente', () => {
 
     expect(resultado).toBe('ambigua');
   });
+
+  it('também busca por cartao_id, quando a conta Pluggy mapeia pra um cartão (compra de crédito)', () => {
+    const cartaoId = criarCartao(db, { contaId, nome: 'Nubank', limite: 5000, diaFechamento: 5, diaVencimento: 10 }).id;
+    db.prepare(
+      "INSERT INTO transacoes (cartao_id, tipo, valor, categoria, data, origem) VALUES (?, 'despesa', 80, 'mercado', '2026-09-10', 'manual')",
+    ).run(cartaoId);
+
+    const resultado = encontrarTransacaoManualCorrespondente(db, { cartaoId, valor: 80, data: '2026-09-10' });
+
+    expect(resultado).toBe('encontrada');
+  });
 });
 
 describe('encontrarPagamentoFaturaOuParcelaCorrespondente', () => {
