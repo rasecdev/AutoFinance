@@ -9,13 +9,13 @@ Ver `tasks/plan.md` pro racional completo de arquitetura e os achados de pesquis
 **Description:** `envSchema` ganha `PLUGGY_CLIENT_ID`/`PLUGGY_CLIENT_SECRET`, opcionais individualmente no schema Zod, validadas como grupo em `loadEnv` — mesmo padrão exato de `env.google` (Fase 7, Tarefa 90): ambas ausentes → `env.pluggy === null` (integração desligada, caminho válido); só uma presente → erro explícito de configuração incompleta; as duas presentes → `env.pluggy = { clientId, clientSecret }`.
 
 **Acceptance criteria:**
-- [ ] Nenhuma variável Pluggy definida → `loadEnv(...).pluggy === null`, sem erro
-- [ ] Só uma das duas presente → `loadEnv` lança erro explicando quais variáveis faltam
-- [ ] As duas presentes → `env.pluggy` com os 2 campos em camelCase
+- [x] Nenhuma variável Pluggy definida → `loadEnv(...).pluggy === null`, sem erro
+- [x] Só uma das duas presente → `loadEnv` lança erro explicando quais variáveis faltam
+- [x] As duas presentes → `env.pluggy` com os 2 campos em camelCase
 
 **Verification:**
-- [ ] `npm test -- tests/config/env.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/config/env.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** None
 
