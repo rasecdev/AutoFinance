@@ -57,13 +57,15 @@ Ver `tasks/plan.md` pro racional completo de arquitetura e os achados de pesquis
 **Description:** `src/integracoes/pluggy/cliente.ts` — client fino sobre `fetch` nativo (sem SDK de terceiro, API da Pluggy é REST simples; avaliar se existe SDK oficial `pluggy-sdk` na Tarefa antes de escrever REST manual, mesmo critério de "não reinventar se já existe pacote maduro" usado nas fases anteriores). Funções: `autenticar(clientId, clientSecret)` (troca por API key, `POST /auth`), `gerarConnectToken(apiKey)` (`POST /connect_token`), `obterItem(apiKey, itemId)` (`GET /items/{id}`), `listarContasDoItem(apiKey, itemId)` (`GET /accounts?itemId=`), `listarTransacoes(apiKey, accountId, desde)` (`GET /transactions`), `atualizarItem(apiKey, itemId)` (`PATCH /items/{id}`, usado por `renovar_sandbox_pluggy`).
 
 **Acceptance criteria:**
-- [ ] `autenticar` troca client id/secret pela API key corretamente (mockado em teste, sem chamada de rede real)
-- [ ] Cada função de leitura lança erro claro (não silencioso) em resposta HTTP de erro da Pluggy
-- [ ] `listarTransacoes` pagina automaticamente se a API devolver mais de uma página (não trunca silenciosamente)
+- [x] `autenticar` troca client id/secret pela API key corretamente (mockado em teste, sem chamada de rede real)
+- [x] Cada função de leitura lança erro claro (não silencioso) em resposta HTTP de erro da Pluggy
+- [x] `listarTransacoes` pagina automaticamente se a API devolver mais de uma página (não trunca silenciosamente)
 
 **Verification:**
-- [ ] `npm test -- tests/integracoes/pluggy/cliente.test.ts` (fetch mockado)
-- [ ] `npm run build`
+- [x] `npm test -- tests/integracoes/pluggy/cliente.test.ts` (fetch mockado)
+- [x] `npm run build`
+
+**Nota de implementação:** não existe SDK oficial `pluggy-sdk`/similar maduro pra Node (verificado antes de escrever) — REST manual sobre `fetch` nativo confirmado como a via certa, mesmo critério das fases anteriores. `gerarConnectToken` usa `accessToken` como nome do campo na resposta (confirmado via docs.pluggy.ai/reference/authentication, não `connectToken` como o nome da função sugeriria).
 
 **Dependencies:** Tarefa 97
 
