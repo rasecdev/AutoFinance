@@ -12,14 +12,16 @@ import { agregarUsoIaPeriodo } from '../relatorios/usoIa.js';
 import { dormirAte } from './dormirAte.js';
 import { tratarErroCriticoJob } from './tratarErroCriticoJob.js';
 
-// Próximo domingo às 23h a partir de `agora` — se já é domingo e ainda não
-// passou das 23h, dispara hoje; se já passou das 23h (ou não é domingo),
-// vai pro domingo seguinte. Reavaliado a cada execução do processo (ver
-// main()), não precisa de lib de cron.
-export function calcularProximoDomingoAs23h(agora: Date): Date {
-  const diaSemana = agora.getDay(); // 0 = domingo
-  const diasAteDomingo = (7 - diaSemana) % 7;
-  const candidato = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + diasAteDomingo, 23, 0, 0, 0);
+// Próxima segunda-feira às 23h a partir de `agora` — dispara um dia depois
+// da semana (segunda-domingo) já ter fechado de vez, em vez de no próprio
+// domingo à noite (podia sair antes da última transação do dia entrar).
+// Achado real a pedido do usuário (2026-09-20). Se já é segunda e ainda não
+// passou das 23h, dispara hoje; senão vai pra segunda seguinte. Reavaliado a
+// cada execução do processo (ver main()), não precisa de lib de cron.
+export function calcularProximaSegundaAs23h(agora: Date): Date {
+  const diaSemana = agora.getDay(); // 0 = domingo, 1 = segunda
+  const diasAteSegunda = (1 - diaSemana + 7) % 7;
+  const candidato = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + diasAteSegunda, 23, 0, 0, 0);
 
   if (candidato.getTime() <= agora.getTime()) {
     candidato.setDate(candidato.getDate() + 7);
@@ -70,15 +72,20 @@ async function main(): Promise<void> {
   configurarFormatacaoPadrao(bot);
 
   try {
-    // --agora pula a espera pra permitir teste manual sem esperar o domingo
+    // --agora pula a espera pra permitir teste manual sem esperar a segunda
     // de verdade (node dist/scripts/relatorioSemanal.js --agora).
     if (!process.argv.includes('--agora')) {
-      const proximoDisparo = calcularProximoDomingoAs23h(new Date());
+      const proximoDisparo = calcularProximaSegundaAs23h(new Date());
       logger.info({ proximoDisparo: proximoDisparo.toISOString() }, 'aguardando próximo relatório semanal');
       await dormirAte(proximoDisparo.getTime());
     }
 
-    const texto = montarRelatorioSemanal(db);
+    // Dispara na segunda, mas o relatório é da semana que fechou ontem
+    // (domingo) — usa "ontem" como referência pra calcularJanelaPeriodo
+    // resolver a semana certa, nunca a semana nova que começou hoje.
+    const ontem = new Date();
+    ontem.setDate(ontem.getDate() - 1);
+    const texto = montarRelatorioSemanal(db, ontem);
     for (const chatId of env.telegramAllowedChatIds) {
       await bot.api.sendMessage(chatId, texto);
     }

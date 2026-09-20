@@ -187,6 +187,24 @@ describe('detectarOportunidades', () => {
     expect(detectarOportunidades(db)).toEqual([]);
   });
 
+  it('não sugere modelo de preço variável (sentinela negativo do OpenRouter) como "mais barato"', () => {
+    definirRoteamento(db, 'conversa_texto', 'openai/gpt-4o-mini', 'tools');
+    registrarSnapshotModelo(db, {
+      modelo: 'openai/gpt-4o-mini',
+      precoPrompt: 1,
+      precoCompletion: 1,
+      capacidades: ['tools'],
+    });
+    registrarSnapshotModelo(db, {
+      modelo: 'openrouter/auto',
+      precoPrompt: -1,
+      precoCompletion: -1,
+      capacidades: ['tools'],
+    });
+
+    expect(detectarOportunidades(db)).toEqual([]);
+  });
+
   it('não quebra quando o fluxo roteado não tem snapshot ainda', () => {
     definirRoteamento(db, 'conversa_texto', 'modelo/inexistente-no-catalogo');
 
@@ -212,6 +230,38 @@ describe('formatarMensagemAlerta', () => {
     expect(texto).toContain('openai/gpt-4o-mini');
     expect(texto).toContain('qwen/qwen3-32b');
     expect(texto).toContain('Nenhuma troca foi feita automaticamente');
+  });
+
+  it('formata preço por token (bem pequeno) como USD por 1M tokens, sem notação científica', () => {
+    const texto = formatarMensagemAlerta([
+      {
+        tipo: 'preco_mudou',
+        fluxo: 'resumir_contexto',
+        modelo: 'deepseek/deepseek-v4-flash',
+        precoAntigo: 1.1172e-7,
+        precoNovo: 1.1088e-7,
+      },
+    ]);
+
+    expect(texto).not.toMatch(/e-\d/);
+    expect(texto).toContain('US$ 0.1117/1M tokens');
+    expect(texto).toContain('US$ 0.1109/1M tokens');
+  });
+
+  it('preço negativo (sentinela do OpenRouter pra modelo de preço variável) não mostra número sem sentido', () => {
+    const texto = formatarMensagemAlerta([
+      {
+        tipo: 'modelo_mais_barato',
+        fluxo: 'conversa_texto',
+        modeloAtual: 'openai/gpt-4o-mini',
+        precoAtual: 7.5e-7,
+        modeloCandidato: 'openrouter/auto',
+        precoCandidato: -2,
+      },
+    ]);
+
+    expect(texto).toContain('preço variável (não fixo)');
+    expect(texto).not.toContain('(-2)');
   });
 });
 
