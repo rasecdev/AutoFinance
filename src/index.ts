@@ -8,6 +8,10 @@ import { createHandlerModelo } from './bot/handlers/modelo.js';
 import { createHandlerModelos } from './bot/handlers/modelos.js';
 import { createHandlerNaoSuportado } from './bot/handlers/naoSuportado.js';
 import { createHandlerCodigoOAuthGoogle, createHandlerRegistrarEmail } from './bot/handlers/registrarEmail.js';
+import {
+  createHandlerMapeamentoOpenFinance,
+  createHandlerRegistrarOpenFinance,
+} from './bot/handlers/registrarOpenFinance.js';
 import { createHandlerTexto } from './bot/handlers/texto.js';
 import { createHandlerVoz } from './bot/handlers/voz.js';
 import { loadEnv } from './config/env.js';
@@ -37,6 +41,8 @@ const handlerModelos = createHandlerModelos(db);
 const handlerRegistrarEmail = createHandlerRegistrarEmail(env);
 const handlerCodigoOAuthGoogle = createHandlerCodigoOAuthGoogle(db, logger);
 const handlerAjuda = createHandlerAjuda();
+const handlerRegistrarOpenFinance = createHandlerRegistrarOpenFinance(env, logger);
+const handlerMapeamentoOpenFinance = createHandlerMapeamentoOpenFinance(db, logger);
 
 const bot = createBot(
   env,
@@ -52,6 +58,8 @@ const bot = createBot(
   handlerRegistrarEmail,
   handlerCodigoOAuthGoogle,
   handlerAjuda,
+  handlerRegistrarOpenFinance,
+  handlerMapeamentoOpenFinance,
 );
 
 // Achado real (2026-09-19): agendamento de auto-apagar (registrarEmail.ts)
