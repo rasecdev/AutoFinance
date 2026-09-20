@@ -1,10 +1,12 @@
 import type { Bot, Context } from 'grammy';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { definirPendenciaOAuthGoogle, removerPendenciaOAuthGoogle } from '../../src/bot/googleOAuthPendencia.js';
+import { definirPendenciaOpenFinance, removerPendenciaOpenFinance } from '../../src/bot/openFinancePendencia.js';
 import { registerRoutes } from '../../src/bot/router.js';
 
 afterEach(() => {
   removerPendenciaOAuthGoogle(9999);
+  removerPendenciaOpenFinance(9999);
 });
 
 function criarBotFake() {
@@ -39,6 +41,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarEmail = vi.fn();
     const handlerCodigoOAuthGoogle = vi.fn();
     const handlerAjuda = vi.fn();
+    const handlerRegistrarOpenFinance = vi.fn();
+    const handlerMapeamentoOpenFinance = vi.fn();
 
     registerRoutes(
       bot,
@@ -53,6 +57,8 @@ describe('registerRoutes', () => {
       handlerRegistrarEmail,
       handlerCodigoOAuthGoogle,
       handlerAjuda,
+      handlerRegistrarOpenFinance,
+      handlerMapeamentoOpenFinance,
     );
 
     expect(bot.on).toHaveBeenCalledWith('message:text', handlerTexto);
@@ -71,6 +77,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarEmail = vi.fn();
     const handlerCodigoOAuthGoogle = vi.fn();
     const handlerAjuda = vi.fn();
+    const handlerRegistrarOpenFinance = vi.fn();
+    const handlerMapeamentoOpenFinance = vi.fn();
 
     registerRoutes(
       bot,
@@ -85,6 +93,8 @@ describe('registerRoutes', () => {
       handlerRegistrarEmail,
       handlerCodigoOAuthGoogle,
       handlerAjuda,
+      handlerRegistrarOpenFinance,
+      handlerMapeamentoOpenFinance,
     );
 
     expect(bot.on).toHaveBeenCalledWith(['message:photo', 'message:document'], handlerMidia);
@@ -103,6 +113,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarEmail = vi.fn();
     const handlerCodigoOAuthGoogle = vi.fn();
     const handlerAjuda = vi.fn();
+    const handlerRegistrarOpenFinance = vi.fn();
+    const handlerMapeamentoOpenFinance = vi.fn();
 
     registerRoutes(
       bot,
@@ -117,6 +129,8 @@ describe('registerRoutes', () => {
       handlerRegistrarEmail,
       handlerCodigoOAuthGoogle,
       handlerAjuda,
+      handlerRegistrarOpenFinance,
+      handlerMapeamentoOpenFinance,
     );
 
     expect(bot.on).toHaveBeenCalledWith('message:voice', handlerVoz);
@@ -135,6 +149,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarEmail = vi.fn();
     const handlerCodigoOAuthGoogle = vi.fn();
     const handlerAjuda = vi.fn();
+    const handlerRegistrarOpenFinance = vi.fn();
+    const handlerMapeamentoOpenFinance = vi.fn();
 
     registerRoutes(
       bot,
@@ -149,6 +165,8 @@ describe('registerRoutes', () => {
       handlerRegistrarEmail,
       handlerCodigoOAuthGoogle,
       handlerAjuda,
+      handlerRegistrarOpenFinance,
+      handlerMapeamentoOpenFinance,
     );
 
     expect(bot.on).toHaveBeenCalledWith('message', handlerNaoSuportado);
@@ -167,6 +185,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarEmail = vi.fn();
     const handlerCodigoOAuthGoogle = vi.fn();
     const handlerAjuda = vi.fn();
+    const handlerRegistrarOpenFinance = vi.fn();
+    const handlerMapeamentoOpenFinance = vi.fn();
 
     registerRoutes(
       bot,
@@ -181,6 +201,8 @@ describe('registerRoutes', () => {
       handlerRegistrarEmail,
       handlerCodigoOAuthGoogle,
       handlerAjuda,
+      handlerRegistrarOpenFinance,
+      handlerMapeamentoOpenFinance,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerFeedback);
@@ -204,6 +226,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarEmail = vi.fn();
     const handlerCodigoOAuthGoogle = vi.fn();
     const handlerAjuda = vi.fn();
+    const handlerRegistrarOpenFinance = vi.fn();
+    const handlerMapeamentoOpenFinance = vi.fn();
 
     registerRoutes(
       bot,
@@ -218,6 +242,8 @@ describe('registerRoutes', () => {
       handlerRegistrarEmail,
       handlerCodigoOAuthGoogle,
       handlerAjuda,
+      handlerRegistrarOpenFinance,
+      handlerMapeamentoOpenFinance,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerFeedbackCorreto);
@@ -242,6 +268,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarEmail = vi.fn();
     const handlerCodigoOAuthGoogle = vi.fn();
     const handlerAjuda = vi.fn();
+    const handlerRegistrarOpenFinance = vi.fn();
+    const handlerMapeamentoOpenFinance = vi.fn();
 
     registerRoutes(
       bot,
@@ -256,6 +284,8 @@ describe('registerRoutes', () => {
       handlerRegistrarEmail,
       handlerCodigoOAuthGoogle,
       handlerAjuda,
+      handlerRegistrarOpenFinance,
+      handlerMapeamentoOpenFinance,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerModelos);
@@ -279,6 +309,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarEmail = vi.fn();
     const handlerCodigoOAuthGoogle = vi.fn();
     const handlerAjuda = vi.fn();
+    const handlerRegistrarOpenFinance = vi.fn();
+    const handlerMapeamentoOpenFinance = vi.fn();
 
     registerRoutes(
       bot,
@@ -293,6 +325,8 @@ describe('registerRoutes', () => {
       handlerRegistrarEmail,
       handlerCodigoOAuthGoogle,
       handlerAjuda,
+      handlerRegistrarOpenFinance,
+      handlerMapeamentoOpenFinance,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerModelo);
@@ -317,6 +351,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarEmail = vi.fn();
     const handlerCodigoOAuthGoogle = vi.fn();
     const handlerAjuda = vi.fn();
+    const handlerRegistrarOpenFinance = vi.fn();
+    const handlerMapeamentoOpenFinance = vi.fn();
 
     registerRoutes(
       bot,
@@ -331,6 +367,8 @@ describe('registerRoutes', () => {
       handlerRegistrarEmail,
       handlerCodigoOAuthGoogle,
       handlerAjuda,
+      handlerRegistrarOpenFinance,
+      handlerMapeamentoOpenFinance,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerRegistrarEmail);
@@ -353,6 +391,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarEmail = vi.fn();
     const handlerCodigoOAuthGoogle = vi.fn();
     const handlerAjuda = vi.fn();
+    const handlerRegistrarOpenFinance = vi.fn();
+    const handlerMapeamentoOpenFinance = vi.fn();
 
     registerRoutes(
       bot,
@@ -367,12 +407,54 @@ describe('registerRoutes', () => {
       handlerRegistrarEmail,
       handlerCodigoOAuthGoogle,
       handlerAjuda,
+      handlerRegistrarOpenFinance,
+      handlerMapeamentoOpenFinance,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerAjuda);
     const predicado = bot.filter.mock.calls[5]?.[0] as (ctx: Context) => boolean;
     expect(predicado(criarCtxComTexto('/ajuda'))).toBe(true);
     expect(predicado(criarCtxComTexto('/Ajuda'))).toBe(true);
+    expect(predicado(criarCtxComTexto('não é o comando'))).toBe(false);
+  });
+
+  it('registra o handler de registrar_open_finance com um filtro pro comando /registrar_open_finance', () => {
+    const bot = criarBotFake();
+    const handlerTexto = vi.fn();
+    const handlerMidia = vi.fn();
+    const handlerVoz = vi.fn();
+    const handlerNaoSuportado = vi.fn();
+    const handlerFeedback = vi.fn();
+    const handlerFeedbackCorreto = vi.fn();
+    const handlerModelo = vi.fn();
+    const handlerModelos = vi.fn();
+    const handlerRegistrarEmail = vi.fn();
+    const handlerCodigoOAuthGoogle = vi.fn();
+    const handlerAjuda = vi.fn();
+    const handlerRegistrarOpenFinance = vi.fn();
+    const handlerMapeamentoOpenFinance = vi.fn();
+
+    registerRoutes(
+      bot,
+      handlerTexto,
+      handlerMidia,
+      handlerVoz,
+      handlerNaoSuportado,
+      handlerFeedback,
+      handlerFeedbackCorreto,
+      handlerModelo,
+      handlerModelos,
+      handlerRegistrarEmail,
+      handlerCodigoOAuthGoogle,
+      handlerAjuda,
+      handlerRegistrarOpenFinance,
+      handlerMapeamentoOpenFinance,
+    );
+
+    expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerRegistrarOpenFinance);
+    const predicado = bot.filter.mock.calls[6]?.[0] as (ctx: Context) => boolean;
+    expect(predicado(criarCtxComTexto('/registrar_open_finance item-123'))).toBe(true);
+    expect(predicado(criarCtxComTexto('/Registrar_open_finance item-123'))).toBe(true);
     expect(predicado(criarCtxComTexto('não é o comando'))).toBe(false);
   });
 
@@ -389,6 +471,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarEmail = vi.fn();
     const handlerCodigoOAuthGoogle = vi.fn();
     const handlerAjuda = vi.fn();
+    const handlerRegistrarOpenFinance = vi.fn();
+    const handlerMapeamentoOpenFinance = vi.fn();
 
     registerRoutes(
       bot,
@@ -403,15 +487,60 @@ describe('registerRoutes', () => {
       handlerRegistrarEmail,
       handlerCodigoOAuthGoogle,
       handlerAjuda,
+      handlerRegistrarOpenFinance,
+      handlerMapeamentoOpenFinance,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerCodigoOAuthGoogle);
-    const predicado = bot.filter.mock.calls[6]?.[0] as (ctx: Context) => boolean;
+    const predicado = bot.filter.mock.calls[7]?.[0] as (ctx: Context) => boolean;
 
     expect(predicado(criarCtxComTextoEChat('4/0Acodigo-qualquer', 9999))).toBe(false);
 
     definirPendenciaOAuthGoogle(9999, {} as never);
     expect(predicado(criarCtxComTextoEChat('4/0Acodigo-qualquer', 9999))).toBe(true);
+    expect(predicado(criarCtxComTextoEChat('qualquer coisa', 8888))).toBe(false);
+  });
+
+  it('registra o handler de mapeamento Open Finance com filtro por pendência ativa no chat', () => {
+    const bot = criarBotFake();
+    const handlerTexto = vi.fn();
+    const handlerMidia = vi.fn();
+    const handlerVoz = vi.fn();
+    const handlerNaoSuportado = vi.fn();
+    const handlerFeedback = vi.fn();
+    const handlerFeedbackCorreto = vi.fn();
+    const handlerModelo = vi.fn();
+    const handlerModelos = vi.fn();
+    const handlerRegistrarEmail = vi.fn();
+    const handlerCodigoOAuthGoogle = vi.fn();
+    const handlerAjuda = vi.fn();
+    const handlerRegistrarOpenFinance = vi.fn();
+    const handlerMapeamentoOpenFinance = vi.fn();
+
+    registerRoutes(
+      bot,
+      handlerTexto,
+      handlerMidia,
+      handlerVoz,
+      handlerNaoSuportado,
+      handlerFeedback,
+      handlerFeedbackCorreto,
+      handlerModelo,
+      handlerModelos,
+      handlerRegistrarEmail,
+      handlerCodigoOAuthGoogle,
+      handlerAjuda,
+      handlerRegistrarOpenFinance,
+      handlerMapeamentoOpenFinance,
+    );
+
+    expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerMapeamentoOpenFinance);
+    const predicado = bot.filter.mock.calls[8]?.[0] as (ctx: Context) => boolean;
+
+    expect(predicado(criarCtxComTextoEChat('1 = Principal', 9999))).toBe(false);
+
+    definirPendenciaOpenFinance(9999, { itemId: 'item-1', contas: [] });
+    expect(predicado(criarCtxComTextoEChat('1 = Principal', 9999))).toBe(true);
     expect(predicado(criarCtxComTextoEChat('qualquer coisa', 8888))).toBe(false);
   });
 });

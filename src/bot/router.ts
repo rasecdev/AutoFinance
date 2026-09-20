@@ -1,6 +1,7 @@
 import type { Bot, Context } from 'grammy';
 import { COMANDOS_BOT } from './comandos.js';
 import { obterPendenciaOAuthGoogle } from './googleOAuthPendencia.js';
+import { obterPendenciaOpenFinance } from './openFinancePendencia.js';
 
 export type Handler = (ctx: Context) => Promise<void>;
 
@@ -24,6 +25,8 @@ export function registerRoutes(
   handlerRegistrarEmail: Handler,
   handlerCodigoOAuthGoogle: Handler,
   handlerAjuda: Handler,
+  handlerRegistrarOpenFinance: Handler,
+  handlerMapeamentoOpenFinance: Handler,
 ): void {
   const handlersPorComando: Record<string, Handler> = {
     errado: handlerFeedback,
@@ -32,6 +35,7 @@ export function registerRoutes(
     modelo: handlerModelo,
     registrar_email: handlerRegistrarEmail,
     ajuda: handlerAjuda,
+    registrar_open_finance: handlerRegistrarOpenFinance,
   };
 
   for (const { comando, regex } of COMANDOS_BOT) {
@@ -48,6 +52,13 @@ export function registerRoutes(
   bot.on('message:text').filter(
     (ctx) => ctx.chat?.id !== undefined && obterPendenciaOAuthGoogle(ctx.chat.id) !== undefined,
     handlerCodigoOAuthGoogle,
+  );
+  // Mesmo princípio, pro mapeamento de conta pendente do /registrar_open_finance
+  // (Fase 8) — também fica depois dos comandos, "/registrar_open_finance" de
+  // novo sempre gera uma lista nova em vez de ser interpretado como mapeamento.
+  bot.on('message:text').filter(
+    (ctx) => ctx.chat?.id !== undefined && obterPendenciaOpenFinance(ctx.chat.id) !== undefined,
+    handlerMapeamentoOpenFinance,
   );
   bot.on('message:text', handlerTexto);
   bot.on(['message:photo', 'message:document'], handlerMidia);
