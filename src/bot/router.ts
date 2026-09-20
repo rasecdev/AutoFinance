@@ -23,6 +23,7 @@ export function registerRoutes(
   handlerModelos: Handler,
   handlerRegistrarEmail: Handler,
   handlerCodigoOAuthGoogle: Handler,
+  handlerAjuda: Handler,
 ): void {
   const handlersPorComando: Record<string, Handler> = {
     errado: handlerFeedback,
@@ -30,6 +31,7 @@ export function registerRoutes(
     modelos: handlerModelos,
     modelo: handlerModelo,
     registrar_email: handlerRegistrarEmail,
+    ajuda: handlerAjuda,
   };
 
   for (const { comando, regex } of COMANDOS_BOT) {

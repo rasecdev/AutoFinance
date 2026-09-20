@@ -40,4 +40,9 @@ export const COMANDOS_BOT: ComandoBot[] = [
     descricao: 'Vincula sua conta Google (Gmail + Calendar)',
     regex: /^\/registrar_email\b/i,
   },
+  {
+    comando: 'ajuda',
+    descricao: 'Lista os comandos e o que dá pra pedir conversando',
+    regex: /^\/ajuda\b/i,
+  },
 ];

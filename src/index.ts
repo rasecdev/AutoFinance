@@ -1,6 +1,7 @@
 import { createOpenRouterClient } from './ai/openrouter.js';
 import { createBot } from './bot/bot.js';
 import { COMANDOS_BOT } from './bot/comandos.js';
+import { createHandlerAjuda } from './bot/handlers/ajuda.js';
 import { createHandlerFeedback } from './bot/handlers/feedback.js';
 import { createHandlerMidia } from './bot/handlers/midia.js';
 import { createHandlerModelo } from './bot/handlers/modelo.js';
@@ -35,6 +36,7 @@ const handlerModelo = createHandlerModelo(db);
 const handlerModelos = createHandlerModelos(db);
 const handlerRegistrarEmail = createHandlerRegistrarEmail(env);
 const handlerCodigoOAuthGoogle = createHandlerCodigoOAuthGoogle(db, logger);
+const handlerAjuda = createHandlerAjuda();
 
 const bot = createBot(
   env,
@@ -49,6 +51,7 @@ const bot = createBot(
   handlerModelos,
   handlerRegistrarEmail,
   handlerCodigoOAuthGoogle,
+  handlerAjuda,
 );
 
 // Achado real (2026-09-19): agendamento de auto-apagar (registrarEmail.ts)
