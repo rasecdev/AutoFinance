@@ -97,6 +97,11 @@ export type TransacaoPluggy = {
   amount: number;
   date: string;
   category?: string;
+  // Achado real (Tarefa 102): "category" precisa de plano Pro da Pluggy e
+  // não documenta valores fixos; "operationType" (ex: "SAQUE") só existe em
+  // conectores Open Finance, mas é o sinal mais confiável de saque em
+  // espécie quando presente — ver pareceSaque em correspondenciaOpenFinance.ts.
+  operationType?: string;
 };
 
 // Pagina automaticamente (results + page/totalPages, mesmo formato de lista
