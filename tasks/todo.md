@@ -1,211 +1,226 @@
-# Todo — Fase 7: Integração com e-mail e calendário
+# Todo — Fase 8: Agregação bancária via Open Finance ("Meu Pluggy")
 
-Ver `tasks/plan.md` pro racional completo de arquitetura.
-
----
-
-### Tarefa 89: migration 0011 — idempotência de e-mail + rastreio de evento de calendário
-
-**Description:** Nova migration `src/db/migrations/0011_google_integracao.sql` cria a tabela `emails_processados` (`id`, `gmail_message_id TEXT NOT NULL UNIQUE`, `processado_em TEXT NOT NULL`, `resultado TEXT NOT NULL CHECK (resultado IN ('fatura_registrada', 'parcela_registrada', 'pendente_confirmacao', 'sem_correspondencia', 'ignorado_nao_e_fatura'))`) e adiciona a coluna `evento_calendario_id TEXT` (nullable) em `faturas` e `parcelas` via `ALTER TABLE`.
-
-**Acceptance criteria:**
-- [x] `emails_processados` criada com `gmail_message_id` único (constraint garante que o mesmo e-mail nunca é processado duas vezes)
-- [x] `faturas.evento_calendario_id` e `parcelas.evento_calendario_id` existem, nullable, sem default
-- [x] Migration roda em banco já existente (com dado) sem quebrar nenhuma tabela existente
-
-**Verification:**
-- [x] `npm test -- tests/db/migrate.test.ts`
-- [x] `npm run build`
-
-**Dependencies:** None
-
-**Files likely touched:**
-- `src/db/migrations/0011_google_integracao.sql`
-- `tests/db/migrate.test.ts`
-
-**Estimated scope:** Small (1 arquivo SQL, mesmo padrão das 10 migrations anteriores)
+Ver `tasks/plan.md` pro racional completo de arquitetura e os achados de pesquisa que mudaram o desenho original (widget sem servidor público, polling em vez de webhook).
 
 ---
 
-### Tarefa 90: `env.ts` — grupo opcional de variáveis Google
+### Tarefa 97: `env.ts` — grupo opcional de variáveis Pluggy
 
-**Description:** `envSchema` ganha `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN`, `GOOGLE_CALENDAR_ID`, todas opcionais individualmente no schema Zod, mas validadas como grupo em `loadEnv`: se as três primeiras (`CLIENT_ID`/`CLIENT_SECRET`/`REFRESH_TOKEN`) estiverem todas ausentes, `env.google` é `null` (integração desligada, caminho válido conforme Ambientes no PLANO.md); se qualquer uma estiver presente mas não todas, lança erro de configuração explícito (mesmo padrão de mensagem agregada já usado pro resto do arquivo). `GOOGLE_CALENDAR_ID` só é exigido quando o grupo está presente (default aceitável: `'primary'`, já que é a mesma conta do Gmail).
+**Description:** `envSchema` ganha `PLUGGY_CLIENT_ID`/`PLUGGY_CLIENT_SECRET`, opcionais individualmente no schema Zod, validadas como grupo em `loadEnv` — mesmo padrão exato de `env.google` (Fase 7, Tarefa 90): ambas ausentes → `env.pluggy === null` (integração desligada, caminho válido); só uma presente → erro explícito de configuração incompleta; as duas presentes → `env.pluggy = { clientId, clientSecret }`.
 
 **Acceptance criteria:**
-- [x] Nenhuma variável Google definida → `loadEnv(...).google === null`, sem erro
-- [x] As três obrigatórias do grupo presentes, sem `GOOGLE_CALENDAR_ID` → `google.calendarId === 'primary'`
-- [x] Só `GOOGLE_CLIENT_ID` presente (grupo incompleto) → `loadEnv` lança erro explicando quais variáveis faltam
-- [x] Grupo completo → `env.google` com os 4 campos em camelCase, mesmo padrão do resto do `Env`
+- [ ] Nenhuma variável Pluggy definida → `loadEnv(...).pluggy === null`, sem erro
+- [ ] Só uma das duas presente → `loadEnv` lança erro explicando quais variáveis faltam
+- [ ] As duas presentes → `env.pluggy` com os 2 campos em camelCase
 
 **Verification:**
-- [x] `npm test -- tests/config/env.test.ts`
-- [x] `npm run build`
+- [ ] `npm test -- tests/config/env.test.ts`
+- [ ] `npm run build`
 
 **Dependencies:** None
 
 **Files likely touched:**
 - `src/config/env.ts`
 - `tests/config/env.test.ts`
+- `.env.example`
 
-**Estimated scope:** Small (1 arquivo de config + teste)
+**Estimated scope:** Small (mesmo padrão já usado 1x, Fase 7)
 
 ---
 
-### Tarefa 91: módulo de autenticação Google + script manual de setup
+### Tarefa 98: migrations — mapeamento de conta, idempotência de sincronização, origem de transação
 
-**Description:** `src/integracoes/google/auth.ts` expõe uma factory que recebe `Env['google']` (não nulo) e devolve clients autenticados de Gmail (`gmail.readonly`) e Calendar (`calendar.events`) via `googleapis`, usando um `OAuth2Client` configurado com o refresh token — sem fluxo de consentimento embutido (isso é o script manual). `src/scripts/configurarGoogleOAuth.ts` é um script de linha de comando rodado manualmente uma vez por ambiente: imprime a URL de consentimento OAuth (com os dois scopes), lê o código de autorização colado pelo usuário via stdin, troca por tokens e imprime o `refresh_token` resultante pra o usuário colar em `.env.producao`/`.env.homologacao` — não grava nada em disco, não é chamado por nenhum job.
+**Description:** Nova migration `src/db/migrations/0014_open_finance.sql` cria três coisas: (1) `contas_open_finance` (`id`, `pluggy_item_id TEXT NOT NULL`, `pluggy_account_id TEXT NOT NULL UNIQUE`, `conta_id INTEGER REFERENCES contas(id)`, `cartao_id INTEGER REFERENCES cartoes(id)`, `criado_em TEXT NOT NULL`, `CHECK ((conta_id IS NOT NULL) OR (cartao_id IS NOT NULL))` — mesmo princípio de exclusividade já usado em `transacoes`); (2) `transacoes_open_finance_processadas` (`id`, `pluggy_transaction_id TEXT NOT NULL UNIQUE`, `processado_em TEXT NOT NULL`, `resultado TEXT NOT NULL CHECK (resultado IN ('transacao_criada', 'correspondencia_manual', 'correspondencia_fatura_parcela', 'saque_ignorado'))` — mesmo papel de `emails_processados`, mas sem pendência de confirmação, já que o resultado é sempre imediato); (3) `ALTER TABLE transacoes ADD COLUMN origem TEXT NOT NULL CHECK (origem IN ('manual', 'open_finance')) DEFAULT 'manual'` e `ADD COLUMN trace_id TEXT` — mesmo par já usado em `parcelas` desde a Fase 1.
 
 **Acceptance criteria:**
-- [x] `criarClientesGoogle(googleEnv)` devolve um client Gmail e um client Calendar autenticados, ambos usando o mesmo `OAuth2Client`
-- [x] `configurarGoogleOAuth.ts` imprime a URL de consentimento com os scopes corretos (`gmail.readonly`, `calendar.events`) antes de pedir o código
-- [x] Troca de código por token usa o SDK oficial (`google-auth-library`/`googleapis`), sem chamada HTTP manual
+- [ ] `contas_open_finance` criada, `pluggy_account_id` único, exige conta OU cartão (nunca os dois nulos)
+- [ ] `transacoes_open_finance_processadas` criada, `pluggy_transaction_id` único
+- [ ] `transacoes.origem` default `'manual'` em linha já existente (migração não quebra dado atual), aceita `'open_finance'`
+- [ ] Migration roda em banco já existente sem quebrar nenhuma tabela
 
 **Verification:**
-- [x] `npm test -- tests/integracoes/google/auth.test.ts` (client OAuth mockado, sem chamada de rede real)
-- [x] `npm run build`
+- [ ] `npm test -- tests/db/migrate.test.ts`
+- [ ] `npm run build`
 
-**Dependencies:** Tarefa 90
+**Dependencies:** None
 
 **Files likely touched:**
-- `src/integracoes/google/auth.ts`
-- `src/scripts/configurarGoogleOAuth.ts`
-- `tests/integracoes/google/auth.test.ts`
+- `src/db/migrations/0014_open_finance.sql`
+- `tests/db/migrate.test.ts`
 
-**Estimated scope:** Medium (setup de OAuth costuma ter mais nuance de tipo/erro que o tamanho sugere)
+**Estimated scope:** Small (SQL puro, mesmo padrão das 13 migrations anteriores)
 
 ---
 
-### Tarefa 92: lógica de correspondência de fatura/parcela
+### Tarefa 99: client HTTP da API Pluggy
 
-**Description:** Funções puras de correspondência, testáveis sem Gmail/IA envolvidos: `encontrarFaturaCorrespondente(db, { cartaoId, mesReferencia })` (busca exata) e `encontrarParcelaCorrespondente(db, { dividaId, numeroParcela, valor, dataVencimento })` (busca exata por número quando disponível; senão aproximação por valor ±1% e janela de data dentro das parcelas `pendente` da dívida). Reaproveita `resolverCartaoId`/`resolverContaId`/equivalente de dívida já existentes em `src/ai/tools/resolucao.ts` pra resolver o cartão/dívida a partir do texto extraído do e-mail antes de chamar essas funções.
+**Description:** `src/integracoes/pluggy/cliente.ts` — client fino sobre `fetch` nativo (sem SDK de terceiro, API da Pluggy é REST simples; avaliar se existe SDK oficial `pluggy-sdk` na Tarefa antes de escrever REST manual, mesmo critério de "não reinventar se já existe pacote maduro" usado nas fases anteriores). Funções: `autenticar(clientId, clientSecret)` (troca por API key, `POST /auth`), `gerarConnectToken(apiKey)` (`POST /connect_token`), `obterItem(apiKey, itemId)` (`GET /items/{id}`), `listarContasDoItem(apiKey, itemId)` (`GET /accounts?itemId=`), `listarTransacoes(apiKey, accountId, desde)` (`GET /transactions`), `atualizarItem(apiKey, itemId)` (`PATCH /items/{id}`, usado por `renovar_sandbox_pluggy`).
 
 **Acceptance criteria:**
-- [x] Fatura existente com `cartao_id`+`mes_referencia` iguais → encontrada
-- [x] Sem fatura correspondente pro par → `undefined`/`null`, sem lançar erro
-- [x] Parcela com número informado e batendo → encontrada por número, ignora aproximação
-- [x] Parcela sem número, valor dentro da tolerância e data dentro da janela, dívida com só uma parcela `pendente` candidata → encontrada por aproximação
-- [x] Parcela sem número e mais de uma parcela `pendente` candidata dentro da tolerância (ambíguo) → não resolve sozinho, devolve indicação de ambiguidade em vez de escolher errado
+- [ ] `autenticar` troca client id/secret pela API key corretamente (mockado em teste, sem chamada de rede real)
+- [ ] Cada função de leitura lança erro claro (não silencioso) em resposta HTTP de erro da Pluggy
+- [ ] `listarTransacoes` pagina automaticamente se a API devolver mais de uma página (não trunca silenciosamente)
 
 **Verification:**
-- [x] `npm test -- tests/db/correspondenciaFaturaParcela.test.ts`
-- [x] `npm run build`
+- [ ] `npm test -- tests/integracoes/pluggy/cliente.test.ts` (fetch mockado)
+- [ ] `npm run build`
 
-**Dependencies:** None (independente da Tarefa 89-91, só precisa do schema já existente de faturas/parcelas)
+**Dependencies:** Tarefa 97
 
 **Files likely touched:**
-- `src/db/repositories/correspondenciaFaturaParcela.ts`
-- `tests/db/correspondenciaFaturaParcela.test.ts`
+- `src/integracoes/pluggy/cliente.ts`
+- `tests/integracoes/pluggy/cliente.test.ts`
 
-**Estimated scope:** Medium (regra de aproximação com caso de ambiguidade é a parte não trivial)
+**Estimated scope:** Medium (várias chamadas pequenas, mas cada uma simples)
 
 ---
 
-### Tarefa 93: tools `registrar_fatura_email` e `registrar_parcela_email`
+### Tarefa 100: script `gerarConnectTokenPluggy.ts` + página estática do widget
 
-**Description:** Duas tools novas em `src/ai/tools/`, seguindo o padrão de `transacoesEmLote.ts` (`requerConfirmacao: true` fixo, `avisoConfirmacao` monta resumo legível pra mensagem de confirmação). `registrar_fatura_email`: recebe cartão/mês/valor/status já resolvidos, faz upsert em `faturas` usando `encontrarFaturaCorrespondente` (Tarefa 92) — atualiza se achou, cria se não achou (e o argumento já veio com confirmação explícita do usuário pra criar). `registrar_parcela_email`: mesma ideia pra `parcelas`, sempre grava `origem: 'email'` e `trace_id` (referência à extração que originou o registro, mesmo campo já previsto no schema desde a Tarefa 1). Ambas entram em `montarToolsConversa`.
+**Description:** `src/scripts/gerarConnectTokenPluggy.ts` — script de linha de comando rodado manualmente uma vez por conexão: autentica com `env.pluggy` (client id/secret), gera e imprime um `connect_token` novo (validade curta, mesma lógica de expiração do código OAuth do Google — token de uso único/curto). `scripts/pluggyConnectWidget.html` — página estática (não faz parte do build/deploy, não é servida por nenhum processo do AutoFinance) carregando o SDK do Pluggy Connect via CDN, com um campo pra colar o `connect_token` impresso pelo script e iniciar o widget; ao terminar (`onSuccess`), mostra o `item_id` na tela pra o usuário copiar. Documentar no próprio HTML (comentário visível) que esse arquivo NUNCA deve ser hospedado publicamente — é só pra abrir localmente.
 
 **Acceptance criteria:**
-- [x] `registrar_fatura_email` com correspondência encontrada → atualiza a linha existente, não cria duplicata
-- [x] `registrar_fatura_email` sem correspondência → cria linha nova em `faturas`
-- [x] `registrar_parcela_email` grava `origem='email'` e `trace_id` sempre
-- [x] `avisoConfirmacao` de cada tool deixa explícito se é atualização ou criação nova (informação que o usuário usa pra decidir confirmar ou não)
+- [ ] Script imprime um `connect_token` válido usando `env.pluggy`
+- [ ] Script sai com erro claro se `env.pluggy === null` (mesmo padrão de erro dos outros scripts manuais)
+- [ ] Página HTML abre localmente (`file://` ou servidor estático temporário) e carrega o widget sem erro de console — validado manualmente pelo usuário (não executável de forma automatizada, mesmo caso do consentimento OAuth da Fase 7)
 
 **Verification:**
-- [x] `npm test -- tests/ai/tools/registrarFaturaEmail.test.ts tests/ai/tools/registrarParcelaEmail.test.ts`
-- [x] `npm run build`
+- [ ] `npm test -- tests/scripts/gerarConnectTokenPluggy.test.ts`
+- [ ] `npm run build`
+- [ ] Manual: usuário abre a página, cola o token, testa a conexão com uma conta sandbox
 
-**Dependencies:** Tarefa 92
+**Dependencies:** Tarefa 99
 
 **Files likely touched:**
-- `src/ai/tools/registrarFaturaEmail.ts`
-- `src/ai/tools/registrarParcelaEmail.ts`
-- `src/ai/tools/index.ts` (ou onde `montarToolsConversa` registra a lista)
-- `tests/ai/tools/registrarFaturaEmail.test.ts`
-- `tests/ai/tools/registrarParcelaEmail.test.ts`
+- `src/scripts/gerarConnectTokenPluggy.ts`
+- `scripts/pluggyConnectWidget.html`
+- `tests/scripts/gerarConnectTokenPluggy.test.ts`
 
-**Estimated scope:** Medium (2 tools, mas mesmo padrão já usado 1x na Fase 6 — pouco código novo por tool)
+**Estimated scope:** Medium (a parte HTML/SDK tem risco de fricção real — ver Risks em `tasks/plan.md`)
 
 ---
 
-### Tarefa 94: job `lerEmailFaturas.ts`
+### Tarefa 101: comando `/registrar_open_finance <item_id>` no bot
 
-**Description:** Novo script em `src/scripts/lerEmailFaturas.ts`, seguindo o padrão de `verificarDespesasFixas.ts` (`loadEnv`, `createLogger`, `getDb`, `new Bot`, `dormirAte` num intervalo curto e regular — não "próximo horário fixo" como os relatórios, é polling periódico —, `tratarErroCriticoJob` no catch, guard `--agora` pra teste manual). Se `env.google === null`, loga que a integração está desligada e sai sem erro (guard logo no início do `main`). Orquestra: busca e-mails com anexo desde o último `gmail_message_id` processado (`emails_processados`, ordenado por data), ignora os que já estão na tabela; pra cada novo, baixa o anexo (PDF/imagem), chama `extrairComprovante` (Fase 6, sem alteração de assinatura); se não for `fatura_cartao`/`boleto_divida`, marca `ignorado_nao_e_fatura` e segue; se for, resolve cartão/dívida por texto e roda a correspondência (Tarefa 92), monta a tool certa (Tarefa 93) com os argumentos, `definirPendencia(chatId, {...})` pra cada chat permitido (mesmo padrão de `verificarDespesasFixas`, que itera `telegramAllowedChatIds`) e manda a pergunta de confirmação via `bot.api.sendMessage`; marca `emails_processados` com o resultado (`pendente_confirmacao` nesse ponto — o resultado final de fato só é sabido quando o usuário confirmar depois, e o registro de "processado" aqui é sobre não reler o e-mail, não sobre o desfecho da confirmação).
+**Description:** Novo handler em `src/bot/handlers/registrarOpenFinance.ts`, seguindo o padrão de mensagens explicativas do `/registrar_email` (Fase 7): usuário cola `/registrar_open_finance <item_id>` depois de conectar pelo widget local (Tarefa 100). Handler chama `obterItem`+`listarContasDoItem` (Tarefa 99), monta uma mensagem listando as contas encontradas (banco, tipo, últimos dígitos) e pede pro usuário responder com o mapeamento pra `conta_id`/`cartao_id` já cadastrados (reaproveita `resolverCartaoId`/`resolverContaId` de `src/ai/tools/resolucao.ts` pra aceitar nome/apelido em vez de exigir id numérico). Confirmado o mapeamento, grava em `contas_open_finance`.
 
 **Acceptance criteria:**
-- [x] `env.google === null` → job loga e sai, sem chamar Gmail, sem erro
-- [x] E-mail já em `emails_processados` → ignorado, não reprocessado
-- [x] E-mail novo com anexo reconhecido como fatura/boleto → pendência criada, mensagem de confirmação enviada ao(s) chat(s) permitido(s), e-mail marcado como processado
-- [x] E-mail novo sem anexo reconhecível como fatura/boleto (ex: `extrairComprovante` devolve "não é comprovante") → marcado `ignorado_nao_e_fatura`, sem mensagem enviada
-- [x] Erro em qualquer etapa → `tratarErroCriticoJob` chamado, processo sai com erro (loop do compose reinicia)
+- [ ] `item_id` inválido/inexistente → mensagem de erro clara, nada gravado
+- [ ] `item_id` válido → lista as contas encontradas pelo Pluggy corretamente
+- [ ] Mapeamento confirmado pelo usuário → grava em `contas_open_finance`, sem duplicar se `pluggy_account_id` já existir (upsert)
+- [ ] Sem `env.pluggy` configurado → mesma mensagem de "precisa configurar no servidor" do `/registrar_email`
 
 **Verification:**
-- [x] `npm test -- tests/scripts/lerEmailFaturas.test.ts` (Gmail client e `extrairComprovante` mockados)
-- [x] `npm run build`
+- [ ] `npm test -- tests/bot/handlers/registrarOpenFinance.test.ts`
+- [ ] `npm run build`
 
-**Dependencies:** Tarefa 91, Tarefa 93
+**Dependencies:** Tarefa 99
 
 **Files likely touched:**
-- `src/scripts/lerEmailFaturas.ts`
-- `tests/scripts/lerEmailFaturas.test.ts`
+- `src/bot/handlers/registrarOpenFinance.ts`
+- `src/bot/router.ts`, `src/bot/bot.ts`, `src/index.ts` (wiring do novo comando)
+- `tests/bot/handlers/registrarOpenFinance.test.ts`
 
-**Estimated scope:** Large (orquestra várias peças — se ao implementar ficar claro que precisa quebrar em mais de uma tarefa, ajustar `tasks/todo.md` antes de seguir, conforme a diretriz de tamanho da skill de planejamento)
-
-**Nota de implementação:** não precisou quebrar em mais tarefas, mas revelou uma lacuna real no schema de extração — `extrairComprovante` (Fase 6) não capturava nenhum dado que identificasse QUAL cartão/dívida um documento se refere, essencial pra rodar a correspondência da Tarefa 92. Resolvido com um campo novo opcional `identificador` (nome do banco/cartão/credor visível no documento) em `ResultadoExtracaoComprovante` — não quebra a Fase 6 (campo opcional, prompt só pede quando `tipoDocumento` é fatura/boleto). Também precisou de `resolverDividaPorIdentificador` novo em `resolucao.ts` (busca por texto livre entre todas as dívidas ativas, sem exigir `tipo` — diferente de `resolverDividaGlobal`, que sempre sabe o tipo pela intenção do chat) e do repositório `src/db/repositories/emailsProcessados.ts` (não previsto na lista de arquivos, necessário pra marcar `emails_processados`).
+**Estimated scope:** Medium (fluxo conversacional de mapeamento é a parte não trivial)
 
 ---
 
-### Tarefa 95: job `sincronizarCalendario.ts`
+### Tarefa 102: lógica de correspondência (duas checagens + saque)
 
-**Description:** Novo script em `src/scripts/sincronizarCalendario.ts`, mesmo esqueleto de job (`loadEnv`/`dormirAte`/`tratarErroCriticoJob`/guard `env.google === null`/guard `--agora`). Varre `faturas` com `status='aberta'` e `parcelas` com `status='pendente'` cujo vencimento cai dentro de uma janela de lookahead (constante configurável no código, ex. 60 dias — não é variável de ambiente, não foi pedido). Pra cada item: `evento_calendario_id` nulo → `calendar.events.insert` (título com cartão/dívida + valor, data = vencimento), persiste o id retornado na linha imediatamente; `evento_calendario_id` presente → `calendar.events.update` só se valor/data mudaram desde a última sincronização (evita chamada desnecessária). Também varre faturas/parcelas com `evento_calendario_id` não nulo cujo status virou `paga`/`cancelada`/`renegociada` desde o último ciclo → `calendar.events.delete` + limpa a coluna.
+**Description:** `src/db/repositories/correspondenciaOpenFinance.ts` — funções puras testáveis: `encontrarTransacaoManualCorrespondente(db, { contaId, valor, data })` (checagem 1, tolerância de data ±1-2 dias como já usado na Fase 7 pra parcela); `encontrarPagamentoFaturaOuParcelaCorrespondente(db, { contaId, valor, data })` (checagem 2, contra `faturas.data_pagamento`/`parcelas.data_pagamento` já pagas); `pareceSaque(transacaoPluggy)` (heurística por categoria/descrição — **valor exato da categoria a confirmar com dado real do sandbox nesta tarefa, documentar como achado real assim que descoberto**). As três chamadas nessa ordem antes de decidir criar `transacao` nova.
 
 **Acceptance criteria:**
-- [x] Fatura `aberta` sem `evento_calendario_id`, vencimento dentro da janela → evento criado, id persistido
-- [x] Fatura já com `evento_calendario_id`, sem mudança de valor/data → nenhuma chamada de update feita
-- [x] Fatura com `evento_calendario_id` que virou `paga` → evento removido do Calendar, coluna volta a `null`
-- [x] Item fora da janela de lookahead → ignorado nesse ciclo (não cria evento cedo demais)
-- [x] `env.google === null` → job sai sem chamar Calendar
+- [ ] Transação sincronizada batendo com uma manual existente (conta+valor+data aproximada) → não cria nova, marca `correspondencia_manual`
+- [ ] Transação sincronizada batendo com pagamento de fatura/parcela já paga → não cria `transacao` de despesa, marca `correspondencia_fatura_parcela`
+- [ ] Transação identificada como saque → não cria `transacao`, marca `saque_ignorado`
+- [ ] Sem nenhuma correspondência e não é saque → sinaliza "criar transação nova"
+- [ ] Ambiguidade entre múltiplas manuais candidatas → não resolve sozinho (mesmo princípio da Fase 7)
 
 **Verification:**
-- [x] `npm test -- tests/scripts/sincronizarCalendario.test.ts` (Calendar client mockado)
-- [x] `npm run build`
+- [ ] `npm test -- tests/db/correspondenciaOpenFinance.test.ts`
+- [ ] `npm run build`
 
-**Nota de implementação:** "sem mudança → nenhum update" checado via `calendar.events.get` (busca o evento salvo, compara `summary`/`start.date` contra o que seria gravado agora, só chama `events.update` se algo mudou) — uma leitura a mais por item com evento existente, troca aceitável pra evitar escrita desnecessária de verdade. Também precisou expor `eventoCalendarioId` em `Fatura`/`Parcela` (novas colunas da Tarefa 89 ainda não estavam nos tipos de repositório) e novas `atualizarEventoCalendarioFatura`/`atualizarEventoCalendarioParcela`/`listarFaturasComEventoParaRemover`/`listarParcelasComEventoParaRemover`, não previstas na lista de arquivos.
-
-**Dependencies:** Tarefa 91
+**Dependencies:** Tarefa 98
 
 **Files likely touched:**
-- `src/scripts/sincronizarCalendario.ts`
-- `tests/scripts/sincronizarCalendario.test.ts`
+- `src/db/repositories/correspondenciaOpenFinance.ts`
+- `tests/db/correspondenciaOpenFinance.test.ts`
 
-**Estimated scope:** Medium
+**Estimated scope:** Medium/Large (heurística de saque é o item de maior incerteza real da fase — se ficar grande demais ao implementar, quebrar em tarefa própria antes de seguir, conforme a diretriz de tamanho desta skill)
 
 ---
 
-### Tarefa 96: wiring (`docker-compose.yml`, dependência `googleapis`)
+### Tarefa 103: job `sincronizarOpenFinance.ts`
 
-**Description:** `package.json` ganha `googleapis` (avaliar `npm audit` antes de fechar — se vier vulnerabilidade sem correção, considerar `google-auth-library` sozinho + chamadas REST diretas como Plano B, mesmo critério já usado na Fase 6 parte 13 pra trocar `xlsx` por `read-excel-file`). `docker-compose.yml` ganha 4 serviços novos (`ler-email-faturas-producao`/`-homologacao`, `sincronizar-calendario-producao`/`-homologacao`), mesmo padrão `while true; do node dist/scripts/<job>.js; done` dos jobs existentes.
+**Description:** Novo script em `src/scripts/sincronizarOpenFinance.ts`, mesmo esqueleto de job das Fases 6/7 (`loadEnv`/`createLogger`/`getDb`/`dormirAte`/`tratarErroCriticoJob`/guard `--agora`/guard `env.pluggy === null` sai sem erro, dormindo o intervalo normal antes de sair — mesmo achado real já corrigido na Fase 7 pro busy-loop do compose). Pra cada linha de `contas_open_finance`: lista transações novas via `listarTransacoes` (desde o último processamento), ignora as já em `transacoes_open_finance_processadas`; pra cada nova, roda a correspondência (Tarefa 102) na ordem definida; se "criar transação nova", grava direto em `transacoes` com `origem='open_finance'`+`trace_id`, sem `confirmacoes_pendentes` (fonte primária, eco simples via mensagem ao(s) chat(s) permitido(s), mesmo padrão de `registrar_transacao`); marca `transacoes_open_finance_processadas` com o resultado em qualquer um dos quatro desfechos.
 
 **Acceptance criteria:**
-- [x] `npm audit` sem vulnerabilidade alta/crítica sem correção após adicionar a dependência escolhida (já resolvido na Tarefa 91 — `googleapis`, 0 vulnerabilidades)
-- [x] 4 serviços novos no `docker-compose.yml`, cada um com seu `env_file` e volume corretos (mesmo padrão dos serviços existentes)
-- [x] `docker compose config` (ou equivalente de validação de sintaxe) sem erro — validado via `python -c "yaml.safe_load(...)"` (Docker CLI não disponível neste ambiente)
+- [ ] `env.pluggy === null` → job dorme o intervalo normal e sai, sem chamar a API
+- [ ] Transação já processada (`pluggy_transaction_id` na tabela) → ignorada, não reprocessada
+- [ ] Transação nova sem correspondência → `transacao` criada com `origem='open_finance'`, mensagem de eco enviada ao(s) chat(s) permitido(s)
+- [ ] Transação com correspondência (qualquer uma das checagens) → não cria `transacao` nova, sem mensagem enviada (silencioso, mesmo princípio de "só avisa quando há pendência" já usado em `verificarDespesasFixas`)
+- [ ] Erro em qualquer etapa → `tratarErroCriticoJob` chamado
 
 **Verification:**
-- [x] `npm run build`/`lint`/`test` (suite completa — 760 testes, 2 flakes isolados de timeout já documentados, confirmados passando isolados)
-- [x] `npm audit`
+- [ ] `npm test -- tests/scripts/sincronizarOpenFinance.test.ts` (client Pluggy mockado)
+- [ ] `npm run build`
 
-**Nota de implementação:** achado real ao revisar o wiring — `lerEmailFaturas.ts`/`sincronizarCalendario.ts` saíam imediatamente quando `env.google === null`, sem dormir. Combinado com o loop `while true; do node ...; done` do compose, isso viraria um busy-loop reiniciando o processo sem parar (gasto de CPU/log à toa) assim que a integração estivesse desligada — corrigido com `dormirAte` no mesmo intervalo do polling normal antes de sair nesse caminho, nas duas jobs.
+**Dependencies:** Tarefa 101, Tarefa 102
 
-**Dependencies:** Tarefa 94, Tarefa 95
+**Files likely touched:**
+- `src/scripts/sincronizarOpenFinance.ts`
+- `tests/scripts/sincronizarOpenFinance.test.ts`
+
+**Estimated scope:** Large (orquestra várias peças, mesmo perfil da Tarefa 94 na Fase 7 — quebrar em mais tarefas se necessário ao implementar)
+
+---
+
+### Tarefa 104: job `renovar_sandbox_pluggy.ts`
+
+**Description:** Novo script em `src/scripts/renovarSandboxPluggy.ts`, só relevante/ativo em Homologação (guard explícito por `env.ambiente`, não só por `env.pluggy === null` — em Produção não deve nem tentar rodar, mesmo com `env.pluggy` configurado). A cada 20 dias (constante no código, ver seção "Ambientes" do PLANO.md), `PATCH /items/{id}` pra cada item em `contas_open_finance` (distinct por `pluggy_item_id`), resetando a contagem de expiração do sandbox.
+
+**Acceptance criteria:**
+- [ ] Em Produção (`env.ambiente === 'producao'`), job sai imediatamente sem chamar a API, mesmo com `env.pluggy` configurado
+- [ ] Em Homologação, chama `PATCH /items/{id}` uma vez por `pluggy_item_id` distinto (não uma vez por conta/cartão mapeado, se o mesmo item tiver várias contas)
+- [ ] Erro em qualquer chamada → `tratarErroCriticoJob`, mas continua tentando os outros itens (uma falha não deve impedir renovar os demais)
+
+**Verification:**
+- [ ] `npm test -- tests/scripts/renovarSandboxPluggy.test.ts`
+- [ ] `npm run build`
+
+**Dependencies:** Tarefa 99
+
+**Files likely touched:**
+- `src/scripts/renovarSandboxPluggy.ts`
+- `tests/scripts/renovarSandboxPluggy.test.ts`
+
+**Estimated scope:** Small
+
+---
+
+### Tarefa 105: wiring (`docker-compose.yml`, dependências, `npm audit`)
+
+**Description:** Avaliar se existe SDK oficial `pluggy-sdk`/similar maduro (decidido na Tarefa 99) — se instalado, checar `npm audit` (mesmo critério de trocar de biblioteca se vier vulnerabilidade sem correção, já usado nas Fases 6/7). `docker-compose.yml` ganha os serviços novos: `sincronizar-open-finance-producao`/`-homologacao` (mesmo padrão `while true; do node dist/scripts/sincronizarOpenFinance.js; done`) e `renovar-sandbox-pluggy-homologacao` (só Homologação, não existe versão produção).
+
+**Acceptance criteria:**
+- [ ] `npm audit` sem vulnerabilidade alta/crítica sem correção
+- [ ] 3 serviços novos no `docker-compose.yml` (2 sincronização × ambiente + 1 renovação só Homologação), cada um com `env_file`/volume corretos
+- [ ] Validação de sintaxe do compose sem erro
+
+**Verification:**
+- [ ] `npm run build`/`lint`/`test` (suite completa)
+- [ ] `npm audit`
+
+**Dependencies:** Tarefa 103, Tarefa 104
 
 **Files likely touched:**
 - `package.json` / lockfile
 - `docker-compose.yml`
 
-**Estimated scope:** Small (wiring, mesmo padrão já usado por todos os outros jobs)
+**Estimated scope:** Small
 
-## Checkpoint: Leitura de e-mail + sincronização de calendário funcionais
+## Checkpoint: Conexão + sincronização de Open Finance funcionais
 - [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: `configurarGoogleOAuth.js` rodado (conta de teste, se disponível — senão validar só o caminho "integração desligada", ver Risks em `tasks/plan.md`), e-mail de teste com fatura/boleto lido e reconhecido, pendência recebida no Telegram, confirmação grava/atualiza `faturas`/`parcelas` corretamente, evento aparece no Google Calendar sem duplicar em execuções seguintes
+- [ ] Teste manual em Homologação: conta sandbox da Pluggy criada, widget local (`pluggyConnectWidget.html`) conectado com sucesso, `item_id` registrado via `/registrar_open_finance`, job `sincronizarOpenFinance --agora` traz transação de teste do sandbox, as duas checagens de correspondência (manual + fatura/parcela paga) não duplicam nem contam pagamento como despesa nova, saque reconhecido corretamente
 - [ ] PROGRESSO.md atualizado com o marco
-- [ ] Revisão com o usuário antes de prosseguir (Fase 8)
+- [ ] Revisão com o usuário antes de prosseguir
