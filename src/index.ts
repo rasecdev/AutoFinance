@@ -1,5 +1,6 @@
 import { createOpenRouterClient } from './ai/openrouter.js';
 import { createBot } from './bot/bot.js';
+import { COMANDOS_BOT } from './bot/comandos.js';
 import { createHandlerFeedback } from './bot/handlers/feedback.js';
 import { createHandlerMidia } from './bot/handlers/midia.js';
 import { createHandlerModelo } from './bot/handlers/modelo.js';
@@ -66,6 +67,12 @@ async function apagarMensagensPendentesAtrasadas(): Promise<void> {
 }
 
 await apagarMensagensPendentesAtrasadas();
+
+// Menu "/" do Telegram com autocomplete (filtra conforme digita) — mesma
+// fonte (comandos.ts) usada pelo roteamento em router.ts, nunca dessincroniza.
+await bot.api.setMyCommands(
+  COMANDOS_BOT.map(({ comando, descricao }) => ({ command: comando, description: descricao })),
+);
 
 bot.start({
   onStart: () => {
