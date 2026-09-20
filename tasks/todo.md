@@ -223,13 +223,15 @@ Ver `tasks/plan.md` pro racional completo de arquitetura e os achados de pesquis
 **Description:** Avaliar se existe SDK oficial `pluggy-sdk`/similar maduro (decidido na Tarefa 99) — se instalado, checar `npm audit` (mesmo critério de trocar de biblioteca se vier vulnerabilidade sem correção, já usado nas Fases 6/7). `docker-compose.yml` ganha os serviços novos: `sincronizar-open-finance-producao`/`-homologacao` (mesmo padrão `while true; do node dist/scripts/sincronizarOpenFinance.js; done`) e `renovar-sandbox-pluggy-homologacao` (só Homologação, não existe versão produção).
 
 **Acceptance criteria:**
-- [ ] `npm audit` sem vulnerabilidade alta/crítica sem correção
-- [ ] 3 serviços novos no `docker-compose.yml` (2 sincronização × ambiente + 1 renovação só Homologação), cada um com `env_file`/volume corretos
-- [ ] Validação de sintaxe do compose sem erro
+- [x] `npm audit` sem vulnerabilidade alta/crítica sem correção
+- [x] 3 serviços novos no `docker-compose.yml` (2 sincronização × ambiente + 1 renovação só Homologação), cada um com `env_file`/volume corretos
+- [x] Validação de sintaxe do compose sem erro
 
 **Verification:**
-- [ ] `npm run build`/`lint`/`test` (suite completa)
-- [ ] `npm audit`
+- [x] `npm run build`/`lint`/`test` (suite completa)
+- [x] `npm audit`
+
+**Nota de implementação:** nenhum SDK oficial da Pluggy foi instalado (Tarefa 99 já tinha decidido por `fetch` nativo, client fino) — `npm audit` continua em 0 vulnerabilidades, nenhuma mudança em `package.json`/lockfile. Sem `docker` CLI disponível no ambiente local pra rodar `docker compose config`, a validação de sintaxe foi feita via parser YAML (`js-yaml`) contra o arquivo inteiro — sintaxe válida, e os 3 serviços novos seguem exatamente o mesmo template (`build`/`env_file`/`volumes`/`command`/`restart`) dos serviços já em produção (`sincronizar-calendario-*`, `ler-email-faturas-*`).
 
 **Dependencies:** Tarefa 103, Tarefa 104
 
