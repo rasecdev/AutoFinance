@@ -33,14 +33,14 @@ Ver `tasks/plan.md` pro racional completo de arquitetura e os achados de pesquis
 **Description:** Nova migration `src/db/migrations/0014_open_finance.sql` cria três coisas: (1) `contas_open_finance` (`id`, `pluggy_item_id TEXT NOT NULL`, `pluggy_account_id TEXT NOT NULL UNIQUE`, `conta_id INTEGER REFERENCES contas(id)`, `cartao_id INTEGER REFERENCES cartoes(id)`, `criado_em TEXT NOT NULL`, `CHECK ((conta_id IS NOT NULL) OR (cartao_id IS NOT NULL))` — mesmo princípio de exclusividade já usado em `transacoes`); (2) `transacoes_open_finance_processadas` (`id`, `pluggy_transaction_id TEXT NOT NULL UNIQUE`, `processado_em TEXT NOT NULL`, `resultado TEXT NOT NULL CHECK (resultado IN ('transacao_criada', 'correspondencia_manual', 'correspondencia_fatura_parcela', 'saque_ignorado'))` — mesmo papel de `emails_processados`, mas sem pendência de confirmação, já que o resultado é sempre imediato); (3) `ALTER TABLE transacoes ADD COLUMN origem TEXT NOT NULL CHECK (origem IN ('manual', 'open_finance')) DEFAULT 'manual'` e `ADD COLUMN trace_id TEXT` — mesmo par já usado em `parcelas` desde a Fase 1.
 
 **Acceptance criteria:**
-- [ ] `contas_open_finance` criada, `pluggy_account_id` único, exige conta OU cartão (nunca os dois nulos)
-- [ ] `transacoes_open_finance_processadas` criada, `pluggy_transaction_id` único
-- [ ] `transacoes.origem` default `'manual'` em linha já existente (migração não quebra dado atual), aceita `'open_finance'`
-- [ ] Migration roda em banco já existente sem quebrar nenhuma tabela
+- [x] `contas_open_finance` criada, `pluggy_account_id` único, exige conta OU cartão (nunca os dois nulos)
+- [x] `transacoes_open_finance_processadas` criada, `pluggy_transaction_id` único
+- [x] `transacoes.origem` default `'manual'` em linha já existente (migração não quebra dado atual), aceita `'open_finance'`
+- [x] Migration roda em banco já existente sem quebrar nenhuma tabela
 
 **Verification:**
-- [ ] `npm test -- tests/db/migrate.test.ts`
-- [ ] `npm run build`
+- [x] `npm test -- tests/db/migrate.test.ts`
+- [x] `npm run build`
 
 **Dependencies:** None
 
