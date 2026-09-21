@@ -88,14 +88,16 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura.
 **Description:** Novo gerador de PDF mínimo (sintaxe PDF escrita à mão — catálogo + página + stream de texto, sem lib nova) com texto conhecido embutido (ex: valor, categoria, data, tipo). Novo script de seed (`seedCasosTesteBenchmarkMidiaCurados.ts`, ou extensão do existente) grava 2-3 casos curados de `leitura_comprovante` — buffer do PDF gerado na hora, convertido pra base64, gabarito com os campos que o PDF sintético realmente contém.
 
 **Acceptance criteria:**
-- [ ] Gerador de PDF produz um arquivo válido (abre sem erro num leitor de PDF real)
-- [ ] Pelo menos 2 casos curados cobrindo `tipoDocumento: "compra"` e (se fizer sentido) `"fatura_cartao"`/`"boleto_divida"` com `identificador`
-- [ ] Seed idempotente (rodar de novo no mesmo ambiente não duplica), mesmo padrão do seed de texto já existente
+- [x] Gerador de PDF produz um arquivo válido (abre sem erro num leitor de PDF real)
+- [x] Pelo menos 2 casos curados cobrindo `tipoDocumento: "compra"` e (se fizer sentido) `"fatura_cartao"`/`"boleto_divida"` com `identificador`
+- [x] Seed idempotente (rodar de novo no mesmo ambiente não duplica), mesmo padrão do seed de texto já existente
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/scripts/seedCasosTesteBenchmarkMidiaCurados.test.ts`
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: rodar `rodar_benchmark_interno` com `fluxo: "leitura_comprovante"` contra 1 modelo real e conferir que o resultado bate com o esperado
+- [x] Tests pass: `npx vitest run tests/scripts/seedCasosTesteBenchmarkMidiaCurados.test.ts` (5 testes)
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: rodado via script descartável contra `google/gemini-2.5-flash-lite` real (chave de Homologação, banco temporário isolado) — 2/2 casos bateram com o gabarito na rodada final; uma rodada anterior deu 1/2, investigado e confirmado variação normal do modelo (mesmo PDF, mesma extração re-executada bateu 100% logo depois), não defeito da fixture/comparação
+
+**Nota de implementação:** `pdftotext` (poppler, já disponível no ambiente) confirmou o PDF gerado abre e extrai o texto corretamente antes do teste manual contra o modelo real. Validado que `gerarPdfTexto` escapa parênteses/barra invertida corretamente (sintaxe de string PDF).
 
 **Dependencies:** Tarefa 108
 
