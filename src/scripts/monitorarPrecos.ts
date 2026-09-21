@@ -3,6 +3,7 @@ import { Bot } from 'grammy';
 import { configurarFormatacaoPadrao } from '../bot/formatoMensagens.js';
 import { loadEnv } from '../config/env.js';
 import { getDb, type DbClient } from '../db/client.js';
+import { jaFoiAlertado, registrarAlertaEnviado } from '../db/repositories/alertasPrecoEnviados.js';
 import {
   obterUltimoSnapshotPorModelo,
   obterUltimosSnapshots,
@@ -130,6 +131,34 @@ export function detectarOportunidades(db: DbClient): OportunidadePreco[] {
   return oportunidades;
 }
 
+// Chave de dedup por oportunidade: inclui o preço de propósito — o mesmo
+// alerta sobre o mesmo preço não deve repetir a cada restart do job (achado
+// real, 2026-09-21: dia com vários deploys reenviou o mesmo alerta várias
+// vezes), mas um preço novo é informação nova e deve alertar de novo.
+function chaveAlerta(oportunidade: OportunidadePreco): { fluxo: string; tipo: string; modelo: string; preco: number } {
+  if (oportunidade.tipo === 'preco_mudou') {
+    return { fluxo: oportunidade.fluxo, tipo: oportunidade.tipo, modelo: oportunidade.modelo, preco: oportunidade.precoNovo };
+  }
+  return {
+    fluxo: oportunidade.fluxo,
+    tipo: oportunidade.tipo,
+    modelo: oportunidade.modeloCandidato,
+    preco: oportunidade.precoCandidato,
+  };
+}
+
+// Só deixa passar oportunidade que ainda não foi alertada com esse preço
+// exato — nunca decide sozinho trocar de modelo, só evita repetir aviso.
+export function filtrarNaoAlertadas(db: DbClient, oportunidades: OportunidadePreco[]): OportunidadePreco[] {
+  return oportunidades.filter((oportunidade) => !jaFoiAlertado(db, chaveAlerta(oportunidade)));
+}
+
+function registrarAlertasEnviados(db: DbClient, oportunidades: OportunidadePreco[]): void {
+  for (const oportunidade of oportunidades) {
+    registrarAlertaEnviado(db, chaveAlerta(oportunidade));
+  }
+}
+
 // OpenRouter devolve preço por TOKEN (ex: 0.00000075), que o JS imprime em
 // notação científica ("7.5e-7") a partir de ~1e-6 — ilegível numa mensagem
 // de alerta. Convertido pra USD por 1M tokens (mesma unidade que o próprio
@@ -173,9 +202,10 @@ async function main(): Promise<void> {
     registrarSnapshotCatalogo(db, paraSnapshots(modelos));
     logger.info({ total: modelos.length }, 'snapshot de preços do OpenRouter gravado');
 
-    const oportunidades = detectarOportunidades(db);
+    const oportunidades = filtrarNaoAlertadas(db, detectarOportunidades(db));
     if (oportunidades.length > 0) {
       await enviarAlertas(env.telegramBotToken, env.telegramAllowedChatIds, formatarMensagemAlerta(oportunidades));
+      registrarAlertasEnviados(db, oportunidades);
       logger.info({ total: oportunidades.length }, 'alerta de preço enviado');
     }
   } catch (erro) {
