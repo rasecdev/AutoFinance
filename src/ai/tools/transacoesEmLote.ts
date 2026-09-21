@@ -76,6 +76,15 @@ export function criarToolRegistrarTransacoesEmLote(db: DbClient): ToolDefinition
       const { transacoes } = args as ArgsRegistrarTransacoesEmLote;
       return resumoLote(transacoes);
     },
+    resumoConfirmacao: (args) => {
+      const { conta_apelido: contaApelido, conta_id: contaId, cartao_nome: cartaoNome, cartao_id: cartaoId, transacoes } =
+        args as ArgsRegistrarTransacoesEmLote;
+      const destino =
+        cartaoNome !== undefined || cartaoId !== undefined
+          ? `no cartão "${cartaoNome ?? `id ${cartaoId}`}"`
+          : `na conta "${contaApelido ?? `id ${contaId}`}"`;
+      return `registrar ${transacoes.length} transações ${destino}`;
+    },
     handler: async (args, _ctx) => {
       const { transacoes } = args as ArgsRegistrarTransacoesEmLote;
 

@@ -70,6 +70,16 @@ describe('tool criar_conta', () => {
     const total = (db.prepare('SELECT COUNT(*) as total FROM contas').get() as { total: number }).total;
     expect(total).toBe(1);
   });
+
+  it('resumoConfirmacao descreve a ação em linguagem natural, sem JSON', () => {
+    const tool = criarToolCriarConta(db);
+    const args = tool.schema.parse({ banco: 'Nubank', tipo: 'PF', apelido: 'Principal', saldo_inicial: 100 });
+
+    const resumo = tool.resumoConfirmacao?.(args);
+
+    expect(resumo).toBe('criar a conta "Principal" (PF) no banco Nubank, saldo inicial R$ 100.00');
+    expect(resumo).not.toMatch(/[{}]/);
+  });
 });
 
 describe('tool criar_cartao', () => {
@@ -120,6 +130,25 @@ describe('tool criar_cartao', () => {
 
     expect(resultado).toContain('Nubank Roxinho');
     expect(resultado).not.toMatch(/\bid\b/i);
+  });
+
+  it('resumoConfirmacao resolve o apelido da conta (não expõe id cru), sem JSON', () => {
+    const conta = criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Conta principal' });
+    const tool = criarToolCriarCartao(db);
+    const args = tool.schema.parse({
+      conta_id: conta.id,
+      nome: 'Nubank Roxinho',
+      limite: 5000,
+      dia_fechamento: 10,
+      dia_vencimento: 17,
+    });
+
+    const resumo = tool.resumoConfirmacao?.(args);
+
+    expect(resumo).toBe(
+      'criar o cartão "Nubank Roxinho" na conta "Conta principal", limite R$ 5000.00, fechamento dia 10, vencimento dia 17',
+    );
+    expect(resumo).not.toMatch(/[{}]/);
   });
 
   it('recusa nome de cartão já usado na mesma conta, sem criar duplicata', async () => {
