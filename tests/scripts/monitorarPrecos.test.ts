@@ -223,6 +223,24 @@ describe('detectarOportunidades', () => {
     expect(detectarOportunidades(db)).toEqual([]);
   });
 
+  it('não sugere modelo de preço zero sem o sufixo ":free" (achado real: catálogo tem "openrouter/free")', () => {
+    definirRoteamento(db, 'conversa_texto', 'openai/gpt-4o-mini', 'tools');
+    registrarSnapshotModelo(db, {
+      modelo: 'openai/gpt-4o-mini',
+      precoPrompt: 1,
+      precoCompletion: 1,
+      capacidades: ['tools'],
+    });
+    registrarSnapshotModelo(db, {
+      modelo: 'openrouter/free',
+      precoPrompt: 0,
+      precoCompletion: 0,
+      capacidades: ['tools'],
+    });
+
+    expect(detectarOportunidades(db)).toEqual([]);
+  });
+
   it('não quebra quando o fluxo roteado não tem snapshot ainda', () => {
     definirRoteamento(db, 'conversa_texto', 'modelo/inexistente-no-catalogo');
 
