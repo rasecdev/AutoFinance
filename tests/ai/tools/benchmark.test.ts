@@ -139,31 +139,49 @@ describe('tool rodar_benchmark_interno', () => {
     expect(tool.requerConfirmacao).toBe(true);
     const aviso = tool.avisoConfirmacao?.({
       modelos_candidatos: ['openai/gpt-4o-mini', 'qwen/qwen3-32b'],
+      fluxo: 'conversa_texto',
     });
 
     expect(aviso).toContain('2 chamada');
     expect(aviso).toContain('minuto');
     expect(aviso).toContain('NÃO reenvie');
 
-    const resumo = tool.resumoConfirmacao?.({ modelos_candidatos: ['openai/gpt-4o-mini', 'qwen/qwen3-32b'] });
-    expect(resumo).toBe('rodar o benchmark interno contra 2 modelo(s) candidato(s) (openai/gpt-4o-mini, qwen/qwen3-32b)');
+    const resumo = tool.resumoConfirmacao?.({
+      modelos_candidatos: ['openai/gpt-4o-mini', 'qwen/qwen3-32b'],
+      fluxo: 'conversa_texto',
+    });
+    expect(resumo).toBe(
+      'rodar o benchmark interno do fluxo "conversa_texto" contra 2 modelo(s) candidato(s) (openai/gpt-4o-mini, qwen/qwen3-32b)',
+    );
     expect(resumo).not.toMatch(/[{}]/);
   });
 
-  it('avisa quando não há nenhum caso de teste', () => {
+  it('sem informar fluxo, o schema aplica o default conversa_texto (compatibilidade com uso anterior a esta tarefa)', () => {
+    const tool = criarToolRodarBenchmarkInterno(criarClienteFalso([]), db);
+
+    const args = tool.schema.parse({ modelos_candidatos: ['openai/gpt-4o-mini'] });
+
+    expect(args.fluxo).toBe('conversa_texto');
+  });
+
+  it('avisa quando não há nenhum caso de teste do fluxo pedido', () => {
     const client = criarClienteFalso([]);
     const tool = criarToolRodarBenchmarkInterno(client, db);
 
-    const aviso = tool.avisoConfirmacao?.({ modelos_candidatos: ['openai/gpt-4o-mini'] });
+    const aviso = tool.avisoConfirmacao?.({ modelos_candidatos: ['openai/gpt-4o-mini'], fluxo: 'conversa_texto' });
 
     expect(aviso).toContain('Não há nenhum caso de teste');
+    expect(aviso).toContain('conversa_texto');
   });
 
   it('recusa rodar (e não grava nada) mesmo se confirmado sem nenhum caso de teste', async () => {
     const client = criarClienteFalso([]);
     const tool = criarToolRodarBenchmarkInterno(client, db);
 
-    const resposta = await tool.handler({ modelos_candidatos: ['openai/gpt-4o-mini'] }, { chatId: 1 });
+    const resposta = await tool.handler(
+      { modelos_candidatos: ['openai/gpt-4o-mini'], fluxo: 'conversa_texto' },
+      { chatId: 1 },
+    );
 
     expect(resposta).toContain('Não há nenhum caso de teste');
     expect(listarBenchmarks(db, 'conversa_texto', 'openai/gpt-4o-mini')).toEqual([]);
@@ -179,7 +197,10 @@ describe('tool rodar_benchmark_interno', () => {
     const client = criarClienteFalso([{ nome: 'registrar_transacao', argumentos: { valor: 30 } }]);
     const tool = criarToolRodarBenchmarkInterno(client, db);
 
-    const resposta = await tool.handler({ modelos_candidatos: ['openai/gpt-4o-mini'] }, { chatId: 1 });
+    const resposta = await tool.handler(
+      { modelos_candidatos: ['openai/gpt-4o-mini'], fluxo: 'conversa_texto' },
+      { chatId: 1 },
+    );
 
     expect(resposta).toContain('openai/gpt-4o-mini');
     expect(resposta).toContain('100%');
@@ -207,9 +228,35 @@ describe('tool rodar_benchmark_interno', () => {
     const client = criarClienteFalso([{ nome: 'ferramenta_a', argumentos: {} }]);
     const tool = criarToolRodarBenchmarkInterno(client, db);
 
-    await tool.handler({ modelos_candidatos: ['modelo-a', 'modelo-b'] }, { chatId: 1 });
+    await tool.handler({ modelos_candidatos: ['modelo-a', 'modelo-b'], fluxo: 'conversa_texto' }, { chatId: 1 });
 
     expect(listarBenchmarks(db, 'conversa_texto', 'modelo-a')).toHaveLength(1);
     expect(listarBenchmarks(db, 'conversa_texto', 'modelo-b')).toHaveLength(1);
+  });
+
+  it('roda contra o fluxo leitura_comprovante quando informado, gravando em benchmarks_modelos com esse fluxo', async () => {
+    criarCasoTeste(db, {
+      fluxo: 'leitura_comprovante',
+      entrada: 'comprovante de teste',
+      entradaArquivo: { base64: Buffer.from('%PDF-1.4 fake').toString('base64'), mimeType: 'application/pdf' },
+      saidaEsperada: { valor: 45, tipoDocumento: 'compra' },
+      origem: 'curado',
+    });
+    const create = vi.fn().mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({ eComprovante: true, tipoDocumento: 'compra', valor: 45 }) } }],
+      usage: { prompt_tokens: 100, completion_tokens: 20, cost: 0.0002 },
+    });
+    const client = { chat: { completions: { create } } } as unknown as OpenAI;
+    const tool = criarToolRodarBenchmarkInterno(client, db);
+
+    const resposta = await tool.handler(
+      { modelos_candidatos: ['google/gemini-2.5-flash-lite'], fluxo: 'leitura_comprovante' },
+      { chatId: 1 },
+    );
+
+    expect(resposta).toContain('leitura_comprovante');
+    expect(resposta).toContain('100%');
+    expect(listarBenchmarks(db, 'leitura_comprovante', 'google/gemini-2.5-flash-lite')).toHaveLength(1);
+    expect(listarBenchmarks(db, 'conversa_texto', 'google/gemini-2.5-flash-lite')).toEqual([]);
   });
 });
