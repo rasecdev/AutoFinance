@@ -38,13 +38,15 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura.
 **Description:** `executarBenchmarkFluxo` passa a despachar por `fluxo`, mantendo a mesma orquestração externa (loop de casos × modelos candidatos, registro de `usoTokens` com `origem: 'benchmark_interno'`, cálculo de acurácia/custo). 4 estratégias: `conversa_texto` (existente, sem mudança de comportamento — `chamarModeloCandidato`/`baterComEsperado`), `leitura_comprovante` (chama `extrairComprovante`, compara campos do gabarito presentes no resultado), `interpretar_planilha` (chama `interpretarPlanilha`, compara lista de transações via normalização generalizada de `normalizarToolCalls`), `transcricao_voz` (chama `transcreverAudio`, compara texto normalizado).
 
 **Acceptance criteria:**
-- [ ] `conversa_texto` continua passando nos testes já existentes sem nenhuma mudança de resultado
-- [ ] `leitura_comprovante`/`interpretar_planilha`/`transcricao_voz` têm estratégia própria de chamada + comparação, cobertas por teste com client de IA mockado (mesmo padrão de `criarClienteFalso` já usado em `openrouter.test.ts`)
-- [ ] Fluxo desconhecido (não uma das 4 strings válidas) lança erro claro em vez de silenciosamente não comparar nada
+- [x] `conversa_texto` continua passando nos testes já existentes sem nenhuma mudança de resultado
+- [x] `leitura_comprovante`/`interpretar_planilha`/`transcricao_voz` têm estratégia própria de chamada + comparação, cobertas por teste com client de IA mockado (mesmo padrão de `criarClienteFalso` já usado em `openrouter.test.ts`)
+- [x] Fluxo desconhecido (não uma das 4 strings válidas) lança erro claro em vez de silenciosamente não comparar nada
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/ai/benchmark.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/ai/benchmark.test.ts` (15 testes)
+- [x] Build succeeds: `npm run build`
+
+**Nota de implementação:** `normalizarArgumentos` foi renomeada pra `normalizarObjeto` e generalizada — reaproveitada tanto pela comparação de tool_calls quanto pela nova `normalizarLista` (usada por `interpretar_planilha`, lista de transações). `leitura_comprovante` só compara os campos que o gabarito realmente define (`Object.keys(esperado)`), evitando falso negativo em campo de texto livre (`descricao`) difícil de prever exatamente; `categoriaSugerida` compara normalizado (case-insensitive). `transcricao_voz` normaliza acentuação/pontuação/maiúscula antes de comparar (usa `\p{L}\p{N}` via regex unicode).
 
 **Dependencies:** Tarefa 106
 

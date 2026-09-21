@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3-multiple-ciphers';
 import type OpenAI from 'openai';
+import writeXlsxFile from 'write-excel-file/node';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { executarBenchmarkFluxo } from '../../src/ai/benchmark.js';
 import type { DbClient } from '../../src/db/client.js';
@@ -64,6 +65,29 @@ function criarClienteFalso(...respostas: unknown[]) {
 
 function lerUsoTokens() {
   return db.prepare('SELECT * FROM uso_tokens').all() as Array<Record<string, unknown>>;
+}
+
+function respostaTexto(
+  conteudo: unknown,
+  usage: { prompt_tokens: number; completion_tokens: number; cost: number } = {
+    prompt_tokens: 100,
+    completion_tokens: 20,
+    cost: 0.0002,
+  },
+) {
+  return { choices: [{ message: { content: JSON.stringify(conteudo) } }], usage };
+}
+
+function criarClienteFalsoGenerico(...respostas: unknown[]) {
+  const create = vi.fn();
+  for (const resposta of respostas) {
+    create.mockImplementationOnce(async () => resposta);
+  }
+  return { client: { chat: { completions: { create } } } as unknown as OpenAI, create };
+}
+
+async function xlsxComoBuffer(linhas: string[][]): Promise<Buffer> {
+  return writeXlsxFile(linhas).toBuffer();
 }
 
 describe('executarBenchmarkFluxo', () => {
@@ -208,5 +232,137 @@ describe('executarBenchmarkFluxo', () => {
       { modelo: 'openai/gpt-4o-mini', totalCasos: 0, acertos: 0, acuracia: 0, custoTotal: 0 },
     ]);
     expect(create).not.toHaveBeenCalled();
+  });
+
+  it('lança erro claro pra fluxo desconhecido, em vez de silenciosamente não comparar nada', async () => {
+    await expect(executarBenchmarkFluxo({} as OpenAI, db, 'fluxo_que_nao_existe', ['x'])).rejects.toThrow(
+      /fluxo desconhecido/,
+    );
+  });
+});
+
+describe('executarBenchmarkFluxo — leitura_comprovante (Fase 6 parte 14)', () => {
+  it('conta acerto quando os campos do gabarito batem com o resultado da extração', async () => {
+    criarCasoTeste(db, {
+      fluxo: 'leitura_comprovante',
+      entrada: 'comprovante mercado R$45',
+      entradaArquivo: { base64: Buffer.from('%PDF-1.4 fake').toString('base64'), mimeType: 'application/pdf' },
+      saidaEsperada: { valor: 45, tipoDocumento: 'compra', categoriaSugerida: 'Mercado' },
+      origem: 'curado',
+    });
+    const { client } = criarClienteFalsoGenerico(
+      respostaTexto({ eComprovante: true, tipoDocumento: 'compra', valor: 45, categoriaSugerida: 'mercado' }),
+    );
+
+    const resultados = await executarBenchmarkFluxo(client, db, 'leitura_comprovante', ['google/gemini-2.5-flash-lite']);
+
+    expect(resultados[0]).toMatchObject({ acertos: 1, acuracia: 1, totalCasos: 1 });
+  });
+
+  it('não conta acerto quando o valor extraído diverge do gabarito', async () => {
+    criarCasoTeste(db, {
+      fluxo: 'leitura_comprovante',
+      entrada: 'comprovante mercado R$45',
+      entradaArquivo: { base64: Buffer.from('%PDF-1.4 fake').toString('base64'), mimeType: 'application/pdf' },
+      saidaEsperada: { valor: 45, tipoDocumento: 'compra' },
+      origem: 'curado',
+    });
+    const { client } = criarClienteFalsoGenerico(
+      respostaTexto({ eComprovante: true, tipoDocumento: 'compra', valor: 999 }),
+    );
+
+    const resultados = await executarBenchmarkFluxo(client, db, 'leitura_comprovante', ['modelo']);
+
+    expect(resultados[0]).toMatchObject({ acertos: 0, acuracia: 0 });
+  });
+});
+
+describe('executarBenchmarkFluxo — interpretar_planilha (Fase 6 parte 14)', () => {
+  it('conta acerto quando a lista de transações bate com o gabarito, mesmo em ordem diferente', async () => {
+    const buffer = await xlsxComoBuffer([
+      ['Data', 'Categoria', 'Valor'],
+      ['2026-09-10', 'Mercado', '-45'],
+    ]);
+    criarCasoTeste(db, {
+      fluxo: 'interpretar_planilha',
+      entrada: 'planilha de teste',
+      entradaArquivo: {
+        base64: buffer.toString('base64'),
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      },
+      saidaEsperada: [{ tipo: 'despesa', valor: 45, categoria: 'Mercado', data: '2026-09-10' }],
+      origem: 'curado',
+    });
+    const { client } = criarClienteFalsoGenerico(
+      respostaTexto({ transacoes: [{ tipo: 'despesa', valor: 45, categoria: 'Mercado', data: '2026-09-10' }] }),
+    );
+
+    const resultados = await executarBenchmarkFluxo(client, db, 'interpretar_planilha', ['modelo']);
+
+    expect(resultados[0]).toMatchObject({ acertos: 1, acuracia: 1 });
+  });
+
+  it('não conta acerto quando falta uma transação esperada', async () => {
+    const buffer = await xlsxComoBuffer([['Data', 'Categoria', 'Valor']]);
+    criarCasoTeste(db, {
+      fluxo: 'interpretar_planilha',
+      entrada: 'planilha de teste',
+      entradaArquivo: {
+        base64: buffer.toString('base64'),
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      },
+      saidaEsperada: [
+        { tipo: 'despesa', valor: 45, categoria: 'Mercado', data: '2026-09-10' },
+        { tipo: 'receita', valor: 1000, categoria: 'Salário', data: '2026-09-05' },
+      ],
+      origem: 'curado',
+    });
+    const { client } = criarClienteFalsoGenerico(
+      respostaTexto({ transacoes: [{ tipo: 'despesa', valor: 45, categoria: 'Mercado', data: '2026-09-10' }] }),
+    );
+
+    const resultados = await executarBenchmarkFluxo(client, db, 'interpretar_planilha', ['modelo']);
+
+    expect(resultados[0]).toMatchObject({ acertos: 0, acuracia: 0 });
+  });
+});
+
+describe('executarBenchmarkFluxo — transcricao_voz (Fase 6 parte 14)', () => {
+  function criarClienteFalsoTranscricao(texto: string, cost = 0.00005) {
+    const create = vi.fn(async () => ({ text: texto, usage: { cost } }));
+    return {
+      client: { audio: { transcriptions: { create } } } as unknown as OpenAI,
+      create,
+    };
+  }
+
+  it('conta acerto quando o texto transcrito bate com o gabarito, ignorando acentuação/pontuação/maiúscula', async () => {
+    criarCasoTeste(db, {
+      fluxo: 'transcricao_voz',
+      entrada: 'áudio de teste',
+      entradaArquivo: { base64: Buffer.from('fake audio').toString('base64'), mimeType: 'audio/mpeg' },
+      saidaEsperada: 'gastei 50 reais no mercado',
+      origem: 'curado',
+    });
+    const { client } = criarClienteFalsoTranscricao('Gastei 50 reais no MERCADO!');
+
+    const resultados = await executarBenchmarkFluxo(client, db, 'transcricao_voz', ['openai/whisper-large-v3-turbo']);
+
+    expect(resultados[0]).toMatchObject({ acertos: 1, acuracia: 1 });
+  });
+
+  it('não conta acerto quando a transcrição diverge do texto esperado', async () => {
+    criarCasoTeste(db, {
+      fluxo: 'transcricao_voz',
+      entrada: 'áudio de teste',
+      entradaArquivo: { base64: Buffer.from('fake audio').toString('base64'), mimeType: 'audio/mpeg' },
+      saidaEsperada: 'gastei 50 reais no mercado',
+      origem: 'curado',
+    });
+    const { client } = criarClienteFalsoTranscricao('comprei um carro novo');
+
+    const resultados = await executarBenchmarkFluxo(client, db, 'transcricao_voz', ['modelo']);
+
+    expect(resultados[0]).toMatchObject({ acertos: 0, acuracia: 0 });
   });
 });
