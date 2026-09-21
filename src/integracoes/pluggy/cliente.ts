@@ -104,28 +104,41 @@ export type TransacaoPluggy = {
   operationType?: string;
 };
 
-// Pagina automaticamente (results + page/totalPages, mesmo formato de lista
-// usado pelos outros endpoints da Pluggy) — nunca trunca silenciosamente
-// numa conta com muita transação nova de uma vez.
+type RespostaTransacoesPluggy = {
+  results: TransacaoPluggy[];
+  next: string | null;
+};
+
+// Achado real (teste manual em Homologação, 2026-09-21): GET /transactions
+// responde 410 ENDPOINT_DEPRECATED — a Pluggy migrou pra /v2/transactions,
+// com paginação por cursor (campo "next") em vez de page/totalPages. O
+// formato de "next" como cursor de query param (não URL completa) segue a
+// convenção que a própria mensagem de erro da Pluggy chama de "cursor
+// pagination", mas não foi possível confirmar com uma conta real de mais de
+// uma página (sandbox só devolveu next: null) — validar se aparecer erro de
+// paginação com conta de produção de verdade.
 export async function listarTransacoes(apiKey: string, accountId: string, desde?: string): Promise<TransacaoPluggy[]> {
   const transacoes: TransacaoPluggy[] = [];
-  let pagina = 1;
+  let cursor: string | undefined;
 
   for (;;) {
-    const query = new URLSearchParams({ accountId, page: String(pagina) });
+    const query = new URLSearchParams({ accountId });
     if (desde) {
       query.set('from', desde);
     }
+    if (cursor) {
+      query.set('cursor', cursor);
+    }
 
-    const resposta = await requisitar<RespostaListaPluggy<TransacaoPluggy>>(`/transactions?${query.toString()}`, {
+    const resposta = await requisitar<RespostaTransacoesPluggy>(`/v2/transactions?${query.toString()}`, {
       apiKey,
     });
 
     transacoes.push(...resposta.results);
-    if (pagina >= resposta.totalPages) {
+    if (!resposta.next) {
       break;
     }
-    pagina += 1;
+    cursor = resposta.next;
   }
 
   return transacoes;
