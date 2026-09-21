@@ -5,6 +5,7 @@ import Database from 'better-sqlite3-multiple-ciphers';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
+import { registrarAlertaEnviado } from '../../src/db/repositories/alertasPrecoEnviados.js';
 import { registrarSnapshotModelo } from '../../src/db/repositories/modelosOpenrouterHistorico.js';
 import { definirRoteamento } from '../../src/db/repositories/roteamentoTarefas.js';
 
@@ -21,6 +22,7 @@ const {
   buscarCatalogoOpenRouter,
   detectarOportunidades,
   enviarAlertas,
+  filtrarNaoAlertadas,
   formatarMensagemAlerta,
   paraSnapshots,
 } = await import('../../src/scripts/monitorarPrecos.js');
@@ -245,6 +247,53 @@ describe('detectarOportunidades', () => {
     definirRoteamento(db, 'conversa_texto', 'modelo/inexistente-no-catalogo');
 
     expect(detectarOportunidades(db)).toEqual([]);
+  });
+});
+
+describe('filtrarNaoAlertadas', () => {
+  it('remove oportunidade já alertada com o mesmo preço', () => {
+    registrarAlertaEnviado(db, { fluxo: 'conversa_texto', tipo: 'preco_mudou', modelo: 'openai/gpt-4o-mini', preco: 4 });
+
+    const oportunidades = filtrarNaoAlertadas(db, [
+      { tipo: 'preco_mudou', fluxo: 'conversa_texto', modelo: 'openai/gpt-4o-mini', precoAntigo: 2, precoNovo: 4 },
+    ]);
+
+    expect(oportunidades).toEqual([]);
+  });
+
+  it('mantém oportunidade quando o preço mudou de novo desde o último alerta', () => {
+    registrarAlertaEnviado(db, { fluxo: 'conversa_texto', tipo: 'preco_mudou', modelo: 'openai/gpt-4o-mini', preco: 4 });
+
+    const oportunidades = filtrarNaoAlertadas(db, [
+      { tipo: 'preco_mudou', fluxo: 'conversa_texto', modelo: 'openai/gpt-4o-mini', precoAntigo: 4, precoNovo: 6 },
+    ]);
+
+    expect(oportunidades).toHaveLength(1);
+  });
+
+  it('dedup de "modelo_mais_barato" é pelo modelo candidato, não pelo modelo atual', () => {
+    registrarAlertaEnviado(db, { fluxo: 'conversa_texto', tipo: 'modelo_mais_barato', modelo: 'qwen/qwen3-32b', preco: 2 });
+
+    const oportunidades = filtrarNaoAlertadas(db, [
+      {
+        tipo: 'modelo_mais_barato',
+        fluxo: 'conversa_texto',
+        modeloAtual: 'openai/gpt-4o',
+        precoAtual: 10,
+        modeloCandidato: 'qwen/qwen3-32b',
+        precoCandidato: 2,
+      },
+    ]);
+
+    expect(oportunidades).toEqual([]);
+  });
+
+  it('mantém oportunidade nunca alertada', () => {
+    const oportunidades = filtrarNaoAlertadas(db, [
+      { tipo: 'preco_mudou', fluxo: 'conversa_texto', modelo: 'openai/gpt-4o-mini', precoAntigo: 2, precoNovo: 4 },
+    ]);
+
+    expect(oportunidades).toHaveLength(1);
   });
 });
 
