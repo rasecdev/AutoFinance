@@ -728,6 +728,31 @@ Fontes consultadas:
 
 ---
 
+## Estudo: OWASP Top 10 for Agentic Applications (2026)
+
+Framework complementar ao anterior, não substituto. O LLM Top 10 olha pra risco de "texto entra, texto sai" (injeção, vazamento, alucinação); o Agentic Top 10 (`ASI01`–`ASI10`, publicado em 9/dez/2025 pelo OWASP GenAI Security Project, +100 especialistas) olha pro que muda quando o modelo vira ator com ferramentas, memória e autonomia pra encadear ações — exatamente o caso do AutoFinance, construído em cima de tool calling que grava dado financeiro real. Passando os 10 itens pelo projeto:
+
+| # | Risco | O que significa | Como se aplica aqui | Status |
+|---|---|---|---|---|
+| ASI01 | **Agent Goal Hijack** | Instrução adversária (injetada direto, ou escondida em conteúdo lido, ou vinda de resposta de ferramenta) redireciona o objetivo/plano do agente | Mesmo vetor do Prompt Injection (LLM Top 10, item 1), mas visto pela cadeia de ações: um e-mail malicioso tentando fazer o agente executar uma sequência de tool calls fora do pedido | **Coberto** — confirmação síncrona antes de qualquer ação de alto impacto quebra a cadeia antes de gravar; conteúdo externo sempre tratado como não confiável |
+| ASI02 | **Tool Misuse & Exploitation** | Agente usa ferramenta conectada de forma insegura, ou ataque explora a interface da ferramenta | `consultar_dados_dinamico` recebe parâmetros de whitelist fixa (nunca SQL livre gerado pela IA); `gerar_grafico` só desenha número já calculado pelo código | **Coberto** — mesma mitigação do Excessive Agency + Improper Output Handling (LLM Top 10, itens 3 e 10): validação de argumento antes de gravar, confirmação pra ação de alto impacto |
+| ASI03 | **Agent Identity & Privilege Abuse** | Agente usa credencial/token/permissão herdada além do necessário | Allowlist de `chat_id`, segredos em variável de ambiente por ambiente (Produção/Homologação isolados), banco cifrado | **Parcialmente coberto** — hoje só existe um "usuário" com privilégio (você mesmo), então o risco de escalação entre usuários não existe ainda; reavaliar quando o multiusuário (Fase 6) implementar privilégio por titular |
+| ASI04 | **Agentic Supply Chain Compromise** | Risco vindo de ferramenta/plugin/registro/MCP de terceiro usado pelo fluxo do agente | Dependências npm do backend | **Coberto** (mesma mitigação do item 4 do LLM Top 10: `npm audit`/Dependabot) — a parte específica de MCP server/plugin de terceiro é **N/A**, o projeto não conecta nenhum hoje |
+| ASI05 | **Unexpected Code Execution** | Agente gera/roda código ou comando de forma insegura | Nenhuma ferramenta do bot gera SQL livre ou executa código arbitrário — `consultar_dados_dinamico` é 100% parametrizado por whitelist | **N/A por design** — já mitigado na arquitetura (mecanismo descrito na seção "Consulta dinâmica e gráfico"), não é um fluxo que existe pra corrigir |
+| ASI06 | **Memory & Context Poisoning** | Contexto recuperado/armazenado é envenenado, manipulado ou desatualizado, influenciando comportamento futuro | `resumir_contexto` (Fase 4) compacta a janela de conversa em `resumos_conversa`, cumulativamente — se o texto de um e-mail ainda não confirmado (`confirmacoes_pendentes`) for resumido antes de você confirmar/rejeitar, uma instrução manipulada nele pode sobreviver no resumo persistido mesmo depois que a mensagem original sai da janela ativa | **Gap identificado nesta revisão** — considerar excluir/marcar como não confiável, no prompt de `resumir_contexto`, qualquer trecho ainda pendente de confirmação em `confirmacoes_pendentes` |
+| ASI07 | **Insecure Inter-Agent Communication** | Mensagem entre agentes é falsificada, repetida ou não autenticada | Não se aplica — arquitetura de agente único (não há sub-agentes nem comunicação agente-a-agente) | **N/A** |
+| ASI08 | **Cascading Failures** | Um erro/decisão ruim se propaga por agentes, ferramentas ou fluxos conectados | Falha crítica de job em background já dispara alerta imediato no Telegram; mas não há limite explícito de tool calls encadeadas numa mesma conversa se uma decisão errada disparar várias chamadas em sequência | **Parcialmente coberto** — cobertura existe pro lado de job/observabilidade, falta um teto de tool calls por turno como rede de segurança adicional; não bloqueante pro MVP |
+| ASI09 | **Human-Agent Trust Exploitation** | Humano confia demais ou é enganado pela saída do agente a ponto de agir com base nela | Consulta/gráfico sempre ecoam a interpretação usada (período, filtro, agrupamento, métrica); ação de alto impacto exige confirmação síncrona | **Coberto** — mesma mitigação do Misinformation (LLM Top 10, item 7) |
+| ASI10 | **Rogue Agents** | Agente opera fora da política por falha de design, *drift* ou comprometimento | Troca de modelo em `roteamento_tarefas` já passa por revisão humana, mas não existe monitoramento de baseline de comportamento nem um mecanismo documentado de "desligar o bot" rápido em caso de comportamento anômalo (ex: token vazado) | **Gap identificado nesta revisão** — considerar como melhoria futura (kill switch manual simples: revogar token do bot no BotFather já cobre o caso extremo hoje), não bloqueante pro MVP |
+
+Fontes consultadas:
+- [OWASP Top 10 for Agentic Applications for 2026 — OWASP Gen AI Security Project](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/)
+- [OWASP Top 10 for Agentic Applications 2026 — Cycode](https://cycode.com/blog/owasp-top-10-agentic-applications/)
+- [OWASP Agentic AI Top 10: Every Risk Explained with Enterprise Mitigations — NeuralTrust](https://neuraltrust.ai/blog/owasp-agentic-ai-top-10)
+- [OWASP Top 10 for Agentic Applications for 2026 — Practical DevSecOps](https://www.practical-devsecops.com/owasp-top-10-agentic-applications/)
+
+---
+
 ## Logs e tratamento de erros
 
 Sem isso, um job em background que falhar (monitoramento de preço, leitura de e-mail, geração de relatório) pode quebrar silenciosamente e você só percebe dias depois. Design proporcional ao tamanho do projeto — sem infraestrutura de observabilidade pesada:
