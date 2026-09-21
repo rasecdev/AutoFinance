@@ -23,5 +23,11 @@ export type ToolDefinition<Schema extends z.ZodTypeAny = z.ZodTypeAny> = {
   // ferramentas de alto impacto com algo a mostrar além dos parâmetros crus
   // precisam disso (ex: amortizar_divida).
   avisoConfirmacao?: (args: z.infer<Schema>) => string | undefined;
+  // Frase em linguagem natural descrevendo a ação (ex: "criar o cartão
+  // 'X' na conta 'Y', limite R$ 5.000,00"), usada em vez do JSON cru dos
+  // argumentos na pergunta de confirmação — achado real de teste manual
+  // (Fase 8): o formato genérico com JSON confundia o usuário. Sem isso,
+  // cai no fallback antigo (nome da tool + JSON).
+  resumoConfirmacao?: (args: z.infer<Schema>) => string | undefined;
   handler: (args: z.infer<Schema>, ctx: ToolContext) => Promise<ResultadoTool>;
 };

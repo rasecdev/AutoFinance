@@ -335,6 +335,26 @@ describe('gerarResposta — loop de tool calling', () => {
     expect(resultado.resposta.startsWith('Confirma a ação "excluir_transacao"')).toBe(true);
   });
 
+  it('usa resumoConfirmacao em linguagem natural em vez do JSON cru, quando a ferramenta define um (achado real de teste manual — usuário não entendia o JSON)', async () => {
+    const handler = vi.fn();
+    const toolComResumo: ToolDefinition = {
+      ...ecoar,
+      name: 'criar_cartao',
+      requerConfirmacao: true,
+      resumoConfirmacao: (args) => `criar o cartão "${(args as { texto: string }).texto}"`,
+      handler,
+    };
+    const client = criarClienteFalso(respostaToolCall('criar_cartao', { texto: 'Nubank' }));
+
+    const resultado = await gerarResposta(client, 'cria um cartão', [toolComResumo]);
+
+    expect(resultado.resposta).toBe(
+      'Confirma criar o cartão "Nubank"? Responda "sim" para confirmar, ou qualquer outra coisa para cancelar.',
+    );
+    expect(resultado.resposta).not.toContain('{');
+    expect(resultado.resposta).not.toContain('criar_cartao"');
+  });
+
   it('retenta uma vez quando o modelo devolve finish_reason "error" (achado real: falha intermitente do Gemini)', async () => {
     const client = criarClienteFalso(respostaErroModelo(), respostaTexto('funcionou na segunda tentativa'));
 
