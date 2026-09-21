@@ -18,6 +18,10 @@ COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
 RUN cp -r src/db/migrations dist/db/migrations
+# tsc só compila .ts — fixtures de áudio sintético (transcricao_voz, Fase 6
+# parte 14) usadas pelo seed de benchmark precisam ser copiadas à parte,
+# mesmo motivo da linha de migrations acima.
+RUN cp -r src/scripts/fixtures dist/scripts/fixtures
 
 FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
