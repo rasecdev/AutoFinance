@@ -40,40 +40,43 @@ export function criarToolCriarCasoTesteBenchmark(db: DbClient): ToolDefinition {
   };
 }
 
+// Achado real de teste manual (antes da Fase 6 parte 14): com "fluxo" como
+// parâmetro de texto livre, o modelo às vezes inventava uma descrição no
+// lugar do identificador real (ex: "Benchmark de tool calling entre X vs Y"
+// em vez de "conversa_texto"), fazendo listarCasosTeste não achar nenhum
+// caso — silenciosamente comparava contra um fluxo que não existe. Enum fixo
+// (não string livre) elimina essa classe de erro mesmo agora que o fluxo
+// virou parâmetro de verdade (Fase 6 parte 14, cobertura de mídia).
+const FLUXOS_BENCHMARK = ['conversa_texto', 'leitura_comprovante', 'interpretar_planilha', 'transcricao_voz'] as const;
+
 const schemaRodarBenchmarkInterno = z.object({
   modelos_candidatos: z.array(z.string().min(1)).min(1),
+  // Default conversa_texto preserva 100% o comportamento anterior a esta
+  // tarefa pra quem chama sem informar fluxo.
+  fluxo: z.enum(FLUXOS_BENCHMARK).default(FLUXO_CONVERSA_TEXTO),
 });
 
 function formatarCustoUsd(valor: number): string {
   return `US$ ${valor.toFixed(6)}`;
 }
 
-// Achado real de teste manual: com "fluxo" como parâmetro livre, o modelo
-// às vezes inventava uma descrição no lugar do identificador real (ex:
-// "Benchmark de tool calling entre X vs Y" em vez de "conversa_texto"),
-// fazendo listarCasosTeste não achar nenhum caso — silenciosamente comparava
-// contra um fluxo que não existe. Esta rodada só cobre tool calling
-// (conversa_texto) mesmo, então o fluxo nem precisa ser parâmetro: hardcoded,
-// elimina essa classe de erro inteira.
-const FLUXO_BENCHMARK = FLUXO_CONVERSA_TEXTO;
-
 export function criarToolRodarBenchmarkInterno(client: OpenAI, db: DbClient): ToolDefinition {
   return {
     name: 'rodar_benchmark_interno',
     description:
-      'Roda o benchmark interno de tool calling: chama cada modelo candidato contra todos os casos de teste já curados (ver criar_caso_teste_benchmark) e compara a resposta com o gabarito. Gasta dinheiro real (uma chamada de IA por caso × modelo) — só rode quando o usuário pedir explicitamente pra comparar modelos, nunca por conta própria. modelos_candidatos são slugs do OpenRouter (ex: "openai/gpt-4o-mini", "qwen/qwen3-32b"). Ação de alto impacto (custo real) — só executa após confirmação.',
+      'Roda o benchmark interno: chama cada modelo candidato contra todos os casos de teste já curados de um fluxo e compara o resultado com o gabarito. Fluxos disponíveis: "conversa_texto" (acerto de tool calling — qual ferramenta e com quais argumentos, padrão quando não informado), "leitura_comprovante" (acerto dos campos extraídos de foto/PDF de comprovante), "interpretar_planilha" (acerto das transações extraídas de Excel) e "transcricao_voz" (acerto da transcrição de áudio). Gasta dinheiro real (uma chamada de IA por caso × modelo) — só rode quando o usuário pedir explicitamente pra comparar modelos, nunca por conta própria. modelos_candidatos são slugs do OpenRouter (ex: "openai/gpt-4o-mini", "qwen/qwen3-32b"). Ação de alto impacto (custo real) — só executa após confirmação.',
     schema: schemaRodarBenchmarkInterno,
     requerConfirmacao: true,
     resumoConfirmacao: (args) => {
-      const { modelos_candidatos: modelosCandidatos } = args as z.infer<typeof schemaRodarBenchmarkInterno>;
-      return `rodar o benchmark interno contra ${modelosCandidatos.length} modelo(s) candidato(s) (${modelosCandidatos.join(', ')})`;
+      const { modelos_candidatos: modelosCandidatos, fluxo } = args as z.infer<typeof schemaRodarBenchmarkInterno>;
+      return `rodar o benchmark interno do fluxo "${fluxo}" contra ${modelosCandidatos.length} modelo(s) candidato(s) (${modelosCandidatos.join(', ')})`;
     },
     avisoConfirmacao: (args) => {
-      const { modelos_candidatos: modelosCandidatos } = args as z.infer<typeof schemaRodarBenchmarkInterno>;
-      const totalCasos = listarCasosTeste(db, FLUXO_BENCHMARK).length;
+      const { modelos_candidatos: modelosCandidatos, fluxo } = args as z.infer<typeof schemaRodarBenchmarkInterno>;
+      const totalCasos = listarCasosTeste(db, fluxo).length;
 
       if (totalCasos === 0) {
-        return 'Não há nenhum caso de teste cadastrado ainda — rodar assim não compara nada (use criar_caso_teste_benchmark primeiro).';
+        return `Não há nenhum caso de teste cadastrado pro fluxo "${fluxo}" ainda — rodar assim não compara nada.`;
       }
 
       const totalChamadas = totalCasos * modelosCandidatos.length;
@@ -85,22 +88,22 @@ export function criarToolRodarBenchmarkInterno(client: OpenAI, db: DbClient): To
       return `Isso vai fazer ${totalChamadas} chamada(s) real(is) de IA (${totalCasos} caso(s) × ${modelosCandidatos.length} modelo(s)), com custo real. As chamadas são sequenciais — pode levar uns ${estimativaMinutos} minuto(s) (estimativa). NÃO reenvie o pedido nem cancele antes disso: só espere a mensagem de resultado chegar.`;
     },
     handler: async (args) => {
-      const { modelos_candidatos: modelosCandidatos } = args as z.infer<typeof schemaRodarBenchmarkInterno>;
+      const { modelos_candidatos: modelosCandidatos, fluxo } = args as z.infer<typeof schemaRodarBenchmarkInterno>;
 
       // Guarda mesmo depois da confirmação — avisoConfirmacao já avisa quando
       // não há caso de teste, mas nada impede o usuário (ou o modelo) de
       // confirmar mesmo assim; sem essa checagem aqui, rodava com 0 casos e
       // gravava "0% de acurácia" em benchmarks_modelos, dado enganoso (parece
       // "modelo falhou" quando na verdade não teve nenhum caso testado).
-      if (listarCasosTeste(db, FLUXO_BENCHMARK).length === 0) {
-        return 'Não há nenhum caso de teste cadastrado ainda — nada foi rodado (use criar_caso_teste_benchmark primeiro).';
+      if (listarCasosTeste(db, fluxo).length === 0) {
+        return `Não há nenhum caso de teste cadastrado pro fluxo "${fluxo}" ainda — nada foi rodado.`;
       }
 
-      const resultados = await executarBenchmarkFluxo(client, db, FLUXO_BENCHMARK, modelosCandidatos);
+      const resultados = await executarBenchmarkFluxo(client, db, fluxo, modelosCandidatos);
 
       const linhas = resultados.map((resultado) => {
         registrarBenchmark(db, {
-          fluxo: FLUXO_BENCHMARK,
+          fluxo,
           modelIdOpenrouter: resultado.modelo,
           metrica: METRICA_ACURACIA_TOOL_CALLING,
           valor: resultado.acuracia,
@@ -110,7 +113,7 @@ export function criarToolRodarBenchmarkInterno(client: OpenAI, db: DbClient): To
         return `- ${resultado.modelo}: ${(resultado.acuracia * 100).toFixed(0)}% (${resultado.acertos}/${resultado.totalCasos}), custo do teste ${formatarCustoUsd(resultado.custoTotal)}`;
       });
 
-      return `Benchmark interno rodado (tool calling):\n${linhas.join('\n')}`;
+      return `Benchmark interno rodado (fluxo "${fluxo}"):\n${linhas.join('\n')}`;
     },
   };
 }
