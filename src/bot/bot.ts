@@ -1,13 +1,16 @@
 import { Bot } from 'grammy';
 import type { Env } from '../config/env.js';
+import type { DbClient } from '../db/client.js';
 import type { Logger } from '../logging/logger.js';
 import { createAllowlistMiddleware } from './middleware/allowlist.js';
+import { createPausaMiddleware } from './middleware/pausa.js';
 import { configurarFormatacaoPadrao } from './formatoMensagens.js';
 import { registerRoutes, type Handler } from './router.js';
 
 export function createBot(
   env: Pick<Env, 'telegramBotToken' | 'telegramAllowedChatIds'>,
   logger: Logger,
+  db: DbClient,
   handlerTexto: Handler,
   handlerMidia: Handler,
   handlerVoz: Handler,
@@ -27,6 +30,7 @@ export function createBot(
 
   configurarFormatacaoPadrao(bot);
   bot.use(createAllowlistMiddleware(env.telegramAllowedChatIds, logger));
+  bot.use(createPausaMiddleware(db));
 
   registerRoutes(
     bot,

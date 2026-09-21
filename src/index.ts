@@ -50,6 +50,7 @@ const handlerCallbackConfirmacao = createHandlerCallbackConfirmacao(db, logger, 
 const bot = createBot(
   env,
   logger,
+  db,
   handlerTexto,
   handlerMidia,
   handlerVoz,

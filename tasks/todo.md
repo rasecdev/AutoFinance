@@ -56,21 +56,24 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura.
 **Description:** Novo `src/bot/middleware/pausa.ts` (`createPausaMiddleware(db)`), mesmo padrão de `createAllowlistMiddleware`. Deixa passar (`next()`) quando a mensagem bate com o regex de `/pausar` ou `/retomar` (de `COMANDOS_BOT`) OU quando `estaPausado(db, chatId)` é `false`; caso contrário, responde recusando ("Bot pausado. Mande /retomar pra voltar a processar mensagens.") e não chama `next()`. Cobre `message` e `callback_query` (clique em botão de confirmação também deve ser bloqueado quando pausado). Registrado em `bot.ts` logo depois de `createAllowlistMiddleware`, antes de `registerRoutes`.
 
 **Acceptance criteria:**
-- [ ] Chat pausado: mensagem de texto normal é recusada com a mensagem explícita, handler de texto normal nunca é chamado
-- [ ] Chat pausado: `/pausar` e `/retomar` continuam funcionando (middleware deixa passar)
-- [ ] Chat pausado: clique em botão de confirmação (`callback_query`) também é recusado
-- [ ] Chat não pausado: nenhuma mudança de comportamento (middleware é transparente)
+- [x] Chat pausado: mensagem de texto normal é recusada com a mensagem explícita, handler de texto normal nunca é chamado
+- [x] Chat pausado: `/pausar` e `/retomar` continuam funcionando (middleware deixa passar)
+- [x] Chat pausado: clique em botão de confirmação (`callback_query`) também é recusado
+- [x] Chat não pausado: nenhuma mudança de comportamento (middleware é transparente)
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/bot/middleware/pausa.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/bot/pausa.test.ts` (6 testes)
+- [x] Build succeeds: `npm run build`
+
+**Nota de implementação:** teste ficou em `tests/bot/pausa.test.ts` (não `tests/bot/middleware/`) pra seguir a convenção real já usada pelo teste do allowlist (`tests/bot/allowlist.test.ts`), não a suposição inicial do plano. O regex de `/pausar`/`/retomar` nasce em `pausa.ts` (`REGEX_PAUSAR`/`REGEX_RETOMAR`, exportado) em vez de depender de `COMANDOS_BOT` — na hora desta tarefa esses comandos ainda não existiam em `comandos.ts` (só a Tarefa 114 os cria); a Tarefa 114 importa essas constantes em vez de duplicar o regex, mantendo fonte única. `createBot`/`createHandlerCallbackConfirmacao`... na verdade só `createBot` ganhou o parâmetro novo `db` (`bot.ts`, `index.ts`) — nenhum handler existente precisou mudar.
 
 **Dependencies:** Tarefa 112
 
 **Files likely touched:**
 - `src/bot/middleware/pausa.ts`
 - `src/bot/bot.ts`
-- `tests/bot/middleware/pausa.test.ts`
+- `src/index.ts`
+- `tests/bot/pausa.test.ts`
 
 **Estimated scope:** Small
 
