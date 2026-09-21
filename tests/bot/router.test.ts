@@ -44,6 +44,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarOpenFinance = vi.fn();
     const handlerMapeamentoOpenFinance = vi.fn();
     const handlerCallbackConfirmacao = vi.fn();
+    const handlerPausar = vi.fn();
+    const handlerRetomar = vi.fn();
 
     registerRoutes(
       bot,
@@ -61,6 +63,8 @@ describe('registerRoutes', () => {
       handlerRegistrarOpenFinance,
       handlerMapeamentoOpenFinance,
       handlerCallbackConfirmacao,
+      handlerPausar,
+      handlerRetomar,
     );
 
     expect(bot.on).toHaveBeenCalledWith('message:text', handlerTexto);
@@ -82,6 +86,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarOpenFinance = vi.fn();
     const handlerMapeamentoOpenFinance = vi.fn();
     const handlerCallbackConfirmacao = vi.fn();
+    const handlerPausar = vi.fn();
+    const handlerRetomar = vi.fn();
 
     registerRoutes(
       bot,
@@ -99,6 +105,8 @@ describe('registerRoutes', () => {
       handlerRegistrarOpenFinance,
       handlerMapeamentoOpenFinance,
       handlerCallbackConfirmacao,
+      handlerPausar,
+      handlerRetomar,
     );
 
     expect(bot.on).toHaveBeenCalledWith(['message:photo', 'message:document'], handlerMidia);
@@ -120,6 +128,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarOpenFinance = vi.fn();
     const handlerMapeamentoOpenFinance = vi.fn();
     const handlerCallbackConfirmacao = vi.fn();
+    const handlerPausar = vi.fn();
+    const handlerRetomar = vi.fn();
 
     registerRoutes(
       bot,
@@ -137,6 +147,8 @@ describe('registerRoutes', () => {
       handlerRegistrarOpenFinance,
       handlerMapeamentoOpenFinance,
       handlerCallbackConfirmacao,
+      handlerPausar,
+      handlerRetomar,
     );
 
     expect(bot.on).toHaveBeenCalledWith('message:voice', handlerVoz);
@@ -158,6 +170,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarOpenFinance = vi.fn();
     const handlerMapeamentoOpenFinance = vi.fn();
     const handlerCallbackConfirmacao = vi.fn();
+    const handlerPausar = vi.fn();
+    const handlerRetomar = vi.fn();
 
     registerRoutes(
       bot,
@@ -175,6 +189,8 @@ describe('registerRoutes', () => {
       handlerRegistrarOpenFinance,
       handlerMapeamentoOpenFinance,
       handlerCallbackConfirmacao,
+      handlerPausar,
+      handlerRetomar,
     );
 
     expect(bot.on).toHaveBeenCalledWith('message', handlerNaoSuportado);
@@ -196,6 +212,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarOpenFinance = vi.fn();
     const handlerMapeamentoOpenFinance = vi.fn();
     const handlerCallbackConfirmacao = vi.fn();
+    const handlerPausar = vi.fn();
+    const handlerRetomar = vi.fn();
 
     registerRoutes(
       bot,
@@ -213,6 +231,8 @@ describe('registerRoutes', () => {
       handlerRegistrarOpenFinance,
       handlerMapeamentoOpenFinance,
       handlerCallbackConfirmacao,
+      handlerPausar,
+      handlerRetomar,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerFeedback);
@@ -239,6 +259,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarOpenFinance = vi.fn();
     const handlerMapeamentoOpenFinance = vi.fn();
     const handlerCallbackConfirmacao = vi.fn();
+    const handlerPausar = vi.fn();
+    const handlerRetomar = vi.fn();
 
     registerRoutes(
       bot,
@@ -256,6 +278,8 @@ describe('registerRoutes', () => {
       handlerRegistrarOpenFinance,
       handlerMapeamentoOpenFinance,
       handlerCallbackConfirmacao,
+      handlerPausar,
+      handlerRetomar,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerFeedbackCorreto);
@@ -283,6 +307,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarOpenFinance = vi.fn();
     const handlerMapeamentoOpenFinance = vi.fn();
     const handlerCallbackConfirmacao = vi.fn();
+    const handlerPausar = vi.fn();
+    const handlerRetomar = vi.fn();
 
     registerRoutes(
       bot,
@@ -300,6 +326,8 @@ describe('registerRoutes', () => {
       handlerRegistrarOpenFinance,
       handlerMapeamentoOpenFinance,
       handlerCallbackConfirmacao,
+      handlerPausar,
+      handlerRetomar,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerModelos);
@@ -326,6 +354,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarOpenFinance = vi.fn();
     const handlerMapeamentoOpenFinance = vi.fn();
     const handlerCallbackConfirmacao = vi.fn();
+    const handlerPausar = vi.fn();
+    const handlerRetomar = vi.fn();
 
     registerRoutes(
       bot,
@@ -343,6 +373,8 @@ describe('registerRoutes', () => {
       handlerRegistrarOpenFinance,
       handlerMapeamentoOpenFinance,
       handlerCallbackConfirmacao,
+      handlerPausar,
+      handlerRetomar,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerModelo);
@@ -370,6 +402,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarOpenFinance = vi.fn();
     const handlerMapeamentoOpenFinance = vi.fn();
     const handlerCallbackConfirmacao = vi.fn();
+    const handlerPausar = vi.fn();
+    const handlerRetomar = vi.fn();
 
     registerRoutes(
       bot,
@@ -387,6 +421,8 @@ describe('registerRoutes', () => {
       handlerRegistrarOpenFinance,
       handlerMapeamentoOpenFinance,
       handlerCallbackConfirmacao,
+      handlerPausar,
+      handlerRetomar,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerRegistrarEmail);
@@ -412,6 +448,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarOpenFinance = vi.fn();
     const handlerMapeamentoOpenFinance = vi.fn();
     const handlerCallbackConfirmacao = vi.fn();
+    const handlerPausar = vi.fn();
+    const handlerRetomar = vi.fn();
 
     registerRoutes(
       bot,
@@ -429,6 +467,8 @@ describe('registerRoutes', () => {
       handlerRegistrarOpenFinance,
       handlerMapeamentoOpenFinance,
       handlerCallbackConfirmacao,
+      handlerPausar,
+      handlerRetomar,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerAjuda);
@@ -454,6 +494,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarOpenFinance = vi.fn();
     const handlerMapeamentoOpenFinance = vi.fn();
     const handlerCallbackConfirmacao = vi.fn();
+    const handlerPausar = vi.fn();
+    const handlerRetomar = vi.fn();
 
     registerRoutes(
       bot,
@@ -471,6 +513,8 @@ describe('registerRoutes', () => {
       handlerRegistrarOpenFinance,
       handlerMapeamentoOpenFinance,
       handlerCallbackConfirmacao,
+      handlerPausar,
+      handlerRetomar,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerRegistrarOpenFinance);
@@ -496,6 +540,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarOpenFinance = vi.fn();
     const handlerMapeamentoOpenFinance = vi.fn();
     const handlerCallbackConfirmacao = vi.fn();
+    const handlerPausar = vi.fn();
+    const handlerRetomar = vi.fn();
 
     registerRoutes(
       bot,
@@ -513,10 +559,12 @@ describe('registerRoutes', () => {
       handlerRegistrarOpenFinance,
       handlerMapeamentoOpenFinance,
       handlerCallbackConfirmacao,
+      handlerPausar,
+      handlerRetomar,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerCodigoOAuthGoogle);
-    const predicado = bot.filter.mock.calls[7]?.[0] as (ctx: Context) => boolean;
+    const predicado = bot.filter.mock.calls[9]?.[0] as (ctx: Context) => boolean;
 
     expect(predicado(criarCtxComTextoEChat('4/0Acodigo-qualquer', 9999))).toBe(false);
 
@@ -541,6 +589,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarOpenFinance = vi.fn();
     const handlerMapeamentoOpenFinance = vi.fn();
     const handlerCallbackConfirmacao = vi.fn();
+    const handlerPausar = vi.fn();
+    const handlerRetomar = vi.fn();
 
     registerRoutes(
       bot,
@@ -558,10 +608,12 @@ describe('registerRoutes', () => {
       handlerRegistrarOpenFinance,
       handlerMapeamentoOpenFinance,
       handlerCallbackConfirmacao,
+      handlerPausar,
+      handlerRetomar,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerMapeamentoOpenFinance);
-    const predicado = bot.filter.mock.calls[8]?.[0] as (ctx: Context) => boolean;
+    const predicado = bot.filter.mock.calls[10]?.[0] as (ctx: Context) => boolean;
 
     expect(predicado(criarCtxComTextoEChat('1 = Principal', 9999))).toBe(false);
 
@@ -586,6 +638,8 @@ describe('registerRoutes', () => {
     const handlerRegistrarOpenFinance = vi.fn();
     const handlerMapeamentoOpenFinance = vi.fn();
     const handlerCallbackConfirmacao = vi.fn();
+    const handlerPausar = vi.fn();
+    const handlerRetomar = vi.fn();
 
     registerRoutes(
       bot,
@@ -603,8 +657,104 @@ describe('registerRoutes', () => {
       handlerRegistrarOpenFinance,
       handlerMapeamentoOpenFinance,
       handlerCallbackConfirmacao,
+      handlerPausar,
+      handlerRetomar,
     );
 
     expect(bot.on).toHaveBeenCalledWith('callback_query:data', handlerCallbackConfirmacao);
+  });
+
+  it('registra o handler de pausar com um filtro pro comando /pausar', () => {
+    const bot = criarBotFake();
+    const handlerTexto = vi.fn();
+    const handlerMidia = vi.fn();
+    const handlerVoz = vi.fn();
+    const handlerNaoSuportado = vi.fn();
+    const handlerFeedback = vi.fn();
+    const handlerFeedbackCorreto = vi.fn();
+    const handlerModelo = vi.fn();
+    const handlerModelos = vi.fn();
+    const handlerRegistrarEmail = vi.fn();
+    const handlerCodigoOAuthGoogle = vi.fn();
+    const handlerAjuda = vi.fn();
+    const handlerRegistrarOpenFinance = vi.fn();
+    const handlerMapeamentoOpenFinance = vi.fn();
+    const handlerCallbackConfirmacao = vi.fn();
+    const handlerPausar = vi.fn();
+    const handlerRetomar = vi.fn();
+
+    registerRoutes(
+      bot,
+      handlerTexto,
+      handlerMidia,
+      handlerVoz,
+      handlerNaoSuportado,
+      handlerFeedback,
+      handlerFeedbackCorreto,
+      handlerModelo,
+      handlerModelos,
+      handlerRegistrarEmail,
+      handlerCodigoOAuthGoogle,
+      handlerAjuda,
+      handlerRegistrarOpenFinance,
+      handlerMapeamentoOpenFinance,
+      handlerCallbackConfirmacao,
+      handlerPausar,
+      handlerRetomar,
+    );
+
+    expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerPausar);
+    const predicado = bot.filter.mock.calls[7]?.[0] as (ctx: Context) => boolean;
+    expect(predicado(criarCtxComTexto('/pausar'))).toBe(true);
+    expect(predicado(criarCtxComTexto('/Pausar'))).toBe(true);
+    expect(predicado(criarCtxComTexto('/retomar'))).toBe(false);
+    expect(predicado(criarCtxComTexto('não é o comando'))).toBe(false);
+  });
+
+  it('registra o handler de retomar com um filtro pro comando /retomar', () => {
+    const bot = criarBotFake();
+    const handlerTexto = vi.fn();
+    const handlerMidia = vi.fn();
+    const handlerVoz = vi.fn();
+    const handlerNaoSuportado = vi.fn();
+    const handlerFeedback = vi.fn();
+    const handlerFeedbackCorreto = vi.fn();
+    const handlerModelo = vi.fn();
+    const handlerModelos = vi.fn();
+    const handlerRegistrarEmail = vi.fn();
+    const handlerCodigoOAuthGoogle = vi.fn();
+    const handlerAjuda = vi.fn();
+    const handlerRegistrarOpenFinance = vi.fn();
+    const handlerMapeamentoOpenFinance = vi.fn();
+    const handlerCallbackConfirmacao = vi.fn();
+    const handlerPausar = vi.fn();
+    const handlerRetomar = vi.fn();
+
+    registerRoutes(
+      bot,
+      handlerTexto,
+      handlerMidia,
+      handlerVoz,
+      handlerNaoSuportado,
+      handlerFeedback,
+      handlerFeedbackCorreto,
+      handlerModelo,
+      handlerModelos,
+      handlerRegistrarEmail,
+      handlerCodigoOAuthGoogle,
+      handlerAjuda,
+      handlerRegistrarOpenFinance,
+      handlerMapeamentoOpenFinance,
+      handlerCallbackConfirmacao,
+      handlerPausar,
+      handlerRetomar,
+    );
+
+    expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerRetomar);
+    const predicado = bot.filter.mock.calls[8]?.[0] as (ctx: Context) => boolean;
+    expect(predicado(criarCtxComTexto('/retomar'))).toBe(true);
+    expect(predicado(criarCtxComTexto('/Retomar'))).toBe(true);
+    expect(predicado(criarCtxComTexto('/pausar'))).toBe(false);
+    expect(predicado(criarCtxComTexto('não é o comando'))).toBe(false);
   });
 });
