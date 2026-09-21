@@ -14,7 +14,13 @@ import {
 import { registrarInteracaoIa } from '../../db/repositories/interacoesIa.js';
 import { registrarUsoTokens } from '../../db/repositories/usoTokens.js';
 import type { Logger } from '../../logging/logger.js';
-import { definirPendencia, ehConfirmacaoAfirmativa, obterPendencia, removerPendencia } from '../confirmacao.js';
+import {
+  definirPendencia,
+  ehConfirmacaoAfirmativa,
+  montarTecladoConfirmacao,
+  obterPendencia,
+  removerPendencia,
+} from '../confirmacao.js';
 import { resolverModeloConversa } from '../modeloAtivo.js';
 import { definirRastroResposta } from '../rastroRespostas.js';
 
@@ -182,6 +188,7 @@ export async function processarMensagemTexto(
     );
     const mensagemEnviada = await ctx.reply(
       resposta.trim().length > 0 ? resposta : 'Não entendi, pode reformular?',
+      pendenciaConfirmacao ? { reply_markup: montarTecladoConfirmacao() } : undefined,
     );
     definirRastroResposta(mensagemEnviada.message_id, traceId);
     for (const imagem of imagens) {

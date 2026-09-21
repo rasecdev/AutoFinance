@@ -5,6 +5,7 @@ import Database from 'better-sqlite3-multiple-ciphers';
 import type { Context } from 'grammy';
 import type OpenAI from 'openai';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 import type { ToolDefinition } from '../../../src/ai/tools/types.js';
 import { definirPendencia } from '../../../src/bot/confirmacao.js';
 import { processarMensagemTexto } from '../../../src/bot/handlers/texto.js';
@@ -98,5 +99,57 @@ describe('processarMensagemTexto — pendência persistida entre processos', () 
     expect(handlerMemoria).toHaveBeenCalled();
     expect(ctx.reply).toHaveBeenCalledWith('memoria executada');
     expect(obterPendenciaPersistida(db, 780)).toBeDefined();
+  });
+});
+
+function criarClienteFalsoComToolCall(nomeTool: string, argumentos: unknown) {
+  const create = vi.fn(async () => ({
+    choices: [
+      {
+        message: {
+          content: null,
+          tool_calls: [
+            { id: 'call-1', type: 'function', function: { name: nomeTool, arguments: JSON.stringify(argumentos) } },
+          ],
+        },
+      },
+    ],
+  }));
+  return { chat: { completions: { create } } } as unknown as OpenAI;
+}
+
+// Achado real de teste manual (Fase 8): usuário achou o "digite sim" confuso
+// — a pergunta de confirmação agora vem com um teclado inline (botões
+// Sim/Cancelar) anexado à mensagem, além de continuar aceitando texto.
+describe('processarMensagemTexto — pergunta de confirmação nova vem com teclado inline', () => {
+  it('tool com requerConfirmacao: envia a pergunta com reply_markup (botões Sim/Cancelar)', async () => {
+    const tool: ToolDefinition = {
+      name: 'criar_cartao',
+      description: 'x',
+      schema: z.object({ nome: z.string() }),
+      requerConfirmacao: true,
+      resumoConfirmacao: () => 'criar o cartão "Nubank"',
+      handler: vi.fn(async () => 'não deveria rodar ainda'),
+    };
+    const client = criarClienteFalsoComToolCall('criar_cartao', { nome: 'Nubank' });
+
+    const ctx = criarContextoFake(781);
+    await processarMensagemTexto(ctx, db, client, logger, [tool], 'cria um cartão nubank', 781);
+
+    expect(ctx.reply).toHaveBeenCalledWith(
+      expect.stringContaining('Confirma criar o cartão "Nubank"?'),
+      { reply_markup: expect.objectContaining({ inline_keyboard: expect.any(Array) }) },
+    );
+  });
+
+  it('resposta de texto normal (sem pendência): não anexa reply_markup nenhum', async () => {
+    const client = {
+      chat: { completions: { create: vi.fn(async () => ({ choices: [{ message: { content: 'olá!' } }] })) } },
+    } as unknown as OpenAI;
+
+    const ctx = criarContextoFake(782);
+    await processarMensagemTexto(ctx, db, client, logger, [], 'oi', 782);
+
+    expect(ctx.reply).toHaveBeenCalledWith('olá!', undefined);
   });
 });
