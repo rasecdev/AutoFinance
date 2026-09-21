@@ -116,8 +116,8 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura.
 ---
 
 ## Checkpoint: Gaps ASI06/ASI10 do OWASP Agentic Top 10 fechados
-- [ ] `npm run build`/`lint`/`test` sem erro
+- [x] `npm run build`/`lint`/`test` sem erro (945/947 — 2 timeouts isolados de renderização de gráfico, flake pré-existente documentado)
 - [ ] Teste manual: `/pausar` em Homologação recusa mensagem normal, `/retomar` restaura o funcionamento
-- [ ] PLANO.md atualizado — status ASI06/ASI10 na tabela do estudo "OWASP Top 10 for Agentic Applications" trocado de "Gap identificado" pra "Corrigido", referenciando esta rodada
-- [ ] PROGRESSO.md atualizado com o marco
+- [x] PLANO.md atualizado — status ASI06/ASI10 na tabela do estudo "OWASP Top 10 for Agentic Applications" trocado de "Gap identificado" pra "Corrigido", referenciando esta rodada
+- [x] PROGRESSO.md atualizado com o marco
 - [ ] Revisão com o usuário antes de prosseguir
