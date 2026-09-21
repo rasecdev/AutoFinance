@@ -63,13 +63,15 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura.
 **Description:** `schemaRodarBenchmarkInterno` ganha `fluxo: z.enum(['conversa_texto', 'leitura_comprovante', 'interpretar_planilha', 'transcricao_voz']).default('conversa_texto')` — enum fixo, não string livre (evita reintroduzir o achado real já documentado no código sobre o modelo inventar descrição no lugar do identificador). `avisoConfirmacao`/`resumoConfirmacao`/`handler` passam o `fluxo` escolhido pra `listarCasosTeste`/`executarBenchmarkFluxo` em vez do `FLUXO_BENCHMARK` hardcoded. Descrição da tool atualizada pra mencionar os 4 fluxos disponíveis.
 
 **Acceptance criteria:**
-- [ ] Chamar sem `fluxo` continua testando `conversa_texto` (comportamento atual preservado)
-- [ ] Chamar com `fluxo: "leitura_comprovante"` (etc.) testa só os casos daquele fluxo
-- [ ] Mensagens de confirmação/aviso mencionam o fluxo escolhido, não só a contagem de casos
+- [x] Chamar sem `fluxo` continua testando `conversa_texto` (comportamento atual preservado via default do zod)
+- [x] Chamar com `fluxo: "leitura_comprovante"` (etc.) testa só os casos daquele fluxo
+- [x] Mensagens de confirmação/aviso mencionam o fluxo escolhido, não só a contagem de casos
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/ai/tools/benchmark.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/ai/tools/benchmark.test.ts` (11 testes)
+- [x] Build succeeds: `npm run build`
+
+**Nota de implementação:** os testes existentes chamavam `avisoConfirmacao`/`resumoConfirmacao`/`handler` direto com um objeto literal (sem passar por `tool.schema.parse`), então precisaram ganhar `fluxo: 'conversa_texto'` explícito — o default do zod só se aplica quando os argumentos passam pelo `.parse`/`.safeParse` de verdade (caminho real de produção, `executarToolCall` em `openrouter.ts`). Novo teste dedicado confirma o default via `tool.schema.parse({modelos_candidatos: [...]})`.
 
 **Dependencies:** Tarefa 107
 
