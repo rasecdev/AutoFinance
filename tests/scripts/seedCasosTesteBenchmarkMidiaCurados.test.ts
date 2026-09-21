@@ -105,4 +105,17 @@ describe('seedCasosTesteBenchmarkMidiaCurados', () => {
       { tipo: 'receita', valor: 1000, categoria: 'Salário', data: '2026-09-05' },
     ]);
   });
+
+  it('cria os casos curados de transcricao_voz numa base vazia, cada um com entradaArquivo (wav em base64)', async () => {
+    await seedCasosTesteBenchmarkMidiaCurados(db);
+
+    const casos = listarCasosTeste(db, 'transcricao_voz');
+    expect(casos.length).toBeGreaterThanOrEqual(2);
+    expect(casos.every((caso) => caso.origem === 'curado')).toBe(true);
+    expect(casos.every((caso) => caso.entradaArquivo?.mimeType === 'audio/wav')).toBe(true);
+    expect(casos.every((caso) => Buffer.from(caso.entradaArquivo!.base64, 'base64').length > 0)).toBe(true);
+
+    const gastoMercado = casos.find((c) => c.entrada === 'áudio gasto no mercado');
+    expect(gastoMercado?.saidaEsperada).toBe('Gastei 50 reais no mercado hoje');
+  });
 });

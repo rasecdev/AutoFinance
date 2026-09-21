@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import writeXlsxFile from 'write-excel-file/node';
 import { loadEnv } from '../config/env.js';
@@ -8,7 +10,9 @@ import { gerarPdfTexto } from './gerarPdfTeste.js';
 
 const FLUXO_LEITURA_COMPROVANTE = 'leitura_comprovante';
 const FLUXO_INTERPRETAR_PLANILHA = 'interpretar_planilha';
+const FLUXO_TRANSCRICAO_VOZ = 'transcricao_voz';
 const MIME_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const DIRETORIO_ATUAL = dirname(fileURLToPath(import.meta.url));
 
 type CasoCuradoComprovante = {
   rotulo: string;
@@ -82,6 +86,36 @@ const CASOS_PLANILHA: CasoCuradoPlanilha[] = [
   },
 ];
 
+type CasoCuradoAudio = {
+  rotulo: string;
+  arquivo: string;
+  saidaEsperada: string;
+};
+
+// Diferente de PDF/xlsx acima (gerados em código, texto puro), fala não dá
+// pra gerar em código dentro do container Linux de produção/Homologação —
+// sem TTS disponível ali. Estes .wav foram sintetizados uma única vez fora
+// deste script (Windows, voz "Microsoft Maria Desktop" pt-BR, via
+// System.Speech) e ficam versionados como fixture binária em
+// src/scripts/fixtures/audio/ (copiada pro dist pelo Dockerfile, mesmo
+// esquema das migrations). Frase com número em dígito ("50", não
+// "cinquenta") de propósito — achado real de validação manual: o Whisper
+// transcreve número por extenso como dígito, e normalizarTexto (benchmark.ts)
+// não converte um pro outro, o que geraria falso negativo com número escrito
+// por extenso na entrada.
+const CASOS_AUDIO: CasoCuradoAudio[] = [
+  {
+    rotulo: 'áudio gasto no mercado',
+    arquivo: 'gasto_mercado.wav',
+    saidaEsperada: 'Gastei 50 reais no mercado hoje',
+  },
+  {
+    rotulo: 'áudio pergunta de saldo',
+    arquivo: 'saldo_conta.wav',
+    saidaEsperada: 'Quanto eu tenho de saldo na conta corrente',
+  },
+];
+
 // Idempotente por rótulo (guardado como entrada) — rodar de novo no mesmo
 // ambiente não duplica, mesmo padrão do seed de texto.
 export async function seedCasosTesteBenchmarkMidiaCurados(db: DbClient): Promise<number> {
@@ -121,6 +155,21 @@ export async function seedCasosTesteBenchmarkMidiaCurados(db: DbClient): Promise
     criados += 1;
   }
 
+  const audiosExistentes = new Set(listarCasosTeste(db, FLUXO_TRANSCRICAO_VOZ).map((caso) => caso.entrada));
+  for (const caso of CASOS_AUDIO) {
+    if (audiosExistentes.has(caso.rotulo)) continue;
+
+    const wav = readFileSync(join(DIRETORIO_ATUAL, 'fixtures', 'audio', caso.arquivo));
+    criarCasoTeste(db, {
+      fluxo: FLUXO_TRANSCRICAO_VOZ,
+      entrada: caso.rotulo,
+      entradaArquivo: { base64: wav.toString('base64'), mimeType: 'audio/wav' },
+      saidaEsperada: caso.saidaEsperada,
+      origem: 'curado',
+    });
+    criados += 1;
+  }
+
   return criados;
 }
 
@@ -131,8 +180,8 @@ async function main(): Promise<void> {
 
   const criados = await seedCasosTesteBenchmarkMidiaCurados(db);
   logger.info(
-    { criados, total: CASOS_COMPROVANTE.length + CASOS_PLANILHA.length },
-    'seed de casos de teste de mídia (leitura_comprovante/interpretar_planilha) concluído',
+    { criados, total: CASOS_COMPROVANTE.length + CASOS_PLANILHA.length + CASOS_AUDIO.length },
+    'seed de casos de teste de mídia (leitura_comprovante/interpretar_planilha/transcricao_voz) concluído',
   );
 }
 
