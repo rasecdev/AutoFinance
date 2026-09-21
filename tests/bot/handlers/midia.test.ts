@@ -7,9 +7,11 @@ import type OpenAI from 'openai';
 import writeXlsxFile from 'write-excel-file/node';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { obterPendencia, removerPendencia } from '../../../src/bot/confirmacao.js';
+import { obterTraceIdPorMensagem } from '../../../src/bot/rastroRespostas.js';
 import type { DbClient } from '../../../src/db/client.js';
 import { migrate } from '../../../src/db/migrate.js';
 import { criarConta } from '../../../src/db/repositories/contas.js';
+import { atualizarAvaliacaoInteracao } from '../../../src/db/repositories/interacoesIa.js';
 import { listarUsoTokensPeriodo } from '../../../src/db/repositories/usoTokens.js';
 import { createLogger } from '../../../src/logging/logger.js';
 
@@ -38,7 +40,7 @@ function criarContextoFoto() {
     chat: { id: 123 },
     message: { photo: [{ file_id: 'abc' }] },
     getFile: vi.fn(async () => ({ file_path: 'photos/file_1.jpg' })),
-    reply: vi.fn(),
+    reply: vi.fn(async () => ({ message_id: 1 })),
   } as unknown as Context & { reply: ReturnType<typeof vi.fn> };
 }
 
@@ -47,7 +49,7 @@ function criarContextoDocumento(mimeType: string) {
     chat: { id: 123 },
     message: { document: { file_id: 'abc', mime_type: mimeType } },
     getFile: vi.fn(async () => ({ file_path: 'documents/file_1' })),
-    reply: vi.fn(),
+    reply: vi.fn(async () => ({ message_id: 1 })),
   } as unknown as Context & { reply: ReturnType<typeof vi.fn> };
 }
 
@@ -56,7 +58,7 @@ function criarContextoPlanilha(caption?: string) {
     chat: { id: 123 },
     message: { document: { file_id: 'abc', mime_type: MIME_PLANILHA_XLSX }, caption },
     getFile: vi.fn(async () => ({ file_path: 'documents/extrato.xlsx' })),
-    reply: vi.fn(),
+    reply: vi.fn(async () => ({ message_id: 1 })),
   } as unknown as Context & { reply: ReturnType<typeof vi.fn> };
 }
 
@@ -152,6 +154,36 @@ describe('handlerMidia', () => {
     expect(processarMensagemTextoMock).not.toHaveBeenCalled();
   });
 
+  // Achado real de teste manual: /errado não funcionava nessas respostas
+  // determinísticas porque nenhuma delas ficava rastreada — o handler de
+  // /errado (obterTraceIdPorMensagem + atualizarAvaliacaoInteracao) nunca
+  // achava nada pra marcar. Estes testes provam que o rastro agora existe.
+  it('"não é comprovante" fica rastreada — dá pra marcar como /errado depois', async () => {
+    const client = criarClienteFalso(JSON.stringify({ eComprovante: false }));
+    const handler = createHandlerMidia(client, db, createLogger({ write() {} }), BOT_TOKEN);
+    const ctx = criarContextoFoto();
+
+    await handler(ctx);
+
+    const traceId = obterTraceIdPorMensagem(1);
+    expect(traceId).toBeDefined();
+    expect(atualizarAvaliacaoInteracao(db, traceId!, 'incorreto')).toBe(true);
+  });
+
+  it('falha na extração fica rastreada — dá pra marcar como /errado depois', async () => {
+    const client = {
+      chat: { completions: { create: vi.fn(async () => Promise.reject(new Error('API fora'))) } },
+    } as unknown as OpenAI;
+    const handler = createHandlerMidia(client, db, createLogger({ write() {} }), BOT_TOKEN);
+    const ctx = criarContextoFoto();
+
+    await handler(ctx);
+
+    const traceId = obterTraceIdPorMensagem(1);
+    expect(traceId).toBeDefined();
+    expect(atualizarAvaliacaoInteracao(db, traceId!, 'incorreto')).toBe(true);
+  });
+
   it('fatura de cartão responde com aviso de degradação, sem registrar nada', async () => {
     const client = criarClienteFalso(JSON.stringify({ eComprovante: true, tipoDocumento: 'fatura_cartao' }));
     const handler = createHandlerMidia(client, db, createLogger({ write() {} }), BOT_TOKEN);
@@ -172,6 +204,18 @@ describe('handlerMidia', () => {
 
     expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('boleto de dívida'));
     expect(processarMensagemTextoMock).not.toHaveBeenCalled();
+  });
+
+  it('"fatura de cartão" fica rastreada — dá pra marcar como /errado depois', async () => {
+    const client = criarClienteFalso(JSON.stringify({ eComprovante: true, tipoDocumento: 'fatura_cartao' }));
+    const handler = createHandlerMidia(client, db, createLogger({ write() {} }), BOT_TOKEN);
+    const ctx = criarContextoFoto();
+
+    await handler(ctx);
+
+    const traceId = obterTraceIdPorMensagem(1);
+    expect(traceId).toBeDefined();
+    expect(atualizarAvaliacaoInteracao(db, traceId!, 'incorreto')).toBe(true);
   });
 
   it('documento com mime_type de imagem segue o mesmo caminho da foto', async () => {
