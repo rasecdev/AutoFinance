@@ -56,6 +56,30 @@ describe('criarCasoTeste / listarCasosTeste', () => {
     ]);
   });
 
+  it('cria e lista um caso de teste de mídia (Fase 6 parte 14), com entradaArquivo', () => {
+    criarCasoTeste(db, {
+      fluxo: 'leitura_comprovante',
+      entrada: 'comprovante mercado R$45',
+      entradaArquivo: { base64: 'JVBERi0xLjQK', mimeType: 'application/pdf' },
+      saidaEsperada: { valor: 45, tipoDocumento: 'compra', categoriaSugerida: 'Mercado' },
+      origem: 'curado',
+    });
+
+    const casos = listarCasosTeste(db, 'leitura_comprovante');
+
+    expect(casos).toEqual([
+      {
+        id: expect.any(Number),
+        fluxo: 'leitura_comprovante',
+        entrada: 'comprovante mercado R$45',
+        entradaArquivo: { base64: 'JVBERi0xLjQK', mimeType: 'application/pdf' },
+        saidaEsperada: { valor: 45, tipoDocumento: 'compra', categoriaSugerida: 'Mercado' },
+        origem: 'curado',
+        criadoEm: expect.any(String),
+      },
+    ]);
+  });
+
   it('não mistura casos de fluxos diferentes', () => {
     criarCasoTeste(db, {
       fluxo: 'conversa_texto',

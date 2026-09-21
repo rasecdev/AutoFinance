@@ -231,6 +231,32 @@ describe('migrate', () => {
     db.close();
   });
 
+  it('casos_teste_benchmark ganha entrada_arquivo_base64/entrada_mime_type nullable (Fase 6 parte 14)', () => {
+    const db = new Database(caminhoBanco);
+    db.pragma("cipher='sqlcipher'");
+    db.pragma(`key='${CHAVE_TESTE}'`);
+    migrate(db);
+
+    const colunas = db
+      .prepare('PRAGMA table_info(casos_teste_benchmark)')
+      .all()
+      .map((row) => (row as { name: string }).name);
+    expect(colunas).toContain('entrada_arquivo_base64');
+    expect(colunas).toContain('entrada_mime_type');
+
+    db.prepare(
+      "INSERT INTO casos_teste_benchmark (fluxo, entrada, saida_esperada, origem, criado_em) VALUES ('conversa_texto', 'oi', '[]', 'curado', datetime('now'))",
+    ).run();
+    const linha = db.prepare('SELECT entrada_arquivo_base64, entrada_mime_type FROM casos_teste_benchmark').get() as {
+      entrada_arquivo_base64: string | null;
+      entrada_mime_type: string | null;
+    };
+    expect(linha.entrada_arquivo_base64).toBeNull();
+    expect(linha.entrada_mime_type).toBeNull();
+
+    db.close();
+  });
+
   it('banco cifrado não pode ser lido sem a chave correta', () => {
     const db = new Database(caminhoBanco);
     db.pragma("cipher='sqlcipher'");
