@@ -9,23 +9,25 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura.
 **Description:** `casos_teste_benchmark` ganha 2 colunas nullable (`entrada_arquivo_base64`, `entrada_mime_type`) pra guardar o arquivo de teste dos casos de mídia — `NULL`/`NULL` continua significando "caso de texto", sem mudar nenhum caso já existente. O repositório (`src/db/repositories/casosTesteBenchmark.ts`) generaliza `saidaEsperada` de `ToolCallEsperada[]` pra `unknown` (só serializa/desserializa JSON, sem validar formato — cada consumidor sabe o que esperar do seu fluxo) e ganha um campo opcional `entradaArquivo?: { base64: string; mimeType: string }` em `NovoCasoTeste`/`CasoTesteBenchmark`.
 
 **Acceptance criteria:**
-- [ ] Migration 0015 aplicada, colunas nullable, sem quebrar nenhuma linha existente
-- [ ] `NovoCasoTeste`/`CasoTesteBenchmark` aceitam `entradaArquivo` opcional
-- [ ] `saidaEsperada` tipado como `unknown` (compila sem `any` solto)
-- [ ] Casos de texto existentes (seed de `conversa_texto`) continuam funcionando sem alteração
+- [x] Migration 0015 aplicada, colunas nullable, sem quebrar nenhuma linha existente
+- [x] `NovoCasoTeste`/`CasoTesteBenchmark` aceitam `entradaArquivo` opcional
+- [x] `saidaEsperada` tipado como `unknown` (compila sem `any` solto)
+- [x] Casos de texto existentes (seed de `conversa_texto`) continuam funcionando sem alteração
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/db/migrate.test.ts tests/db/repositories/casosTesteBenchmark.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/db/migrate.test.ts tests/db/casosTesteBenchmark.test.ts`
+- [x] Build succeeds: `npm run build`
+
+**Nota de implementação:** `src/ai/tools/benchmark.ts` e `seedCasosTesteBenchmarkCurados.ts` não precisaram de nenhuma mudança — já compilavam contra `saidaEsperada: unknown` sem alteração (só usam `.length`/passam o valor adiante, nunca acessam campo específico de `ToolCallEsperada`). `src/ai/benchmark.ts` (não listado originalmente) precisou de 1 cast pontual em `executarBenchmarkFluxo` (`caso.saidaEsperada as ToolCallEsperada[]`), comentado como temporário até a Tarefa 107 (dispatch por fluxo) substituir essa função inteira.
 
 **Dependencies:** None
 
 **Files likely touched:**
 - `src/db/migrations/0015_casos_teste_benchmark_midia.sql`
 - `src/db/repositories/casosTesteBenchmark.ts`
-- `tests/db/repositories/casosTesteBenchmark.test.ts`
-- `src/ai/tools/benchmark.ts` (ajuste de tipo, sem mudança de comportamento ainda)
-- `src/scripts/seedCasosTesteBenchmarkCurados.ts` (ajuste de tipo, sem mudança de comportamento)
+- `tests/db/casosTesteBenchmark.test.ts`
+- `tests/db/migrate.test.ts`
+- `src/ai/benchmark.ts` (cast pontual, ver nota acima)
 
 **Estimated scope:** Small
 
