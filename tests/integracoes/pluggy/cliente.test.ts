@@ -100,29 +100,36 @@ describe('listarContasDoItem', () => {
 });
 
 describe('listarTransacoes', () => {
-  it('devolve as transações de uma página só', async () => {
-    mockarFetch({
+  it('devolve as transações de uma página só, usando /v2/transactions', async () => {
+    const fetchFalso = mockarFetch({
       results: [{ id: 'tx-1', accountId: 'conta-1', description: 'Mercado', amount: -50, date: '2026-09-01' }],
-      page: 1,
-      totalPages: 1,
+      next: null,
     });
 
     const transacoes = await listarTransacoes('api-key-teste', 'conta-1');
 
     expect(transacoes).toHaveLength(1);
     expect(transacoes[0]?.id).toBe('tx-1');
+    const urlChamada = fetchFalso.mock.calls[0]?.[0] as string;
+    expect(urlChamada).toContain('/v2/transactions?');
   });
 
-  it('pagina automaticamente até esgotar totalPages, sem truncar', async () => {
+  it('pagina automaticamente seguindo o cursor "next", sem truncar', async () => {
     const fetchFalso = vi
       .fn()
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ results: [{ id: 'tx-1', accountId: 'c1', description: 'a', amount: 1, date: 'd' }], page: 1, totalPages: 2 }),
+        json: async () => ({
+          results: [{ id: 'tx-1', accountId: 'c1', description: 'a', amount: 1, date: 'd' }],
+          next: 'cursor-pagina-2',
+        }),
       })
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ results: [{ id: 'tx-2', accountId: 'c1', description: 'b', amount: 2, date: 'd' }], page: 2, totalPages: 2 }),
+        json: async () => ({
+          results: [{ id: 'tx-2', accountId: 'c1', description: 'b', amount: 2, date: 'd' }],
+          next: null,
+        }),
       });
     vi.stubGlobal('fetch', fetchFalso);
 
@@ -130,10 +137,12 @@ describe('listarTransacoes', () => {
 
     expect(transacoes.map((t) => t.id)).toEqual(['tx-1', 'tx-2']);
     expect(fetchFalso).toHaveBeenCalledTimes(2);
+    const segundaUrl = fetchFalso.mock.calls[1]?.[0] as string;
+    expect(segundaUrl).toContain('cursor=cursor-pagina-2');
   });
 
   it('inclui o parâmetro "from" quando uma data de referência é passada', async () => {
-    const fetchFalso = mockarFetch({ results: [], page: 1, totalPages: 1 });
+    const fetchFalso = mockarFetch({ results: [], next: null });
 
     await listarTransacoes('api-key-teste', 'conta-1', '2026-09-01');
 
