@@ -8,6 +8,7 @@ services:
     restart: unless-stopped
 
   homologacao:
+    build: .
     image: autofinance:latest
     env_file: .env.homologacao
     volumes:
@@ -15,6 +16,7 @@ services:
     restart: unless-stopped
 
   backup-producao:
+    build: .
     image: autofinance:latest
     env_file: .env.producao
     volumes:
@@ -23,6 +25,7 @@ services:
     restart: unless-stopped
 
   backup-homologacao:
+    build: .
     image: autofinance:latest
     env_file: .env.homologacao
     volumes:
@@ -31,6 +34,7 @@ services:
     restart: unless-stopped
 
   monitor-precos-producao:
+    build: .
     image: autofinance:latest
     env_file: .env.producao
     volumes:
@@ -39,6 +43,7 @@ services:
     restart: unless-stopped
 
   monitor-precos-homologacao:
+    build: .
     image: autofinance:latest
     env_file: .env.homologacao
     volumes:
@@ -47,6 +52,7 @@ services:
     restart: unless-stopped
 
   relatorio-semanal-producao:
+    build: .
     image: autofinance:latest
     env_file: .env.producao
     volumes:
@@ -55,6 +61,7 @@ services:
     restart: unless-stopped
 
   relatorio-semanal-homologacao:
+    build: .
     image: autofinance:latest
     env_file: .env.homologacao
     volumes:
@@ -63,6 +70,7 @@ services:
     restart: unless-stopped
 
   relatorio-mensal-producao:
+    build: .
     image: autofinance:latest
     env_file: .env.producao
     volumes:
@@ -71,6 +79,7 @@ services:
     restart: unless-stopped
 
   relatorio-mensal-homologacao:
+    build: .
     image: autofinance:latest
     env_file: .env.homologacao
     volumes:
@@ -79,6 +88,7 @@ services:
     restart: unless-stopped
 
   verificar-despesas-fixas-producao:
+    build: .
     image: autofinance:latest
     env_file: .env.producao
     volumes:
@@ -87,6 +97,7 @@ services:
     restart: unless-stopped
 
   verificar-despesas-fixas-homologacao:
+    build: .
     image: autofinance:latest
     env_file: .env.homologacao
     volumes:
@@ -95,6 +106,7 @@ services:
     restart: unless-stopped
 
   ler-email-faturas-producao:
+    build: .
     image: autofinance:latest
     env_file: .env.producao
     volumes:
@@ -103,6 +115,7 @@ services:
     restart: unless-stopped
 
   ler-email-faturas-homologacao:
+    build: .
     image: autofinance:latest
     env_file: .env.homologacao
     volumes:
@@ -111,6 +124,7 @@ services:
     restart: unless-stopped
 
   sincronizar-calendario-producao:
+    build: .
     image: autofinance:latest
     env_file: .env.producao
     volumes:
@@ -119,6 +133,7 @@ services:
     restart: unless-stopped
 
   sincronizar-calendario-homologacao:
+    build: .
     image: autofinance:latest
     env_file: .env.homologacao
     volumes:
@@ -127,6 +142,7 @@ services:
     restart: unless-stopped
 
   sincronizar-open-finance-producao:
+    build: .
     image: autofinance:latest
     env_file: .env.producao
     volumes:
@@ -135,6 +151,7 @@ services:
     restart: unless-stopped
 
   sincronizar-open-finance-homologacao:
+    build: .
     image: autofinance:latest
     env_file: .env.homologacao
     volumes:
@@ -143,6 +160,7 @@ services:
     restart: unless-stopped
 
   renovar-sandbox-pluggy-homologacao:
+    build: .
     image: autofinance:latest
     env_file: .env.homologacao
     volumes:
