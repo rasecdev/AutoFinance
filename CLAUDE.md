@@ -37,3 +37,4 @@ Fora desse ciclo (mudança pontual, não relacionada a uma tarefa do todo.md), c
 - Estrutura: `src/config`, `src/db`, `src/logging`, `src/bot`, `src/ai`, `scripts/`, `tests/` (espelha `src/`).
 - Test runner: **Vitest**.
 - Migração de schema: SQL puro em `src/db/migrations/`, sem ORM.
+- Novo serviço no `docker-compose.yml`: usar `image: autofinance:latest` (sem `build:` próprio) — só o serviço `producao` mantém `build: .`, que builda a imagem uma vez e é reaproveitada pelos demais. Evita rebuild duplicado por serviço (eram 16 builds idênticos antes dessa convenção).
