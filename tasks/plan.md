@@ -36,9 +36,9 @@ Esta rodada estende o motor de benchmark pra suportar comparação por fluxo (n�
 5. Tarefa 110: fixture sintética (xlsx) + seed curado de `interpretar_planilha` (+ mover `write-excel-file` pra `dependencies`)
 
 ### Checkpoint: Benchmark interno cobre 3 dos 4 fluxos de extração/tool-calling
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] `npm audit` sem vulnerabilidade alta/crítica sem correção (`write-excel-file` virou dependency de produção)
-- [ ] Teste manual: `rodar_benchmark_interno` com `fluxo: "leitura_comprovante"` e `fluxo: "interpretar_planilha"` contra pelo menos 1 modelo candidato, resultado condizente com o gabarito curado
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] `npm audit` sem vulnerabilidade alta/crítica sem correção (`write-excel-file` virou dependency de produção)
+- [x] Teste manual: `rodar_benchmark_interno` com `fluxo: "leitura_comprovante"` e `fluxo: "interpretar_planilha"` contra pelo menos 1 modelo candidato, resultado condizente com o gabarito curado
 - [ ] PROGRESSO.md atualizado com o marco, incluindo a decisão documentada de deixar `transcricao_voz` sem caso curado nesta rodada
 - [ ] Revisão com o usuário antes de prosseguir
 

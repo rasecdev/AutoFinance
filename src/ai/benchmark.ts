@@ -178,6 +178,19 @@ async function avaliarLeituraComprovante(
   };
 }
 
+// Achado real de teste manual (Tarefa 110, contra openai/gpt-4o-mini): a
+// mesma planilha/mesmo dado, extração correta, mas "categoria" (e
+// "descricao") variam de forma legítima entre chamadas — o modelo infere
+// "Supermercado"/"transporte"/"alimentação" onde o gabarito diz
+// "Mercado"/"Transporte"/"Restaurante", sem estar "errado" de verdade
+// (é campo de texto livre inferido, não um dado que a planilha traz pronto).
+// Comparar só o que a planilha realmente determina (tipo/valor/data) evita
+// falso negativo nesse tipo de variação — mesmo princípio já usado em
+// leitura_comprovante (compara só os campos que o gabarito de fato define).
+function paraComparacaoPlanilha(transacoes: TransacaoPlanilha[]): Array<Pick<TransacaoPlanilha, 'tipo' | 'valor' | 'data'>> {
+  return transacoes.map(({ tipo, valor, data }) => ({ tipo, valor, data }));
+}
+
 async function avaliarInterpretarPlanilha(
   client: OpenAI,
   _db: DbClient,
@@ -188,7 +201,9 @@ async function avaliarInterpretarPlanilha(
   const { transacoes, tokensPrompt, tokensCompletion, custoReal } = await interpretarPlanilha(client, buffer, modelo);
 
   return {
-    acerto: normalizarLista(transacoes) === normalizarLista(caso.saidaEsperada as TransacaoPlanilha[]),
+    acerto:
+      normalizarLista(paraComparacaoPlanilha(transacoes)) ===
+      normalizarLista(paraComparacaoPlanilha(caso.saidaEsperada as TransacaoPlanilha[])),
     tokensPrompt,
     tokensCompletion,
     custo: custoReal,
