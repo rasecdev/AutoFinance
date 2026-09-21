@@ -574,6 +574,7 @@ Fontes consultadas:
 - Job mensal comparando `despesas_fixas` ativas contra o que foi de fato registrado no período, avisando o que não apareceu.
 - Transcrição de áudio (fluxo de voz) e import de extrato bancário, se fizer sentido no seu uso real.
 - Multiusuário, só se algum dia for necessário.
+- **Parte 14 — Benchmark interno: cobertura de mídia (2026-09-21).** Achado real (levantamento a pedido do usuário): o "Benchmark interno" desenhado nesta seção só media acurácia de tool calling do fluxo `conversa_texto` — os fluxos de extração (`leitura_comprovante`, `interpretar_planilha`) e transcrição (`transcricao_voz`) nunca tiveram nenhum caso de teste, nem indireto. Estende `src/ai/benchmark.ts`/`rodar_benchmark_interno` com comparação por fluxo (gabarito estruturado em vez de tool_calls) e curadoria própria pra `leitura_comprovante`/`interpretar_planilha`, gerando fixture sintética (PDF/xlsx) programaticamente no próprio seed, sem arquivo versionado nem dependência nova. `transcricao_voz` fica com o mecanismo pronto mas sem caso curado nesta rodada — precisa de áudio real (só o usuário pode gravar), mesma classe de dependência da cobertura PJ da Fase 8.
 
 ### Fase 7 — Integração com e-mail e calendário
 - Autenticação OAuth2 com Gmail e Google Calendar (mesma conta).

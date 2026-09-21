@@ -1,53 +1,57 @@
-# Implementation Plan: Fase 8 — Agregação bancária via Open Finance ("Meu Pluggy")
+# Implementation Plan: Fase 6 (parte 14) — Benchmark interno: cobertura de mídia
 
 ## Overview
 
-Conectar contas bancárias reais do usuário via Open Finance (Pluggy) pra sincronizar transação/saldo automaticamente, complementar (não substituto) à leitura de e-mail da Fase 7 e ao lançamento manual. Ver PLANO.md, seção "Fase 8" (linhas 586+) e "Estudo: comparação com apps comerciais" (linha ~826+) pro racional completo e os achados de pesquisa que já mudaram o desenho original (ver abaixo).
+O "Benchmark interno" (`src/ai/benchmark.ts` + tool `rodar_benchmark_interno`) hoje só mede acurácia de **tool calling** do fluxo `conversa_texto` (13 casos curados). Levantamento a pedido do usuário confirmou que os outros 3 fluxos que fazem uma chamada de IA estruturada (não geração de texto livre) nunca tiveram cobertura:
+
+- `leitura_comprovante` (foto/PDF de comprovante) — extração nunca testada; a decisão de tool depois da extração é testada só indiretamente (quando funde no `conversa_texto`).
+- `interpretar_planilha` (Excel) — zero cobertura, nem indireta (não passa pelo `conversa_texto`).
+- `transcricao_voz` — transcrição nunca testada; decisão pós-transcrição testada só indiretamente.
+
+`resumir_contexto`, `relatorio_mensal` e a parte narrativa de `analisar_qualidade` ficam **fora de escopo** (confirmado com o usuário): são geração de texto livre, o conceito de "acurácia contra gabarito" não se aplica.
+
+Esta rodada estende o motor de benchmark pra suportar comparação por fluxo (não só tool-calling) e adiciona curadoria própria pra 2 dos 3 fluxos sem cobertura. `transcricao_voz` fica com o mecanismo pronto, mas sem caso curado (ver "Open Questions").
 
 ## Architecture Decisions
 
-- **Conexão sem servidor HTTP público, mesmo o Pluggy Connect Widget exigindo SDK+backend por padrão.** Achado real de pesquisa (2026-09-19, docs.pluggy.ai): diferente do OAuth do Google (Fase 7, que permite fluxo 100% sem servidor via URL de consentimento), o Pluggy Connect não tem URL hospedada — exige uma página com o SDK embutido e um backend que gere o `connect_token` (usa `CLIENT_SECRET`, nunca pode ir pro frontend). Decisão: página HTML estática local (`scripts/pluggyConnectWidget.html`, SDK via CDN, nunca implantada publicamente) aberta manualmente pelo usuário no próprio navegador; `connect_token` gerado por script de linha de comando (`gerarConnectTokenPluggy.ts`, mesmo padrão do `configurarGoogleOAuth.ts`) e colado manualmente na página. Login/MFA bancário acontece 100% no navegador do usuário, direto contra a Pluggy — nunca passa pelo AutoFinance. O widget devolve um `item_id` na tela; usuário cola via `/registrar_open_finance <item_id>` no bot (mesmo padrão do `/registrar_email`) pra vincular.
-- **Polling em vez de webhook**, apesar da Pluggy recomendar webhook. Mesmo princípio de segurança já decidido na Fase 7 (nenhum servidor HTTP público novo — ver achado de superfície de ataque de 2026-09-19 na seção "Ambientes" do PLANO.md sobre o acesso da VM). Job periódico chama a API da Pluggy diretamente, mesmo esqueleto de `sincronizarCalendario.ts`/`lerEmailFaturas.ts` (`loadEnv`/`dormirAte`/`tratarErroCriticoJob`/guard `--agora`).
-- **Mapeamento explícito de conta Pluggy → conta/cartão AutoFinance, nunca automático por nome.** Um item da Pluggy pode trazer várias contas (corrente, cartão, poupança); `/registrar_open_finance` lista o que veio e pede pro usuário confirmar/escolher a qual `conta_id`/`cartao_id` já cadastrado cada uma corresponde — evita o sistema inventar essa relação.
-- **`env.pluggy` segue exatamente o mesmo padrão de `env.google` (Fase 7, Tarefa 90):** grupo opcional (`PLUGGY_CLIENT_ID`/`PLUGGY_CLIENT_SECRET`) — ausente = `env.pluggy === null` (integração desligada, caminho válido, sobretudo em Produção antes do usuário conectar a primeira conta), incompleto = erro explícito, completo = `env.pluggy` populado.
-- **Duas checagens de correspondência, execução em duas fases distintas** (diferente da Fase 7, que resolve tudo numa função): (1) contra `transacoes` já lançadas manualmente (conta+valor+data aproximada) — evita duplicar o que o usuário já registrou por conversa; (2) contra `faturas`/`parcelas` já pagas (por `conta_id` do cartão/dívida, valor+data) — pagamento de fatura/parcela sincronizado NUNCA vira `transacao` de despesa nova (já contado quando a compra/dívida foi registrada). Sem correspondência em nenhuma das duas → heurística de saque (ver abaixo) → senão, `transacao` nova.
-- **Saque em espécie não é despesa.** Heurística inicial: campo de categoria que a própria Pluggy já atribui à transação (a documentação não deixa claro o valor exato usado pra saque — a implementação real (Tarefa da correspondência) precisa inspecionar dado real do sandbox antes de fixar a string de match, documentando o valor encontrado como achado real na hora).
-- **`transacoes` ganha `origem`/`trace_id`** (colunas que hoje só existem em `parcelas`, Fase 1) — necessário pra identificar/filtrar transação vinda de Open Finance depois (relatórios, correção de erro de correspondência), mesmo padrão já usado em `parcelas.origem IN ('calculada', 'email')`.
-- **Novas tabelas de idempotência/mapeamento, mesmo princípio de `emails_processados` (Fase 7):** `contas_open_finance` (mapeamento `pluggy_account_id` → `conta_id`/`cartao_id` + `item_id`) e `transacoes_open_finance_processadas` (`pluggy_transaction_id UNIQUE`, evita reprocessar a mesma transação a cada ciclo de polling).
-- **`renovar_sandbox_pluggy`, só em Homologação**, a cada 20 dias (margem antes do limite de 30 dias de expiração do sandbox, ver seção "Ambientes" do PLANO.md) — `PATCH /items/{id}` pra cada item conectado em Homologação.
-- **PJ não bloqueia a fase.** Cobertura de conta PJ pelo "Meu Pluggy" segue não confirmada (ação que só o usuário pode fazer, contatando o suporte da Pluggy) — a integração é desenhada pra "zero contas conectadas" ser um estado normal; PJ continua 100% no fluxo manual/e-mail já existente enquanto isso não for resolvido.
+- **Schema:** `casos_teste_benchmark` (migration 0006) ganha 2 colunas novas, nullable: `entrada_arquivo_base64` e `entrada_mime_type`. Quando as duas são `NULL`, o caso é de texto (comportamento atual, sem mudança). Quando preenchidas, `entrada` vira só um rótulo legível (ex: "comprovante mercado R$45"), e o arquivo de teste vem dessas colunas. Preferido a uma tabela nova porque o formato de gabarito já é JSON genérico em `saida_esperada`; só faltava o lado da entrada.
+- **`saida_esperada` deixa de ser só `ToolCallEsperada[]`:** o repositório (`casosTesteBenchmark.ts`) tipa como `unknown` na leitura/escrita (já é só JSON serializado, sem validação de schema nessa camada); cada estratégia de comparação em `benchmark.ts` sabe o formato que espera pro seu fluxo.
+- **Dispatch por fluxo em `executarBenchmarkFluxo`:** a função guarda a mesma orquestração (loop de casos × modelos, registro de custo/uso), mas troca "gerar resposta do candidato" + "comparar com gabarito" por uma estratégia por fluxo:
+  - `conversa_texto`: inalterado (`chamarModeloCandidato`/`baterComEsperado` já existentes).
+  - `leitura_comprovante`: chama `extrairComprovante` (já existe, `src/ai/extracaoComprovante.ts`) com o buffer/mimeType do caso; compara os campos do gabarito presentes (`valor`, `tipoDocumento`, `identificador` exatos; `categoriaSugerida` normalizada case-insensitive) contra o resultado — só compara campo que o gabarito define, pra não exigir dado impossível de prever (ex: `descricao` livre).
+  - `interpretar_planilha`: chama `interpretarPlanilha` (já existe) com o buffer do caso; compara a lista de transações com a mesma técnica de normalização/ordenação já usada pra tool_calls (`normalizarToolCalls`, generalizada pra aceitar qualquer array de objeto).
+  - `transcricao_voz`: chama `transcreverAudio` (já existe); compara o texto normalizado (lowercase, trim, sem pontuação) contra o gabarito string. Mecanismo pronto mesmo sem caso curado ainda.
+- **Fixture sintética gerada em código, sem arquivo versionado:** em vez de guardar um PDF/xlsx de exemplo no repo (ou pedir pro usuário mandar um arquivo real), os dois seeds novos geram o buffer na hora:
+  - `leitura_comprovante`: PDF mínimo escrito à mão (sintaxe PDF básica: catálogo + página + stream de texto `BT/Tj/ET`) com texto conhecido embutido — sem lib nova, sem depender de OCR de imagem rasterizada (mais determinístico que gerar uma imagem). Motivo de não usar imagem via `canvas`: `canvas` não é dependência direta hoje (só transitiva via `chartjs-node-canvas`), instalar só pra isso seria peso desnecessário pra um PDF de texto simples resolver igual ou melhor.
+  - `interpretar_planilha`: reaproveita a técnica já usada em `tests/bot/handlers/midia.test.ts` (`write-excel-file`, hoje devDependency) — vira dependência de produção de verdade nesta rodada (movida de `devDependencies` pra `dependencies` no `package.json`), já que agora um script que roda em produção/Homologação (`seed`) precisa dela em runtime, não só em teste.
+- **`rodar_benchmark_interno` ganha parâmetro `fluxo` (zod enum fixo com as 4 opções válidas), default `conversa_texto`** — preserva 100% o comportamento/uso atual pra quem já usa a tool sem passar esse parâmetro. Enum fixo (não string livre) evita reintroduzir o achado real já documentado no código (`src/ai/tools/benchmark.ts`, comentário da linha ~51): com "fluxo" livre, o modelo às vezes inventava descrição em vez do identificador real.
+- **`criar_caso_teste_benchmark` continua só pra `conversa_texto`** (deriva de `/certo`, só funciona pra texto) — sem mecanismo de curadoria orgânica via chat pra mídia nesta rodada; documentado como decisão, não esquecimento.
 
 ## Task List
 
-Ver `tasks/todo.md`. Ordem de dependência:
+1. Tarefa 106: migration 0015 (`entrada_arquivo_base64`/`entrada_mime_type`) + `casosTesteBenchmark.ts` generalizado (`saidaEsperada: unknown`, `entradaArquivo?`)
+2. Tarefa 107: `src/ai/benchmark.ts` — dispatch de execução/comparação por fluxo (4 estratégias)
+3. Tarefa 108: tool `rodar_benchmark_interno` — parâmetro `fluxo` (zod enum), default `conversa_texto`
+4. Tarefa 109: fixture sintética (PDF) + seed curado de `leitura_comprovante`
+5. Tarefa 110: fixture sintética (xlsx) + seed curado de `interpretar_planilha` (+ mover `write-excel-file` pra `dependencies`)
 
-1. Tarefa 97: `env.ts` — grupo opcional Pluggy
-2. Tarefa 98: migrations — `contas_open_finance`, `transacoes_open_finance_processadas`, `transacoes.origem`/`trace_id`
-3. Tarefa 99: client HTTP fino da API Pluggy (`src/integracoes/pluggy/cliente.ts`)
-4. Tarefa 100: script `gerarConnectTokenPluggy.ts` + página estática `pluggyConnectWidget.html`
-5. Tarefa 101: comando `/registrar_open_finance <item_id>` no bot
-6. Tarefa 102: lógica de correspondência (duas checagens + heurística de saque)
-7. Tarefa 103: job `sincronizarOpenFinance.ts` (polling)
-8. Tarefa 104: job `renovar_sandbox_pluggy.ts` (só Homologação)
-9. Tarefa 105: wiring (`docker-compose.yml`, dependências, `npm audit`)
-
-### Checkpoint: Conexão + sincronização de Open Finance funcionais
+### Checkpoint: Benchmark interno cobre 3 dos 4 fluxos de extração/tool-calling
 - [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: conta sandbox da Pluggy criada, widget local conectado, `item_id` registrado via bot, job de sincronização traz transação de teste, as duas checagens de correspondência não duplicam nem contam pagamento de fatura/parcela como despesa nova
-- [ ] PROGRESSO.md atualizado com o marco
-- [ ] Revisão com o usuário antes de prosseguir (Fase 9, se aplicável)
+- [ ] `npm audit` sem vulnerabilidade alta/crítica sem correção (`write-excel-file` virou dependency de produção)
+- [ ] Teste manual: `rodar_benchmark_interno` com `fluxo: "leitura_comprovante"` e `fluxo: "interpretar_planilha"` contra pelo menos 1 modelo candidato, resultado condizente com o gabarito curado
+- [ ] PROGRESSO.md atualizado com o marco, incluindo a decisão documentada de deixar `transcricao_voz` sem caso curado nesta rodada
+- [ ] Revisão com o usuário antes de prosseguir
 
 ## Risks and Mitigations
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Widget local (HTML estático) pode não funcionar de primeira por CORS/CSP da Pluggy exigir origem específica | Alto (bloqueia a conexão inteira) | Testar cedo (Tarefa 100), antes de construir o resto por cima; se `file://` não funcionar, alternativa é servir a página via `python -m http.server` local temporário (ainda sem expor nada publicamente) |
-| Heurística de saque errada classifica saque como despesa (ou vice-versa) | Médio (relatório incorreto) | Documentar a string/categoria real encontrada no sandbox como achado real; cobrir com teste específico assim que confirmado |
-| Cobertura PJ do "Meu Pluggy" seguir incerta indefinidamente | Baixo (fallback já existe) | Fase não bloqueia nisso; documentado como decisão em aberto, não impede o resto |
-| Polling perder transação entre ciclos se o job cair | Baixo | Idempotência via `transacoes_open_finance_processadas` já cobre reprocessamento seguro; ciclo seguinte sempre pega o que ficou pra trás |
+| Modelo de visão lê a data do PDF sintético num formato ligeiramente diferente do gabarito (ex: "10/09/2026" em vez de "2026-09-10"), mesmo com o dado sendo 100% legível | Médio (falso negativo no benchmark) | Comparar `data` de forma tolerante (normalizar formato antes de comparar) se o primeiro teste real mostrar esse problema — documentar como achado real se acontecer, não assumir de antemão |
+| PDF gerado à mão (sem lib) ter sintaxe inválida que algum leitor de PDF rejeite | Médio (fixture inútil) | Validar abrindo o PDF gerado com uma ferramenta local antes de commitar o gerador; manter o gerador minimalista (1 página, texto simples, sem fonte customizada) |
+| `write-excel-file` como dependency de produção aumentar a superfície de `npm audit` | Baixo | Já é dependência instalada hoje (só como dev); rodar `npm audit` depois de mover, mesmo critério de troca de lib já usado nas Fases 6/7 se aparecer vulnerabilidade sem correção |
+| Comparação de `interpretar_planilha` (array de transações) ser frágil a pequenas variações de categoria/descrição inferida pela IA | Médio | Gabarito só especifica os campos realmente determináveis a partir da planilha sintética (valor/tipo/data óbvios); categoria/descrição comparadas de forma tolerante ou fora do critério de acerto, decidir durante a Tarefa 110 com dado real do primeiro teste |
 
 ## Open Questions
 
-- Confirmar com o suporte da Pluggy se "Meu Pluggy" cobre conta PJ (ação do usuário, fora do alcance de execução autônoma).
-- Intervalo exato do polling de `sincronizarOpenFinance` (proposta: 6h, mesmo de `sincronizarCalendario` — ajustar durante a Tarefa 103 se o sandbox mostrar necessidade de ciclo mais curto/longo).
-- Valor real da categoria/campo que a Pluggy usa pra identificar saque — só descobrível com dado real do sandbox (Tarefa 102).
+- `transcricao_voz` sem fixture real: precisa que o usuário grave 2-3 áudios curtos com frase conhecida (mesma classe de dependência da cobertura PJ da Pluggy, Fase 8) — fica como follow-up, não tarefa desta rodada. Quando disponível, o mecanismo (Tarefas 107/108) já aceita sem mudança de código.
+- Vale a pena, numa rodada futura, um jeito de curar caso de mídia organicamente pelo chat (ex: usuário manda foto real + confirma via `/certo`, parecido com `criar_caso_teste_benchmark`)? Não resolvido aqui, mencionar como ideia se o usuário perguntar.

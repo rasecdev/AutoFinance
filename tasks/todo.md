@@ -1,248 +1,137 @@
-# Todo — Fase 8: Agregação bancária via Open Finance ("Meu Pluggy")
+# Todo: Fase 6 (parte 14) — Benchmark interno: cobertura de mídia
 
-Ver `tasks/plan.md` pro racional completo de arquitetura e os achados de pesquisa que mudaram o desenho original (widget sem servidor público, polling em vez de webhook).
+Ver `tasks/plan.md` pro racional completo das decisões de arquitetura.
 
 ---
 
-### Tarefa 97: `env.ts` — grupo opcional de variáveis Pluggy
+### Tarefa 106: migration 0015 + `casosTesteBenchmark.ts` generalizado
 
-**Description:** `envSchema` ganha `PLUGGY_CLIENT_ID`/`PLUGGY_CLIENT_SECRET`, opcionais individualmente no schema Zod, validadas como grupo em `loadEnv` — mesmo padrão exato de `env.google` (Fase 7, Tarefa 90): ambas ausentes → `env.pluggy === null` (integração desligada, caminho válido); só uma presente → erro explícito de configuração incompleta; as duas presentes → `env.pluggy = { clientId, clientSecret }`.
+**Description:** `casos_teste_benchmark` ganha 2 colunas nullable (`entrada_arquivo_base64`, `entrada_mime_type`) pra guardar o arquivo de teste dos casos de mídia — `NULL`/`NULL` continua significando "caso de texto", sem mudar nenhum caso já existente. O repositório (`src/db/repositories/casosTesteBenchmark.ts`) generaliza `saidaEsperada` de `ToolCallEsperada[]` pra `unknown` (só serializa/desserializa JSON, sem validar formato — cada consumidor sabe o que esperar do seu fluxo) e ganha um campo opcional `entradaArquivo?: { base64: string; mimeType: string }` em `NovoCasoTeste`/`CasoTesteBenchmark`.
 
 **Acceptance criteria:**
-- [x] Nenhuma variável Pluggy definida → `loadEnv(...).pluggy === null`, sem erro
-- [x] Só uma das duas presente → `loadEnv` lança erro explicando quais variáveis faltam
-- [x] As duas presentes → `env.pluggy` com os 2 campos em camelCase
+- [ ] Migration 0015 aplicada, colunas nullable, sem quebrar nenhuma linha existente
+- [ ] `NovoCasoTeste`/`CasoTesteBenchmark` aceitam `entradaArquivo` opcional
+- [ ] `saidaEsperada` tipado como `unknown` (compila sem `any` solto)
+- [ ] Casos de texto existentes (seed de `conversa_texto`) continuam funcionando sem alteração
 
 **Verification:**
-- [x] `npm test -- tests/config/env.test.ts`
-- [x] `npm run build`
+- [ ] Tests pass: `npx vitest run tests/db/migrate.test.ts tests/db/repositories/casosTesteBenchmark.test.ts`
+- [ ] Build succeeds: `npm run build`
 
 **Dependencies:** None
 
 **Files likely touched:**
-- `src/config/env.ts`
-- `tests/config/env.test.ts`
-- `.env.example`
-
-**Estimated scope:** Small (mesmo padrão já usado 1x, Fase 7)
-
----
-
-### Tarefa 98: migrations — mapeamento de conta, idempotência de sincronização, origem de transação
-
-**Description:** Nova migration `src/db/migrations/0014_open_finance.sql` cria três coisas: (1) `contas_open_finance` (`id`, `pluggy_item_id TEXT NOT NULL`, `pluggy_account_id TEXT NOT NULL UNIQUE`, `conta_id INTEGER REFERENCES contas(id)`, `cartao_id INTEGER REFERENCES cartoes(id)`, `criado_em TEXT NOT NULL`, `CHECK ((conta_id IS NOT NULL) OR (cartao_id IS NOT NULL))` — mesmo princípio de exclusividade já usado em `transacoes`); (2) `transacoes_open_finance_processadas` (`id`, `pluggy_transaction_id TEXT NOT NULL UNIQUE`, `processado_em TEXT NOT NULL`, `resultado TEXT NOT NULL CHECK (resultado IN ('transacao_criada', 'correspondencia_manual', 'correspondencia_fatura_parcela', 'saque_ignorado'))` — mesmo papel de `emails_processados`, mas sem pendência de confirmação, já que o resultado é sempre imediato); (3) `ALTER TABLE transacoes ADD COLUMN origem TEXT NOT NULL CHECK (origem IN ('manual', 'open_finance')) DEFAULT 'manual'` e `ADD COLUMN trace_id TEXT` — mesmo par já usado em `parcelas` desde a Fase 1.
-
-**Acceptance criteria:**
-- [x] `contas_open_finance` criada, `pluggy_account_id` único, exige conta OU cartão (nunca os dois nulos)
-- [x] `transacoes_open_finance_processadas` criada, `pluggy_transaction_id` único
-- [x] `transacoes.origem` default `'manual'` em linha já existente (migração não quebra dado atual), aceita `'open_finance'`
-- [x] Migration roda em banco já existente sem quebrar nenhuma tabela
-
-**Verification:**
-- [x] `npm test -- tests/db/migrate.test.ts`
-- [x] `npm run build`
-
-**Dependencies:** None
-
-**Files likely touched:**
-- `src/db/migrations/0014_open_finance.sql`
-- `tests/db/migrate.test.ts`
-
-**Estimated scope:** Small (SQL puro, mesmo padrão das 13 migrations anteriores)
-
----
-
-### Tarefa 99: client HTTP da API Pluggy
-
-**Description:** `src/integracoes/pluggy/cliente.ts` — client fino sobre `fetch` nativo (sem SDK de terceiro, API da Pluggy é REST simples; avaliar se existe SDK oficial `pluggy-sdk` na Tarefa antes de escrever REST manual, mesmo critério de "não reinventar se já existe pacote maduro" usado nas fases anteriores). Funções: `autenticar(clientId, clientSecret)` (troca por API key, `POST /auth`), `gerarConnectToken(apiKey)` (`POST /connect_token`), `obterItem(apiKey, itemId)` (`GET /items/{id}`), `listarContasDoItem(apiKey, itemId)` (`GET /accounts?itemId=`), `listarTransacoes(apiKey, accountId, desde)` (`GET /transactions`), `atualizarItem(apiKey, itemId)` (`PATCH /items/{id}`, usado por `renovar_sandbox_pluggy`).
-
-**Acceptance criteria:**
-- [x] `autenticar` troca client id/secret pela API key corretamente (mockado em teste, sem chamada de rede real)
-- [x] Cada função de leitura lança erro claro (não silencioso) em resposta HTTP de erro da Pluggy
-- [x] `listarTransacoes` pagina automaticamente se a API devolver mais de uma página (não trunca silenciosamente)
-
-**Verification:**
-- [x] `npm test -- tests/integracoes/pluggy/cliente.test.ts` (fetch mockado)
-- [x] `npm run build`
-
-**Nota de implementação:** não existe SDK oficial `pluggy-sdk`/similar maduro pra Node (verificado antes de escrever) — REST manual sobre `fetch` nativo confirmado como a via certa, mesmo critério das fases anteriores. `gerarConnectToken` usa `accessToken` como nome do campo na resposta (confirmado via docs.pluggy.ai/reference/authentication, não `connectToken` como o nome da função sugeriria).
-
-**Dependencies:** Tarefa 97
-
-**Files likely touched:**
-- `src/integracoes/pluggy/cliente.ts`
-- `tests/integracoes/pluggy/cliente.test.ts`
-
-**Estimated scope:** Medium (várias chamadas pequenas, mas cada uma simples)
-
----
-
-### Tarefa 100: script `gerarConnectTokenPluggy.ts` + página estática do widget
-
-**Description:** `src/scripts/gerarConnectTokenPluggy.ts` — script de linha de comando rodado manualmente uma vez por conexão: autentica com `env.pluggy` (client id/secret), gera e imprime um `connect_token` novo (validade curta, mesma lógica de expiração do código OAuth do Google — token de uso único/curto). `scripts/pluggyConnectWidget.html` — página estática (não faz parte do build/deploy, não é servida por nenhum processo do AutoFinance) carregando o SDK do Pluggy Connect via CDN, com um campo pra colar o `connect_token` impresso pelo script e iniciar o widget; ao terminar (`onSuccess`), mostra o `item_id` na tela pra o usuário copiar. Documentar no próprio HTML (comentário visível) que esse arquivo NUNCA deve ser hospedado publicamente — é só pra abrir localmente.
-
-**Acceptance criteria:**
-- [x] Script imprime um `connect_token` válido usando `env.pluggy`
-- [x] Script sai com erro claro se `env.pluggy === null` (mesmo padrão de erro dos outros scripts manuais)
-- [ ] Página HTML abre localmente (`file://` ou servidor estático temporário) e carrega o widget sem erro de console — validado manualmente pelo usuário (não executável de forma automatizada, mesmo caso do consentimento OAuth da Fase 7)
-
-**Verification:**
-- [x] `npm test -- tests/scripts/gerarConnectTokenPluggy.test.ts`
-- [x] `npm run build`
-- [ ] Manual: usuário abre a página, cola o token, testa a conexão com uma conta sandbox
-
-**Nota de implementação:** não há URL de CDN oficialmente documentada pela Pluggy pra uso via `<script>` puro — usado o pacote `pluggy-connect-sdk` publicado no npm, servido via jsDelivr (`cdn.jsdelivr.net/npm/pluggy-connect-sdk@2.14.2/dist/main/index.min.js`). Comentário no próprio HTML avisa pra conferir a versão atual em npmjs.com caso o console acuse `PluggyConnect` indefinido — só confirmável de verdade no teste manual (item pendente acima).
-
-**Dependencies:** Tarefa 99
-
-**Files likely touched:**
-- `src/scripts/gerarConnectTokenPluggy.ts`
-- `scripts/pluggyConnectWidget.html`
-- `tests/scripts/gerarConnectTokenPluggy.test.ts`
-
-**Estimated scope:** Medium (a parte HTML/SDK tem risco de fricção real — ver Risks em `tasks/plan.md`)
-
----
-
-### Tarefa 101: comando `/registrar_open_finance <item_id>` no bot
-
-**Description:** Novo handler em `src/bot/handlers/registrarOpenFinance.ts`, seguindo o padrão de mensagens explicativas do `/registrar_email` (Fase 7): usuário cola `/registrar_open_finance <item_id>` depois de conectar pelo widget local (Tarefa 100). Handler chama `obterItem`+`listarContasDoItem` (Tarefa 99), monta uma mensagem listando as contas encontradas (banco, tipo, últimos dígitos) e pede pro usuário responder com o mapeamento pra `conta_id`/`cartao_id` já cadastrados (reaproveita `resolverCartaoId`/`resolverContaId` de `src/ai/tools/resolucao.ts` pra aceitar nome/apelido em vez de exigir id numérico). Confirmado o mapeamento, grava em `contas_open_finance`.
-
-**Acceptance criteria:**
-- [x] `item_id` inválido/inexistente → mensagem de erro clara, nada gravado
-- [x] `item_id` válido → lista as contas encontradas pelo Pluggy corretamente
-- [x] Mapeamento confirmado pelo usuário → grava em `contas_open_finance`, sem duplicar se `pluggy_account_id` já existir (upsert)
-- [x] Sem `env.pluggy` configurado → mesma mensagem de "precisa configurar no servidor" do `/registrar_email`
-
-**Verification:**
-- [x] `npm test -- tests/bot/handlers/registrarOpenFinance.test.ts`
-- [x] `npm run build`
-
-**Nota de implementação:** o mapeamento pendente (contas listadas aguardando resposta) usa Map em memória (`src/bot/openFinancePendencia.ts`), mesmo padrão de `googleOAuthPendencia.ts` — todo o fluxo (comando lista, resposta seguinte confirma) acontece no mesmo processo do bot, sem o problema cross-processo da Fase 7. Repositório novo `src/db/repositories/contasOpenFinance.ts` (upsert por `pluggy_account_id`) e comando registrado em `comandos.ts` (menu "/" e `/ajuda` ganham a entrada automaticamente) — não previstos na lista de arquivos original.
-
-**Dependencies:** Tarefa 99
-
-**Files likely touched:**
-- `src/bot/handlers/registrarOpenFinance.ts`
-- `src/bot/openFinancePendencia.ts`
-- `src/db/repositories/contasOpenFinance.ts`
-- `src/bot/comandos.ts`
-- `src/bot/router.ts`, `src/bot/bot.ts`, `src/index.ts` (wiring do novo comando)
-- `tests/bot/handlers/registrarOpenFinance.test.ts`
-- `tests/db/contasOpenFinance.test.ts`
-
-**Estimated scope:** Medium (fluxo conversacional de mapeamento é a parte não trivial)
-
----
-
-### Tarefa 102: lógica de correspondência (duas checagens + saque)
-
-**Description:** `src/db/repositories/correspondenciaOpenFinance.ts` — funções puras testáveis: `encontrarTransacaoManualCorrespondente(db, { contaId, valor, data })` (checagem 1, tolerância de data ±1-2 dias como já usado na Fase 7 pra parcela); `encontrarPagamentoFaturaOuParcelaCorrespondente(db, { contaId, valor, data })` (checagem 2, contra `faturas.data_pagamento`/`parcelas.data_pagamento` já pagas); `pareceSaque(transacaoPluggy)` (heurística por categoria/descrição — **valor exato da categoria a confirmar com dado real do sandbox nesta tarefa, documentar como achado real assim que descoberto**). As três chamadas nessa ordem antes de decidir criar `transacao` nova.
-
-**Acceptance criteria:**
-- [x] Transação sincronizada batendo com uma manual existente (conta+valor+data aproximada) → `encontrarTransacaoManualCorrespondente` devolve `'encontrada'` (marcar `correspondencia_manual` de fato é responsabilidade do job, Tarefa 103, que consome este resultado)
-- [x] Transação sincronizada batendo com pagamento de fatura/parcela já paga → `encontrarPagamentoFaturaOuParcelaCorrespondente` devolve `'encontrada'`
-- [x] Transação identificada como saque → `pareceSaque` devolve `true`
-- [x] Sem nenhuma correspondência e não é saque → as duas funções devolvem `'nao_encontrada'` (job decide criar transação nova)
-- [x] Ambiguidade entre múltiplas manuais candidatas → devolve `'ambigua'`, não resolve sozinho (mesmo princípio da Fase 7)
-
-**Verification:**
-- [x] `npm test -- tests/db/correspondenciaOpenFinance.test.ts`
-- [x] `npm run build`
-
-**Nota de implementação:** achado real de pesquisa (docs.pluggy.ai) — o campo `category` exige plano Pro da Pluggy e não documenta valores fixos, não dá pra confiar nele sozinho pra detectar saque. `operationType` (ex: `"SAQUE"`) só existe em conectores Open Finance, mas é o sinal mais confiável quando presente; `pareceSaque` usa isso como sinal primário, com fallback por texto na descrição/categoria (cobre sandbox/conector legado sem `operationType`). `TransacaoPluggy` (Tarefa 99) ganhou o campo `operationType` retroativamente.
-
-**Dependencies:** Tarefa 98
-
-**Files likely touched:**
-- `src/db/repositories/correspondenciaOpenFinance.ts`
-- `tests/db/correspondenciaOpenFinance.test.ts`
-
-**Estimated scope:** Medium/Large (heurística de saque é o item de maior incerteza real da fase — se ficar grande demais ao implementar, quebrar em tarefa própria antes de seguir, conforme a diretriz de tamanho desta skill)
-
----
-
-### Tarefa 103: job `sincronizarOpenFinance.ts`
-
-**Description:** Novo script em `src/scripts/sincronizarOpenFinance.ts`, mesmo esqueleto de job das Fases 6/7 (`loadEnv`/`createLogger`/`getDb`/`dormirAte`/`tratarErroCriticoJob`/guard `--agora`/guard `env.pluggy === null` sai sem erro, dormindo o intervalo normal antes de sair — mesmo achado real já corrigido na Fase 7 pro busy-loop do compose). Pra cada linha de `contas_open_finance`: lista transações novas via `listarTransacoes` (desde o último processamento), ignora as já em `transacoes_open_finance_processadas`; pra cada nova, roda a correspondência (Tarefa 102) na ordem definida; se "criar transação nova", grava direto em `transacoes` com `origem='open_finance'`+`trace_id`, sem `confirmacoes_pendentes` (fonte primária, eco simples via mensagem ao(s) chat(s) permitido(s), mesmo padrão de `registrar_transacao`); marca `transacoes_open_finance_processadas` com o resultado em qualquer um dos quatro desfechos.
-
-**Acceptance criteria:**
-- [x] `env.pluggy === null` → job dorme o intervalo normal e sai, sem chamar a API (guard em `main()`, mesmo padrão visual dos outros jobs — não testado isoladamente, `main()` não é exportado, mesmo critério de `lerEmailFaturas.ts`/`sincronizarCalendario.ts`)
-- [x] Transação já processada (`pluggy_transaction_id` na tabela) → ignorada, não reprocessada
-- [x] Transação nova sem correspondência → `transacao` criada com `origem='open_finance'`, mensagem de eco enviada ao(s) chat(s) permitido(s)
-- [x] Transação com correspondência (qualquer uma das checagens) → não cria `transacao` nova, sem mensagem enviada (silencioso, mesmo princípio de "só avisa quando há pendência" já usado em `verificarDespesasFixas`)
-- [x] Erro em qualquer etapa → `tratarErroCriticoJob` chamado
-
-**Verification:**
-- [x] `npm test -- tests/scripts/sincronizarOpenFinance.test.ts` (client Pluggy mockado)
-- [x] `npm run build`
-
-**Nota de implementação:** não precisou quebrar em mais tarefas. Achados reais durante a implementação: (1) conta Pluggy do tipo CREDIT mapeia pra cartão, não conta — `transacoes` usa `cartao_id` nesse caso (nunca `conta_id`), então `encontrarTransacaoManualCorrespondente` (Tarefa 102) precisou aceitar `{contaId} | {cartaoId}` retroativamente; a checagem 2 (fatura/parcela paga) só roda quando o mapeamento é de conta bancária (não faz sentido uma compra no extrato do próprio cartão ser o pagamento da fatura desse cartão); (2) resultado `'ambigua'` da correspondência (Tarefa 102) não tem uma coluna própria em `resultado` (só 4 valores fixos na migration 0014) — tratado como `correspondencia_manual` (mais seguro que arriscar duplicar), com log de aviso pra conferência manual; (3) uma conta com erro (token expirado, item desconectado) não derruba a sincronização das outras — `try/catch` por conta dentro do loop, log e segue. Repositórios novos não previstos na lista de arquivos: `listarContasOpenFinance` (`contasOpenFinance.ts`), `transacoesOpenFinanceProcessadas.ts` (idempotência) e `criarTransacaoOpenFinance` (`transacoes.ts`, mesmo princípio de `criarParcelaEmail` da Fase 7 — grava sempre `origem`+`trace_id`).
-
-**Dependencies:** Tarefa 101, Tarefa 102
-
-**Files likely touched:**
-- `src/scripts/sincronizarOpenFinance.ts`
-- `src/db/repositories/contasOpenFinance.ts` (`listarContasOpenFinance`)
-- `src/db/repositories/transacoesOpenFinanceProcessadas.ts`
-- `src/db/repositories/transacoes.ts` (`criarTransacaoOpenFinance`)
-- `tests/scripts/sincronizarOpenFinance.test.ts`
-- `tests/db/contasOpenFinance.test.ts`, `tests/db/transacoesOpenFinanceProcessadas.test.ts`
-
-**Estimated scope:** Large (orquestra várias peças, mesmo perfil da Tarefa 94 na Fase 7 — não precisou quebrar em mais tarefas)
-
----
-
-### Tarefa 104: job `renovar_sandbox_pluggy.ts`
-
-**Description:** Novo script em `src/scripts/renovarSandboxPluggy.ts`, só relevante/ativo em Homologação (guard explícito por `env.ambiente`, não só por `env.pluggy === null` — em Produção não deve nem tentar rodar, mesmo com `env.pluggy` configurado). A cada 20 dias (constante no código, ver seção "Ambientes" do PLANO.md), `PATCH /items/{id}` pra cada item em `contas_open_finance` (distinct por `pluggy_item_id`), resetando a contagem de expiração do sandbox.
-
-**Acceptance criteria:**
-- [x] Em Produção (`env.ambiente === 'producao'`), job sai imediatamente sem chamar a API, mesmo com `env.pluggy` configurado
-- [x] Em Homologação, chama `PATCH /items/{id}` uma vez por `pluggy_item_id` distinto (não uma vez por conta/cartão mapeado, se o mesmo item tiver várias contas)
-- [x] Erro em qualquer chamada → `tratarErroCriticoJob`, mas continua tentando os outros itens (uma falha não deve impedir renovar os demais)
-
-**Verification:**
-- [x] `npm test -- tests/scripts/renovarSandboxPluggy.test.ts`
-- [x] `npm run build`
-
-**Nota de implementação:** `atualizarItem`/`autenticar` já existiam em `src/integracoes/pluggy/cliente.ts` (Tarefa 99) e `listarContasOpenFinance` já existia em `contasOpenFinance.ts` (Tarefa 103) — nenhuma peça nova de infra precisou ser criada além do próprio script. `[...new Set(...)]` sobre `pluggyItemId` resolve o "distinct por item" sem precisar de SQL `DISTINCT` dedicado.
-
-**Dependencies:** Tarefa 99
-
-**Files likely touched:**
-- `src/scripts/renovarSandboxPluggy.ts`
-- `tests/scripts/renovarSandboxPluggy.test.ts`
+- `src/db/migrations/0015_casos_teste_benchmark_midia.sql`
+- `src/db/repositories/casosTesteBenchmark.ts`
+- `tests/db/repositories/casosTesteBenchmark.test.ts`
+- `src/ai/tools/benchmark.ts` (ajuste de tipo, sem mudança de comportamento ainda)
+- `src/scripts/seedCasosTesteBenchmarkCurados.ts` (ajuste de tipo, sem mudança de comportamento)
 
 **Estimated scope:** Small
 
 ---
 
-### Tarefa 105: wiring (`docker-compose.yml`, dependências, `npm audit`)
+### Tarefa 107: `src/ai/benchmark.ts` — dispatch de execução/comparação por fluxo
 
-**Description:** Avaliar se existe SDK oficial `pluggy-sdk`/similar maduro (decidido na Tarefa 99) — se instalado, checar `npm audit` (mesmo critério de trocar de biblioteca se vier vulnerabilidade sem correção, já usado nas Fases 6/7). `docker-compose.yml` ganha os serviços novos: `sincronizar-open-finance-producao`/`-homologacao` (mesmo padrão `while true; do node dist/scripts/sincronizarOpenFinance.js; done`) e `renovar-sandbox-pluggy-homologacao` (só Homologação, não existe versão produção).
+**Description:** `executarBenchmarkFluxo` passa a despachar por `fluxo`, mantendo a mesma orquestração externa (loop de casos × modelos candidatos, registro de `usoTokens` com `origem: 'benchmark_interno'`, cálculo de acurácia/custo). 4 estratégias: `conversa_texto` (existente, sem mudança de comportamento — `chamarModeloCandidato`/`baterComEsperado`), `leitura_comprovante` (chama `extrairComprovante`, compara campos do gabarito presentes no resultado), `interpretar_planilha` (chama `interpretarPlanilha`, compara lista de transações via normalização generalizada de `normalizarToolCalls`), `transcricao_voz` (chama `transcreverAudio`, compara texto normalizado).
 
 **Acceptance criteria:**
-- [x] `npm audit` sem vulnerabilidade alta/crítica sem correção
-- [x] 3 serviços novos no `docker-compose.yml` (2 sincronização × ambiente + 1 renovação só Homologação), cada um com `env_file`/volume corretos
-- [x] Validação de sintaxe do compose sem erro
+- [ ] `conversa_texto` continua passando nos testes já existentes sem nenhuma mudança de resultado
+- [ ] `leitura_comprovante`/`interpretar_planilha`/`transcricao_voz` têm estratégia própria de chamada + comparação, cobertas por teste com client de IA mockado (mesmo padrão de `criarClienteFalso` já usado em `openrouter.test.ts`)
+- [ ] Fluxo desconhecido (não uma das 4 strings válidas) lança erro claro em vez de silenciosamente não comparar nada
 
 **Verification:**
-- [x] `npm run build`/`lint`/`test` (suite completa)
-- [x] `npm audit`
+- [ ] Tests pass: `npx vitest run tests/ai/benchmark.test.ts`
+- [ ] Build succeeds: `npm run build`
 
-**Nota de implementação:** nenhum SDK oficial da Pluggy foi instalado (Tarefa 99 já tinha decidido por `fetch` nativo, client fino) — `npm audit` continua em 0 vulnerabilidades, nenhuma mudança em `package.json`/lockfile. Sem `docker` CLI disponível no ambiente local pra rodar `docker compose config`, a validação de sintaxe foi feita via parser YAML (`js-yaml`) contra o arquivo inteiro — sintaxe válida, e os 3 serviços novos seguem exatamente o mesmo template (`build`/`env_file`/`volumes`/`command`/`restart`) dos serviços já em produção (`sincronizar-calendario-*`, `ler-email-faturas-*`).
-
-**Dependencies:** Tarefa 103, Tarefa 104
+**Dependencies:** Tarefa 106
 
 **Files likely touched:**
-- `package.json` / lockfile
-- `docker-compose.yml`
+- `src/ai/benchmark.ts`
+- `tests/ai/benchmark.test.ts`
+
+**Estimated scope:** Medium
+
+---
+
+### Tarefa 108: tool `rodar_benchmark_interno` — parâmetro `fluxo` selecionável
+
+**Description:** `schemaRodarBenchmarkInterno` ganha `fluxo: z.enum(['conversa_texto', 'leitura_comprovante', 'interpretar_planilha', 'transcricao_voz']).default('conversa_texto')` — enum fixo, não string livre (evita reintroduzir o achado real já documentado no código sobre o modelo inventar descrição no lugar do identificador). `avisoConfirmacao`/`resumoConfirmacao`/`handler` passam o `fluxo` escolhido pra `listarCasosTeste`/`executarBenchmarkFluxo` em vez do `FLUXO_BENCHMARK` hardcoded. Descrição da tool atualizada pra mencionar os 4 fluxos disponíveis.
+
+**Acceptance criteria:**
+- [ ] Chamar sem `fluxo` continua testando `conversa_texto` (comportamento atual preservado)
+- [ ] Chamar com `fluxo: "leitura_comprovante"` (etc.) testa só os casos daquele fluxo
+- [ ] Mensagens de confirmação/aviso mencionam o fluxo escolhido, não só a contagem de casos
+
+**Verification:**
+- [ ] Tests pass: `npx vitest run tests/ai/tools/benchmark.test.ts`
+- [ ] Build succeeds: `npm run build`
+
+**Dependencies:** Tarefa 107
+
+**Files likely touched:**
+- `src/ai/tools/benchmark.ts`
+- `tests/ai/tools/benchmark.test.ts`
 
 **Estimated scope:** Small
 
-## Checkpoint: Conexão + sincronização de Open Finance funcionais
+---
+
+### Tarefa 109: fixture sintética (PDF) + seed curado de `leitura_comprovante`
+
+**Description:** Novo gerador de PDF mínimo (sintaxe PDF escrita à mão — catálogo + página + stream de texto, sem lib nova) com texto conhecido embutido (ex: valor, categoria, data, tipo). Novo script de seed (`seedCasosTesteBenchmarkMidiaCurados.ts`, ou extensão do existente) grava 2-3 casos curados de `leitura_comprovante` — buffer do PDF gerado na hora, convertido pra base64, gabarito com os campos que o PDF sintético realmente contém.
+
+**Acceptance criteria:**
+- [ ] Gerador de PDF produz um arquivo válido (abre sem erro num leitor de PDF real)
+- [ ] Pelo menos 2 casos curados cobrindo `tipoDocumento: "compra"` e (se fizer sentido) `"fatura_cartao"`/`"boleto_divida"` com `identificador`
+- [ ] Seed idempotente (rodar de novo no mesmo ambiente não duplica), mesmo padrão do seed de texto já existente
+
+**Verification:**
+- [ ] Tests pass: `npx vitest run tests/scripts/seedCasosTesteBenchmarkMidiaCurados.test.ts`
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: rodar `rodar_benchmark_interno` com `fluxo: "leitura_comprovante"` contra 1 modelo real e conferir que o resultado bate com o esperado
+
+**Dependencies:** Tarefa 108
+
+**Files likely touched:**
+- `src/scripts/seedCasosTesteBenchmarkMidiaCurados.ts` (novo)
+- `src/scripts/gerarPdfTeste.ts` (novo, gerador de PDF mínimo) ou local dentro do arquivo de seed se ficar pequeno o suficiente
+- `tests/scripts/seedCasosTesteBenchmarkMidiaCurados.test.ts`
+
+**Estimated scope:** Medium
+
+---
+
+### Tarefa 110: fixture sintética (xlsx) + seed curado de `interpretar_planilha`
+
+**Description:** Reaproveita `write-excel-file` (hoje devDependency, movida pra `dependencies` nesta tarefa já que o seed roda em produção/Homologação) pra gerar um `.xlsx` de teste na hora, mesmo princípio de `xlsxParaArrayBuffer` já usado em `tests/bot/handlers/midia.test.ts`. Casos curados no mesmo script de seed da Tarefa 109 (ou script irmão), gabarito com a lista de transações que a planilha sintética realmente contém.
+
+**Acceptance criteria:**
+- [ ] `write-excel-file` movida de `devDependencies` pra `dependencies` no `package.json`
+- [ ] `npm audit` sem vulnerabilidade alta/crítica sem correção depois da mudança
+- [ ] Pelo menos 2 casos curados cobrindo receita e despesa, incluindo pelo menos uma linha que deveria ser ignorada (linha de saldo/total) pra testar que o modelo não inclui indevidamente
+- [ ] Seed idempotente
+
+**Verification:**
+- [ ] Tests pass: `npx vitest run` (suite completa, já que mexe em `package.json`)
+- [ ] Build succeeds: `npm run build`
+- [ ] `npm audit`
+- [ ] Manual check: rodar `rodar_benchmark_interno` com `fluxo: "interpretar_planilha"` contra 1 modelo real
+
+**Dependencies:** Tarefa 108
+
+**Files likely touched:**
+- `package.json`
+- `src/scripts/seedCasosTesteBenchmarkMidiaCurados.ts` (mesmo arquivo da Tarefa 109, ou script irmão)
+- `tests/scripts/seedCasosTesteBenchmarkMidiaCurados.test.ts`
+
+**Estimated scope:** Small
+
+---
+
+## Checkpoint: Benchmark interno cobre 3 dos 4 fluxos de extração/tool-calling
 - [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: conta sandbox da Pluggy criada, widget local (`pluggyConnectWidget.html`) conectado com sucesso, `item_id` registrado via `/registrar_open_finance`, job `sincronizarOpenFinance --agora` traz transação de teste do sandbox, as duas checagens de correspondência (manual + fatura/parcela paga) não duplicam nem contam pagamento como despesa nova, saque reconhecido corretamente
-- [ ] PROGRESSO.md atualizado com o marco
+- [ ] `npm audit` sem vulnerabilidade alta/crítica sem correção
+- [ ] Teste manual: `rodar_benchmark_interno` com `fluxo: "leitura_comprovante"` e `fluxo: "interpretar_planilha"` contra pelo menos 1 modelo candidato, resultado condizente com o gabarito curado
+- [ ] PROGRESSO.md atualizado com o marco, incluindo a decisão documentada de deixar `transcricao_voz` sem caso curado nesta rodada (follow-up, precisa de áudio real gravado pelo usuário)
 - [ ] Revisão com o usuário antes de prosseguir
