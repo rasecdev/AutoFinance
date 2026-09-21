@@ -117,6 +117,13 @@ type RespostaTransacoesPluggy = {
 // pagination", mas não foi possível confirmar com uma conta real de mais de
 // uma página (sandbox só devolveu next: null) — validar se aparecer erro de
 // paginação com conta de produção de verdade.
+//
+// Achado real #2 (mesmo teste): o filtro de data na v2 não é "from" (a API
+// rejeita com 400 "property from should not exist") — é "createdAtFrom",
+// que filtra pela data em que a Pluggy REGISTROU a transação, não pela data
+// real dela (campo "date"). Pra sincronização por janela rolante (Tarefa
+// 103) isso é aceitável — a Pluggy processa rápido, createdAt fica perto de
+// date na prática — mas não são a mesma coisa.
 export async function listarTransacoes(apiKey: string, accountId: string, desde?: string): Promise<TransacaoPluggy[]> {
   const transacoes: TransacaoPluggy[] = [];
   let cursor: string | undefined;
@@ -124,7 +131,7 @@ export async function listarTransacoes(apiKey: string, accountId: string, desde?
   for (;;) {
     const query = new URLSearchParams({ accountId });
     if (desde) {
-      query.set('from', desde);
+      query.set('createdAtFrom', desde);
     }
     if (cursor) {
       query.set('cursor', cursor);

@@ -141,12 +141,12 @@ describe('listarTransacoes', () => {
     expect(segundaUrl).toContain('cursor=cursor-pagina-2');
   });
 
-  it('inclui o parâmetro "from" quando uma data de referência é passada', async () => {
+  it('inclui o parâmetro "createdAtFrom" quando uma data de referência é passada', async () => {
     const fetchFalso = mockarFetch({ results: [], next: null });
 
     await listarTransacoes('api-key-teste', 'conta-1', '2026-09-01');
 
     const urlChamada = fetchFalso.mock.calls[0]?.[0] as string;
-    expect(urlChamada).toContain('from=2026-09-01');
+    expect(urlChamada).toContain('createdAtFrom=2026-09-01');
   });
 });
