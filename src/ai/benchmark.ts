@@ -1,11 +1,18 @@
 import type OpenAI from 'openai';
 import type { DbClient } from '../db/client.js';
-import { listarCasosTeste, type ToolCallEsperada } from '../db/repositories/casosTesteBenchmark.js';
+import {
+  listarCasosTeste,
+  type CasoTesteBenchmark,
+  type ToolCallEsperada,
+} from '../db/repositories/casosTesteBenchmark.js';
 import { registrarUsoTokens } from '../db/repositories/usoTokens.js';
+import { extrairComprovante, type ResultadoExtracaoComprovante } from './extracaoComprovante.js';
+import { interpretarPlanilha, type TransacaoPlanilha } from './interpretacaoPlanilha.js';
 import { removerChavesNulas, type UsageComCusto } from './openrouter.js';
 import { SYSTEM_PROMPT } from './systemPrompt.js';
 import { montarToolsConversa } from './tools/conversaTools.js';
 import { paraDefinicaoOpenAI } from './tools/registry.js';
+import { transcreverAudio } from './transcricao.js';
 
 export const METRICA_ACURACIA_TOOL_CALLING = 'acuracia_tool_calling';
 
@@ -17,12 +24,13 @@ export type ResultadoBenchmarkModelo = {
   custoTotal: number;
 };
 
-type ToolCallExtraida = { nome: string; argumentos: unknown };
-
-// Ordena as chaves de argumentos antes de serializar — sem isso, a mesma
+// Ordena as chaves de um objeto antes de serializar — sem isso, a mesma
 // resposta em ordem de chave diferente no JSON daria falso negativo na
-// comparação (achado antecipado no design, ver tasks/plan.md).
-function normalizarArgumentos(valor: unknown): string {
+// comparação (achado antecipado no design, ver tasks/plan.md). Reaproveitado
+// pela comparação de tool_calls (conversa_texto) e pela de lista de
+// transações (interpretar_planilha, Fase 6 parte 14) — mesmo problema de
+// "mesmo conteúdo, ordem de chave/item diferente" nos dois casos.
+function normalizarObjeto(valor: unknown): string {
   if (valor === null || typeof valor !== 'object') return JSON.stringify(valor);
 
   const objeto = valor as Record<string, unknown>;
@@ -33,10 +41,16 @@ function normalizarArgumentos(valor: unknown): string {
   return JSON.stringify(normalizado);
 }
 
-function normalizarToolCalls(toolCalls: Array<{ nome: string; argumentos: unknown }>): string {
+function normalizarLista(lista: unknown[]): string {
+  return JSON.stringify(lista.map(normalizarObjeto).sort());
+}
+
+type ToolCallExtraida = { nome: string; argumentos: unknown };
+
+function normalizarToolCalls(toolCalls: ToolCallExtraida[]): string {
   return JSON.stringify(
     toolCalls
-      .map((tc) => ({ nome: tc.nome, argumentos: normalizarArgumentos(tc.argumentos) }))
+      .map((tc) => ({ nome: tc.nome, argumentos: normalizarObjeto(tc.argumentos) }))
       .sort((a, b) => a.nome.localeCompare(b.nome) || a.argumentos.localeCompare(b.argumentos)),
   );
 }
@@ -45,8 +59,43 @@ function baterComEsperado(candidato: ToolCallExtraida[], esperado: ToolCallEsper
   return normalizarToolCalls(candidato) === normalizarToolCalls(esperado);
 }
 
-type RespostaModeloCandidato = {
-  toolCalls: ToolCallExtraida[];
+// Comparação de leitura_comprovante só olha os campos que o gabarito de fato
+// define — um caso curado pode não especificar "descricao" (texto livre,
+// difícil de prever exatamente), por exemplo, sem isso virar falso negativo.
+// "categoriaSugerida" compara normalizado (case-insensitive) por ser sugestão
+// da IA, não um enum fixo.
+function baterComprovante(
+  obtido: ResultadoExtracaoComprovante,
+  esperado: Partial<ResultadoExtracaoComprovante>,
+): boolean {
+  return (Object.keys(esperado) as (keyof ResultadoExtracaoComprovante)[]).every((chave) => {
+    const valorEsperado = esperado[chave];
+    const valorObtido = obtido[chave];
+
+    if (chave === 'categoriaSugerida' && typeof valorEsperado === 'string' && typeof valorObtido === 'string') {
+      return valorObtido.trim().toLowerCase() === valorEsperado.trim().toLowerCase();
+    }
+
+    return valorObtido === valorEsperado;
+  });
+}
+
+// Transcrição de voz é o único fluxo aqui onde a IA gera texto livre a
+// partir de áudio (não estrutura um JSON) — comparação exata de string é
+// frágil contra variação de pontuação/acentuação/maiúscula que não muda o
+// sentido, normaliza antes de comparar.
+function normalizarTexto(texto: string): string {
+  return texto
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+type ResultadoAvaliacaoCaso = {
+  acerto: boolean;
   tokensPrompt: number;
   tokensCompletion: number;
   custo: number;
@@ -57,19 +106,19 @@ type RespostaModeloCandidato = {
 // entrada do caso como única mensagem, e só inspeciona tool_calls da
 // resposta — nunca chama tool.handler. Reaproveitar gerarResposta rodaria a
 // ferramenta de verdade (ex: criar_transacao) a cada rodada de teste.
-async function chamarModeloCandidato(
+async function avaliarConversaTexto(
   client: OpenAI,
   db: DbClient,
   modelo: string,
-  entrada: string,
-): Promise<RespostaModeloCandidato> {
+  caso: CasoTesteBenchmark,
+): Promise<ResultadoAvaliacaoCaso> {
   const ferramentas = montarToolsConversa(db, client).map(paraDefinicaoOpenAI);
 
   const completion = await client.chat.completions.create({
     model: modelo,
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: entrada },
+      { role: 'user', content: caso.entrada },
     ],
     tools: ferramentas,
     tool_choice: 'auto',
@@ -90,12 +139,104 @@ async function chamarModeloCandidato(
   const usage = completion.usage as UsageComCusto | undefined;
 
   return {
-    toolCalls,
+    acerto: baterComEsperado(toolCalls, caso.saidaEsperada as ToolCallEsperada[]),
     tokensPrompt: usage?.prompt_tokens ?? 0,
     tokensCompletion: usage?.completion_tokens ?? 0,
     custo: usage?.cost ?? 0,
   };
 }
+
+// Casos de mídia (Fase 6 parte 14) sempre têm entradaArquivo — erro claro em
+// vez de undefined silencioso se um caso de texto acabar cadastrado com o
+// fluxo errado.
+function arquivoDoCaso(caso: CasoTesteBenchmark): { buffer: Buffer; mimeType: string } {
+  if (!caso.entradaArquivo) {
+    throw new Error(`caso de teste ${caso.id} (fluxo "${caso.fluxo}") não tem entradaArquivo`);
+  }
+  return { buffer: Buffer.from(caso.entradaArquivo.base64, 'base64'), mimeType: caso.entradaArquivo.mimeType };
+}
+
+async function avaliarLeituraComprovante(
+  client: OpenAI,
+  _db: DbClient,
+  modelo: string,
+  caso: CasoTesteBenchmark,
+): Promise<ResultadoAvaliacaoCaso> {
+  const { buffer, mimeType } = arquivoDoCaso(caso);
+  const { resultado, tokensPrompt, tokensCompletion, custoReal } = await extrairComprovante(
+    client,
+    buffer,
+    mimeType,
+    modelo,
+  );
+
+  return {
+    acerto: baterComprovante(resultado, caso.saidaEsperada as Partial<ResultadoExtracaoComprovante>),
+    tokensPrompt,
+    tokensCompletion,
+    custo: custoReal,
+  };
+}
+
+async function avaliarInterpretarPlanilha(
+  client: OpenAI,
+  _db: DbClient,
+  modelo: string,
+  caso: CasoTesteBenchmark,
+): Promise<ResultadoAvaliacaoCaso> {
+  const { buffer } = arquivoDoCaso(caso);
+  const { transacoes, tokensPrompt, tokensCompletion, custoReal } = await interpretarPlanilha(client, buffer, modelo);
+
+  return {
+    acerto: normalizarLista(transacoes) === normalizarLista(caso.saidaEsperada as TransacaoPlanilha[]),
+    tokensPrompt,
+    tokensCompletion,
+    custo: custoReal,
+  };
+}
+
+const EXTENSAO_POR_MIME: Record<string, string> = {
+  'audio/mpeg': 'mp3',
+  'audio/mp3': 'mp3',
+  'audio/wav': 'wav',
+  'audio/ogg': 'ogg',
+  'audio/webm': 'webm',
+};
+
+async function avaliarTranscricaoVoz(
+  client: OpenAI,
+  _db: DbClient,
+  modelo: string,
+  caso: CasoTesteBenchmark,
+): Promise<ResultadoAvaliacaoCaso> {
+  const { buffer, mimeType } = arquivoDoCaso(caso);
+  const extensao = EXTENSAO_POR_MIME[mimeType] ?? 'mp3';
+  const { texto, custoEstimado } = await transcreverAudio(client, buffer, `audio.${extensao}`, modelo);
+
+  return {
+    acerto: normalizarTexto(texto) === normalizarTexto(caso.saidaEsperada as string),
+    // Whisper é cobrado por segundo de áudio, não por token (mesma limitação
+    // já documentada em transcricao.ts) — sem tokensPrompt/tokensCompletion
+    // reais pra registrar aqui.
+    tokensPrompt: 0,
+    tokensCompletion: 0,
+    custo: custoEstimado,
+  };
+}
+
+type EstrategiaAvaliacao = (
+  client: OpenAI,
+  db: DbClient,
+  modelo: string,
+  caso: CasoTesteBenchmark,
+) => Promise<ResultadoAvaliacaoCaso>;
+
+const ESTRATEGIAS: Record<string, EstrategiaAvaliacao> = {
+  conversa_texto: avaliarConversaTexto,
+  leitura_comprovante: avaliarLeituraComprovante,
+  interpretar_planilha: avaliarInterpretarPlanilha,
+  transcricao_voz: avaliarTranscricaoVoz,
+};
 
 export async function executarBenchmarkFluxo(
   client: OpenAI,
@@ -103,6 +244,11 @@ export async function executarBenchmarkFluxo(
   fluxo: string,
   modelosCandidatos: string[],
 ): Promise<ResultadoBenchmarkModelo[]> {
+  const estrategia = ESTRATEGIAS[fluxo];
+  if (!estrategia) {
+    throw new Error(`fluxo desconhecido pro benchmark interno: "${fluxo}"`);
+  }
+
   const casos = listarCasosTeste(db, fluxo);
   const resultados: ResultadoBenchmarkModelo[] = [];
 
@@ -111,14 +257,10 @@ export async function executarBenchmarkFluxo(
     let custoTotal = 0;
 
     for (const caso of casos) {
-      const resposta = await chamarModeloCandidato(client, db, modelo, caso.entrada);
-      custoTotal += resposta.custo;
+      const avaliacao = await estrategia(client, db, modelo, caso);
+      custoTotal += avaliacao.custo;
 
-      // Cast: até a Tarefa 107 (dispatch por fluxo), esta função só lida com
-      // conversa_texto, então saidaEsperada é sempre ToolCallEsperada[] em
-      // tempo de execução — o tipo genérico (unknown) é pro repositório
-      // acomodar os outros 3 fluxos, que ainda não passam por aqui.
-      if (baterComEsperado(resposta.toolCalls, caso.saidaEsperada as ToolCallEsperada[])) {
+      if (avaliacao.acerto) {
         acertos++;
       }
 
@@ -128,9 +270,9 @@ export async function executarBenchmarkFluxo(
       registrarUsoTokens(db, {
         fluxo,
         modelo,
-        tokensPrompt: resposta.tokensPrompt,
-        tokensCompletion: resposta.tokensCompletion,
-        custoEstimado: resposta.custo,
+        tokensPrompt: avaliacao.tokensPrompt,
+        tokensCompletion: avaliacao.tokensCompletion,
+        custoEstimado: avaliacao.custo,
         origem: 'benchmark_interno',
       });
     }
