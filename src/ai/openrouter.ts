@@ -50,7 +50,10 @@ export function extrairTextoEImagem(resultado: ResultadoTool): { texto: string; 
 }
 
 function gerarPerguntaConfirmacao(tool: ToolDefinition, argumentos: unknown): string {
-  const base = `Confirma a ação "${tool.name}" com os parâmetros ${JSON.stringify(argumentos)}? Responda "sim" para confirmar, ou qualquer outra coisa para cancelar.`;
+  const resumo = tool.resumoConfirmacao?.(argumentos);
+  const base = resumo
+    ? `Confirma ${resumo}? Responda "sim" para confirmar, ou qualquer outra coisa para cancelar.`
+    : `Confirma a ação "${tool.name}" com os parâmetros ${JSON.stringify(argumentos)}? Responda "sim" para confirmar, ou qualquer outra coisa para cancelar.`;
   const aviso = tool.avisoConfirmacao?.(argumentos);
   return aviso ? `${aviso}\n\n${base}` : base;
 }

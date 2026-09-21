@@ -85,6 +85,22 @@ describe('tool registrar_transacoes_em_lote', () => {
     expect(aviso).toContain('50.00');
   });
 
+  it('resumoConfirmacao descreve a ação em linguagem natural, sem JSON', () => {
+    const tool = criarToolRegistrarTransacoesEmLote(db);
+    const args = tool.schema.parse({
+      conta_apelido: 'Principal',
+      transacoes: [
+        { tipo: 'despesa', valor: 100, categoria: 'Mercado', data: '2026-09-10' },
+        { tipo: 'receita', valor: 50, categoria: 'Outros', data: '2026-09-11' },
+      ],
+    });
+
+    const resumo = tool.resumoConfirmacao?.(args);
+
+    expect(resumo).toBe('registrar 2 transações na conta "Principal"');
+    expect(resumo).not.toMatch(/[{}]/);
+  });
+
   it('schema exige pelo menos 1 transação', () => {
     const tool = criarToolRegistrarTransacoesEmLote(db);
 

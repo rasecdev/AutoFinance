@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { DbClient } from '../../db/client.js';
 import { encontrarFaturaCorrespondente } from '../../db/repositories/correspondenciaFaturaParcela.js';
 import { atualizarValorFatura, criarFatura } from '../../db/repositories/faturas.js';
+import { obterCartao } from '../../db/repositories/cartoes.js';
 import type { ToolDefinition } from './types.js';
 
 const schemaRegistrarFaturaEmail = z.object({
@@ -24,6 +25,11 @@ export function criarToolRegistrarFaturaEmail(db: DbClient): ToolDefinition {
       'Registra ou atualiza uma fatura de cartão a partir de dado extraído de e-mail (cartão, mês e valor já resolvidos) — atualiza a fatura existente se já houver uma pro mesmo cartão+mês, cria uma nova se não houver.',
     schema: schemaRegistrarFaturaEmail,
     requerConfirmacao: true,
+    resumoConfirmacao: (args) => {
+      const { cartao_id, mes_referencia, valor } = args as ArgsRegistrarFaturaEmail;
+      const nomeCartao = obterCartao(db, cartao_id)?.nome ?? `id ${cartao_id}`;
+      return `registrar a fatura de ${mes_referencia} do cartão "${nomeCartao}", valor R$ ${valor.toFixed(2)}`;
+    },
     avisoConfirmacao: (args) => {
       const { cartao_id, mes_referencia, valor } = args as ArgsRegistrarFaturaEmail;
       const existente = encontrarFaturaCorrespondente(db, { cartaoId: cartao_id, mesReferencia: mes_referencia });

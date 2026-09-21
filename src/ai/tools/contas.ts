@@ -34,6 +34,11 @@ export function criarToolCriarConta(db: DbClient): ToolDefinition {
       'Cria uma nova conta bancária (PF ou PJ), vinculada a um banco pelo nome (o banco é criado automaticamente se ainda não existir).',
     schema: schemaCriarConta,
     requerConfirmacao: true,
+    resumoConfirmacao: (args) => {
+      const { banco, tipo, apelido, saldo_inicial: saldoInicial } = args as z.infer<typeof schemaCriarConta>;
+      const parteSaldo = saldoInicial !== undefined ? `, saldo inicial R$ ${saldoInicial.toFixed(2)}` : '';
+      return `criar a conta "${apelido}" (${tipo}) no banco ${banco}${parteSaldo}`;
+    },
     handler: async (args) => {
       const { banco, tipo, apelido, saldo_inicial: saldoInicial } = args as z.infer<
         typeof schemaCriarConta
@@ -166,6 +171,14 @@ export function criarToolCriarCartao(db: DbClient): ToolDefinition {
       'Cria um cartão de crédito vinculado a uma conta já existente, informada pelo id ou pelo apelido da conta.',
     schema: schemaCriarCartao,
     requerConfirmacao: true,
+    resumoConfirmacao: (args) => {
+      const { conta_id: contaId, conta_apelido: contaApelido, nome, limite, dia_fechamento, dia_vencimento } = args as z.infer<
+        typeof schemaCriarCartao
+      >;
+      const resolucao = resolverContaId(db, contaId, contaApelido);
+      const nomeConta = resolucao.ok ? obterConta(db, resolucao.id)?.apelido ?? contaApelido : contaApelido ?? `id ${contaId}`;
+      return `criar o cartão "${nome}" na conta "${nomeConta}", limite R$ ${limite.toFixed(2)}, fechamento dia ${dia_fechamento}, vencimento dia ${dia_vencimento}`;
+    },
     handler: async (args) => {
       const {
         conta_id: contaId,

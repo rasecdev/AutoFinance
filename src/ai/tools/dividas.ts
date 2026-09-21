@@ -63,6 +63,24 @@ export function criarToolCriarDivida(db: DbClient): ToolDefinition {
       'Registra uma dívida (empréstimo, financiamento ou consignado) e já gera todas as parcelas de uma vez, com data de vencimento calculada a partir de data_inicio (mensal, primeira parcela um mês depois). Assim que o usuário informar tipo, valor total, número de parcelas e a conta vinculada, chame esta ferramenta diretamente — a conta é resolvida pelo nome/apelido, e data_inicio, quando omitida, usa a data de hoje. sistema_amortizacao (price/sac), taxa_juros, indexador e demais campos são opcionais: sem sistema_amortizacao informado, as parcelas saem em valor fixo (total dividido igualmente), sem tentar aplicar juros compostos. NUNCA pergunte por taxa_juros/sistema_amortizacao/indexador/descricao antes de chamar — se o usuário não mencionou, chame sem eles na hora, não liste os campos que faltam como se fossem pendência. taxa_juros é SEMPRE decimal mensal, nunca a porcentagem crua — "2% ao mês" vira 0.02, "1,5% ao mês" vira 0.015 (a ferramenta rejeita valor acima de 1). descricao é opcional (ex: "Financiamento carro") — só é importante quando o usuário já tem ou pode vir a ter mais de uma dívida do mesmo tipo na mesma conta, já que dívida é sempre identificada por conta + tipo (nunca por id) em outras ferramentas. Ação de alto impacto — só executa após confirmação.',
     schema: schemaCriarDivida,
     requerConfirmacao: true,
+    resumoConfirmacao: (args) => {
+      const {
+        conta_id: contaId,
+        conta_apelido: contaApelido,
+        tipo,
+        valor_total: valorTotal,
+        num_parcelas: numParcelas,
+        taxa_juros: taxaJuros,
+        sistema_amortizacao: sistemaAmortizacao,
+        descricao,
+      } = args as z.infer<typeof schemaCriarDivida>;
+      const resolucao = resolverContaId(db, contaId, contaApelido);
+      const nomeConta = resolucao.ok ? obterConta(db, resolucao.id)?.apelido ?? contaApelido : contaApelido ?? `id ${contaId}`;
+      const parteDescricao = descricao ? ` "${descricao}"` : '';
+      const parteJuros = taxaJuros !== undefined ? `, juros ${(taxaJuros * 100).toFixed(2)}% a.m.` : '';
+      const parteSistema = sistemaAmortizacao ? ` (sistema ${sistemaAmortizacao})` : '';
+      return `criar uma dívida${parteDescricao} de ${tipo} na conta "${nomeConta}", valor total R$ ${valorTotal.toFixed(2)} em ${numParcelas} parcela(s)${parteJuros}${parteSistema}`;
+    },
     handler: async (args) => {
       const {
         conta_id: contaIdInformado,
@@ -162,6 +180,30 @@ export function criarToolRenegociar(db: DbClient): ToolDefinition {
       'Renegocia uma dívida ou fatura existente: marca a origem como renegociada e cria uma nova dívida com os termos novos. valor_total e num_parcelas são sempre os valores novos, informados pelo usuário. Os demais campos (taxa_juros, sistema_amortizacao, indexador, taxa_indexador_spread, descricao) são opcionais: quando origem = "divida" e o usuário não informar um deles, a nova dívida herda o valor da dívida original automaticamente (renegociação normalmente muda só uma ou duas coisas, o resto do contrato tende a continuar igual) — NUNCA pergunte por esses campos antes de chamar, nem peça pra repetir dado que não mudou; chame direto assim que tiver valor_total, num_parcelas e a identificação da origem. taxa_juros, quando informada, é SEMPRE decimal mensal, nunca a porcentagem crua — "2% ao mês" vira 0.02 (a ferramenta rejeita valor acima de 1). Quando origem = "fatura" não há nada pra herdar (fatura não tem esses campos). Nunca use id pra identificar a origem — dívida é identificada por conta + tipo_divida (divida_descricao só quando houver mais de uma do mesmo tipo na mesma conta e a ferramenta pedir pra desambiguar); fatura é identificada por cartão (nome/id) + mes_referencia, que aceita "AAAA-MM" quando o usuário disser o ano, ou só o mês ("8"/"08") quando ele não disser — nesse caso NUNCA invente o ano sozinho, o sistema completa com o ano atual automaticamente. A nova dívida herda o tipo da dívida original quando origem = "divida", ou usa tipo "outro" quando origem = "fatura". Ação de alto impacto — só executa após confirmação.',
     schema: schemaRenegociar,
     requerConfirmacao: true,
+    resumoConfirmacao: (args) => {
+      const {
+        origem,
+        conta_id: contaId,
+        conta_apelido: contaApelido,
+        tipo_divida: tipoDivida,
+        cartao_id: cartaoId,
+        cartao_nome: cartaoNome,
+        mes_referencia: mesReferencia,
+        valor_total: valorTotal,
+        num_parcelas: numParcelas,
+      } = args as z.infer<typeof schemaRenegociar>;
+
+      const parteOrigem =
+        origem === 'divida'
+          ? (() => {
+              const resolucao = resolverContaId(db, contaId, contaApelido);
+              const nomeConta = resolucao.ok ? obterConta(db, resolucao.id)?.apelido ?? contaApelido : contaApelido ?? `id ${contaId}`;
+              return `a dívida de ${tipoDivida} na conta "${nomeConta}"`;
+            })()
+          : `a fatura do cartão "${cartaoNome ?? `id ${cartaoId}`}" (${mesReferencia})`;
+
+      return `renegociar ${parteOrigem}, novo valor total R$ ${valorTotal.toFixed(2)} em ${numParcelas} parcela(s)`;
+    },
     handler: async (args) => {
       const {
         origem,
@@ -282,6 +324,15 @@ export function criarToolQuitarDivida(db: DbClient): ToolDefinition {
       'Quita antecipadamente uma dívida: paga de uma vez todas as parcelas ainda pendentes e marca a dívida como quitada. Identifica a dívida por conta + tipo_divida (nunca por id — divida_descricao só quando houver mais de uma do mesmo tipo na mesma conta). data_pagamento, quando omitida, usa a data de hoje — NUNCA pergunte pela data antes de chamar, chame direto sem esse campo se o usuário não mencionar uma data específica. Diferente de amortizar_divida (que abate só parte do saldo e recalcula as parcelas restantes) — aqui a dívida inteira é encerrada de uma vez. Ação de alto impacto — só executa após confirmação.',
     schema: schemaQuitarDivida,
     requerConfirmacao: true,
+    resumoConfirmacao: (args) => {
+      const { conta_id: contaId, conta_apelido: contaApelido, tipo_divida: tipoDivida, data_pagamento: dataPagamento } = args as z.infer<
+        typeof schemaQuitarDivida
+      >;
+      const resolucao = resolverContaId(db, contaId, contaApelido);
+      const nomeConta = resolucao.ok ? obterConta(db, resolucao.id)?.apelido ?? contaApelido : contaApelido ?? `id ${contaId}`;
+      const parteData = dataPagamento ? `, data ${dataPagamento}` : '';
+      return `quitar a dívida de ${tipoDivida} na conta "${nomeConta}"${parteData}`;
+    },
     handler: async (args) => {
       const {
         conta_id: contaIdInformado,
@@ -478,6 +529,13 @@ export function criarToolAmortizarDivida(db: DbClient): ToolDefinition {
       'Amortização extraordinária: paga um valor extra que abate parte do saldo devedor sem quitar a dívida inteira (diferente de quitar_divida, que encerra tudo de uma vez). Identifica a dívida por conta + tipo_divida (nunca por id — divida_descricao só quando houver mais de uma do mesmo tipo na mesma conta). modo é sempre informado pelo usuário: "reduzir_parcelas" (menos parcelas, mesmo valor) ou "reduzir_valor" (mesma quantidade, valor menor). Se o usuário já souber o valor real informado pelo banco, preencha num_parcelas_informado (modo reduzir_parcelas) ou valor_parcela_informado (modo reduzir_valor) — esse valor real SEMPRE prevalece sobre qualquer estimativa. Se o usuário não souber ainda, chame mesmo assim sem esses campos: quando a dívida tem sistema_amortizacao cadastrado, o sistema estima automaticamente por Price/SAC e aplica a estimativa (mostrada antes de confirmar); quando não tem, a ferramenta avisa que precisa do valor real do banco em vez de aplicar um chute. Nunca calcule esse valor você mesmo — a ferramenta sempre faz essa conta. Ação de alto impacto — só executa após confirmação.',
     schema: schemaAmortizarDivida,
     requerConfirmacao: true,
+    resumoConfirmacao: (args) => {
+      const { conta_id: contaId, conta_apelido: contaApelido, tipo_divida: tipoDivida, valor, modo } = args as ArgsAmortizarDivida;
+      const resolucao = resolverContaId(db, contaId, contaApelido);
+      const nomeConta = resolucao.ok ? obterConta(db, resolucao.id)?.apelido ?? contaApelido : contaApelido ?? `id ${contaId}`;
+      const parteModo = modo === 'reduzir_parcelas' ? 'reduzindo o número de parcelas' : 'reduzindo o valor da parcela';
+      return `amortizar a dívida de ${tipoDivida} na conta "${nomeConta}" em R$ ${valor.toFixed(2)}, ${parteModo}`;
+    },
     avisoConfirmacao: (args) => {
       const resolucao = resolverResultadoAmortizacao(db, args as ArgsAmortizarDivida);
       if (!resolucao.ok) return resolucao.mensagem;

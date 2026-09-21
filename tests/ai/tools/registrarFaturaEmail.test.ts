@@ -79,4 +79,14 @@ describe('tool registrar_fatura_email', () => {
     const argsExistente = tool.schema.parse({ cartao_id: cartaoId, mes_referencia: '2026-11', valor: 720 });
     expect(tool.avisoConfirmacao?.(argsExistente)).toContain('ATUALIZAR');
   });
+
+  it('resumoConfirmacao resolve o nome do cartão, sem JSON', () => {
+    const tool = criarToolRegistrarFaturaEmail(db);
+    const args = tool.schema.parse({ cartao_id: cartaoId, mes_referencia: '2026-09', valor: 850 });
+
+    const resumo = tool.resumoConfirmacao?.(args);
+
+    expect(resumo).toBe('registrar a fatura de 2026-09 do cartão "Nubank Cartão", valor R$ 850.00');
+    expect(resumo).not.toMatch(/[{}]/);
+  });
 });

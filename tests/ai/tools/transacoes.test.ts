@@ -86,6 +86,25 @@ describe('tool registrar_transacao', () => {
     expect(resultado).toContain(hojeISO);
   });
 
+  it('resumoConfirmacao descreve a ação em linguagem natural, sem JSON', () => {
+    const tool = criarToolRegistrarTransacao(db);
+    const args = tool.schema.parse({
+      conta_apelido: 'Conta principal',
+      tipo: 'despesa',
+      valor: 42.5,
+      categoria: 'Alimentação',
+      descricao: 'Mercado',
+      data: '2026-08-31',
+    });
+
+    const resumo = tool.resumoConfirmacao?.(args);
+
+    expect(resumo).toBe(
+      'registrar uma despesa de R$ 42.50 ("Mercado") na conta "Conta principal", categoria "Alimentação", data 2026-08-31',
+    );
+    expect(resumo).not.toMatch(/[{}]/);
+  });
+
   it('grava resolvendo a conta pelo apelido', async () => {
     const tool = criarToolRegistrarTransacao(db);
     const args = tool.schema.parse({
@@ -390,6 +409,30 @@ describe('tool excluir_transacao', () => {
     const resultado = await tool.handler(args, { chatId: 1 });
 
     expect(resultado).toContain('Não encontrei');
+  });
+
+  it('resumoConfirmacao descreve a transação real quando o id existe, sem JSON', () => {
+    const transacao = criarTransacao(db, {
+      contaId,
+      tipo: 'despesa',
+      valor: 50,
+      categoria: 'Alimentação',
+      data: '2026-08-31',
+    });
+    const tool = criarToolExcluirTransacao(db);
+    const args = tool.schema.parse({ id: transacao.id });
+
+    const resumo = tool.resumoConfirmacao?.(args);
+
+    expect(resumo).toBe('excluir a transação "Alimentação" de R$ 50.00 (2026-08-31)');
+    expect(resumo).not.toMatch(/[{}]/);
+  });
+
+  it('resumoConfirmacao sem id explica que vai excluir a última transação da conversa', () => {
+    const tool = criarToolExcluirTransacao(db);
+    const args = tool.schema.parse({});
+
+    expect(tool.resumoConfirmacao?.(args)).toBe('excluir a última transação registrada nesta conversa');
   });
 
   it('exclui logicamente (status = excluida), nunca remove a linha', async () => {
