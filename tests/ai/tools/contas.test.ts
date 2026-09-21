@@ -7,9 +7,11 @@ import {
   criarToolCriarCartao,
   criarToolCriarConta,
   criarToolEditarConta,
+  criarToolListarCartoes,
   criarToolListarContas,
 } from '../../../src/ai/tools/contas.js';
 import type { DbClient } from '../../../src/db/client.js';
+import { criarCartao } from '../../../src/db/repositories/cartoes.js';
 import { criarConta } from '../../../src/db/repositories/contas.js';
 import { criarTransacao } from '../../../src/db/repositories/transacoes.js';
 import { migrate } from '../../../src/db/migrate.js';
@@ -309,5 +311,27 @@ describe('tool listar_contas', () => {
 
     expect(resultado).toContain('"Principal" (PF): R$ 100.00');
     expect(resultado).toContain('"Empresa" (PJ): R$ 450.00');
+  });
+});
+
+describe('tool listar_cartoes', () => {
+  it('avisa quando não há nenhum cartão cadastrado', async () => {
+    const tool = criarToolListarCartoes(db);
+
+    const resultado = await tool.handler({}, { chatId: 1 });
+
+    expect(resultado).toContain('não tem nenhum cartão cadastrado');
+  });
+
+  it('lista nome, conta vinculada, limite, fechamento e vencimento de cada cartão', async () => {
+    const contaId = criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Principal' }).id;
+    criarCartao(db, { contaId, nome: 'Nubank Cartão', limite: 5000, diaFechamento: 5, diaVencimento: 12 });
+    const tool = criarToolListarCartoes(db);
+
+    const resultado = await tool.handler({}, { chatId: 1 });
+
+    expect(resultado).toContain(
+      '"Nubank Cartão" (conta Principal): limite R$ 5000.00, fechamento dia 5, vencimento dia 12',
+    );
   });
 });

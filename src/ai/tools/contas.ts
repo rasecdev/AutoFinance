@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { buscarCartaoPorNomeNaConta, criarCartao } from '../../db/repositories/cartoes.js';
-import { atualizarConta, buscarContaPorApelido, criarConta, listarContas } from '../../db/repositories/contas.js';
+import { buscarCartaoPorNomeNaConta, criarCartao, listarCartoes } from '../../db/repositories/cartoes.js';
+import { atualizarConta, buscarContaPorApelido, criarConta, listarContas, obterConta } from '../../db/repositories/contas.js';
 import { calcularSaldoTransacoesConta } from '../../db/repositories/transacoes.js';
 import { calcularSaldoTransferenciasConta } from '../../db/repositories/transferencias.js';
 import type { DbClient } from '../../db/client.js';
@@ -128,6 +128,33 @@ export function criarToolListarContas(db: DbClient): ToolDefinition {
       });
 
       return `Contas cadastradas:\n${linhas.join('\n')}`;
+    },
+  };
+}
+
+const schemaListarCartoes = z.object({});
+
+// Achado real de teste manual (Fase 8): perguntar "quais cartões eu tenho"
+// não tinha tool correspondente — a IA respondia sem checar o banco de
+// verdade, mesmo problema já resolvido pra contas em listar_contas.
+export function criarToolListarCartoes(db: DbClient): ToolDefinition {
+  return {
+    name: 'listar_cartoes',
+    description: 'Lista todos os cartões de crédito cadastrados, com a conta vinculada, limite, dia de fechamento e vencimento.',
+    schema: schemaListarCartoes,
+    handler: async () => {
+      const cartoes = listarCartoes(db);
+      if (cartoes.length === 0) {
+        return 'Você ainda não tem nenhum cartão cadastrado.';
+      }
+
+      const linhas = cartoes.map((cartao) => {
+        const conta = obterConta(db, cartao.contaId);
+        const apelidoConta = conta?.apelido ?? 'conta desconhecida';
+        return `- "${cartao.nome}" (conta ${apelidoConta}): limite R$ ${cartao.limite.toFixed(2)}, fechamento dia ${cartao.diaFechamento}, vencimento dia ${cartao.diaVencimento}`;
+      });
+
+      return `Cartões cadastrados:\n${linhas.join('\n')}`;
     },
   };
 }
