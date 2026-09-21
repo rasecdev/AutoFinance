@@ -349,7 +349,7 @@ describe('gerarResposta — loop de tool calling', () => {
     const resultado = await gerarResposta(client, 'cria um cartão', [toolComResumo]);
 
     expect(resultado.resposta).toBe(
-      'Confirma criar o cartão "Nubank"? Responda "sim" para confirmar, ou qualquer outra coisa para cancelar.',
+      'Confirma criar o cartão "Nubank"? Toque em um botão abaixo, ou responda "sim" para confirmar (qualquer outra coisa cancela).',
     );
     expect(resultado.resposta).not.toContain('{');
     expect(resultado.resposta).not.toContain('criar_cartao"');

@@ -258,8 +258,8 @@ describe('handlerMidia', () => {
 
     await handler(ctx);
 
-    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('1 transações'));
-    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Confirma?'));
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('1 transações'), expect.anything());
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Confirma?'), expect.anything());
 
     const pendencia = obterPendencia(123);
     expect(pendencia?.tool.name).toBe('registrar_transacoes_em_lote');

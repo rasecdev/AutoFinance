@@ -21,6 +21,7 @@ export function createBot(
   handlerAjuda: Handler,
   handlerRegistrarOpenFinance: Handler,
   handlerMapeamentoOpenFinance: Handler,
+  handlerCallbackConfirmacao: Handler,
 ): Bot {
   const bot = new Bot(env.telegramBotToken);
 
@@ -42,6 +43,7 @@ export function createBot(
     handlerAjuda,
     handlerRegistrarOpenFinance,
     handlerMapeamentoOpenFinance,
+    handlerCallbackConfirmacao,
   );
 
   bot.catch((erro) => {
