@@ -17,7 +17,7 @@ import { criarToolRegistrarTransacoesEmLote } from '../../ai/tools/transacoesEmL
 import type { DbClient } from '../../db/client.js';
 import { registrarUsoTokens } from '../../db/repositories/usoTokens.js';
 import type { Logger } from '../../logging/logger.js';
-import { definirPendencia } from '../confirmacao.js';
+import { definirPendencia, montarTecladoConfirmacao } from '../confirmacao.js';
 import { processarMensagemTexto } from './texto.js';
 
 const MENSAGEM_NAO_COMPROVANTE =
@@ -161,7 +161,10 @@ async function processarPlanilha(
 
     definirPendencia(chatId, { tool, argumentos });
     const resumo = tool.avisoConfirmacao?.(argumentos) ?? `${transacoes.length} transações`;
-    await ctx.reply(`Encontrei ${resumo}. Confirma? Responda "sim" para registrar, ou qualquer outra coisa pra cancelar.`);
+    await ctx.reply(
+      `Encontrei ${resumo}. Confirma? Toque em um botão abaixo, ou responda "sim" para registrar (qualquer outra coisa cancela).`,
+      { reply_markup: montarTecladoConfirmacao() },
+    );
   } catch (erro) {
     log.error({ err: erro }, 'falha ao interpretar planilha');
     await ctx.reply(MENSAGEM_ERRO_EXTRACAO);

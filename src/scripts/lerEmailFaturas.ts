@@ -6,6 +6,7 @@ import { FLUXO_LEITURA_COMPROVANTE, extrairComprovante, resolverModeloLeituraCom
 import { criarToolRegistrarFaturaEmail } from '../ai/tools/registrarFaturaEmail.js';
 import { criarToolRegistrarParcelaEmail } from '../ai/tools/registrarParcelaEmail.js';
 import { resolverCartaoId, resolverDividaPorIdentificador } from '../ai/tools/resolucao.js';
+import { montarTecladoConfirmacao } from '../bot/confirmacao.js';
 import { configurarFormatacaoPadrao } from '../bot/formatoMensagens.js';
 import { loadEnv } from '../config/env.js';
 import { getDb, type DbClient } from '../db/client.js';
@@ -129,7 +130,11 @@ async function processarEmail(
       // pendência precisa estar em algo que os dois processos compartilhem
       // de verdade (achado real, ver migration 0012).
       definirPendenciaPersistida(db, Number(chatId), { toolName: tool.name, argumentos });
-      await bot.api.sendMessage(chatId, `📧 ${resumo} Confirma? Responda "sim" para registrar, ou qualquer outra coisa pra cancelar.`);
+      await bot.api.sendMessage(
+        chatId,
+        `📧 ${resumo} Confirma? Toque em um botão abaixo, ou responda "sim" para registrar (qualquer outra coisa cancela).`,
+        { reply_markup: montarTecladoConfirmacao() },
+      );
     }
     marcarEmailProcessado(db, messageId, 'pendente_confirmacao');
     return;
@@ -153,7 +158,11 @@ async function processarEmail(
   const resumo = tool.avisoConfirmacao?.(argumentos) ?? 'boleto de parcela extraído de e-mail';
   for (const chatId of chatIds) {
     definirPendenciaPersistida(db, Number(chatId), { toolName: tool.name, argumentos });
-    await bot.api.sendMessage(chatId, `📧 ${resumo} Confirma? Responda "sim" para registrar, ou qualquer outra coisa pra cancelar.`);
+    await bot.api.sendMessage(
+      chatId,
+      `📧 ${resumo} Confirma? Toque em um botão abaixo, ou responda "sim" para registrar (qualquer outra coisa cancela).`,
+      { reply_markup: montarTecladoConfirmacao() },
+    );
   }
   marcarEmailProcessado(db, messageId, 'pendente_confirmacao');
 }
