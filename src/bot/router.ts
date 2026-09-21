@@ -27,6 +27,7 @@ export function registerRoutes(
   handlerAjuda: Handler,
   handlerRegistrarOpenFinance: Handler,
   handlerMapeamentoOpenFinance: Handler,
+  handlerCallbackConfirmacao: Handler,
 ): void {
   const handlersPorComando: Record<string, Handler> = {
     errado: handlerFeedback,
@@ -64,4 +65,8 @@ export function registerRoutes(
   bot.on(['message:photo', 'message:document'], handlerMidia);
   bot.on('message:voice', handlerVoz);
   bot.on('message', handlerNaoSuportado);
+  // Clique nos botões Sim/Cancelar da confirmação (achado real: digitar
+  // "sim" era confuso pra alguns usuários) — roda fora do fluxo de mensagem
+  // de texto, é um tipo de update diferente (callback_query).
+  bot.on('callback_query:data', handlerCallbackConfirmacao);
 }

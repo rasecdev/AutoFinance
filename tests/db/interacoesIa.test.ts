@@ -445,7 +445,7 @@ describe('handlerTexto (OpenRouter mockado, sem chamada real)', () => {
 
     await handler(ctx);
 
-    expect(ctx.reply).toHaveBeenCalledWith('resposta gerada pela IA');
+    expect(ctx.reply).toHaveBeenCalledWith('resposta gerada pela IA', undefined);
 
     const linhas = lerInteracoes();
     expect(linhas).toHaveLength(1);
@@ -520,7 +520,7 @@ describe('handlerTexto (OpenRouter mockado, sem chamada real)', () => {
 
     await handler(ctx);
 
-    expect(ctx.reply).toHaveBeenCalledWith('Não entendi, pode reformular?');
+    expect(ctx.reply).toHaveBeenCalledWith('Não entendi, pode reformular?', undefined);
   });
 
   it('registra falha e responde com mensagem de erro quando a chamada ao OpenRouter falha', async () => {

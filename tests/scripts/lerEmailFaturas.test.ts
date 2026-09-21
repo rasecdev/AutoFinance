@@ -113,6 +113,7 @@ describe('verificarEmails', () => {
 
     expect(sendMessage).toHaveBeenCalledTimes(1);
     expect(sendMessage.mock.calls[0]?.[1]).toContain('CRIAR');
+    expect(sendMessage.mock.calls[0]?.[2]).toEqual({ reply_markup: expect.anything() });
 
     const pendencia = obterPendenciaPersistida(db, Number(CHAT_IDS[0]));
     expect(pendencia?.toolName).toBe('registrar_fatura_email');
