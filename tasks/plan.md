@@ -39,7 +39,7 @@ Esta rodada estende o motor de benchmark pra suportar comparação por fluxo (n�
 - [x] `npm run build`/`lint`/`test` sem erro
 - [x] `npm audit` sem vulnerabilidade alta/crítica sem correção (`write-excel-file` virou dependency de produção)
 - [x] Teste manual: `rodar_benchmark_interno` com `fluxo: "leitura_comprovante"` e `fluxo: "interpretar_planilha"` contra pelo menos 1 modelo candidato, resultado condizente com o gabarito curado
-- [ ] PROGRESSO.md atualizado com o marco, incluindo a decisão documentada de deixar `transcricao_voz` sem caso curado nesta rodada
+- [x] PROGRESSO.md atualizado com o marco, incluindo a decisão documentada de deixar `transcricao_voz` sem caso curado nesta rodada
 - [ ] Revisão com o usuário antes de prosseguir
 
 ## Risks and Mitigations
