@@ -37,4 +37,4 @@ Fora desse ciclo (mudança pontual, não relacionada a uma tarefa do todo.md), c
 - Estrutura: `src/config`, `src/db`, `src/logging`, `src/bot`, `src/ai`, `scripts/`, `tests/` (espelha `src/`).
 - Test runner: **Vitest**.
 - Migração de schema: SQL puro em `src/db/migrations/`, sem ORM.
-- Novo serviço no `docker-compose.yml`: usar `image: autofinance:latest` (sem `build:` próprio) — só o serviço `producao` mantém `build: .`, que builda a imagem uma vez e é reaproveitada pelos demais. Evita rebuild duplicado por serviço (eram 16 builds idênticos antes dessa convenção).
+- Novo serviço no `docker-compose.yml`: usar `build: .` + `image: autofinance:latest` (mesma tag em todos os serviços). O `build:` precisa estar em todo serviço — sem ele, `docker compose up` tenta dar *pull* da imagem em vez de buildar localmente, e falha (a imagem nunca é publicada em registry). Com a tag compartilhada, o cache de camadas do Docker deixa os builds seguintes ao primeiro quase instantâneos.
