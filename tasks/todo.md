@@ -143,5 +143,5 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura.
 - [x] `npm run build`/`lint`/`test` sem erro
 - [x] `npm audit` sem vulnerabilidade alta/crítica sem correção
 - [x] Teste manual: `rodar_benchmark_interno` com `fluxo: "leitura_comprovante"` e `fluxo: "interpretar_planilha"` contra pelo menos 1 modelo candidato, resultado condizente com o gabarito curado
-- [ ] PROGRESSO.md atualizado com o marco, incluindo a decisão documentada de deixar `transcricao_voz` sem caso curado nesta rodada (follow-up, precisa de áudio real gravado pelo usuário)
+- [x] PROGRESSO.md atualizado com o marco, incluindo a decisão documentada de deixar `transcricao_voz` sem caso curado nesta rodada (follow-up, precisa de áudio real gravado pelo usuário)
 - [ ] Revisão com o usuário antes de prosseguir
