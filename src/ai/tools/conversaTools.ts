@@ -1,7 +1,13 @@
 import type OpenAI from 'openai';
 import type { DbClient } from '../../db/client.js';
 import { criarToolCriarCasoTesteBenchmark, criarToolRodarBenchmarkInterno } from './benchmark.js';
-import { criarToolCriarCartao, criarToolCriarConta, criarToolEditarConta, criarToolListarContas } from './contas.js';
+import {
+  criarToolCriarCartao,
+  criarToolCriarConta,
+  criarToolEditarConta,
+  criarToolListarCartoes,
+  criarToolListarContas,
+} from './contas.js';
 import { criarToolConsultarSaldo, criarToolConsultarExtrato, criarToolResumoMensal } from './consultas.js';
 import { criarToolConsultarDadosDinamico } from './consultaDinamica.js';
 import { criarToolConsultarEGraficar } from './consultaEGraficar.js';
@@ -40,6 +46,7 @@ export function montarToolsConversa(db: DbClient, client: OpenAI): ToolDefinitio
     criarToolEditarConta(db),
     criarToolListarContas(db),
     criarToolCriarCartao(db),
+    criarToolListarCartoes(db),
     criarToolRegistrarTransacao(db),
     criarToolEditarTransacao(db),
     criarToolExcluirTransacao(db),
