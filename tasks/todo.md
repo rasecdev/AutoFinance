@@ -84,16 +84,18 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura.
 **Description:** Dois handlers novos (`src/bot/handlers/pausar.ts`, `src/bot/handlers/retomar.ts`) chamando `pausar`/`retomar` do repositório da Tarefa 112 e respondendo confirmação. `/pausar` com o chat já pausado responde avisando que já estava pausado (sem erro); `/retomar` sem pausa ativa avisa que não havia pausa — nenhum dos dois lança exceção. Entradas novas em `COMANDOS_BOT` (`comandos.ts`), wiring em `router.ts`/`bot.ts`/`index.ts` (mesmo padrão dos demais comandos — `setMyCommands` pega os dois automaticamente por vir da mesma fonte).
 
 **Acceptance criteria:**
-- [ ] `/pausar` grava a pausa e responde confirmando
-- [ ] `/pausar` chamado de novo com o chat já pausado responde avisando que já estava pausado, sem duplicar nem lançar erro
-- [ ] `/retomar` remove a pausa e responde confirmando
-- [ ] `/retomar` chamado sem pausa ativa responde avisando que não havia pausa, sem erro
-- [ ] Os dois comandos aparecem no menu "/" do Telegram (via `COMANDOS_BOT`/`setMyCommands`)
+- [x] `/pausar` grava a pausa e responde confirmando
+- [x] `/pausar` chamado de novo com o chat já pausado responde avisando que já estava pausado, sem duplicar nem lançar erro
+- [x] `/retomar` remove a pausa e responde confirmando
+- [x] `/retomar` chamado sem pausa ativa responde avisando que não havia pausa, sem erro
+- [x] Os dois comandos aparecem no menu "/" do Telegram (via `COMANDOS_BOT`/`setMyCommands`)
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/bot/handlers/pausar.test.ts tests/bot/handlers/retomar.test.ts`
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: `/pausar` em Homologação, mandar mensagem normal (recusada), `/retomar`, mandar mensagem normal de novo (funciona)
+- [x] Tests pass: `npx vitest run tests/bot/handlers/pausar.test.ts tests/bot/handlers/retomar.test.ts` (4 testes) + `tests/bot/router.test.ts`/`tests/bot/pausa.test.ts` atualizados (novos parâmetros `handlerPausar`/`handlerRetomar`)
+- [x] Build succeeds: `npm run build` / `npm run lint`
+- [ ] Manual check: `/pausar` em Homologação, mandar mensagem normal (recusada), `/retomar`, mandar mensagem normal de novo (funciona) — pendente, depende do usuário testar via Telegram depois do deploy
+
+**Nota de implementação:** `registerRoutes`/`createBot` ganharam 2 parâmetros novos (`handlerPausar`, `handlerRetomar`) — `tests/bot/router.test.ts` precisou de todas as chamadas existentes atualizadas (14 ocorrências) e os índices de `bot.filter.mock.calls[N]` dos filtros de pendência (OAuth Google, mapeamento Open Finance) deslocaram de `[7]`/`[8]` pra `[9]`/`[10]` (2 comandos novos entraram antes deles no loop de `COMANDOS_BOT`).
 
 **Dependencies:** Tarefa 112, Tarefa 113
 
@@ -105,6 +107,8 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura.
 - `src/bot/bot.ts`
 - `src/index.ts`
 - `tests/bot/handlers/pausar.test.ts`
+- `tests/bot/handlers/retomar.test.ts`
+- `tests/bot/router.test.ts`
 - `tests/bot/handlers/retomar.test.ts`
 
 **Estimated scope:** Medium
