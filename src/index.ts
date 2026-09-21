@@ -9,6 +9,8 @@ import { createHandlerMidia } from './bot/handlers/midia.js';
 import { createHandlerModelo } from './bot/handlers/modelo.js';
 import { createHandlerModelos } from './bot/handlers/modelos.js';
 import { createHandlerNaoSuportado } from './bot/handlers/naoSuportado.js';
+import { createHandlerPausar } from './bot/handlers/pausar.js';
+import { createHandlerRetomar } from './bot/handlers/retomar.js';
 import { createHandlerCodigoOAuthGoogle, createHandlerRegistrarEmail } from './bot/handlers/registrarEmail.js';
 import {
   createHandlerMapeamentoOpenFinance,
@@ -46,6 +48,8 @@ const handlerAjuda = createHandlerAjuda();
 const handlerRegistrarOpenFinance = createHandlerRegistrarOpenFinance(env, logger);
 const handlerMapeamentoOpenFinance = createHandlerMapeamentoOpenFinance(db, logger);
 const handlerCallbackConfirmacao = createHandlerCallbackConfirmacao(db, logger, montarToolsConversa(db, openRouterClient));
+const handlerPausar = createHandlerPausar(db);
+const handlerRetomar = createHandlerRetomar(db);
 
 const bot = createBot(
   env,
@@ -65,6 +69,8 @@ const bot = createBot(
   handlerRegistrarOpenFinance,
   handlerMapeamentoOpenFinance,
   handlerCallbackConfirmacao,
+  handlerPausar,
+  handlerRetomar,
 );
 
 // Achado real (2026-09-19): agendamento de auto-apagar (registrarEmail.ts)

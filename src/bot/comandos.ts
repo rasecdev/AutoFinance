@@ -1,3 +1,5 @@
+import { REGEX_PAUSAR, REGEX_RETOMAR } from './middleware/pausa.js';
+
 export type ComandoBot = {
   /** Sem a barra, minúsculo — mesmo texto que o Telegram exige em `setMyCommands`. */
   comando: string;
@@ -49,5 +51,15 @@ export const COMANDOS_BOT: ComandoBot[] = [
     comando: 'registrar_open_finance',
     descricao: 'Vincula uma conta bancária conectada via Pluggy',
     regex: /^\/registrar_open_finance\b/i,
+  },
+  {
+    comando: 'pausar',
+    descricao: 'Pausa o bot — nenhuma mensagem é processada até /retomar',
+    regex: REGEX_PAUSAR,
+  },
+  {
+    comando: 'retomar',
+    descricao: 'Retoma o bot depois de um /pausar',
+    regex: REGEX_RETOMAR,
   },
 ];
