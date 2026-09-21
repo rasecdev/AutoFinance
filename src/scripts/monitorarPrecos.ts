@@ -102,11 +102,16 @@ export function detectarOportunidades(db: DbClient): OportunidadePreco[] {
       // (2026-09-20): sem esse filtro, "openrouter/auto" aparecia sempre
       // como candidato mais barato pra qualquer fluxo.
       .filter((m) => custoTotal(m) >= 0)
-      // Modelos ":free" não são comparáveis com pagos: rate limit baixo,
-      // sem SLA, e retenção de dados pra treino em vários provedores —
-      // nunca deveriam vencer a comparação de mais barato. Achado real a
-      // pedido do usuário (2026-09-20).
-      .filter((m) => !m.modelo.endsWith(':free'))
+      // Modelo de preço zero não é comparável com pago: rate limit baixo,
+      // sem SLA, e retenção de dados pra treino em vários provedores — nunca
+      // deveria vencer a comparação de mais barato. Achado real a pedido do
+      // usuário (2026-09-20), filtro original olhava só o sufixo ":free" no
+      // id do modelo. Achado real de follow-up (2026-09-21): o catálogo real
+      // da OpenRouter tem modelo de preço zero sem esse sufixo (ex:
+      // "openrouter/free") — o alerta continuava sugerindo esses. Comparar
+      // o preço de verdade (já calculado por custoTotal) cobre os dois casos
+      // sem depender de convenção de nome.
+      .filter((m) => custoTotal(m) > 0)
       .filter((m) => custoTotal(m) < precoAtual)
       .sort((a, b) => custoTotal(a) - custoTotal(b))[0];
 
