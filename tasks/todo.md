@@ -32,13 +32,13 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura.
 **Description:** Nova migration com tabela `bot_pausado` (`chat_id INTEGER PRIMARY KEY`, `pausado_em TEXT NOT NULL`) — presença de linha pro `chat_id` significa "pausado", mesmo princípio já usado em `confirmacoes_pendentes`/`emails_processados`. Novo repositório `src/db/repositories/botPausado.ts`: `pausar(db, chatId)` (insert, idempotente via `INSERT OR REPLACE`), `retomar(db, chatId)` (delete), `estaPausado(db, chatId): boolean`.
 
 **Acceptance criteria:**
-- [ ] Migration aplicada limpa em banco novo e em banco já existente (roda depois das 16 migrations já aplicadas)
-- [ ] `pausar`/`retomar`/`estaPausado` cobertos por teste, incluindo chamar `pausar` duas vezes seguidas sem erro (idempotência)
-- [ ] `estaPausado` retorna `false` pra `chat_id` nunca pausado
+- [x] Migration aplicada limpa em banco novo e em banco já existente (roda depois das 16 migrations já aplicadas)
+- [x] `pausar`/`retomar`/`estaPausado` cobertos por teste, incluindo chamar `pausar` duas vezes seguidas sem erro (idempotência)
+- [x] `estaPausado` retorna `false` pra `chat_id` nunca pausado
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/db/migrate.test.ts tests/db/botPausado.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/db/migrate.test.ts tests/db/botPausado.test.ts` (14 testes)
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** None
 
