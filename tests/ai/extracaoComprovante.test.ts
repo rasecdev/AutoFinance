@@ -73,20 +73,42 @@ describe('extrairComprovante', () => {
     expect(resultado).toEqual({ eComprovante: false });
   });
 
-  it('JSON malformado retorna eComprovante:false sem lançar exceção', async () => {
+  it('JSON malformado retorna eComprovante:false sem lançar exceção, e sinaliza motivo/resposta bruta pra log', async () => {
     const client = criarClienteFalso('isso não é json');
 
-    const { resultado } = await extrairComprovante(client, Buffer.from('fake-imagem'), 'image/jpeg');
+    const { resultado, motivoFalhaFormato, respostaBruta } = await extrairComprovante(
+      client,
+      Buffer.from('fake-imagem'),
+      'image/jpeg',
+    );
 
     expect(resultado).toEqual({ eComprovante: false });
+    expect(motivoFalhaFormato).toBe('json_invalido');
+    expect(respostaBruta).toBe('isso não é json');
   });
 
-  it('JSON válido mas fora do schema (valor negativo) retorna eComprovante:false', async () => {
-    const client = criarClienteFalso(JSON.stringify({ eComprovante: true, valor: -10 }));
+  it('JSON válido mas fora do schema (valor negativo) retorna eComprovante:false, e sinaliza motivo/resposta bruta pra log', async () => {
+    const conteudo = JSON.stringify({ eComprovante: true, valor: -10 });
+    const client = criarClienteFalso(conteudo);
 
-    const { resultado } = await extrairComprovante(client, Buffer.from('fake-imagem'), 'image/jpeg');
+    const { resultado, motivoFalhaFormato, respostaBruta } = await extrairComprovante(
+      client,
+      Buffer.from('fake-imagem'),
+      'image/jpeg',
+    );
 
     expect(resultado).toEqual({ eComprovante: false });
+    expect(motivoFalhaFormato).toBe('schema_invalido');
+    expect(respostaBruta).toBe(conteudo);
+  });
+
+  it('resposta válida (mesmo eComprovante:false legítimo) não sinaliza motivoFalhaFormato', async () => {
+    const client = criarClienteFalso(JSON.stringify({ eComprovante: false }));
+
+    const { motivoFalhaFormato, respostaBruta } = await extrairComprovante(client, Buffer.from('fake-imagem'), 'image/jpeg');
+
+    expect(motivoFalhaFormato).toBeUndefined();
+    expect(respostaBruta).toBeUndefined();
   });
 
   it('sem usage.cost na resposta, custoReal fica 0', async () => {

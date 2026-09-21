@@ -170,6 +170,41 @@ describe('handlerMidia', () => {
     expect(atualizarAvaliacaoInteracao(db, traceId!, 'incorreto')).toBe(true);
   });
 
+  // Achado real (2026-09-22, usuário reportou leitura de foto ruim): resposta
+  // do modelo fora do schema esperado caía no mesmo "não é comprovante" sem
+  // log nenhum — indistinguível de uma classificação legítima da IA. Este
+  // teste prova que agora fica um warn com o motivo e a resposta bruta,
+  // diagnosticável sem precisar da imagem original.
+  it('resposta do modelo fora do schema (mas eComprovante:false pro usuário) gera warn com motivo/resposta bruta', async () => {
+    const linhasLog: string[] = [];
+    const client = criarClienteFalso(JSON.stringify({ eComprovante: true, valor: -10 }));
+    const logger = createLogger({ write: (linha: string) => linhasLog.push(linha) });
+    const handler = createHandlerMidia(client, db, logger, BOT_TOKEN);
+    const ctx = criarContextoFoto();
+
+    await handler(ctx);
+
+    const registros = linhasLog.map((linha) => JSON.parse(linha) as Record<string, unknown>);
+    const warn = registros.find((r) => r.msg === 'extração de comprovante: resposta do modelo fora do formato esperado (indistinguível de "não é comprovante" pro usuário)');
+    expect(warn).toBeDefined();
+    expect(warn?.motivo).toBe('schema_invalido');
+    expect(warn?.respostaBruta).toBe(JSON.stringify({ eComprovante: true, valor: -10 }));
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Não consegui reconhecer'));
+  });
+
+  it('resposta legítima do modelo (eComprovante:false de verdade) não gera warn de formato', async () => {
+    const linhasLog: string[] = [];
+    const client = criarClienteFalso(JSON.stringify({ eComprovante: false }));
+    const logger = createLogger({ write: (linha: string) => linhasLog.push(linha) });
+    const handler = createHandlerMidia(client, db, logger, BOT_TOKEN);
+    const ctx = criarContextoFoto();
+
+    await handler(ctx);
+
+    const registros = linhasLog.map((linha) => JSON.parse(linha) as Record<string, unknown>);
+    expect(registros.some((r) => typeof r.msg === 'string' && r.msg.includes('fora do formato esperado'))).toBe(false);
+  });
+
   it('falha na extração fica rastreada — dá pra marcar como /errado depois', async () => {
     const client = {
       chat: { completions: { create: vi.fn(async () => Promise.reject(new Error('API fora'))) } },

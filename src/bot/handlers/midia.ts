@@ -222,6 +222,13 @@ async function processarComprovante(
     const extracao = await extrairComprovante(client, buffer, mimeType, modelo);
     resultado = extracao.resultado;
 
+    if (extracao.motivoFalhaFormato) {
+      log.warn(
+        { motivo: extracao.motivoFalhaFormato, respostaBruta: extracao.respostaBruta },
+        'extração de comprovante: resposta do modelo fora do formato esperado (indistinguível de "não é comprovante" pro usuário)',
+      );
+    }
+
     registrarUsoTokens(db, {
       fluxo: FLUXO_LEITURA_COMPROVANTE,
       modelo,
