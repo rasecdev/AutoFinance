@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { Context } from 'grammy';
 import type OpenAI from 'openai';
 import {
@@ -15,9 +16,11 @@ import { exigirConfirmacaoDeRegistro, montarToolsConversa } from '../../ai/tools
 import { resolverCartaoId, resolverContaId } from '../../ai/tools/resolucao.js';
 import { criarToolRegistrarTransacoesEmLote } from '../../ai/tools/transacoesEmLote.js';
 import type { DbClient } from '../../db/client.js';
+import { registrarInteracaoIa } from '../../db/repositories/interacoesIa.js';
 import { registrarUsoTokens } from '../../db/repositories/usoTokens.js';
 import type { Logger } from '../../logging/logger.js';
 import { definirPendencia, montarTecladoConfirmacao } from '../confirmacao.js';
+import { definirRastroResposta } from '../rastroRespostas.js';
 import { processarMensagemTexto } from './texto.js';
 
 const MENSAGEM_NAO_COMPROVANTE =
@@ -171,6 +174,36 @@ async function processarPlanilha(
   }
 }
 
+// Achado real de teste manual: /errado não funcionava nas respostas
+// determinísticas deste fluxo ("não é comprovante", "é fatura/boleto", erro
+// de extração) — nenhuma delas virava linha em interacoes_ia nem ficava
+// rastreada por definirRastroResposta, então o handler de /errado nunca
+// achava o que marcar ("Não encontrei o registro dessa resposta"). A
+// classificação (eComprovante/tipoDocumento) é decisão da IA e pode estar
+// errada (ex: foto legível classificada como "não é comprovante") — merece
+// o mesmo rastro de qualquer outra resposta de IA, não só o caminho que
+// funde no conversa_texto (que já registrava certo).
+async function responderERastrear(
+  ctx: Context,
+  db: DbClient,
+  chatId: number,
+  modelo: string,
+  resposta: string,
+  resultado: 'sucesso' | 'erro',
+): Promise<void> {
+  const traceId = randomUUID();
+  const mensagemEnviada = await ctx.reply(resposta);
+  definirRastroResposta(mensagemEnviada.message_id, traceId);
+  registrarInteracaoIa(db, {
+    traceId,
+    fluxo: FLUXO_LEITURA_COMPROVANTE,
+    modelo,
+    respostaModelo: resposta,
+    resultado,
+    chatId,
+  });
+}
+
 async function processarComprovante(
   ctx: Context,
   db: DbClient,
@@ -181,11 +214,11 @@ async function processarComprovante(
   mimeType: string,
 ): Promise<void> {
   const log = logger.child({ chatId });
+  const modelo = resolverModeloLeituraComprovante(db);
 
   let resultado: ResultadoExtracaoComprovante;
   try {
     const buffer = await baixarArquivo(ctx, botToken);
-    const modelo = resolverModeloLeituraComprovante(db);
     const extracao = await extrairComprovante(client, buffer, mimeType, modelo);
     resultado = extracao.resultado;
 
@@ -202,17 +235,18 @@ async function processarComprovante(
     // Achado real confirmado em teste manual: se o provedor rejeitar PDF
     // (formato ainda não aceito na chamada multimodal), a falha cai aqui —
     // mensagem específica de PDF em vez da genérica, sem tentar de novo.
-    await ctx.reply(mimeType === 'application/pdf' ? MENSAGEM_PDF_NAO_SUPORTADO : MENSAGEM_ERRO_EXTRACAO);
+    const respostaErro = mimeType === 'application/pdf' ? MENSAGEM_PDF_NAO_SUPORTADO : MENSAGEM_ERRO_EXTRACAO;
+    await responderERastrear(ctx, db, chatId, modelo, respostaErro, 'erro');
     return;
   }
 
   if (!resultado.eComprovante) {
-    await ctx.reply(MENSAGEM_NAO_COMPROVANTE);
+    await responderERastrear(ctx, db, chatId, modelo, MENSAGEM_NAO_COMPROVANTE, 'sucesso');
     return;
   }
 
   if (resultado.tipoDocumento === 'fatura_cartao' || resultado.tipoDocumento === 'boleto_divida') {
-    await ctx.reply(MENSAGEM_FATURA_BOLETO);
+    await responderERastrear(ctx, db, chatId, modelo, MENSAGEM_FATURA_BOLETO, 'sucesso');
     return;
   }
 
