@@ -215,4 +215,29 @@ describe('handlerMapeamentoOpenFinance', () => {
     const linhas = db.prepare('SELECT * FROM contas_open_finance').all();
     expect(linhas).toHaveLength(0);
   });
+
+  it('nome de cartão ambíguo (existe em mais de uma conta), avisa a ambiguidade em vez de "não encontrei"', async () => {
+    const conta1 = criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Corrente' });
+    const conta2 = criarConta(db, { bancoNome: 'Itaú', tipo: 'PJ', apelido: 'PJ' });
+    criarCartao(db, { contaId: conta1.id, nome: 'Mastercard Black', limite: 5000, diaFechamento: 5, diaVencimento: 10 });
+    criarCartao(db, { contaId: conta2.id, nome: 'Mastercard Black', limite: 8000, diaFechamento: 5, diaVencimento: 10 });
+
+    vi.mocked(autenticar).mockResolvedValue('api-key-teste');
+    vi.mocked(obterItem).mockResolvedValue({ id: 'item-1', status: 'UPDATED' });
+    vi.mocked(listarContasDoItem).mockResolvedValue([
+      { id: 'conta-pluggy-1', itemId: 'item-1', type: 'CREDIT', name: 'Cartão' },
+    ]);
+    const handlerComando = createHandlerRegistrarOpenFinance(ENV_COM_PLUGGY, logger);
+    await handlerComando(criarContextoFake('/registrar_open_finance item-1', 7002));
+
+    const handlerMapeamento = createHandlerMapeamentoOpenFinance(db, logger);
+    const ctx = criarContextoFake('1 = Mastercard Black', 7002);
+    await handlerMapeamento(ctx);
+
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Encontrei mais de um cartão chamado'));
+    expect(ctx.reply).not.toHaveBeenCalledWith(expect.stringContaining('Não encontrei conta nem cartão'));
+
+    const linhas = db.prepare('SELECT * FROM contas_open_finance').all();
+    expect(linhas).toHaveLength(0);
+  });
 });

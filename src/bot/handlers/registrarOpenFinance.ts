@@ -135,6 +135,19 @@ export function createHandlerMapeamentoOpenFinance(db: DbClient, logger: Logger)
         continue;
       }
 
+      // Achado real de teste manual (Fase 8): quando existe mais de uma
+      // conta/cartão com o mesmo nome, resolverContaId/resolverCartaoId já
+      // identificam a ambiguidade certinho, mas mostrar sempre a mensagem
+      // genérica de "não encontrei" escondia esse diagnóstico real —
+      // repassa a mensagem específica de ambiguidade quando ela existir.
+      const resolucaoAmbigua = [resolucaoConta, resolucaoCartao].find((resolucao) =>
+        resolucao.mensagem.startsWith('Encontrei mais de'),
+      );
+      if (resolucaoAmbigua) {
+        await ctx.reply(resolucaoAmbigua.mensagem);
+        return;
+      }
+
       await ctx.reply(`Não encontrei conta nem cartão chamado "${nome}" — confira o nome e tente de novo.`);
       return;
     }
