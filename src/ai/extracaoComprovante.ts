@@ -35,6 +35,15 @@ export type ResultadoExtracao = {
   tokensPrompt: number;
   tokensCompletion: number;
   custoReal: number;
+  // Achado real (2026-09-22): falha de parsing/validação do JSON caía no
+  // mesmo {eComprovante: false} de "o modelo decidiu que não é comprovante",
+  // sem diferença nenhuma pra quem chama — indistinguível de uma classificação
+  // legítima da IA, mesmo sendo um bug de formato de resposta, não de visão.
+  // Só populado nos dois casos de falha (nunca junto de um resultado válido,
+  // mesmo que eComprovante seja false de verdade), pra permitir logar o
+  // conteúdo bruto e diagnosticar sem exigir acesso à imagem original.
+  motivoFalhaFormato?: 'json_invalido' | 'schema_invalido';
+  respostaBruta?: string;
 };
 
 // Mesma regra de "número final vem calculado, nunca inventado" não se aplica
@@ -112,11 +121,25 @@ export async function extrairComprovante(
     const bruto = extrairJson(conteudo);
     const validacao = schemaResultadoExtracao.safeParse(bruto);
     if (!validacao.success) {
-      return { resultado: { eComprovante: false }, tokensPrompt, tokensCompletion, custoReal };
+      return {
+        resultado: { eComprovante: false },
+        tokensPrompt,
+        tokensCompletion,
+        custoReal,
+        motivoFalhaFormato: 'schema_invalido',
+        respostaBruta: conteudo,
+      };
     }
     return { resultado: validacao.data, tokensPrompt, tokensCompletion, custoReal };
   } catch {
-    return { resultado: { eComprovante: false }, tokensPrompt, tokensCompletion, custoReal };
+    return {
+      resultado: { eComprovante: false },
+      tokensPrompt,
+      tokensCompletion,
+      custoReal,
+      motivoFalhaFormato: 'json_invalido',
+      respostaBruta: conteudo,
+    };
   }
 }
 
