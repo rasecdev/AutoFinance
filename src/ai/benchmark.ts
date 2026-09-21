@@ -114,7 +114,11 @@ export async function executarBenchmarkFluxo(
       const resposta = await chamarModeloCandidato(client, db, modelo, caso.entrada);
       custoTotal += resposta.custo;
 
-      if (baterComEsperado(resposta.toolCalls, caso.saidaEsperada)) {
+      // Cast: até a Tarefa 107 (dispatch por fluxo), esta função só lida com
+      // conversa_texto, então saidaEsperada é sempre ToolCallEsperada[] em
+      // tempo de execução — o tipo genérico (unknown) é pro repositório
+      // acomodar os outros 3 fluxos, que ainda não passam por aqui.
+      if (baterComEsperado(resposta.toolCalls, caso.saidaEsperada as ToolCallEsperada[])) {
         acertos++;
       }
 
