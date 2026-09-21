@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { DbClient } from '../../db/client.js';
 import { encontrarParcelaCorrespondente } from '../../db/repositories/correspondenciaFaturaParcela.js';
+import { obterDivida } from '../../db/repositories/dividas.js';
 import { atualizarParcelaEmail, criarParcelaEmail } from '../../db/repositories/parcelas.js';
 import type { ToolDefinition } from './types.js';
 
@@ -23,6 +24,13 @@ export function criarToolRegistrarParcelaEmail(db: DbClient): ToolDefinition {
       'Registra ou atualiza uma parcela de dívida a partir de dado extraído de e-mail (dívida já resolvida) — atualiza a parcela correspondente se achou (por número, ou por aproximação de valor/data), cria uma nova se não achou e o número foi informado. Sempre grava origem="email" e o trace_id da extração.',
     schema: schemaRegistrarParcelaEmail,
     requerConfirmacao: true,
+    resumoConfirmacao: (args) => {
+      const { divida_id, numero_parcela, valor, data_vencimento } = args as ArgsRegistrarParcelaEmail;
+      const divida = obterDivida(db, divida_id);
+      const parteDivida = divida ? `"${divida.descricao ?? divida.tipo}"` : `#${divida_id}`;
+      const parteNumero = numero_parcela !== undefined ? `parcela ${numero_parcela}` : 'a parcela correspondente';
+      return `registrar ${parteNumero} da dívida ${parteDivida}, valor R$ ${valor.toFixed(2)}, vencimento ${data_vencimento}`;
+    },
     avisoConfirmacao: (args) => {
       const { divida_id, numero_parcela, valor, data_vencimento } = args as ArgsRegistrarParcelaEmail;
       const resultado = encontrarParcelaCorrespondente(db, {

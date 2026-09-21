@@ -139,4 +139,20 @@ describe('tool registrar_parcela_email', () => {
     });
     expect(tool.avisoConfirmacao?.(argsCria)).toContain('CRIAR');
   });
+
+  it('resumoConfirmacao resolve a dívida (tipo, já que não tem descrição), sem JSON', () => {
+    const tool = criarToolRegistrarParcelaEmail(db);
+    const args = tool.schema.parse({
+      divida_id: dividaId,
+      numero_parcela: 2,
+      valor: 305,
+      data_vencimento: '2026-11-02',
+      trace_id: 'trace-teste-1',
+    });
+
+    const resumo = tool.resumoConfirmacao?.(args);
+
+    expect(resumo).toBe('registrar parcela 2 da dívida "emprestimo", valor R$ 305.00, vencimento 2026-11-02');
+    expect(resumo).not.toMatch(/[{}]/);
+  });
 });

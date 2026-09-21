@@ -59,6 +59,26 @@ describe('tool criar_divida', () => {
     expect(resultado).not.toMatch(/\bid\b/i);
   });
 
+  it('resumoConfirmacao descreve a ação em linguagem natural, sem JSON', () => {
+    const tool = criarToolCriarDivida(db);
+    const args = tool.schema.parse({
+      conta_id: contaId,
+      tipo: 'financiamento',
+      valor_total: 12000,
+      num_parcelas: 12,
+      taxa_juros: 0.02,
+      sistema_amortizacao: 'price',
+      data_inicio: '2026-09-01',
+    });
+
+    const resumo = tool.resumoConfirmacao?.(args);
+
+    expect(resumo).toBe(
+      'criar uma dívida de financiamento na conta "Principal", valor total R$ 12000.00 em 12 parcela(s), juros 2.00% a.m. (sistema price)',
+    );
+    expect(resumo).not.toMatch(/[{}]/);
+  });
+
   it('resolve a conta pelo apelido', async () => {
     const tool = criarToolCriarDivida(db);
     const args = tool.schema.parse({
@@ -211,6 +231,32 @@ describe('tool renegociar', () => {
     expect(resultado).not.toMatch(/\bid\b/i);
   });
 
+  it('resumoConfirmacao (origem dívida) descreve a ação em linguagem natural, sem JSON', () => {
+    criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 10000,
+      numParcelas: 10,
+      dataInicio: '2026-09-01',
+    });
+    const tool = criarToolRenegociar(db);
+    const args = tool.schema.parse({
+      origem: 'divida',
+      conta_apelido: 'Principal',
+      tipo_divida: 'financiamento',
+      valor_total: 8000,
+      num_parcelas: 12,
+      data_inicio: '2026-09-01',
+    });
+
+    const resumo = tool.resumoConfirmacao?.(args);
+
+    expect(resumo).toBe(
+      'renegociar a dívida de financiamento na conta "Principal", novo valor total R$ 8000.00 em 12 parcela(s)',
+    );
+    expect(resumo).not.toMatch(/[{}]/);
+  });
+
   it('a partir de uma fatura (cartão + mês, sem id): usa tipo "outro" e marca a fatura como renegociada', async () => {
     const cartaoId = criarCartao(db, {
       contaId,
@@ -242,6 +288,33 @@ describe('tool renegociar', () => {
     expect(resultado).toContain('fatura original marcada como renegociada');
     expect(resultado).toContain('outro');
     expect(resultado).not.toMatch(/\bid\b/i);
+  });
+
+  it('resumoConfirmacao (origem fatura) descreve a ação em linguagem natural, sem JSON', () => {
+    const cartaoId = criarCartao(db, {
+      contaId,
+      nome: 'Nubank',
+      limite: 5000,
+      diaFechamento: 5,
+      diaVencimento: 10,
+    }).id;
+    db.prepare(
+      "INSERT INTO faturas (cartao_id, mes_referencia, valor, status) VALUES (?, '2026-08', 1500, 'aberta')",
+    ).run(cartaoId);
+    const tool = criarToolRenegociar(db);
+    const args = tool.schema.parse({
+      origem: 'fatura',
+      cartao_nome: 'Nubank',
+      mes_referencia: '2026-08',
+      valor_total: 1500,
+      num_parcelas: 6,
+      data_inicio: '2026-09-01',
+    });
+
+    const resumo = tool.resumoConfirmacao?.(args);
+
+    expect(resumo).toBe('renegociar a fatura do cartão "Nubank" (2026-08), novo valor total R$ 1500.00 em 6 parcela(s)');
+    expect(resumo).not.toMatch(/[{}]/);
   });
 
   it('recusa origem "divida" sem conta ou sem tipo_divida', () => {
@@ -538,6 +611,27 @@ describe('tool quitar_divida', () => {
     expect(resultado).not.toMatch(/\bid\b/i);
   });
 
+  it('resumoConfirmacao descreve a ação em linguagem natural, sem JSON', () => {
+    criarDivida(db, {
+      contaId,
+      tipo: 'emprestimo',
+      valorTotal: 1000,
+      numParcelas: 4,
+      dataInicio: '2026-09-01',
+    });
+    const tool = criarToolQuitarDivida(db);
+    const args = tool.schema.parse({
+      conta_apelido: 'Principal',
+      tipo_divida: 'emprestimo',
+      data_pagamento: '2026-09-10',
+    });
+
+    const resumo = tool.resumoConfirmacao?.(args);
+
+    expect(resumo).toBe('quitar a dívida de emprestimo na conta "Principal", data 2026-09-10');
+    expect(resumo).not.toMatch(/[{}]/);
+  });
+
   it('preserva parcelas já pagas — só quita as pendentes', async () => {
     const { divida } = criarDivida(db, {
       contaId,
@@ -603,6 +697,32 @@ describe('tool amortizar_divida', () => {
   it('exige confirmação (alto impacto)', () => {
     const tool = criarToolAmortizarDivida(db);
     expect(tool.requerConfirmacao).toBe(true);
+  });
+
+  it('resumoConfirmacao descreve a ação em linguagem natural, sem JSON', () => {
+    criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 12000,
+      numParcelas: 12,
+      taxaJuros: 0.02,
+      sistemaAmortizacao: 'price',
+      dataInicio: '2026-09-01',
+    });
+    const tool = criarToolAmortizarDivida(db);
+    const args = tool.schema.parse({
+      conta_apelido: 'Principal',
+      tipo_divida: 'financiamento',
+      valor: 1000,
+      modo: 'reduzir_parcelas',
+    });
+
+    const resumo = tool.resumoConfirmacao?.(args);
+
+    expect(resumo).toBe(
+      'amortizar a dívida de financiamento na conta "Principal" em R$ 1000.00, reduzindo o número de parcelas',
+    );
+    expect(resumo).not.toMatch(/[{}]/);
   });
 
   it('regressão: saldo devedor usado na estimativa é o principal real, não a soma nominal das parcelas pendentes (achado real de teste manual — R$1000 amortizados não reduziam nada)', () => {

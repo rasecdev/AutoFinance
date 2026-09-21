@@ -144,6 +144,10 @@ describe('tool rodar_benchmark_interno', () => {
     expect(aviso).toContain('2 chamada');
     expect(aviso).toContain('minuto');
     expect(aviso).toContain('NÃO reenvie');
+
+    const resumo = tool.resumoConfirmacao?.({ modelos_candidatos: ['openai/gpt-4o-mini', 'qwen/qwen3-32b'] });
+    expect(resumo).toBe('rodar o benchmark interno contra 2 modelo(s) candidato(s) (openai/gpt-4o-mini, qwen/qwen3-32b)');
+    expect(resumo).not.toMatch(/[{}]/);
   });
 
   it('avisa quando não há nenhum caso de teste', () => {

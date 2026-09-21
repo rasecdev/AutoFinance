@@ -127,6 +127,27 @@ export function criarToolRegistrarTransacao(db: DbClient): ToolDefinition {
     description:
       'Registra uma nova transação de receita ou despesa, vinculada a uma conta ou a um cartão (por id ou pelo nome/apelido). O campo "data" é opcional — só informe quando o usuário mencionar uma data específica; quando omitido, usa a data de hoje automaticamente. O campo "categoria" é opcional quando a descrição já foi categorizada antes nesta conversa (o sistema reaproveita automaticamente a categoria salva, mesmo que você mande uma diferente) — informe categoria sempre que a descrição for nova.',
     schema: schemaRegistrarTransacao,
+    resumoConfirmacao: (args) => {
+      const {
+        conta_apelido: contaApelido,
+        conta_id: contaId,
+        cartao_nome: cartaoNome,
+        cartao_id: cartaoId,
+        tipo,
+        valor,
+        categoria,
+        descricao,
+        data,
+      } = args as z.infer<typeof schemaRegistrarTransacao>;
+      const destino =
+        cartaoNome !== undefined || cartaoId !== undefined
+          ? `no cartão "${cartaoNome ?? `id ${cartaoId}`}"`
+          : `na conta "${contaApelido ?? `id ${contaId}`}"`;
+      const parteCategoria = categoria ? `, categoria "${categoria}"` : '';
+      const parteDescricao = descricao ? ` ("${descricao}")` : '';
+      const parteData = data ? `, data ${data}` : '';
+      return `registrar uma ${tipo === 'receita' ? 'receita' : 'despesa'} de R$ ${valor.toFixed(2)}${parteDescricao} ${destino}${parteCategoria}${parteData}`;
+    },
     handler: async (args, ctx) => {
       const {
         conta_id: contaIdInformado,
@@ -211,6 +232,16 @@ export function criarToolExcluirTransacao(db: DbClient): ToolDefinition {
       'Exclui uma transação (exclusão lógica, nunca remove o registro do banco). Aceita o id; quando omitido (ex: "exclui essa transação"), usa a última transação registrada nesta conversa — NUNCA pergunte pelo id antes de chamar, chame direto sem id.',
     schema: schemaExcluirTransacao,
     requerConfirmacao: true,
+    resumoConfirmacao: (args) => {
+      const { id } = args as z.infer<typeof schemaExcluirTransacao>;
+      if (id === undefined) {
+        return 'excluir a última transação registrada nesta conversa';
+      }
+      const transacao = obterTransacao(db, id);
+      return transacao
+        ? `excluir a transação "${transacao.categoria}" de R$ ${transacao.valor.toFixed(2)} (${transacao.data})`
+        : `excluir a transação #${id}`;
+    },
     handler: async (args, ctx) => {
       const { id: idInformado } = args as z.infer<typeof schemaExcluirTransacao>;
 

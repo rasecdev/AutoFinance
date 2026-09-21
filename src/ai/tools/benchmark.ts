@@ -64,6 +64,10 @@ export function criarToolRodarBenchmarkInterno(client: OpenAI, db: DbClient): To
       'Roda o benchmark interno de tool calling: chama cada modelo candidato contra todos os casos de teste já curados (ver criar_caso_teste_benchmark) e compara a resposta com o gabarito. Gasta dinheiro real (uma chamada de IA por caso × modelo) — só rode quando o usuário pedir explicitamente pra comparar modelos, nunca por conta própria. modelos_candidatos são slugs do OpenRouter (ex: "openai/gpt-4o-mini", "qwen/qwen3-32b"). Ação de alto impacto (custo real) — só executa após confirmação.',
     schema: schemaRodarBenchmarkInterno,
     requerConfirmacao: true,
+    resumoConfirmacao: (args) => {
+      const { modelos_candidatos: modelosCandidatos } = args as z.infer<typeof schemaRodarBenchmarkInterno>;
+      return `rodar o benchmark interno contra ${modelosCandidatos.length} modelo(s) candidato(s) (${modelosCandidatos.join(', ')})`;
+    },
     avisoConfirmacao: (args) => {
       const { modelos_candidatos: modelosCandidatos } = args as z.infer<typeof schemaRodarBenchmarkInterno>;
       const totalCasos = listarCasosTeste(db, FLUXO_BENCHMARK).length;
