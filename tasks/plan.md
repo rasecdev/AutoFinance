@@ -1,57 +1,43 @@
-# Implementation Plan: Fase 6 (parte 14) — Benchmark interno: cobertura de mídia
+# Implementation Plan: Segurança — OWASP Agentic Top 10 (gaps ASI06/ASI10)
 
 ## Overview
 
-O "Benchmark interno" (`src/ai/benchmark.ts` + tool `rodar_benchmark_interno`) hoje só mede acurácia de **tool calling** do fluxo `conversa_texto` (13 casos curados). Levantamento a pedido do usuário confirmou que os outros 3 fluxos que fazem uma chamada de IA estruturada (não geração de texto livre) nunca tiveram cobertura:
+Dois gaps identificados na revisão do estudo "OWASP Top 10 for Agentic Applications (2026)" (PLANO.md, seção logo após o estudo do LLM Top 10) — confirmados contra o código real antes de virar tarefa, não só teoria:
 
-- `leitura_comprovante` (foto/PDF de comprovante) — extração nunca testada; a decisão de tool depois da extração é testada só indiretamente (quando funde no `conversa_texto`).
-- `interpretar_planilha` (Excel) — zero cobertura, nem indireta (não passa pelo `conversa_texto`).
-- `transcricao_voz` — transcrição nunca testada; decisão pós-transcrição testada só indiretamente.
-
-`resumir_contexto`, `relatorio_mensal` e a parte narrativa de `analisar_qualidade` ficam **fora de escopo** (confirmado com o usuário): são geração de texto livre, o conceito de "acurácia contra gabarito" não se aplica.
-
-Esta rodada estende o motor de benchmark pra suportar comparação por fluxo (não só tool-calling) e adiciona curadoria própria pra 2 dos 3 fluxos sem cobertura. `transcricao_voz` fica com o mecanismo pronto, mas sem caso curado (ver "Open Questions").
+- **ASI06 (Memory & Context Poisoning):** `resumir_contexto` (`src/ai/resumirContexto.ts`) resume qualquer coisa que esteja em `interacoes_ia`, incluindo a resposta do bot pedindo confirmação de uma ação ainda não confirmada. Como a mensagem sintética de foto/PDF/planilha vira `mensagemUsuario` desse mesmo fluxo (`conversa_texto`) e é gravada em `interacoes_ia` **antes** do usuário confirmar (`texto.ts:163-174`), um texto adversário embutido num documento externo pode entrar literal no prompt de resumo como se fosse fala real do usuário, e sobreviver no resumo persistido (`resumos_conversa`) mesmo que a ação nunca seja confirmada. A ação em si continua protegida pela confirmação síncrona (isso não muda) — o risco é só a narrativa virar "fato" no resumo cumulativo.
+- **ASI10 (Rogue Agents):** hoje o único "kill switch" é revogar o token do bot no BotFather (fora do sistema, manual, sem registro). Sem um jeito rápido e documentado de pausar o processamento de mensagens em caso de comportamento anômalo (modelo trocado sem revisão se comportando mal, token comprometido antes de dar tempo de revogar no BotFather, etc.).
 
 ## Architecture Decisions
 
-- **Schema:** `casos_teste_benchmark` (migration 0006) ganha 2 colunas novas, nullable: `entrada_arquivo_base64` e `entrada_mime_type`. Quando as duas são `NULL`, o caso é de texto (comportamento atual, sem mudança). Quando preenchidas, `entrada` vira só um rótulo legível (ex: "comprovante mercado R$45"), e o arquivo de teste vem dessas colunas. Preferido a uma tabela nova porque o formato de gabarito já é JSON genérico em `saida_esperada`; só faltava o lado da entrada.
-- **`saida_esperada` deixa de ser só `ToolCallEsperada[]`:** o repositório (`casosTesteBenchmark.ts`) tipa como `unknown` na leitura/escrita (já é só JSON serializado, sem validação de schema nessa camada); cada estratégia de comparação em `benchmark.ts` sabe o formato que espera pro seu fluxo.
-- **Dispatch por fluxo em `executarBenchmarkFluxo`:** a função guarda a mesma orquestração (loop de casos × modelos, registro de custo/uso), mas troca "gerar resposta do candidato" + "comparar com gabarito" por uma estratégia por fluxo:
-  - `conversa_texto`: inalterado (`chamarModeloCandidato`/`baterComEsperado` já existentes).
-  - `leitura_comprovante`: chama `extrairComprovante` (já existe, `src/ai/extracaoComprovante.ts`) com o buffer/mimeType do caso; compara os campos do gabarito presentes (`valor`, `tipoDocumento`, `identificador` exatos; `categoriaSugerida` normalizada case-insensitive) contra o resultado — só compara campo que o gabarito define, pra não exigir dado impossível de prever (ex: `descricao` livre).
-  - `interpretar_planilha`: chama `interpretarPlanilha` (já existe) com o buffer do caso; compara a lista de transações com a mesma técnica de normalização/ordenação já usada pra tool_calls (`normalizarToolCalls`, generalizada pra aceitar qualquer array de objeto).
-  - `transcricao_voz`: chama `transcreverAudio` (já existe); compara o texto normalizado (lowercase, trim, sem pontuação) contra o gabarito string. Mecanismo pronto mesmo sem caso curado ainda.
-- **Fixture sintética gerada em código, sem arquivo versionado:** em vez de guardar um PDF/xlsx de exemplo no repo (ou pedir pro usuário mandar um arquivo real), os dois seeds novos geram o buffer na hora:
-  - `leitura_comprovante`: PDF mínimo escrito à mão (sintaxe PDF básica: catálogo + página + stream de texto `BT/Tj/ET`) com texto conhecido embutido — sem lib nova, sem depender de OCR de imagem rasterizada (mais determinístico que gerar uma imagem). Motivo de não usar imagem via `canvas`: `canvas` não é dependência direta hoje (só transitiva via `chartjs-node-canvas`), instalar só pra isso seria peso desnecessário pra um PDF de texto simples resolver igual ou melhor.
-  - `interpretar_planilha`: reaproveita a técnica já usada em `tests/bot/handlers/midia.test.ts` (`write-excel-file`, hoje devDependency) — vira dependência de produção de verdade nesta rodada (movida de `devDependencies` pra `dependencies` no `package.json`), já que agora um script que roda em produção/Homologação (`seed`) precisa dela em runtime, não só em teste.
-- **`rodar_benchmark_interno` ganha parâmetro `fluxo` (zod enum fixo com as 4 opções válidas), default `conversa_texto`** — preserva 100% o comportamento/uso atual pra quem já usa a tool sem passar esse parâmetro. Enum fixo (não string livre) evita reintroduzir o achado real já documentado no código (`src/ai/tools/benchmark.ts`, comentário da linha ~51): com "fluxo" livre, o modelo às vezes inventava descrição em vez do identificador real.
-- **`criar_caso_teste_benchmark` continua só pra `conversa_texto`** (deriva de `/certo`, só funciona pra texto) — sem mecanismo de curadoria orgânica via chat pra mídia nesta rodada; documentado como decisão, não esquecimento.
+- **ASI06 é só prompt hardening, sem schema novo.** `PROMPT_RESUMO` (constante em `resumirContexto.ts`) ganha instrução explícita: conteúdo de mensagem vindo de documento externo (foto/PDF/planilha/e-mail) é **dado a extrair**, nunca instrução a seguir; e uma ação ainda pendente de confirmação (ou rejeitada) não deve ser tratada como decisão consolidada no resumo — só o que foi de fato confirmado é fato. Não dá pra filtrar estruturalmente essas mensagens de `interacoes_ia` antes de resumir sem uma mudança maior (marcar cada interação com um status de confirmação, reprocessar quando confirma/rejeita) — fora de escopo aqui porque o ganho marginal não justifica o tamanho da mudança; a mitigação por prompt já cobre o caso real (o resumo passa a saber que "pedido de confirmação ainda em aberto" não é fato).
+- **ASI10 usa o mesmo padrão já validado no projeto: tabela dedicada, presença de linha = estado ativo** (mesmo princípio de `confirmacoes_pendentes`/`emails_processados`), não uma tabela de config genérica chave-valor (o projeto nunca usa esse padrão — cada feature on/off tem sua própria tabela pequena, ex: `roteamento_tarefas` por fluxo). Nova tabela `bot_pausado`: `chat_id INTEGER PRIMARY KEY`, `pausado_em TEXT NOT NULL`. Linha existe = chat pausado; `/retomar` deleta a linha.
+- **Pausa é por `chat_id`, não global** — mesma granularidade da allowlist (`TELEGRAM_ALLOWED_CHAT_IDS` já suporta múltiplos chats, Produção/Homologação são bots/chats totalmente separados). Pausar em Homologação nunca afeta Produção sem querer.
+- **Checagem via middleware do grammY** (`src/bot/middleware/pausa.ts`), reaproveitando o padrão já existente de `createAllowlistMiddleware` — roda logo depois da allowlist em `bot.ts`, antes de `registerRoutes`. Único ponto de checagem (em vez de duplicar a checagem em `texto.ts`/`midia.ts`/`voz.ts`/`callbackConfirmacao.ts` como cogitado na estimativa inicial) — mais simples e sem risco de esquecer um handler novo no futuro.
+- **`/pausar` e `/retomar` sempre atravessam o middleware**, mesmo com o chat pausado — senão pausar seria uma via de mão única (só reiniciando o processo ou mexendo direto no banco pra reverter). O middleware deixa passar quando a mensagem bate com o regex desses dois comandos (import de `COMANDOS_BOT`, mesma fonte única), bloqueia (responde recusando, sem chamar `next()`) qualquer outra coisa — mensagem de texto, mídia, voz ou clique de botão — quando pausado.
+- **Comandos idempotentes:** `/pausar` com o chat já pausado responde avisando que já estava pausado (sem erro); `/retomar` sem pausa ativa responde avisando que não havia pausa — mesmo princípio de UX já usado em outros comandos do projeto (ex: `/registrar_open_finance confirmar`).
 
 ## Task List
 
-1. Tarefa 106: migration 0015 (`entrada_arquivo_base64`/`entrada_mime_type`) + `casosTesteBenchmark.ts` generalizado (`saidaEsperada: unknown`, `entradaArquivo?`)
-2. Tarefa 107: `src/ai/benchmark.ts` — dispatch de execução/comparação por fluxo (4 estratégias)
-3. Tarefa 108: tool `rodar_benchmark_interno` — parâmetro `fluxo` (zod enum), default `conversa_texto`
-4. Tarefa 109: fixture sintética (PDF) + seed curado de `leitura_comprovante`
-5. Tarefa 110: fixture sintética (xlsx) + seed curado de `interpretar_planilha` (+ mover `write-excel-file` pra `dependencies`)
+1. Tarefa 111: `PROMPT_RESUMO` reforçado contra conteúdo externo/pendência não confirmada (ASI06)
+2. Tarefa 112: migration `bot_pausado` + repositório (ASI10 — schema)
+3. Tarefa 113: middleware de pausa + wiring em `bot.ts` (ASI10 — enforcement)
+4. Tarefa 114: comandos `/pausar`/`/retomar` (ASI10 — controle pelo usuário)
 
-### Checkpoint: Benchmark interno cobre 3 dos 4 fluxos de extração/tool-calling
-- [x] `npm run build`/`lint`/`test` sem erro
-- [x] `npm audit` sem vulnerabilidade alta/crítica sem correção (`write-excel-file` virou dependency de produção)
-- [x] Teste manual: `rodar_benchmark_interno` com `fluxo: "leitura_comprovante"` e `fluxo: "interpretar_planilha"` contra pelo menos 1 modelo candidato, resultado condizente com o gabarito curado
-- [x] PROGRESSO.md atualizado com o marco, incluindo a decisão documentada de deixar `transcricao_voz` sem caso curado nesta rodada
+### Checkpoint: Gaps ASI06/ASI10 do OWASP Agentic Top 10 fechados
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual: mandar `/pausar` em Homologação, confirmar que uma mensagem normal é recusada, `/retomar` confirma que volta a funcionar
+- [ ] PLANO.md atualizado — tabela do estudo "OWASP Top 10 for Agentic Applications" (ASI06/ASI10) com status trocado de "Gap identificado" pra "Corrigido", referenciando esta rodada
+- [ ] PROGRESSO.md atualizado com o marco
 - [ ] Revisão com o usuário antes de prosseguir
 
 ## Risks and Mitigations
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Modelo de visão lê a data do PDF sintético num formato ligeiramente diferente do gabarito (ex: "10/09/2026" em vez de "2026-09-10"), mesmo com o dado sendo 100% legível | Médio (falso negativo no benchmark) | Comparar `data` de forma tolerante (normalizar formato antes de comparar) se o primeiro teste real mostrar esse problema — documentar como achado real se acontecer, não assumir de antemão |
-| PDF gerado à mão (sem lib) ter sintaxe inválida que algum leitor de PDF rejeite | Médio (fixture inútil) | Validar abrindo o PDF gerado com uma ferramenta local antes de commitar o gerador; manter o gerador minimalista (1 página, texto simples, sem fonte customizada) |
-| `write-excel-file` como dependency de produção aumentar a superfície de `npm audit` | Baixo | Já é dependência instalada hoje (só como dev); rodar `npm audit` depois de mover, mesmo critério de troca de lib já usado nas Fases 6/7 se aparecer vulnerabilidade sem correção |
-| Comparação de `interpretar_planilha` (array de transações) ser frágil a pequenas variações de categoria/descrição inferida pela IA | Médio | Gabarito só especifica os campos realmente determináveis a partir da planilha sintética (valor/tipo/data óbvios); categoria/descrição comparadas de forma tolerante ou fora do critério de acerto, decidir durante a Tarefa 110 com dado real do primeiro teste |
+| Prompt hardening (Tarefa 111) não é garantia estrutural — o modelo de resumo pode ainda assim absorver a narrativa se a instrução não for seguida à risca | Baixo (o pior caso é o mesmo de hoje, não piora nada) | Aceito conscientemente — mitigação estrutural completa exigiria rastrear status de confirmação por interação, desproporcional ao risco real de um bot pessoal de um usuário só; documentar como decisão, não esquecimento |
+| Middleware de pausa bloquear `/pausar`/`/retomar` por engano (regex não bater) e travar o chat sem saída | Médio (só reversível reiniciando processo ou mexendo direto no banco) | Regex vem de `COMANDOS_BOT`, mesma fonte já testada pelos outros comandos; teste dedicado cobrindo exatamente "mensagem `/retomar` passa mesmo com `bot_pausado` tendo linha pro chat" |
+| Usuário esquecer que pausou e achar que o bot quebrou | Baixo | Resposta do middleware quando bloqueado é explícita ("bot pausado, mande /retomar pra voltar"), não silêncio |
 
 ## Open Questions
 
-- `transcricao_voz` sem fixture real: precisa que o usuário grave 2-3 áudios curtos com frase conhecida (mesma classe de dependência da cobertura PJ da Pluggy, Fase 8) — fica como follow-up, não tarefa desta rodada. Quando disponível, o mecanismo (Tarefas 107/108) já aceita sem mudança de código.
-- Vale a pena, numa rodada futura, um jeito de curar caso de mídia organicamente pelo chat (ex: usuário manda foto real + confirma via `/certo`, parecido com `criar_caso_teste_benchmark`)? Não resolvido aqui, mencionar como ideia se o usuário perguntar.
+- Vale, numa rodada futura, alertar automaticamente (ex: job periódico) se o bot ficar pausado por mais de X horas, pra não esquecer que está pausado? Não resolvido aqui, mencionar se o usuário perguntar — não bloqueia esta rodada.
