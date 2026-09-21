@@ -48,29 +48,44 @@ describe('gerarPdfTexto', () => {
 });
 
 describe('seedCasosTesteBenchmarkMidiaCurados', () => {
-  it('cria os casos curados de leitura_comprovante numa base vazia, cada um com entradaArquivo (PDF em base64)', () => {
-    const criados = seedCasosTesteBenchmarkMidiaCurados(db);
+  it('cria os casos curados de leitura_comprovante numa base vazia, cada um com entradaArquivo (PDF em base64)', async () => {
+    const criados = await seedCasosTesteBenchmarkMidiaCurados(db);
 
-    expect(criados).toBeGreaterThanOrEqual(2);
     const casos = listarCasosTeste(db, 'leitura_comprovante');
-    expect(casos).toHaveLength(criados);
+    expect(casos.length).toBeGreaterThanOrEqual(2);
     expect(casos.every((caso) => caso.origem === 'curado')).toBe(true);
     expect(casos.every((caso) => caso.entradaArquivo?.mimeType === 'application/pdf')).toBe(true);
 
     const primeiroPdf = Buffer.from(casos[0]!.entradaArquivo!.base64, 'base64');
     expect(primeiroPdf.subarray(0, 8).toString('latin1')).toBe('%PDF-1.4');
+    expect(criados).toBeGreaterThanOrEqual(casos.length);
   });
 
-  it('não duplica ao rodar de novo (idempotente por rótulo)', () => {
-    seedCasosTesteBenchmarkMidiaCurados(db);
+  it('cria os casos curados de interpretar_planilha numa base vazia, cada um com entradaArquivo (xlsx em base64)', async () => {
+    await seedCasosTesteBenchmarkMidiaCurados(db);
 
-    const criadosSegundaRodada = seedCasosTesteBenchmarkMidiaCurados(db);
+    const casos = listarCasosTeste(db, 'interpretar_planilha');
+    expect(casos.length).toBeGreaterThanOrEqual(2);
+    expect(casos.every((caso) => caso.origem === 'curado')).toBe(true);
+    expect(
+      casos.every(
+        (caso) =>
+          caso.entradaArquivo?.mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ),
+    ).toBe(true);
+    expect(casos.every((caso) => Buffer.from(caso.entradaArquivo!.base64, 'base64').length > 0)).toBe(true);
+  });
+
+  it('não duplica ao rodar de novo (idempotente por rótulo)', async () => {
+    await seedCasosTesteBenchmarkMidiaCurados(db);
+
+    const criadosSegundaRodada = await seedCasosTesteBenchmarkMidiaCurados(db);
 
     expect(criadosSegundaRodada).toBe(0);
   });
 
-  it('cada caso curado tem gabarito coerente com o texto do PDF gerado', () => {
-    seedCasosTesteBenchmarkMidiaCurados(db);
+  it('cada caso curado de leitura_comprovante tem gabarito coerente com o texto do PDF gerado', async () => {
+    await seedCasosTesteBenchmarkMidiaCurados(db);
 
     const casos = listarCasosTeste(db, 'leitura_comprovante');
     const compra = casos.find((c) => c.entrada === 'comprovante compra mercado');
@@ -78,5 +93,16 @@ describe('seedCasosTesteBenchmarkMidiaCurados', () => {
 
     const fatura = casos.find((c) => c.entrada === 'fatura cartao Nubank');
     expect(fatura?.saidaEsperada).toMatchObject({ tipoDocumento: 'fatura_cartao', valor: 850, identificador: 'Nubank' });
+  });
+
+  it('caso de planilha com linha de total inclui só as 2 transações de verdade no gabarito', async () => {
+    await seedCasosTesteBenchmarkMidiaCurados(db);
+
+    const casos = listarCasosTeste(db, 'interpretar_planilha');
+    const comTotal = casos.find((c) => c.entrada === 'planilha extrato com linha de total a ignorar');
+    expect(comTotal?.saidaEsperada).toEqual([
+      { tipo: 'despesa', valor: 45, categoria: 'Mercado', data: '2026-09-10' },
+      { tipo: 'receita', valor: 1000, categoria: 'Salário', data: '2026-09-05' },
+    ]);
   });
 });
