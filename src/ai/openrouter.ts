@@ -25,11 +25,14 @@ export type PendenciaConfirmacao = {
   argumentos: unknown;
 };
 
+export type DocumentoTool = { buffer: Buffer; nomeArquivo: string };
+
 export type RespostaGerada = {
   modelo: string;
   resposta: string;
   toolCalls: ToolCallRegistrada[];
   imagens: Buffer[];
+  documentos: DocumentoTool[];
   tokensPrompt: number;
   tokensCompletion: number;
   cachedTokens: number;
@@ -40,12 +43,13 @@ export type RespostaGerada = {
 };
 
 type ResultadoToolCall =
-  | { tipo: 'executado'; conteudo: string; imagem?: Buffer; argumentos: unknown }
+  | { tipo: 'executado'; conteudo: string; imagem?: Buffer; documento?: DocumentoTool; argumentos: unknown }
   | { tipo: 'pendente_confirmacao'; tool: ToolDefinition; argumentos: unknown };
 
-// Separa o texto (vai pro modelo via role: 'tool') da imagem (nunca vai pro
-// modelo, só é acumulada pra virar foto no Telegram) de um retorno de tool.
-export function extrairTextoEImagem(resultado: ResultadoTool): { texto: string; imagem?: Buffer } {
+// Separa o texto (vai pro modelo via role: 'tool') da imagem/documento (nunca
+// vão pro modelo, só são acumulados pra virar foto/arquivo no Telegram) de
+// um retorno de tool.
+export function extrairResultadoTool(resultado: ResultadoTool): { texto: string; imagem?: Buffer; documento?: DocumentoTool } {
   return typeof resultado === 'string' ? { texto: resultado } : resultado;
 }
 
@@ -109,6 +113,7 @@ export async function gerarResposta(
   ];
   const toolCallsRegistradas: ToolCallRegistrada[] = [];
   const imagens: Buffer[] = [];
+  const documentos: DocumentoTool[] = [];
   let tokensPrompt = 0;
   let tokensCompletion = 0;
   let cachedTokens = 0;
@@ -153,6 +158,7 @@ export async function gerarResposta(
         resposta: mensagem?.content ?? '',
         toolCalls: toolCallsRegistradas,
         imagens,
+        documentos,
         tokensPrompt,
         tokensCompletion,
         cachedTokens,
@@ -178,6 +184,7 @@ export async function gerarResposta(
           resposta: gerarPerguntaConfirmacao(resultado.tool, resultado.argumentos),
           toolCalls: [...toolCallsRegistradas, { nome: resultado.tool.name, argumentos: resultado.argumentos }],
           imagens,
+          documentos,
           tokensPrompt,
           tokensCompletion,
           cachedTokens,
@@ -190,6 +197,7 @@ export async function gerarResposta(
 
       toolCallsRegistradas.push({ nome: toolCall.function.name, argumentos: resultado.argumentos });
       if (resultado.imagem) imagens.push(resultado.imagem);
+      if (resultado.documento) documentos.push(resultado.documento);
       mensagens.push({ role: 'tool', tool_call_id: toolCall.id, content: resultado.conteudo });
     }
   }
@@ -264,8 +272,8 @@ async function executarToolCall(
 
   try {
     const retorno = await tool.handler(validacao.data, ctx);
-    const { texto, imagem } = extrairTextoEImagem(retorno);
-    return { tipo: 'executado', conteudo: texto, imagem, argumentos: validacao.data };
+    const { texto, imagem, documento } = extrairResultadoTool(retorno);
+    return { tipo: 'executado', conteudo: texto, imagem, documento, argumentos: validacao.data };
   } catch (erro) {
     const mensagemErro = erro instanceof Error ? erro.message : String(erro);
     return {
