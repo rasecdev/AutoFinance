@@ -1,204 +1,165 @@
-# Todo: Relatórios como mídia (semanal em imagem, mensal em PDF)
+# Todo: Multi-canal — WhatsApp via WAHA (Rodada 1: mensagens proativas)
 
-Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Imagem/PDF SUBSTITUEM a mensagem de texto completa (decisão confirmada pelo usuário em 2026-09-22) — a tool de chat `relatorio(periodo)` continua trazendo o detalhe completo sob demanda, sem mudança.
+Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 1 cobre só envio proativo (relatório semanal/mensal, alertas) via WhatsApp, em paralelo ao Telegram — chat bidirecional fica pra uma Rodada 2 futura.
 
 ---
 
-### Tarefa 115: dependência `pdfkit` + confirmação de `npm audit` limpo
+### Tarefa 122: `docker-compose.yml` (serviços WAHA) + `env.ts` (novas variáveis)
 
-**Description:** Adicionar `pdfkit` em `dependencies` (`package.json`). Rodar `npm audit` e confirmar 0 vulnerabilidades antes de seguir — mesmo cuidado já registrado como achado real na Fase 6 parte 13 (troca de `xlsx` por `read-excel-file`). Nenhum código novo ainda, só a dependência instalada e um teste mínimo de fumaça (gerar um PDF de 1 página só com texto, confirmar cabeçalho `%PDF` no buffer).
+**Description:** Dois novos serviços no `docker-compose.yml`, mesmo padrão de todo par existente (imagem oficial `devlikeapro/waha`, sem `build:` próprio — é imagem publicada, diferente do resto do projeto que sempre builda a própria): `whatsapp-homologacao`/`whatsapp-producao`, motor `NOWEB` via env var (`WHATSAPP_DEFAULT_ENGINE=NOWEB`), volume próprio por ambiente pra persistir a sessão (evita reescanear QR a cada restart), variável de API key própria por ambiente. `env.ts` ganha `WHATSAPP_WAHA_URL`, `WHATSAPP_WAHA_API_KEY`, `WHATSAPP_WAHA_SESSION`, `WHATSAPP_DESTINATARIOS` (lista de números, mesmo formato de `TELEGRAM_ALLOWED_CHAT_IDS`) — todas opcionais mas exigidas juntas (`superRefine`, mesma regra do par Google/Pluggy). Ausentes por completo é estado válido.
 
 **Acceptance criteria:**
-- [x] `pdfkit` em `dependencies`, não `devDependencies` (roda em produção/Homologação, mesmo critério já usado pra `write-excel-file`)
-- [x] `npm audit` sem vulnerabilidade nova introduzida (0 vulnerabilidades)
-- [x] Teste de fumaça: `new PDFDocument()` + `.text(...)` + `.end()` produz um buffer que começa com `%PDF`
+- [ ] `docker compose config` valida sem erro com os dois serviços novos
+- [ ] `env.ts`: as 4 variáveis ausentes juntas não geram erro de validação (integração desligada)
+- [ ] `env.ts`: só parte das 4 variáveis presentes gera erro de validação claro (mesmo padrão do par Google)
+- [ ] Serviço `whatsapp-homologacao` sobe localmente (`docker compose up whatsapp-homologacao`) e responde no endpoint de health/QR da WAHA
 
 **Verification:**
-- [x] Tests pass: `npx vitest run tests/relatorios/pdfSmoke.test.ts`
-- [x] Build succeeds: `npm run build`
-- [x] `npm audit` limpo
+- [ ] Tests pass: `npx vitest run tests/config/env.test.ts`
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: `docker compose up whatsapp-homologacao` sobe sem erro, `curl` no endpoint da API confirma resposta
 
 **Dependencies:** None
 
 **Files likely touched:**
-- `package.json`
-- `package-lock.json`
-- `tests/relatorios/pdfSmoke.test.ts`
+- `docker-compose.yml`
+- `src/config/env.ts`
+- `tests/config/env.test.ts`
 
 **Estimated scope:** Small
 
 ---
 
-### Tarefa 116: funções puras de transformação de dado pra gráfico
+### Tarefa 123: `scripts/parearWhatsapp.ts` (pareamento inicial via QR code)
 
-**Description:** Novo `src/relatorios/dadosGrafico.ts` com duas funções puras: `montarDadosDespesaPorCategoria(porCategoria: TotalPorCategoria[]): DadoGrafico[]` (pizza, desc por valor, top 7 + bucket `"Outros"` pro resto) e `montarDadosComparativoReceitaDespesa(atual: AgregacaoFinanceira, anterior: AgregacaoFinanceira, rotuloAtual: string, rotuloAnterior: string): DadoGrafico[]` (barra agrupada, série = período, rótulo = Receita/Despesa). Nenhuma das duas chama `renderizarGrafico` — só produzem o `DadoGrafico[]` que ele consome.
+**Description:** Script de linha de comando, rodado uma vez (mesmo padrão de `configurarGoogleOAuth.ts`/`gerarConnectTokenPluggy.ts`): cria a sessão via `POST {WAHA_URL}/api/sessions` (nome da sessão de `WHATSAPP_WAHA_SESSION`), busca o QR code via `GET {WAHA_URL}/api/{session}/auth/qr` e salva como arquivo `.png` local (`qr-whatsapp.png` ou similar) — usuário abre o arquivo e escaneia com o WhatsApp do número dedicado. Roda dentro do container (`docker compose run --rm --no-deps whatsapp-homologacao ...` não se aplica — é o *bot* que chama a API da WAHA, não a WAHA em si; rodar como `docker compose run --rm --no-deps homologacao node dist/scripts/parearWhatsapp.js`, mesmo padrão dos outros scripts avulsos).
 
 **Acceptance criteria:**
-- [x] `montarDadosDespesaPorCategoria` com 8+ categorias agrupa a partir da 8ª num item `"Outros"` (soma dos valores)
-- [x] `montarDadosDespesaPorCategoria` com lista vazia retorna `[]` (sem crash)
-- [x] `montarDadosComparativoReceitaDespesa` retorna 4 pontos (2 séries × 2 rótulos) com os valores corretos de cada período
-- [x] Nenhuma das duas depende de estado de banco (funções puras, só transformam o dado já agregado recebido)
+- [ ] Cria a sessão se ainda não existir (idempotente — sessão já criada não é erro)
+- [ ] QR code salvo como arquivo de imagem válido, path informado no console
+- [ ] Erro claro se `WHATSAPP_WAHA_URL`/`WHATSAPP_WAHA_API_KEY`/`WHATSAPP_WAHA_SESSION` não estiverem configurados
 
 **Verification:**
-- [x] Tests pass: `npx vitest run tests/relatorios/dadosGrafico.test.ts`
-- [x] Build succeeds: `npm run build`
+- [ ] Tests pass: `npx vitest run tests/scripts/parearWhatsapp.test.ts` (mocka a API da WAHA — não depende de sessão real)
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: QR gerado de verdade contra a sessão WAHA de Homologação, escaneado com o número dedicado, sessão fica `WORKING`
 
-**Dependencies:** None
+**Dependencies:** Tarefa 122
 
 **Files likely touched:**
-- `src/relatorios/dadosGrafico.ts`
-- `tests/relatorios/dadosGrafico.test.ts`
+- `src/scripts/parearWhatsapp.ts`
+- `tests/scripts/parearWhatsapp.test.ts`
 
 **Estimated scope:** Small
 
 ---
 
-### Tarefa 117: `montarImagemRelatorioSemanal` (dashboard curado: números + gráfico, via `canvas`)
+### Tarefa 124: `src/canais/whatsapp.ts` (cliente HTTP fino pra WAHA)
 
-**Description:** Novo `src/relatorios/imagemSemanal.ts`, `montarImagemRelatorioSemanal(db, agora): Promise<Buffer>`. Agrega a janela da semana atual/anterior (reaproveita `agregarFinanceiroPeriodo`/`calcularJanelaPeriodo`/`calcularJanelaAnterior`, mesmo padrão de `montarRelatorioSemanal`). Monta um canvas próprio (pacote `canvas`, já presente transitivamente via `chartjs-node-canvas` — sem dependência nova) com: cabeçalho (período), receita/despesa/saldo consolidado com delta vs. semana anterior (`formatarDelta`, mover de `relatorioSemanal.ts` pra um módulo compartilhado, ex: `src/relatorios/formatarDelta.ts`), o gráfico de pizza (`montarDadosDespesaPorCategoria` + `renderizarGrafico`, carregado no canvas via `loadImage`/`drawImage`), e uma linha com o custo total de IA do período. **Deliberadamente NÃO inclui** saldo por conta individual nem uso de IA por fluxo/modelo — esse detalhe seria confuso numa imagem (mesmo motivo que tornou o texto confuso) e continua disponível via `relatorio(periodo=semana)` no chat, inalterado. Sem nenhuma despesa no período: pula o gráfico, canvas sai só com os números e "Nenhuma despesa no período".
+**Description:** `enviarTextoWhatsapp(config, destinatario, texto)`, `enviarImagemWhatsapp(config, destinatario, imagem: Buffer, legenda?)`, `enviarDocumentoWhatsapp(config, destinatario, documento: Buffer, nomeArquivo)` — `fetch` direto contra `POST {WAHA_URL}/api/sendText`/`/api/sendImage`/`/api/sendFile`, autenticado via header de API key, mídia em base64 (`file.data`). `config` é `{ url, apiKey, session }` (vem de `env`, mas função pura o suficiente pra testar sem carregar env de verdade). `destinatario` no formato de número que a WAHA espera (`<numero>@c.us`) — validar/normalizar formato antes de montar o payload.
 
 **Acceptance criteria:**
-- [x] Com transações no período: retorna um buffer PNG válido contendo (verificável via dimensões/tamanho do canvas, não pixel a pixel) cabeçalho, os 3 números com delta, e o gráfico embutido
-- [x] Sem nenhuma despesa no período: buffer PNG ainda válido, sem a região do gráfico (canvas mais baixo ou com aviso de texto no lugar)
-- [x] Valor grande (ex: R$ 999.999,99) não corta nem sai da área do canvas
+- [ ] `enviarTextoWhatsapp` monta o payload certo (`session`, `chatId`, `text`) e inclui o header de API key
+- [ ] `enviarImagemWhatsapp`/`enviarDocumentoWhatsapp` codificam o Buffer em base64 no campo `file.data`, com `mimetype`/`filename` corretos
+- [ ] Erro de rede/resposta não-2xx da WAHA propaga como exceção clara (mensagem inclui status HTTP), não falha silenciosa
+- [ ] Número de destinatário sem o sufixo `@c.us` é normalizado antes do envio
 
 **Verification:**
-- [x] Tests pass: `npx vitest run tests/relatorios/imagemSemanal.test.ts`
-- [x] Build succeeds: `npm run build`
+- [ ] Tests pass: `npx vitest run tests/canais/whatsapp.test.ts` (mocka `fetch` global)
+- [ ] Build succeeds: `npm run build`
 
-**Dependencies:** Tarefa 116
+**Dependencies:** None (não depende da Tarefa 122/123 pra existir — só pra ser testado de verdade)
 
 **Files likely touched:**
-- `src/relatorios/imagemSemanal.ts`
-- `src/relatorios/formatarDelta.ts`
-- `tests/relatorios/imagemSemanal.test.ts`
+- `src/canais/whatsapp.ts`
+- `tests/canais/whatsapp.test.ts`
+
+**Estimated scope:** Small
+
+---
+
+### Tarefa 125: `src/canais/notificar.ts` (fan-out Telegram + WhatsApp)
+
+**Description:** `notificarTexto(env, bot, chatIds, texto)`, `notificarImagem(env, bot, chatIds, imagem, legenda?)`, `notificarDocumento(env, bot, chatIds, documento, nomeArquivo)` — manda pro Telegram como cada script já faz hoje (`bot.api.sendMessage`/`sendPhoto`/`sendDocument` por `chatId`), e adicionalmente, se `env.whatsappWahaUrl` (e demais variáveis) estiverem presentes, manda a mesma mensagem por WhatsApp via `src/canais/whatsapp.ts` pra cada número de `env.whatsappDestinatarios`. Falha de envio num canal não impede o outro nem lança exceção pro chamador (mesmo princípio já usado em `tratarErroCriticoJob` — loga e segue).
+
+**Acceptance criteria:**
+- [ ] Com WhatsApp configurado: mensagem sai pros dois canais
+- [ ] Sem WhatsApp configurado: mensagem sai só por Telegram, sem erro nem log de "tentou e falhou"
+- [ ] Falha no envio WhatsApp (ex: sessão desconectada) não impede o envio Telegram, e vice-versa
+- [ ] Falha em qualquer canal é logada, não lançada como exceção (chamador não precisa de try/catch pra isso)
+
+**Verification:**
+- [ ] Tests pass: `npx vitest run tests/canais/notificar.test.ts`
+- [ ] Build succeeds: `npm run build`
+
+**Dependencies:** Tarefa 124
+
+**Files likely touched:**
+- `src/canais/notificar.ts`
+- `tests/canais/notificar.test.ts`
 
 **Estimated scope:** Medium
 
 ---
 
-### Tarefa 118: wiring do relatório semanal em imagem (`relatorioSemanal.ts`), substituindo o texto
+## Checkpoint: Infraestrutura e envio funcionais (sem wiring nos jobs ainda)
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual: sessão WAHA pareada em Homologação, `notificarTexto`/`notificarImagem`/`notificarDocumento` testados contra a sessão real — mensagem chega no WhatsApp
+- [ ] Revisão com o usuário antes de prosseguir pro wiring nos jobs
 
-**Description:** `main()` em `src/scripts/relatorioSemanal.ts` passa a chamar `montarImagemRelatorioSemanal` e mandar só a imagem (`bot.api.sendPhoto`, `InputFile`) pra cada `chatId` de `env.telegramAllowedChatIds` — **remove** a chamada a `montarRelatorioSemanal`/`bot.api.sendMessage` com o texto completo que existia até aqui (substituição, não adição, a pedido do usuário). `montarRelatorioSemanal` virou código morto depois da troca (não é usado por mais ninguém, diferente de `formatarRelatorio`, que é o que `relatorio(periodo)` usa) — removida junto com seu teste dedicado, mantendo só os testes de `calcularProximaSegundaAs23h`. `formatarRelatorio`/tool `relatorio(periodo)` continuam existindo sem nenhuma mudança.
+---
+
+### Tarefa 126: wiring — relatórios e erro crítico
+
+**Description:** `relatorioSemanal.ts` (`notificarImagem` em vez de `bot.api.sendPhoto`), `relatorioMensal.ts` (`notificarDocumento` em vez de `bot.api.sendDocument`), `tratarErroCriticoJob.ts` (`notificarTexto` em vez de `bot.api.sendMessage`) — comportamento de negócio idêntico, só troca o mecanismo de envio final. Assinatura de `tratarErroCriticoJob` ganha `env` no lugar de (ou junto de) `botToken`/`chatIds` crus, pra ter acesso às variáveis do WhatsApp.
 
 **Acceptance criteria:**
-- [x] Chat recebe só a foto (nenhuma mensagem de texto adicional do job)
-- [x] Erro em qualquer etapa continua caindo em `tratarErroCriticoJob`, sem mudança nesse comportamento
-- [x] Tool `relatorio(periodo=semana)` continua funcionando sem qualquer alteração de comportamento
+- [ ] Os 3 scripts continuam funcionando exatamente igual quando WhatsApp não está configurado (regressão zero)
+- [ ] Com WhatsApp configurado, os 3 passam a mandar a mesma mídia/texto pros dois canais
 
 **Verification:**
-- [x] Tests pass: `npx vitest run tests/scripts/relatorioSemanal.test.ts tests/ai/tools/relatorios.test.ts`
-- [x] Build succeeds: `npm run build`
-- [ ] Manual check: `node dist/scripts/relatorioSemanal.js --agora` em Homologação — chat recebe só a imagem; perguntar "me manda o relatório da semana" no chat continua trazendo o detalhe completo por texto (pendente, depende do deploy)
+- [ ] Tests pass: `npx vitest run tests/scripts/relatorioSemanal.test.ts tests/scripts/relatorioMensal.test.ts tests/scripts/tratarErroCriticoJob.test.ts`
+- [ ] Build succeeds: `npm run build`
 
-**Dependencies:** Tarefa 117
+**Dependencies:** Tarefa 125
 
 **Files likely touched:**
 - `src/scripts/relatorioSemanal.ts`
-- `tests/scripts/relatorioSemanal.test.ts`
-
-**Estimated scope:** Small
-
----
-
-## Checkpoint: Relatório semanal em imagem funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual: `node dist/scripts/relatorioSemanal.js --agora` em Homologação confirmado pelo usuário
-- [ ] Revisão com o usuário antes de prosseguir pra Tarefa 119
-
----
-
-### Tarefa 119: `gerarPdfRelatorioMensal` (PDF com header, resumo COMPLETO, 2 gráficos, narrativa da IA)
-
-**Description:** Novo `src/relatorios/pdfMensal.ts`, `gerarPdfRelatorioMensal(dados: DadosRelatorio, resumoTexto: string, graficoDespesa: Buffer | undefined, graficoComparativo: Buffer | undefined): Promise<Buffer>` usando `pdfkit`. Diferente da imagem semanal (deliberadamente curada), o PDF leva o **mesmo nível de detalhe que o texto mensal de hoje tinha** — é o "complexo" que cabe aqui. Layout: título (período `AAAA-MM`), seção "Financeiro" (totais + por categoria + por conta, texto), gráfico de despesa por categoria (se houver), seção "Uso de IA" (totais + por fluxo/modelo + métricas 1/2/3 quando existirem, texto), gráfico comparativo receita/despesa (se houver), seção "Resumo do mês" (narrativa da IA, `resumoTexto`). Gráficos ausentes (período sem transação) simplesmente não entram na página, sem espaço vazio reservado.
-
-**Acceptance criteria:**
-- [x] PDF gerado começa com `%PDF` e tem pelo menos 1 página
-- [x] Com os dois gráficos: as duas imagens aparecem embutidas no PDF (verificável pelo tamanho do buffer crescer de forma consistente com/sem gráfico, já que checar pixel de PDF em teste automatizado não é prático)
-- [x] Sem nenhum gráfico (período sem transação): PDF ainda é gerado, só com as seções de texto e a narrativa
-- [x] Texto longo de `resumoTexto` não trava nem lança exceção (pdfkit quebra página automaticamente)
-
-**Verification:**
-- [x] Tests pass: `npx vitest run tests/relatorios/pdfMensal.test.ts`
-- [x] Build succeeds: `npm run build`
-
-**Dependencies:** Tarefa 115, Tarefa 116
-
-**Files likely touched:**
-- `src/relatorios/pdfMensal.ts`
-- `tests/relatorios/pdfMensal.test.ts`
+- `src/scripts/relatorioMensal.ts`
+- `src/scripts/tratarErroCriticoJob.ts`
+- Testes correspondentes
 
 **Estimated scope:** Medium
 
 ---
 
-### Tarefa 120: wiring do relatório mensal em PDF (`relatorioMensal.ts`), substituindo o texto
+### Tarefa 127: wiring — alertas operacionais
 
-**Description:** `montarRelatorioMensal`/`main()` em `src/scripts/relatorioMensal.ts` passam a gerar os dois gráficos (`montarDadosDespesaPorCategoria`/`montarDadosComparativoReceitaDespesa` + `renderizarGrafico`) e o PDF (`gerarPdfRelatorioMensal`), enviando via `bot.api.sendDocument` (nome de arquivo `relatorio-mensal-AAAA-MM.pdf`) — **remove** o envio da mensagem de texto completa que existia até aqui (substituição, não adição). A chamada de IA (`gerarResumoMensal`) e o registro em `uso_tokens`/`interacoes_ia` continuam iguais, só o formato de saída muda; `formatarRelatorio` continua existindo pra `relatorio(periodo)` no chat, sem mudança.
-
-**Acceptance criteria:**
-- [x] Chat recebe só o PDF (nome de arquivo com o período certo), nenhuma mensagem de texto adicional do job
-- [x] Custo/tokens da chamada de IA (`gerarResumoMensal`) continuam registrados em `uso_tokens`/`interacoes_ia` sem mudança
-- [x] Erro em qualquer etapa continua caindo em `tratarErroCriticoJob`
-- [x] Tool `relatorio(periodo=mes)` continua funcionando sem qualquer alteração de comportamento
-
-**Verification:**
-- [x] Tests pass: `npx vitest run tests/scripts/relatorioMensal.test.ts tests/ai/tools/relatorios.test.ts`
-- [x] Build succeeds: `npm run build`
-- [ ] Manual check: `node dist/scripts/relatorioMensal.js --agora` em Homologação — chat recebe só o PDF (abre, gráficos legíveis, texto sem corte) (pendente do deploy)
-
-**Dependencies:** Tarefa 119
-
-**Files likely touched:**
-- `src/scripts/relatorioMensal.ts`
-- `tests/scripts/relatorioMensal.test.ts`
-
-**Estimated scope:** Small
-
----
-
-## Checkpoint: Relatório mensal em PDF funcional
-- [x] `npm run build`/`lint`/`test` sem erro
-- [x] Teste manual: `docker compose run --rm --no-deps homologacao node dist/scripts/relatorioMensal.js --agora` em Homologação confirmado pelo usuário
-- [x] PROGRESSO.md atualizado com o marco
-
----
-
-### Tarefa 121: `relatorio(periodo=semana|mes)` no chat manda a mídia, e redesenho do PDF mensal
-
-**Description:** Extensão a pedido explícito do usuário (2026-09-22), depois de testar os jobs automáticos e pedir os mesmos relatórios pelo chat — vieram em texto (comportamento antigo, inalterado até então), o que ele achou inconsistente. `criarToolRelatorio` (`src/ai/tools/relatorios.ts`) passa a receber `client: OpenAI` e, pra `periodo="semana"`, devolve `{texto, imagem}` via `montarImagemRelatorioSemanal`; pra `periodo="mes"`, devolve `{texto, documento}` via um novo `gerarRelatorioMensalCompleto` (`src/relatorios/relatorioMensalCompleto.ts`, núcleo do PDF mensal extraído de `scripts/relatorioMensal.ts` pra ser reaproveitado pelos dois lugares). `periodo="dia"` inalterado (texto completo). Plumbing de tool estendida pra suportar `documento` (PDF) além de `imagem` (PNG) já existente: `ResultadoTool`/`ToolContext` (`ai/tools/types.ts`), `RespostaGerada`/`ResultadoToolCall`/`extrairResultadoTool` (renomeado de `extrairTextoEImagem`, `ai/openrouter.ts`), `texto.ts`/`callbackConfirmacao.ts` mandam via `ctx.replyWithDocument`. Inclui também o redesenho do PDF mensal (achado real, teste manual: usuário achou a primeira versão "bem simples", pediu nível de relatório gerencial de empresa listada na B3) — cabeçalho com faixa colorida, 3 cards de KPI, tabelas com zebra striping e quebra de página própria, valores com separador de milhar (pt-BR), seção de resumo destacada, rodapé com número de página.
+**Description:** `monitorarPrecos.ts`, `verificarDespesasFixas.ts`, `lerEmailFaturas.ts`, `sincronizarOpenFinance.ts` — mesma troca de `bot.api.sendX` por `notificar*` da Tarefa 126, aplicada aos 4 scripts restantes que mandam mensagem proativa.
 
 **Acceptance criteria:**
-- [x] `relatorio(periodo="semana")` no chat devolve `{texto, imagem}` (PNG), nunca mais o texto completo
-- [x] `relatorio(periodo="mes")` no chat devolve `{texto, documento}` (PDF), nunca mais o texto completo
-- [x] `relatorio(periodo="dia")` continua devolvendo string (texto completo), sem mudança
-- [x] Job automático mensal (`scripts/relatorioMensal.ts`) continua funcionando via `gerarRelatorioMensalCompleto` (mesma lógica, sem duplicação)
-- [x] `gerar_grafico`/`consultar_e_graficar` (mecanismo de imagem já existente) continuam funcionando sem mudança de comportamento
+- [ ] Os 4 scripts continuam funcionando exatamente igual quando WhatsApp não está configurado (regressão zero)
+- [ ] Com WhatsApp configurado, os 4 passam a mandar a mesma mensagem pros dois canais
 
 **Verification:**
-- [x] Tests pass: `npx vitest run tests/ai/tools/relatorios.test.ts tests/ai/openrouter.test.ts tests/scripts/relatorioMensal.test.ts tests/relatorios/relatorioMensalCompleto.test.ts tests/bot/handlers/texto.test.ts tests/bot/handlers/callbackConfirmacao.test.ts`
-- [x] Build succeeds: `npm run build`
-- [ ] Manual check: pedir "relatorio semanal" e "relatorio mensal" pelo chat em Homologação — recebe imagem/PDF, não texto
+- [ ] Tests pass: `npx vitest run tests/scripts/monitorarPrecos.test.ts tests/scripts/verificarDespesasFixas.test.ts tests/scripts/lerEmailFaturas.test.ts tests/scripts/sincronizarOpenFinance.test.ts`
+- [ ] Build succeeds: `npm run build`
 
-**Dependencies:** Tarefa 118, Tarefa 120
+**Dependencies:** Tarefa 125
 
 **Files likely touched:**
-- `src/ai/tools/relatorios.ts`
-- `src/ai/tools/types.ts`
-- `src/ai/tools/conversaTools.ts`
-- `src/ai/openrouter.ts`
-- `src/bot/handlers/texto.ts`
-- `src/bot/handlers/callbackConfirmacao.ts`
-- `src/relatorios/relatorioMensalCompleto.ts` (novo)
-- `src/relatorios/pdfMensal.ts` (redesenho)
-- `src/scripts/relatorioMensal.ts`
+- `src/scripts/monitorarPrecos.ts`
+- `src/scripts/verificarDespesasFixas.ts`
+- `src/scripts/lerEmailFaturas.ts`
+- `src/scripts/sincronizarOpenFinance.ts`
+- Testes correspondentes
 
 **Estimated scope:** Medium
 
 ---
 
-## Checkpoint: Rodada fechada (chat e jobs automáticos consistentes)
+## Checkpoint: Rodada 1 fechada (mensagens proativas no WhatsApp)
 - [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual: pedir "relatorio semanal" e "relatorio mensal" pelo chat em Homologação — chat recebe a mídia (imagem/PDF), nunca mais o texto completo pra esses dois períodos; "relatorio do dia" continua em texto
+- [ ] Teste manual em Homologação: `relatorioSemanal.js --agora`/`relatorioMensal.js --agora` de verdade — mensagem chega nos dois canais
 - [ ] PROGRESSO.md atualizado com o marco
-- [ ] Revisão com o usuário antes de prosseguir
+- [ ] Revisão com o usuário antes de considerar a Rodada 2 (chat bidirecional)
