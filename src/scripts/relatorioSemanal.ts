@@ -1,15 +1,10 @@
 import { fileURLToPath } from 'node:url';
-import { Bot } from 'grammy';
+import { Bot, InputFile } from 'grammy';
 import { configurarFormatacaoPadrao } from '../bot/formatoMensagens.js';
 import { loadEnv } from '../config/env.js';
-import { getDb, type DbClient } from '../db/client.js';
-import { contarErrosPeriodo } from '../db/repositories/errosExecucao.js';
+import { getDb } from '../db/client.js';
 import { createLogger } from '../logging/logger.js';
-import { agregarFinanceiroPeriodo } from '../relatorios/financeiro.js';
-import { formatarRelatorio } from '../relatorios/formatar.js';
-import { formatarDelta } from '../relatorios/formatarDelta.js';
-import { calcularJanelaAnterior, calcularJanelaPeriodo } from '../relatorios/janela.js';
-import { agregarUsoIaPeriodo } from '../relatorios/usoIa.js';
+import { montarImagemRelatorioSemanal } from '../relatorios/imagemSemanal.js';
 import { dormirAte } from './dormirAte.js';
 import { tratarErroCriticoJob } from './tratarErroCriticoJob.js';
 
@@ -29,35 +24,6 @@ export function calcularProximaSegundaAs23h(agora: Date): Date {
   }
 
   return candidato;
-}
-
-export function montarRelatorioSemanal(db: DbClient, agora: Date = new Date()): string {
-  const janelaAtual = calcularJanelaPeriodo('semana', agora);
-  const janelaAnterior = calcularJanelaAnterior('semana', janelaAtual);
-
-  const financeiro = agregarFinanceiroPeriodo(db, janelaAtual);
-  const usoIa = agregarUsoIaPeriodo(db, janelaAtual);
-  const financeiroAnterior = agregarFinanceiroPeriodo(db, janelaAnterior);
-  const usoIaAnterior = agregarUsoIaPeriodo(db, janelaAnterior);
-
-  const errosTecnicos = contarErrosPeriodo(db, janelaAtual);
-  const relatorio = formatarRelatorio({
-    inicio: janelaAtual.inicio,
-    fim: janelaAtual.fim,
-    financeiro,
-    usoIa,
-    errosTecnicos,
-  });
-
-  const comparacao = [
-    '',
-    '<b>Comparação com a semana anterior</b>',
-    `Receita: ${formatarDelta(financeiro.totalReceita - financeiroAnterior.totalReceita)}`,
-    `Despesa: ${formatarDelta(financeiro.totalDespesa - financeiroAnterior.totalDespesa)}`,
-    `Custo de IA: ${formatarDelta(usoIa.totalCustoEstimado - usoIaAnterior.totalCustoEstimado)}`,
-  ].join('\n');
-
-  return `${relatorio}\n${comparacao}`;
 }
 
 async function main(): Promise<void> {
@@ -81,11 +47,11 @@ async function main(): Promise<void> {
     // resolver a semana certa, nunca a semana nova que começou hoje.
     const ontem = new Date();
     ontem.setDate(ontem.getDate() - 1);
-    const texto = montarRelatorioSemanal(db, ontem);
+    const imagem = await montarImagemRelatorioSemanal(db, ontem);
     for (const chatId of env.telegramAllowedChatIds) {
-      await bot.api.sendMessage(chatId, texto);
+      await bot.api.sendPhoto(chatId, new InputFile(imagem));
     }
-    logger.info('relatório semanal enviado');
+    logger.info('relatório semanal (imagem) enviado');
   } catch (erro) {
     await tratarErroCriticoJob(db, logger, 'relatorio_semanal', erro, env.telegramBotToken, env.telegramAllowedChatIds);
     throw erro;

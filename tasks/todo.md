@@ -79,17 +79,17 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Imagem/P
 
 ### Tarefa 118: wiring do relatório semanal em imagem (`relatorioSemanal.ts`), substituindo o texto
 
-**Description:** `main()` em `src/scripts/relatorioSemanal.ts` passa a chamar `montarImagemRelatorioSemanal` e mandar só a imagem (`bot.api.sendPhoto`, `InputFile`) pra cada `chatId` de `env.telegramAllowedChatIds` — **remove** a chamada a `montarRelatorioSemanal`/`bot.api.sendMessage` com o texto completo que existia até aqui (substituição, não adição, a pedido do usuário). `montarRelatorioSemanal`/`formatarRelatorio` continuam existindo (usados por `relatorio(periodo)` no chat, `src/ai/tools/relatorios.ts` — sem mudança nenhuma nesse tool).
+**Description:** `main()` em `src/scripts/relatorioSemanal.ts` passa a chamar `montarImagemRelatorioSemanal` e mandar só a imagem (`bot.api.sendPhoto`, `InputFile`) pra cada `chatId` de `env.telegramAllowedChatIds` — **remove** a chamada a `montarRelatorioSemanal`/`bot.api.sendMessage` com o texto completo que existia até aqui (substituição, não adição, a pedido do usuário). `montarRelatorioSemanal` virou código morto depois da troca (não é usado por mais ninguém, diferente de `formatarRelatorio`, que é o que `relatorio(periodo)` usa) — removida junto com seu teste dedicado, mantendo só os testes de `calcularProximaSegundaAs23h`. `formatarRelatorio`/tool `relatorio(periodo)` continuam existindo sem nenhuma mudança.
 
 **Acceptance criteria:**
-- [ ] Chat recebe só a foto (nenhuma mensagem de texto adicional do job)
-- [ ] Erro em qualquer etapa continua caindo em `tratarErroCriticoJob`, sem mudança nesse comportamento
-- [ ] Tool `relatorio(periodo=semana)` continua funcionando sem qualquer alteração de comportamento
+- [x] Chat recebe só a foto (nenhuma mensagem de texto adicional do job)
+- [x] Erro em qualquer etapa continua caindo em `tratarErroCriticoJob`, sem mudança nesse comportamento
+- [x] Tool `relatorio(periodo=semana)` continua funcionando sem qualquer alteração de comportamento
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/scripts/relatorioSemanal.test.ts tests/ai/tools/relatorios.test.ts`
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: `node dist/scripts/relatorioSemanal.js --agora` em Homologação — chat recebe só a imagem; perguntar "me manda o relatório da semana" no chat continua trazendo o detalhe completo por texto
+- [x] Tests pass: `npx vitest run tests/scripts/relatorioSemanal.test.ts tests/ai/tools/relatorios.test.ts`
+- [x] Build succeeds: `npm run build`
+- [ ] Manual check: `node dist/scripts/relatorioSemanal.js --agora` em Homologação — chat recebe só a imagem; perguntar "me manda o relatório da semana" no chat continua trazendo o detalhe completo por texto (pendente, depende do deploy)
 
 **Dependencies:** Tarefa 117
 
