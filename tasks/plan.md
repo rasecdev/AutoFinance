@@ -47,9 +47,9 @@ Nenhuma biblioteca de geração de PDF existe hoje no projeto (só um gerador de
 
 ### Checkpoint: Rodada fechada (chat e jobs automáticos consistentes)
 - [x] `npm run build`/`lint`/`test` sem erro (959/961 — 2 timeouts em `tests/db/migrate.test.ts`, flake de carga em paralelo, confirmado passando isolado, não relacionado)
-- [ ] Teste manual: pedir "relatorio semanal" e "relatorio mensal" pelo chat em Homologação — chat recebe a mídia (imagem/PDF), nunca mais o texto completo pra esses dois períodos; "relatorio do dia" continua em texto
+- [x] Teste manual: pedir "relatorio semanal" e "relatorio mensal" pelo chat em Homologação confirmado pelo usuário — imagem e PDF chegaram, respectivamente
 - [x] PROGRESSO.md atualizado com o marco
-- [ ] Revisão com o usuário antes de prosseguir
+- [x] Revisão com o usuário — confirmado, milestone "Relatórios como mídia (semanal em imagem, mensal em PDF)" fechado (7/7 issues)
 
 ## Risks and Mitigations
 
