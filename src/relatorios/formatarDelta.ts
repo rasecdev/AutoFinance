@@ -2,5 +2,5 @@
 // de texto que já existia quanto pela imagem semanal nova, sem duplicar.
 export function formatarDelta(valor: number): string {
   const sinal = valor >= 0 ? '+' : '';
-  return `${sinal}R$ ${valor.toFixed(2)}`;
+  return `${sinal}R$ ${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
