@@ -34,14 +34,14 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Imagem/P
 **Description:** Novo `src/relatorios/dadosGrafico.ts` com duas funções puras: `montarDadosDespesaPorCategoria(porCategoria: TotalPorCategoria[]): DadoGrafico[]` (pizza, desc por valor, top 7 + bucket `"Outros"` pro resto) e `montarDadosComparativoReceitaDespesa(atual: AgregacaoFinanceira, anterior: AgregacaoFinanceira, rotuloAtual: string, rotuloAnterior: string): DadoGrafico[]` (barra agrupada, série = período, rótulo = Receita/Despesa). Nenhuma das duas chama `renderizarGrafico` — só produzem o `DadoGrafico[]` que ele consome.
 
 **Acceptance criteria:**
-- [ ] `montarDadosDespesaPorCategoria` com 8+ categorias agrupa a partir da 8ª num item `"Outros"` (soma dos valores)
-- [ ] `montarDadosDespesaPorCategoria` com lista vazia retorna `[]` (sem crash)
-- [ ] `montarDadosComparativoReceitaDespesa` retorna 4 pontos (2 séries × 2 rótulos) com os valores corretos de cada período
-- [ ] Nenhuma das duas depende de estado de banco (funções puras, só transformam o dado já agregado recebido)
+- [x] `montarDadosDespesaPorCategoria` com 8+ categorias agrupa a partir da 8ª num item `"Outros"` (soma dos valores)
+- [x] `montarDadosDespesaPorCategoria` com lista vazia retorna `[]` (sem crash)
+- [x] `montarDadosComparativoReceitaDespesa` retorna 4 pontos (2 séries × 2 rótulos) com os valores corretos de cada período
+- [x] Nenhuma das duas depende de estado de banco (funções puras, só transformam o dado já agregado recebido)
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/relatorios/dadosGrafico.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/relatorios/dadosGrafico.test.ts`
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** None
 
