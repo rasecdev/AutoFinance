@@ -7,11 +7,15 @@ export type ToolContext = {
 
 // Formato de retorno do handler de uma tool. A maioria devolve só texto (vai
 // pro modelo narrar); gerar_grafico/consultar_e_graficar (Fase 6 parte 10)
-// precisam devolver também uma imagem (Buffer PNG) — o texto ainda vai pro
-// modelo via role: 'tool', a imagem nunca (é acumulada separadamente e
-// enviada como foto no Telegram, ver gerarResposta/executarToolCall em
-// openrouter.ts). string continua um caso válido, não substituído.
-export type ResultadoTool = string | { texto: string; imagem?: Buffer };
+// precisam devolver também uma imagem (Buffer PNG), e relatorio(periodo)
+// pra semana/mes (2026-09-22) devolve um documento (PDF) — o texto ainda
+// vai pro modelo via role: 'tool', imagem/documento nunca (são acumulados
+// separadamente e enviados como foto/arquivo no Telegram, ver
+// gerarResposta/executarToolCall em openrouter.ts). string continua um caso
+// válido, não substituído.
+export type ResultadoTool =
+  | string
+  | { texto: string; imagem?: Buffer; documento?: { buffer: Buffer; nomeArquivo: string } };
 
 export type ToolDefinition<Schema extends z.ZodTypeAny = z.ZodTypeAny> = {
   name: string;

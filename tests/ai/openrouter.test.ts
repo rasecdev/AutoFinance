@@ -89,6 +89,7 @@ describe('gerarResposta — sem ferramentas (compatibilidade)', () => {
       resposta: 'olá!',
       toolCalls: [],
       imagens: [],
+      documentos: [],
       tokensPrompt: 0,
       tokensCompletion: 0,
       cachedTokens: 0,
