@@ -157,8 +157,48 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Imagem/P
 
 ---
 
-## Checkpoint: Relatório mensal em PDF funcional (fecha a rodada)
+## Checkpoint: Relatório mensal em PDF funcional
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Teste manual: `docker compose run --rm --no-deps homologacao node dist/scripts/relatorioMensal.js --agora` em Homologação confirmado pelo usuário
+- [x] PROGRESSO.md atualizado com o marco
+
+---
+
+### Tarefa 121: `relatorio(periodo=semana|mes)` no chat manda a mídia, e redesenho do PDF mensal
+
+**Description:** Extensão a pedido explícito do usuário (2026-09-22), depois de testar os jobs automáticos e pedir os mesmos relatórios pelo chat — vieram em texto (comportamento antigo, inalterado até então), o que ele achou inconsistente. `criarToolRelatorio` (`src/ai/tools/relatorios.ts`) passa a receber `client: OpenAI` e, pra `periodo="semana"`, devolve `{texto, imagem}` via `montarImagemRelatorioSemanal`; pra `periodo="mes"`, devolve `{texto, documento}` via um novo `gerarRelatorioMensalCompleto` (`src/relatorios/relatorioMensalCompleto.ts`, núcleo do PDF mensal extraído de `scripts/relatorioMensal.ts` pra ser reaproveitado pelos dois lugares). `periodo="dia"` inalterado (texto completo). Plumbing de tool estendida pra suportar `documento` (PDF) além de `imagem` (PNG) já existente: `ResultadoTool`/`ToolContext` (`ai/tools/types.ts`), `RespostaGerada`/`ResultadoToolCall`/`extrairResultadoTool` (renomeado de `extrairTextoEImagem`, `ai/openrouter.ts`), `texto.ts`/`callbackConfirmacao.ts` mandam via `ctx.replyWithDocument`. Inclui também o redesenho do PDF mensal (achado real, teste manual: usuário achou a primeira versão "bem simples", pediu nível de relatório gerencial de empresa listada na B3) — cabeçalho com faixa colorida, 3 cards de KPI, tabelas com zebra striping e quebra de página própria, valores com separador de milhar (pt-BR), seção de resumo destacada, rodapé com número de página.
+
+**Acceptance criteria:**
+- [x] `relatorio(periodo="semana")` no chat devolve `{texto, imagem}` (PNG), nunca mais o texto completo
+- [x] `relatorio(periodo="mes")` no chat devolve `{texto, documento}` (PDF), nunca mais o texto completo
+- [x] `relatorio(periodo="dia")` continua devolvendo string (texto completo), sem mudança
+- [x] Job automático mensal (`scripts/relatorioMensal.ts`) continua funcionando via `gerarRelatorioMensalCompleto` (mesma lógica, sem duplicação)
+- [x] `gerar_grafico`/`consultar_e_graficar` (mecanismo de imagem já existente) continuam funcionando sem mudança de comportamento
+
+**Verification:**
+- [x] Tests pass: `npx vitest run tests/ai/tools/relatorios.test.ts tests/ai/openrouter.test.ts tests/scripts/relatorioMensal.test.ts tests/relatorios/relatorioMensalCompleto.test.ts tests/bot/handlers/texto.test.ts tests/bot/handlers/callbackConfirmacao.test.ts`
+- [x] Build succeeds: `npm run build`
+- [ ] Manual check: pedir "relatorio semanal" e "relatorio mensal" pelo chat em Homologação — recebe imagem/PDF, não texto
+
+**Dependencies:** Tarefa 118, Tarefa 120
+
+**Files likely touched:**
+- `src/ai/tools/relatorios.ts`
+- `src/ai/tools/types.ts`
+- `src/ai/tools/conversaTools.ts`
+- `src/ai/openrouter.ts`
+- `src/bot/handlers/texto.ts`
+- `src/bot/handlers/callbackConfirmacao.ts`
+- `src/relatorios/relatorioMensalCompleto.ts` (novo)
+- `src/relatorios/pdfMensal.ts` (redesenho)
+- `src/scripts/relatorioMensal.ts`
+
+**Estimated scope:** Medium
+
+---
+
+## Checkpoint: Rodada fechada (chat e jobs automáticos consistentes)
 - [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual: `node dist/scripts/relatorioMensal.js --agora` em Homologação confirmado pelo usuário
+- [ ] Teste manual: pedir "relatorio semanal" e "relatorio mensal" pelo chat em Homologação — chat recebe a mídia (imagem/PDF), nunca mais o texto completo pra esses dois períodos; "relatorio do dia" continua em texto
 - [ ] PROGRESSO.md atualizado com o marco
 - [ ] Revisão com o usuário antes de prosseguir
