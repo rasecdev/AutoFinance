@@ -29,8 +29,8 @@ Nenhuma biblioteca de geração de PDF existe hoje no projeto (só um gerador de
 4. Tarefa 118: wiring do relatório semanal em imagem (`relatorioSemanal.ts`)
 
 ### Checkpoint: Relatório semanal em imagem funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual: `node dist/scripts/relatorioSemanal.js --agora` em Homologação — chat recebe SÓ a imagem (sem a mensagem de texto de antes), legível, números batendo com o banco
+- [x] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual: `node dist/scripts/relatorioSemanal.js --agora` em Homologação — chat recebe SÓ a imagem (sem a mensagem de texto de antes), legível, números batendo com o banco (pendente — deploy da rodada mais lento que o normal, ver achado no PROGRESSO.md)
 - [ ] Confirmar que `relatorio(periodo=semana)` no chat continua trazendo o detalhe completo (por conta, uso de IA por fluxo/modelo) — nada perdido, só o push que mudou
 - [ ] Revisão com o usuário antes de prosseguir
 
