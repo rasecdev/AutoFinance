@@ -113,14 +113,14 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Imagem/P
 **Description:** Novo `src/relatorios/pdfMensal.ts`, `gerarPdfRelatorioMensal(dados: DadosRelatorio, resumoTexto: string, graficoDespesa: Buffer | undefined, graficoComparativo: Buffer | undefined): Promise<Buffer>` usando `pdfkit`. Diferente da imagem semanal (deliberadamente curada), o PDF leva o **mesmo nível de detalhe que o texto mensal de hoje tinha** — é o "complexo" que cabe aqui. Layout: título (período `AAAA-MM`), seção "Financeiro" (totais + por categoria + por conta, texto), gráfico de despesa por categoria (se houver), seção "Uso de IA" (totais + por fluxo/modelo + métricas 1/2/3 quando existirem, texto), gráfico comparativo receita/despesa (se houver), seção "Resumo do mês" (narrativa da IA, `resumoTexto`). Gráficos ausentes (período sem transação) simplesmente não entram na página, sem espaço vazio reservado.
 
 **Acceptance criteria:**
-- [ ] PDF gerado começa com `%PDF` e tem pelo menos 1 página
-- [ ] Com os dois gráficos: as duas imagens aparecem embutidas no PDF (verificável pelo tamanho do buffer crescer de forma consistente com/sem gráfico, já que checar pixel de PDF em teste automatizado não é prático)
-- [ ] Sem nenhum gráfico (período sem transação): PDF ainda é gerado, só com as seções de texto e a narrativa
-- [ ] Texto longo de `resumoTexto` não trava nem lança exceção (pdfkit quebra página automaticamente)
+- [x] PDF gerado começa com `%PDF` e tem pelo menos 1 página
+- [x] Com os dois gráficos: as duas imagens aparecem embutidas no PDF (verificável pelo tamanho do buffer crescer de forma consistente com/sem gráfico, já que checar pixel de PDF em teste automatizado não é prático)
+- [x] Sem nenhum gráfico (período sem transação): PDF ainda é gerado, só com as seções de texto e a narrativa
+- [x] Texto longo de `resumoTexto` não trava nem lança exceção (pdfkit quebra página automaticamente)
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/relatorios/pdfMensal.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/relatorios/pdfMensal.test.ts`
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** Tarefa 115, Tarefa 116
 
