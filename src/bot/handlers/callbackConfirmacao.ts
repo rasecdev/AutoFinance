@@ -1,5 +1,5 @@
 import { InputFile, type Context } from 'grammy';
-import { extrairTextoEImagem } from '../../ai/openrouter.js';
+import { extrairResultadoTool } from '../../ai/openrouter.js';
 import type { ToolDefinition } from '../../ai/tools/types.js';
 import type { DbClient } from '../../db/client.js';
 import { obterPendenciaPersistida, removerPendenciaPersistida } from '../../db/repositories/confirmacoesPendentes.js';
@@ -54,9 +54,10 @@ export function createHandlerCallbackConfirmacao(db: DbClient, logger: Logger, t
 
     try {
       const resultado = await tool.handler(argumentos, { chatId });
-      const { texto, imagem } = extrairTextoEImagem(resultado);
+      const { texto, imagem, documento } = extrairResultadoTool(resultado);
       await ctx.reply(texto);
       if (imagem) await ctx.replyWithPhoto(new InputFile(imagem));
+      if (documento) await ctx.replyWithDocument(new InputFile(documento.buffer, documento.nomeArquivo));
     } catch (erro) {
       logger.error({ err: erro }, 'falha ao executar ação confirmada pelo usuário (botão)');
       await ctx.reply('Não consegui concluir a ação confirmada, tente novamente.');

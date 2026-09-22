@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { InputFile, type Context } from 'grammy';
 import type OpenAI from 'openai';
 import { montarHistorico } from '../../ai/contexto.js';
-import { extrairTextoEImagem, gerarResposta, MODELO_PADRAO } from '../../ai/openrouter.js';
+import { extrairResultadoTool, gerarResposta, MODELO_PADRAO } from '../../ai/openrouter.js';
 import { verificarGatilhoResumo } from '../../ai/resumirContexto.js';
 import { montarToolsConversa } from '../../ai/tools/conversaTools.js';
 import type { ToolDefinition } from '../../ai/tools/types.js';
@@ -85,9 +85,10 @@ export async function processarMensagemTexto(
         pendencia.tool.handler(pendencia.argumentos, { chatId }),
         logger,
       );
-      const { texto, imagem } = extrairTextoEImagem(resultado);
+      const { texto, imagem, documento } = extrairResultadoTool(resultado);
       await ctx.reply(texto);
       if (imagem) await ctx.replyWithPhoto(new InputFile(imagem));
+      if (documento) await ctx.replyWithDocument(new InputFile(documento.buffer, documento.nomeArquivo));
     } catch (erro) {
       logger.error({ err: erro }, 'falha ao executar ação confirmada pelo usuário');
       await ctx.reply('Não consegui concluir a ação confirmada, tente novamente.');
@@ -123,9 +124,10 @@ export async function processarMensagemTexto(
         tool.handler(pendenciaPersistida.argumentos, { chatId }),
         logger,
       );
-      const { texto, imagem } = extrairTextoEImagem(resultado);
+      const { texto, imagem, documento } = extrairResultadoTool(resultado);
       await ctx.reply(texto);
       if (imagem) await ctx.replyWithPhoto(new InputFile(imagem));
+      if (documento) await ctx.replyWithDocument(new InputFile(documento.buffer, documento.nomeArquivo));
     } catch (erro) {
       logger.error({ err: erro }, 'falha ao executar ação confirmada pelo usuário (pendência persistida)');
       await ctx.reply('Não consegui concluir a ação confirmada, tente novamente.');
@@ -143,6 +145,7 @@ export async function processarMensagemTexto(
       resposta,
       toolCalls,
       imagens,
+      documentos,
       tokensPrompt,
       tokensCompletion,
       cachedTokens,
@@ -193,6 +196,9 @@ export async function processarMensagemTexto(
     definirRastroResposta(mensagemEnviada.message_id, traceId);
     for (const imagem of imagens) {
       await ctx.replyWithPhoto(new InputFile(imagem));
+    }
+    for (const documento of documentos) {
+      await ctx.replyWithDocument(new InputFile(documento.buffer, documento.nomeArquivo));
     }
 
     // Roda depois de a resposta já ter sido enviada — não adiciona latência

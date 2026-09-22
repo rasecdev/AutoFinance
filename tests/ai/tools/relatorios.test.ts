@@ -2,7 +2,8 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3-multiple-ciphers';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import type OpenAI from 'openai';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { criarToolRelatorio } from '../../../src/ai/tools/relatorios.js';
 import type { DbClient } from '../../../src/db/client.js';
 import { migrate } from '../../../src/db/migrate.js';
@@ -20,6 +21,14 @@ function hojeISO(): string {
   return `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}-${String(agora.getDate()).padStart(2, '0')}`;
 }
 
+function criarClienteFalso(resumoTexto = 'resumo gerado') {
+  const create = vi.fn().mockResolvedValue({
+    choices: [{ message: { content: resumoTexto } }],
+    usage: { prompt_tokens: 10, completion_tokens: 5, cost: 0 },
+  });
+  return { chat: { completions: { create } } } as unknown as OpenAI;
+}
+
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'autofinance-tools-relatorios-test-'));
   db = new Database(join(dir, 'teste.db'));
@@ -34,8 +43,8 @@ afterEach(() => {
 });
 
 describe('tool relatorio', () => {
-  it('retorna relatório do dia vazio quando não há nada registrado', async () => {
-    const tool = criarToolRelatorio(db);
+  it('periodo=dia: retorna relatório do dia vazio quando não há nada registrado', async () => {
+    const tool = criarToolRelatorio(criarClienteFalso(), db);
 
     const resultado = await tool.handler({ periodo: 'dia' }, { chatId: 1 });
 
@@ -44,10 +53,10 @@ describe('tool relatorio', () => {
     expect(resultado).toContain('Nenhum uso de IA registrado no período.');
   });
 
-  it('inclui transação registrada hoje no relatório do dia', async () => {
+  it('periodo=dia: inclui transação registrada hoje no relatório', async () => {
     const contaId = criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Principal', saldoInicial: 100 }).id;
     criarTransacao(db, { contaId, tipo: 'despesa', valor: 30, categoria: 'transporte', data: hojeISO() });
-    const tool = criarToolRelatorio(db);
+    const tool = criarToolRelatorio(criarClienteFalso(), db);
 
     const resultado = await tool.handler({ periodo: 'dia' }, { chatId: 1 });
 
@@ -55,7 +64,7 @@ describe('tool relatorio', () => {
     expect(resultado).toContain('R$ 30.00');
   });
 
-  it('inclui uso de IA registrado hoje no relatório do dia', async () => {
+  it('periodo=dia: inclui uso de IA registrado hoje no relatório', async () => {
     registrarUsoTokens(db, {
       fluxo: 'conversa_texto',
       modelo: 'openai/gpt-4o-mini',
@@ -64,7 +73,7 @@ describe('tool relatorio', () => {
       custoEstimado: 0.01,
       origem: 'uso_real',
     });
-    const tool = criarToolRelatorio(db);
+    const tool = criarToolRelatorio(criarClienteFalso(), db);
 
     const resultado = await tool.handler({ periodo: 'dia' }, { chatId: 1 });
 
@@ -72,13 +81,25 @@ describe('tool relatorio', () => {
     expect(resultado).toContain('120 tokens');
   });
 
-  it('funciona pra periodo=semana e periodo=mes sem lançar erro', async () => {
-    const tool = criarToolRelatorio(db);
+  it('periodo=semana: devolve a imagem-resumo em vez de texto completo', async () => {
+    const tool = criarToolRelatorio(criarClienteFalso(), db);
 
-    const semana = await tool.handler({ periodo: 'semana' }, { chatId: 1 });
-    const mes = await tool.handler({ periodo: 'mes' }, { chatId: 1 });
+    const resultado = await tool.handler({ periodo: 'semana' }, { chatId: 1 });
 
-    expect(semana).toContain('<b>Relatório');
-    expect(mes).toContain('<b>Relatório');
+    expect(typeof resultado).toBe('object');
+    const objeto = resultado as { texto: string; imagem?: Buffer };
+    expect(objeto.imagem).toBeInstanceOf(Buffer);
+    expect(objeto.imagem?.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a'); // assinatura PNG
+  });
+
+  it('periodo=mes: devolve o PDF completo em vez de texto completo', async () => {
+    const tool = criarToolRelatorio(criarClienteFalso(), db);
+
+    const resultado = await tool.handler({ periodo: 'mes' }, { chatId: 1 });
+
+    expect(typeof resultado).toBe('object');
+    const objeto = resultado as { texto: string; documento?: { buffer: Buffer; nomeArquivo: string } };
+    expect(objeto.documento?.buffer.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+    expect(objeto.documento?.nomeArquivo).toMatch(/^relatorio-mensal-\d{4}-\d{2}\.pdf$/);
   });
 });

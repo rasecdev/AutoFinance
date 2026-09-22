@@ -68,7 +68,7 @@ export function montarToolsConversa(db: DbClient, client: OpenAI): ToolDefinitio
     criarToolSimularAmortizacao(db),
     criarToolCriarDespesaFixa(db),
     criarToolEditarDespesaFixa(db),
-    criarToolRelatorio(db),
+    criarToolRelatorio(client, db),
     criarToolAnalisarQualidade(client, db),
     criarToolListarErros(db),
     criarToolCriarCasoTesteBenchmark(db),
