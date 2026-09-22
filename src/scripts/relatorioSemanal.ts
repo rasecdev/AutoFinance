@@ -7,6 +7,7 @@ import { contarErrosPeriodo } from '../db/repositories/errosExecucao.js';
 import { createLogger } from '../logging/logger.js';
 import { agregarFinanceiroPeriodo } from '../relatorios/financeiro.js';
 import { formatarRelatorio } from '../relatorios/formatar.js';
+import { formatarDelta } from '../relatorios/formatarDelta.js';
 import { calcularJanelaAnterior, calcularJanelaPeriodo } from '../relatorios/janela.js';
 import { agregarUsoIaPeriodo } from '../relatorios/usoIa.js';
 import { dormirAte } from './dormirAte.js';
@@ -28,11 +29,6 @@ export function calcularProximaSegundaAs23h(agora: Date): Date {
   }
 
   return candidato;
-}
-
-function formatarDelta(valor: number): string {
-  const sinal = valor >= 0 ? '+' : '';
-  return `${sinal}R$ ${valor.toFixed(2)}`;
 }
 
 export function montarRelatorioSemanal(db: DbClient, agora: Date = new Date()): string {
