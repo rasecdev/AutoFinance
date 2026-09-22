@@ -25,10 +25,10 @@ Dois gaps identificados na revisão do estudo "OWASP Top 10 for Agentic Applicat
 
 ### Checkpoint: Gaps ASI06/ASI10 do OWASP Agentic Top 10 fechados
 - [x] `npm run build`/`lint`/`test` sem erro (945/947 — 2 timeouts isolados de renderização de gráfico, flake pré-existente documentado)
-- [ ] Teste manual: mandar `/pausar` em Homologação, confirmar que uma mensagem normal é recusada, `/retomar` confirma que volta a funcionar
+- [x] Teste manual: `/pausar` em Homologação recusa mensagem normal, `/retomar` confirma que volta a funcionar — confirmado pelo usuário (2026-09-22), depois de corrigido um achado real de deploy (ver PROGRESSO.md)
 - [x] PLANO.md atualizado — tabela do estudo "OWASP Top 10 for Agentic Applications" (ASI06/ASI10) com status trocado de "Gap identificado" pra "Corrigido", referenciando esta rodada
 - [x] PROGRESSO.md atualizado com o marco
-- [ ] Revisão com o usuário antes de prosseguir
+- [x] Revisão com o usuário antes de prosseguir
 
 ## Risks and Mitigations
 
