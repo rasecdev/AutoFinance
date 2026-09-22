@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { Bot } from 'grammy';
+import { Bot, InputFile } from 'grammy';
 import type OpenAI from 'openai';
 import { createOpenRouterClient } from '../ai/openrouter.js';
 import { configurarFormatacaoPadrao } from '../bot/formatoMensagens.js';
@@ -11,9 +11,11 @@ import { contarErrosPeriodo } from '../db/repositories/errosExecucao.js';
 import { registrarInteracaoIa } from '../db/repositories/interacoesIa.js';
 import { registrarUsoTokens } from '../db/repositories/usoTokens.js';
 import { createLogger } from '../logging/logger.js';
+import { montarDadosComparativoReceitaDespesa, montarDadosDespesaPorCategoria } from '../relatorios/dadosGrafico.js';
 import { agregarFinanceiroPeriodo } from '../relatorios/financeiro.js';
-import { formatarRelatorio } from '../relatorios/formatar.js';
+import { renderizarGrafico } from '../relatorios/grafico.js';
 import { calcularJanelaAnterior, calcularJanelaPeriodo } from '../relatorios/janela.js';
+import { gerarPdfRelatorioMensal } from '../relatorios/pdfMensal.js';
 import { agregarUsoIaPeriodo } from '../relatorios/usoIa.js';
 import { dormirAte } from './dormirAte.js';
 import { tratarErroCriticoJob } from './tratarErroCriticoJob.js';
@@ -35,7 +37,17 @@ export function calcularProximoDia1DoMesAs23h(agora: Date): Date {
   return new Date(agora.getFullYear(), agora.getMonth() + 1, 1, 23, 0, 0, 0);
 }
 
-export async function montarRelatorioMensal(db: DbClient, client: OpenAI, agora: Date = new Date()): Promise<string> {
+export type RelatorioMensalPdf = {
+  buffer: Buffer;
+  nomeArquivo: string;
+};
+
+// PDF mensal SUBSTITUI o texto completo que existia até aqui (a pedido do
+// usuário, mesma decisão de Tarefa 118 pro semanal — ver tasks/plan.md) —
+// leva o mesmo nível de detalhe do texto de antes (é o "complexo" que cabe
+// num PDF). formatarRelatorio/tool relatorio(periodo) no chat continuam
+// intactos, sem depender desta função.
+export async function montarRelatorioMensal(db: DbClient, client: OpenAI, agora: Date = new Date()): Promise<RelatorioMensalPdf> {
   const janelaAtual = calcularJanelaPeriodo('mes', agora);
   const janelaAnterior = calcularJanelaAnterior('mes', janelaAtual);
 
@@ -71,15 +83,30 @@ export async function montarRelatorioMensal(db: DbClient, client: OpenAI, agora:
   });
 
   const errosTecnicos = contarErrosPeriodo(db, janelaAtual);
-  const relatorio = formatarRelatorio({
-    inicio: janelaAtual.inicio,
-    fim: janelaAtual.fim,
-    financeiro,
-    usoIa,
-    errosTecnicos,
-  });
 
-  return `${relatorio}\n\n<b>Resumo do mês</b>\n${resultado.resumoTexto}`;
+  const dadosGraficoDespesa = montarDadosDespesaPorCategoria(financeiro.porCategoria);
+  const rotuloAtual = janelaAtual.inicio.slice(0, 7);
+  const rotuloAnterior = janelaAnterior.inicio.slice(0, 7);
+  const dadosGraficoComparativo = montarDadosComparativoReceitaDespesa(
+    financeiro,
+    financeiroAnterior,
+    rotuloAtual,
+    rotuloAnterior,
+  );
+
+  const [graficoDespesa, graficoComparativo] = await Promise.all([
+    dadosGraficoDespesa.length > 0 ? renderizarGrafico('pizza', dadosGraficoDespesa) : undefined,
+    renderizarGrafico('barra', dadosGraficoComparativo),
+  ]);
+
+  const buffer = await gerarPdfRelatorioMensal(
+    { inicio: janelaAtual.inicio, fim: janelaAtual.fim, financeiro, usoIa, errosTecnicos },
+    resultado.resumoTexto,
+    graficoDespesa,
+    graficoComparativo,
+  );
+
+  return { buffer, nomeArquivo: `relatorio-mensal-${rotuloAtual}.pdf` };
 }
 
 async function main(): Promise<void> {
@@ -105,11 +132,11 @@ async function main(): Promise<void> {
     // começou hoje.
     const ontem = new Date();
     ontem.setDate(ontem.getDate() - 1);
-    const texto = await montarRelatorioMensal(db, client, ontem);
+    const { buffer, nomeArquivo } = await montarRelatorioMensal(db, client, ontem);
     for (const chatId of env.telegramAllowedChatIds) {
-      await bot.api.sendMessage(chatId, texto);
+      await bot.api.sendDocument(chatId, new InputFile(buffer, nomeArquivo));
     }
-    logger.info('relatório mensal enviado');
+    logger.info('relatório mensal (PDF) enviado');
   } catch (erro) {
     await tratarErroCriticoJob(db, logger, 'relatorio_mensal', erro, env.telegramBotToken, env.telegramAllowedChatIds);
     throw erro;
