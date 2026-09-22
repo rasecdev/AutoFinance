@@ -75,7 +75,7 @@ describe('calcularProximoDia1DoMesAs23h', () => {
 });
 
 describe('montarRelatorioMensal', () => {
-  it('inclui o relatório do mês, números pré-calculados no prompt e o resumo narrado pela IA', async () => {
+  it('gera um PDF válido com nome de arquivo do período, números pré-calculados no prompt', async () => {
     const conta = criarConta(db, { bancoNome: 'Banco Teste', tipo: 'PF', apelido: 'Carteira', saldoInicial: 0 });
     criarTransacao(db, {
       contaId: conta.id,
@@ -88,11 +88,10 @@ describe('montarRelatorioMensal', () => {
 
     const { client, create } = criarClienteFalso('Mês positivo, receita de salário concentrada.');
 
-    const texto = await montarRelatorioMensal(db, client, new Date(2026, 2, 20, 12, 0));
+    const { buffer, nomeArquivo } = await montarRelatorioMensal(db, client, new Date(2026, 2, 20, 12, 0));
 
-    expect(texto).toContain('2026-03-01 a 2026-03-31');
-    expect(texto).toContain('Resumo do mês');
-    expect(texto).toContain('Mês positivo, receita de salário concentrada.');
+    expect(nomeArquivo).toBe('relatorio-mensal-2026-03.pdf');
+    expect(buffer.subarray(0, 5).toString('latin1')).toBe('%PDF-');
 
     const mensagensEnviadas = create.mock.calls[0]?.[0]?.messages;
     expect(mensagensEnviadas[1].content).toContain('"totalReceita": 3000');

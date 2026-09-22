@@ -137,15 +137,15 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Imagem/P
 **Description:** `montarRelatorioMensal`/`main()` em `src/scripts/relatorioMensal.ts` passam a gerar os dois gráficos (`montarDadosDespesaPorCategoria`/`montarDadosComparativoReceitaDespesa` + `renderizarGrafico`) e o PDF (`gerarPdfRelatorioMensal`), enviando via `bot.api.sendDocument` (nome de arquivo `relatorio-mensal-AAAA-MM.pdf`) — **remove** o envio da mensagem de texto completa que existia até aqui (substituição, não adição). A chamada de IA (`gerarResumoMensal`) e o registro em `uso_tokens`/`interacoes_ia` continuam iguais, só o formato de saída muda; `formatarRelatorio` continua existindo pra `relatorio(periodo)` no chat, sem mudança.
 
 **Acceptance criteria:**
-- [ ] Chat recebe só o PDF (nome de arquivo com o período certo), nenhuma mensagem de texto adicional do job
-- [ ] Custo/tokens da chamada de IA (`gerarResumoMensal`) continuam registrados em `uso_tokens`/`interacoes_ia` sem mudança
-- [ ] Erro em qualquer etapa continua caindo em `tratarErroCriticoJob`
-- [ ] Tool `relatorio(periodo=mes)` continua funcionando sem qualquer alteração de comportamento
+- [x] Chat recebe só o PDF (nome de arquivo com o período certo), nenhuma mensagem de texto adicional do job
+- [x] Custo/tokens da chamada de IA (`gerarResumoMensal`) continuam registrados em `uso_tokens`/`interacoes_ia` sem mudança
+- [x] Erro em qualquer etapa continua caindo em `tratarErroCriticoJob`
+- [x] Tool `relatorio(periodo=mes)` continua funcionando sem qualquer alteração de comportamento
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/scripts/relatorioMensal.test.ts tests/ai/tools/relatorios.test.ts`
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: `node dist/scripts/relatorioMensal.js --agora` em Homologação — chat recebe só o PDF (abre, gráficos legíveis, texto sem corte)
+- [x] Tests pass: `npx vitest run tests/scripts/relatorioMensal.test.ts tests/ai/tools/relatorios.test.ts`
+- [x] Build succeeds: `npm run build`
+- [ ] Manual check: `node dist/scripts/relatorioMensal.js --agora` em Homologação — chat recebe só o PDF (abre, gráficos legíveis, texto sem corte) (pendente do deploy)
 
 **Dependencies:** Tarefa 119
 
