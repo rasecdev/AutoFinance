@@ -46,9 +46,9 @@ Nenhuma biblioteca de geração de PDF existe hoje no projeto (só um gerador de
 7. Tarefa 121 (extensão, 2026-09-22): `relatorio(periodo=semana|mes)` no chat manda a mídia em vez do texto — inclui o redesenho do PDF mensal (relatório gerencial) que motivou a extensão
 
 ### Checkpoint: Rodada fechada (chat e jobs automáticos consistentes)
-- [ ] `npm run build`/`lint`/`test` sem erro
+- [x] `npm run build`/`lint`/`test` sem erro (959/961 — 2 timeouts em `tests/db/migrate.test.ts`, flake de carga em paralelo, confirmado passando isolado, não relacionado)
 - [ ] Teste manual: pedir "relatorio semanal" e "relatorio mensal" pelo chat em Homologação — chat recebe a mídia (imagem/PDF), nunca mais o texto completo pra esses dois períodos; "relatorio do dia" continua em texto
-- [ ] PROGRESSO.md atualizado com o marco
+- [x] PROGRESSO.md atualizado com o marco
 - [ ] Revisão com o usuário antes de prosseguir
 
 ## Risks and Mitigations
