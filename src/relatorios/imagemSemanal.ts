@@ -60,9 +60,16 @@ export async function montarImagemRelatorioSemanal(db: DbClient, agora: Date = n
     ctx.fillStyle = '#1a1a1a';
     ctx.fillText(formatarMoeda(coluna.valor), x, 150);
     if (coluna.delta !== undefined) {
-      ctx.font = '16px sans-serif';
+      // Achado real de teste manual (2026-09-22): "R$ -600.00 vs. semana
+      // anterior" numa linha só é mais largo que a coluna (240px) e vaza
+      // por cima da coluna vizinha — quebrado em 2 linhas, valor maior +
+      // legenda menor, cada uma cabendo à vontade na largura da coluna.
+      ctx.font = 'bold 16px sans-serif';
       ctx.fillStyle = coluna.delta >= 0 ? '#2e7d32' : '#c62828';
-      ctx.fillText(`${formatarDelta(coluna.delta)} vs. semana anterior`, x, 175);
+      ctx.fillText(formatarDelta(coluna.delta), x, 175);
+      ctx.font = '13px sans-serif';
+      ctx.fillStyle = '#777777';
+      ctx.fillText('vs. semana anterior', x, 192);
     }
   });
 
@@ -71,7 +78,7 @@ export async function montarImagemRelatorioSemanal(db: DbClient, agora: Date = n
   ctx.fillText(
     `Custo de IA no período: US$ ${usoIa.totalCustoEstimado.toFixed(6)}`,
     MARGEM,
-    220,
+    230,
   );
 
   if (graficoBuffer) {
