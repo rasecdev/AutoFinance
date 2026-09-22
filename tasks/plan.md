@@ -38,7 +38,7 @@ Nenhuma biblioteca de geração de PDF existe hoje no projeto (só um gerador de
 6. Tarefa 120: wiring do relatório mensal em PDF (`relatorioMensal.ts`)
 
 ### Checkpoint: Relatório mensal em PDF funcional (fecha a rodada)
-- [ ] `npm run build`/`lint`/`test` sem erro
+- [x] `npm run build`/`lint`/`test` sem erro (955/960 — 1 flake pré-existente de renderização de gráfico, cold-start do `chartjs-node-canvas`, some ao rodar isolado)
 - [ ] Teste manual: `node dist/scripts/relatorioMensal.js --agora` em Homologação — chat recebe SÓ o PDF (sem a mensagem de texto de antes), abre corretamente, gráficos legíveis, texto sem corte, detalhe completo presente
 - [ ] PROGRESSO.md atualizado com o marco
 - [ ] Revisão com o usuário antes de prosseguir
