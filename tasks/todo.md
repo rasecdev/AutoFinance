@@ -58,13 +58,13 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Imagem/P
 **Description:** Novo `src/relatorios/imagemSemanal.ts`, `montarImagemRelatorioSemanal(db, agora): Promise<Buffer>`. Agrega a janela da semana atual/anterior (reaproveita `agregarFinanceiroPeriodo`/`calcularJanelaPeriodo`/`calcularJanelaAnterior`, mesmo padrão de `montarRelatorioSemanal`). Monta um canvas próprio (pacote `canvas`, já presente transitivamente via `chartjs-node-canvas` — sem dependência nova) com: cabeçalho (período), receita/despesa/saldo consolidado com delta vs. semana anterior (`formatarDelta`, mover de `relatorioSemanal.ts` pra um módulo compartilhado, ex: `src/relatorios/formatarDelta.ts`), o gráfico de pizza (`montarDadosDespesaPorCategoria` + `renderizarGrafico`, carregado no canvas via `loadImage`/`drawImage`), e uma linha com o custo total de IA do período. **Deliberadamente NÃO inclui** saldo por conta individual nem uso de IA por fluxo/modelo — esse detalhe seria confuso numa imagem (mesmo motivo que tornou o texto confuso) e continua disponível via `relatorio(periodo=semana)` no chat, inalterado. Sem nenhuma despesa no período: pula o gráfico, canvas sai só com os números e "Nenhuma despesa no período".
 
 **Acceptance criteria:**
-- [ ] Com transações no período: retorna um buffer PNG válido contendo (verificável via dimensões/tamanho do canvas, não pixel a pixel) cabeçalho, os 3 números com delta, e o gráfico embutido
-- [ ] Sem nenhuma despesa no período: buffer PNG ainda válido, sem a região do gráfico (canvas mais baixo ou com aviso de texto no lugar)
-- [ ] Valor grande (ex: R$ 999.999,99) não corta nem sai da área do canvas
+- [x] Com transações no período: retorna um buffer PNG válido contendo (verificável via dimensões/tamanho do canvas, não pixel a pixel) cabeçalho, os 3 números com delta, e o gráfico embutido
+- [x] Sem nenhuma despesa no período: buffer PNG ainda válido, sem a região do gráfico (canvas mais baixo ou com aviso de texto no lugar)
+- [x] Valor grande (ex: R$ 999.999,99) não corta nem sai da área do canvas
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/relatorios/imagemSemanal.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/relatorios/imagemSemanal.test.ts`
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** Tarefa 116
 
