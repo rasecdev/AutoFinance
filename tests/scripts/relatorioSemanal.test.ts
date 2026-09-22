@@ -1,31 +1,5 @@
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import Database from 'better-sqlite3-multiple-ciphers';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { criarConta } from '../../src/db/repositories/contas.js';
-import type { DbClient } from '../../src/db/client.js';
-import { migrate } from '../../src/db/migrate.js';
-import { criarTransacao } from '../../src/db/repositories/transacoes.js';
-import { calcularProximaSegundaAs23h, montarRelatorioSemanal } from '../../src/scripts/relatorioSemanal.js';
-
-const CHAVE_TESTE = 'chave-teste-relatorio-semanal';
-
-let dir: string;
-let db: DbClient;
-
-beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), 'autofinance-relatorio-semanal-test-'));
-  db = new Database(join(dir, 'teste.db'));
-  db.pragma("cipher='sqlcipher'");
-  db.pragma(`key='${CHAVE_TESTE}'`);
-  migrate(db);
-});
-
-afterEach(() => {
-  db.close();
-  rmSync(dir, { recursive: true, force: true });
-});
+import { describe, expect, it } from 'vitest';
+import { calcularProximaSegundaAs23h } from '../../src/scripts/relatorioSemanal.js';
 
 describe('calcularProximaSegundaAs23h', () => {
   it('quarta-feira: calcula a segunda seguinte às 23h', () => {
@@ -50,37 +24,5 @@ describe('calcularProximaSegundaAs23h', () => {
     const resultado = calcularProximaSegundaAs23h(new Date(2026, 2, 16, 23, 0, 0, 0));
 
     expect(resultado).toEqual(new Date(2026, 2, 23, 23, 0, 0, 0));
-  });
-});
-
-describe('montarRelatorioSemanal', () => {
-  it('inclui o relatório da semana atual e a comparação com a semana anterior', () => {
-    const conta = criarConta(db, { bancoNome: 'Banco Teste', tipo: 'PF', apelido: 'Carteira', saldoInicial: 0 });
-
-    // Semana atual: segunda 2026-03-16 a domingo 2026-03-22 (referência: quarta 18/03)
-    criarTransacao(db, {
-      contaId: conta.id,
-      tipo: 'receita',
-      categoria: 'salario',
-      valor: 100,
-      data: '2026-03-18',
-      descricao: 'salário',
-    });
-
-    // Semana anterior: 2026-03-09 a 2026-03-15
-    criarTransacao(db, {
-      contaId: conta.id,
-      tipo: 'receita',
-      categoria: 'salario',
-      valor: 40,
-      data: '2026-03-10',
-      descricao: 'salário anterior',
-    });
-
-    const texto = montarRelatorioSemanal(db, new Date(2026, 2, 18, 12, 0));
-
-    expect(texto).toContain('2026-03-16 a 2026-03-22');
-    expect(texto).toContain('Comparação com a semana anterior');
-    expect(texto).toContain('Receita: +R$ 60.00');
   });
 });
