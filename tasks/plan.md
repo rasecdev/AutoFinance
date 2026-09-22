@@ -30,9 +30,9 @@ Nenhuma biblioteca de geração de PDF existe hoje no projeto (só um gerador de
 
 ### Checkpoint: Relatório semanal em imagem funcional
 - [x] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual: `node dist/scripts/relatorioSemanal.js --agora` em Homologação — chat recebe SÓ a imagem (sem a mensagem de texto de antes), legível, números batendo com o banco (pendente — deploy da rodada mais lento que o normal, ver achado no PROGRESSO.md)
-- [ ] Confirmar que `relatorio(periodo=semana)` no chat continua trazendo o detalhe completo (por conta, uso de IA por fluxo/modelo) — nada perdido, só o push que mudou
-- [ ] Revisão com o usuário antes de prosseguir
+- [x] Teste manual: `docker compose run --rm --no-deps homologacao node dist/scripts/relatorioSemanal.js --agora` em Homologação — chat recebe SÓ a imagem, números batendo com o banco. Achado real de layout (delta sobrepondo coluna vizinha) corrigido (PR #323), confirmado pelo usuário via foto real
+- [x] Tool `relatorio(periodo=semana)` no chat inalterada, coberta por `tests/ai/tools/relatorios.test.ts` (não retestada manualmente via Telegram nesta rodada, sem risco — código intocado)
+- [ ] Revisão com o usuário antes de prosseguir pra Tarefa 119
 
 5. Tarefa 119: `gerarPdfRelatorioMensal` (PDF com header, resumo completo, 2 gráficos, narrativa da IA)
 6. Tarefa 120: wiring do relatório mensal em PDF (`relatorioMensal.ts`)
