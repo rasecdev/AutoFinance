@@ -8,12 +8,24 @@ import { calcularJanelaAnterior, calcularJanelaPeriodo } from './janela.js';
 import { agregarUsoIaPeriodo } from './usoIa.js';
 
 const LARGURA = 800;
+const ALTURA_CABECALHO_FAIXA = 90;
 const ALTURA_CABECALHO = 340;
 const ALTURA_GRAFICO = 500;
 const MARGEM = 40;
 
+// Mesma paleta de pdfMensal.ts (COR_PRIMARIA/COR_ACENTO/COR_RECEITA/
+// COR_DESPESA) — os dois relatórios (semanal em imagem, mensal em PDF)
+// devem se ler como o mesmo produto, não dois estilos diferentes.
+const COR_PRIMARIA = '#1f2d3d';
+const COR_ACENTO = '#4e79a7';
+const COR_RECEITA = '#2e7d32';
+const COR_DESPESA = '#c62828';
+const COR_TEXTO = '#1a1a1a';
+const COR_TEXTO_MUTED = '#64748b';
+const COR_CARD_FUNDO = '#f8fafc';
+
 function formatarMoeda(valor: number): string {
-  return `R$ ${valor.toFixed(2)}`;
+  return `R$ ${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 // Imagem semanal deliberadamente curada (Tarefa 117, ver tasks/plan.md):
@@ -39,54 +51,74 @@ export async function montarImagemRelatorioSemanal(db: DbClient, agora: Date = n
 
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, LARGURA, altura);
-  ctx.fillStyle = '#1a1a1a';
 
-  ctx.font = 'bold 28px sans-serif';
-  ctx.fillText(`Relatório semanal — ${janelaAtual.inicio} a ${janelaAtual.fim}`, MARGEM, 50);
+  // Faixa de marca — mesmo COR_PRIMARIA do header do PDF mensal, pra ler
+  // como o mesmo produto em vez de dois estilos diferentes.
+  ctx.fillStyle = COR_PRIMARIA;
+  ctx.fillRect(0, 0, LARGURA, ALTURA_CABECALHO_FAIXA);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.fillText('AUTOFINANCE — RELATÓRIO SEMANAL', MARGEM, 34);
+  ctx.font = 'bold 22px sans-serif';
+  ctx.fillText(`${janelaAtual.inicio} a ${janelaAtual.fim}`, MARGEM, 62);
 
   const colunas = [
-    { rotulo: 'Receita', valor: financeiro.totalReceita, delta: financeiro.totalReceita - financeiroAnterior.totalReceita },
-    { rotulo: 'Despesa', valor: financeiro.totalDespesa, delta: financeiro.totalDespesa - financeiroAnterior.totalDespesa },
-    { rotulo: 'Saldo consolidado', valor: financeiro.saldoConsolidado, delta: undefined },
+    { rotulo: 'Receita', valor: financeiro.totalReceita, delta: financeiro.totalReceita - financeiroAnterior.totalReceita, cor: COR_RECEITA },
+    { rotulo: 'Despesa', valor: financeiro.totalDespesa, delta: financeiro.totalDespesa - financeiroAnterior.totalDespesa, cor: COR_DESPESA },
+    {
+      rotulo: 'Saldo consolidado',
+      valor: financeiro.saldoConsolidado,
+      delta: undefined,
+      cor: financeiro.saldoConsolidado >= 0 ? COR_RECEITA : COR_DESPESA,
+    },
   ];
-  const larguraColuna = (LARGURA - 2 * MARGEM) / colunas.length;
+  const larguraCartao = (LARGURA - 2 * MARGEM - 2 * 12) / colunas.length;
+  const yCartoes = ALTURA_CABECALHO_FAIXA + 24;
+  const alturaCartao = 92;
 
   colunas.forEach((coluna, indice) => {
-    const x = MARGEM + indice * larguraColuna;
-    ctx.font = '18px sans-serif';
-    ctx.fillStyle = '#555555';
-    ctx.fillText(coluna.rotulo, x, 110);
-    ctx.font = 'bold 32px sans-serif';
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fillText(formatarMoeda(coluna.valor), x, 150);
+    const x = MARGEM + indice * (larguraCartao + 12);
+
+    ctx.fillStyle = COR_CARD_FUNDO;
+    ctx.fillRect(x, yCartoes, larguraCartao, alturaCartao);
+    ctx.fillStyle = coluna.cor;
+    ctx.fillRect(x, yCartoes, 4, alturaCartao);
+
+    ctx.font = '11px sans-serif';
+    ctx.fillStyle = COR_TEXTO_MUTED;
+    ctx.fillText(coluna.rotulo.toUpperCase(), x + 16, yCartoes + 22);
+    ctx.font = 'bold 24px sans-serif';
+    ctx.fillStyle = COR_TEXTO;
+    ctx.fillText(formatarMoeda(coluna.valor), x + 16, yCartoes + 52);
+
     if (coluna.delta !== undefined) {
-      // Achado real de teste manual (2026-09-22): "R$ -600.00 vs. semana
-      // anterior" numa linha só é mais largo que a coluna (240px) e vaza
-      // por cima da coluna vizinha — quebrado em 2 linhas, valor maior +
-      // legenda menor, cada uma cabendo à vontade na largura da coluna.
-      ctx.font = 'bold 16px sans-serif';
-      ctx.fillStyle = coluna.delta >= 0 ? '#2e7d32' : '#c62828';
-      ctx.fillText(formatarDelta(coluna.delta), x, 175);
-      ctx.font = '13px sans-serif';
-      ctx.fillStyle = '#777777';
-      ctx.fillText('vs. semana anterior', x, 192);
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillStyle = coluna.delta >= 0 ? COR_RECEITA : COR_DESPESA;
+      ctx.fillText(formatarDelta(coluna.delta), x + 16, yCartoes + 72);
+      ctx.font = '11px sans-serif';
+      ctx.fillStyle = COR_TEXTO_MUTED;
+      ctx.fillText('vs. semana anterior', x + 16, yCartoes + 86);
     }
   });
 
-  ctx.font = '18px sans-serif';
-  ctx.fillStyle = '#555555';
-  ctx.fillText(
-    `Custo de IA no período: US$ ${usoIa.totalCustoEstimado.toFixed(6)}`,
-    MARGEM,
-    230,
-  );
+  const yCustoIa = yCartoes + alturaCartao + 30;
+  ctx.font = '15px sans-serif';
+  ctx.fillStyle = COR_TEXTO_MUTED;
+  ctx.fillText(`Custo de IA no período: US$ ${usoIa.totalCustoEstimado.toFixed(6)}`, MARGEM, yCustoIa);
+
+  const ySecaoGrafico = yCustoIa + 30;
+  ctx.fillStyle = COR_ACENTO;
+  ctx.fillRect(MARGEM, ySecaoGrafico - 11, 4, 14);
+  ctx.font = 'bold 14px sans-serif';
+  ctx.fillStyle = COR_PRIMARIA;
+  ctx.fillText('Despesa por categoria', MARGEM + 12, ySecaoGrafico);
 
   if (graficoBuffer) {
     const imagemGrafico = await loadImage(graficoBuffer);
     ctx.drawImage(imagemGrafico, 0, ALTURA_CABECALHO, LARGURA, ALTURA_GRAFICO);
   } else {
-    ctx.font = '18px sans-serif';
-    ctx.fillStyle = '#555555';
+    ctx.font = '15px sans-serif';
+    ctx.fillStyle = COR_TEXTO_MUTED;
     ctx.fillText('Nenhuma despesa no período.', MARGEM, ALTURA_CABECALHO + 30);
   }
 
