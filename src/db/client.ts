@@ -10,6 +10,10 @@ function openDatabase(env: Pick<Env, 'databasePath' | 'databaseEncryptionKey'>):
   db.pragma("cipher='sqlcipher'");
   db.pragma(`key='${env.databaseEncryptionKey}'`);
   db.pragma('foreign_keys = ON');
+  // Jobs em background (backup, expurgo, sync) rodam em processos separados
+  // contra o mesmo arquivo SQLite — sem isso, um write concorrente derruba o
+  // outro na hora com "database is locked" em vez de esperar a lock liberar.
+  db.pragma('busy_timeout = 5000');
   return db;
 }
 
