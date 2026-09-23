@@ -6,9 +6,11 @@ import {
   type ToolCallEsperada,
 } from '../db/repositories/casosTesteBenchmark.js';
 import { registrarUsoTokens } from '../db/repositories/usoTokens.js';
+import { gerarAnaliseQualidade, type DadosParaAnaliseQualidade } from './analisarQualidade.js';
 import { extrairComprovante, type ResultadoExtracaoComprovante } from './extracaoComprovante.js';
 import { interpretarPlanilha, type TransacaoPlanilha } from './interpretacaoPlanilha.js';
 import { removerChavesNulas, type UsageComCusto } from './openrouter.js';
+import { gerarResumoMensal, type DadosParaResumoMensal } from './relatorioMensal.js';
 import { SYSTEM_PROMPT } from './systemPrompt.js';
 import { montarToolsConversa } from './tools/conversaTools.js';
 import { paraDefinicaoOpenAI } from './tools/registry.js';
@@ -239,6 +241,102 @@ async function avaliarTranscricaoVoz(
   };
 }
 
+// analisar_qualidade/relatorio_mensal geram prosa livre, não um JSON
+// estruturado (diferente de leitura_comprovante/interpretar_planilha) — não
+// existe uma "resposta certa" única pra comparar por igualdade. Mas os dois
+// prompts exigem narrar fatos pré-calculados a partir do JSON de entrada
+// (regra explícita: "nunca calcule, só narre"), então o gabarito checa se
+// esses fatos aparecem certos no texto (presença de palavra-chave), não o
+// texto inteiro. resumir_contexto fica de fora do benchmark interno de
+// propósito: resume conversa livre, sem fato numérico fixo pra checar —
+// qualquer métrica de string aqui seria só um achismo disfarçado de número.
+function contemAlgumaPalavra(textoNormalizado: string, palavras: string[]): boolean {
+  return palavras.some((palavra) => textoNormalizado.includes(palavra));
+}
+
+export type FatosEsperadosRelatorioMensal = {
+  categoriaMaiorGasto?: string;
+  saldoPositivo?: boolean;
+  custoIaSubiu?: boolean;
+};
+
+function baterFatosRelatorioMensal(texto: string, esperado: FatosEsperadosRelatorioMensal): boolean {
+  const textoNormalizado = texto.toLowerCase();
+
+  if (esperado.categoriaMaiorGasto && !textoNormalizado.includes(esperado.categoriaMaiorGasto.toLowerCase())) {
+    return false;
+  }
+
+  if (esperado.saldoPositivo !== undefined) {
+    const dizPositivo = contemAlgumaPalavra(textoNormalizado, ['positivo', 'superávit', 'superavit']);
+    const dizNegativo = contemAlgumaPalavra(textoNormalizado, ['negativo', 'déficit', 'deficit']);
+    if (esperado.saldoPositivo ? !dizPositivo : !dizNegativo) return false;
+  }
+
+  if (esperado.custoIaSubiu !== undefined) {
+    const dizSubiu = contemAlgumaPalavra(textoNormalizado, ['subiu', 'aumentou', 'cresceu', 'alta']);
+    const dizCaiu = contemAlgumaPalavra(textoNormalizado, ['caiu', 'diminuiu', 'reduziu', 'queda']);
+    if (esperado.custoIaSubiu ? !dizSubiu : !dizCaiu) return false;
+  }
+
+  return true;
+}
+
+async function avaliarRelatorioMensal(
+  client: OpenAI,
+  _db: DbClient,
+  modelo: string,
+  caso: CasoTesteBenchmark,
+): Promise<ResultadoAvaliacaoCaso> {
+  const dados = JSON.parse(caso.entrada) as DadosParaResumoMensal;
+  const { resumoTexto, tokensPrompt, tokensCompletion, custoReal } = await gerarResumoMensal(client, dados, modelo);
+
+  return {
+    acerto: baterFatosRelatorioMensal(resumoTexto, caso.saidaEsperada as FatosEsperadosRelatorioMensal),
+    tokensPrompt,
+    tokensCompletion,
+    custo: custoReal,
+  };
+}
+
+export type FatosEsperadosAnaliseQualidade = {
+  entidadeDestaque?: string;
+  situacaoPiorou?: boolean;
+};
+
+function baterFatosAnaliseQualidade(texto: string, esperado: FatosEsperadosAnaliseQualidade): boolean {
+  const textoNormalizado = texto.toLowerCase();
+
+  if (esperado.entidadeDestaque && !textoNormalizado.includes(esperado.entidadeDestaque.toLowerCase())) {
+    return false;
+  }
+
+  if (esperado.situacaoPiorou !== undefined) {
+    const dizPiorou = contemAlgumaPalavra(textoNormalizado, ['piorou', 'piora', 'aumentou', 'subiu']);
+    const dizMelhorou = contemAlgumaPalavra(textoNormalizado, ['melhorou', 'melhora', 'reduziu', 'caiu']);
+    if (esperado.situacaoPiorou ? !dizPiorou : !dizMelhorou) return false;
+  }
+
+  return true;
+}
+
+async function avaliarAnalisarQualidade(
+  client: OpenAI,
+  _db: DbClient,
+  modelo: string,
+  caso: CasoTesteBenchmark,
+): Promise<ResultadoAvaliacaoCaso> {
+  const dados = JSON.parse(caso.entrada) as DadosParaAnaliseQualidade;
+  const { analiseTexto, tokensPrompt, tokensCompletion, custoReal } = await gerarAnaliseQualidade(client, dados, modelo);
+
+  return {
+    acerto: baterFatosAnaliseQualidade(analiseTexto, caso.saidaEsperada as FatosEsperadosAnaliseQualidade),
+    tokensPrompt,
+    tokensCompletion,
+    custo: custoReal,
+  };
+}
+
 type EstrategiaAvaliacao = (
   client: OpenAI,
   db: DbClient,
@@ -251,6 +349,8 @@ const ESTRATEGIAS: Record<string, EstrategiaAvaliacao> = {
   leitura_comprovante: avaliarLeituraComprovante,
   interpretar_planilha: avaliarInterpretarPlanilha,
   transcricao_voz: avaliarTranscricaoVoz,
+  relatorio_mensal: avaliarRelatorioMensal,
+  analisar_qualidade: avaliarAnalisarQualidade,
 };
 
 export async function executarBenchmarkFluxo(

@@ -5,10 +5,11 @@ import type { DbClient } from '../db/client.js';
 import { obterModeloRoteamento } from '../db/repositories/roteamentoTarefas.js';
 import type { UsageComCusto } from './openrouter.js';
 
-// Mesmo modelo-texto barato já usado em fluxos de análise/resumo (não é caso
-// de visão, não precisa do modelo de imagem usado em leitura_comprovante) —
-// mesmo padrão de MODELO_ANALISAR_QUALIDADE/MODELO_RESUMO.
-export const MODELO_INTERPRETAR_PLANILHA = 'openai/gpt-4o-mini';
+// Trocado pro openai/gpt-6-luna (2026-09-22): benchmark interno do fluxo
+// interpretar_planilha empatou 100% de acerto com o gpt-4o-mini anterior
+// (2/2 casos), com custo menor — mesma decisão já tomada em
+// MODELO_LEITURA_COMPROVANTE (extracaoComprovante.ts).
+export const MODELO_INTERPRETAR_PLANILHA = 'openai/gpt-6-luna';
 
 export const FLUXO_INTERPRETAR_PLANILHA = 'interpretar_planilha';
 

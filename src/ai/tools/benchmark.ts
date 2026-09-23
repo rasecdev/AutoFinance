@@ -47,7 +47,14 @@ export function criarToolCriarCasoTesteBenchmark(db: DbClient): ToolDefinition {
 // caso — silenciosamente comparava contra um fluxo que não existe. Enum fixo
 // (não string livre) elimina essa classe de erro mesmo agora que o fluxo
 // virou parâmetro de verdade (Fase 6 parte 14, cobertura de mídia).
-const FLUXOS_BENCHMARK = ['conversa_texto', 'leitura_comprovante', 'interpretar_planilha', 'transcricao_voz'] as const;
+const FLUXOS_BENCHMARK = [
+  'conversa_texto',
+  'leitura_comprovante',
+  'interpretar_planilha',
+  'transcricao_voz',
+  'relatorio_mensal',
+  'analisar_qualidade',
+] as const;
 
 const schemaRodarBenchmarkInterno = z.object({
   modelos_candidatos: z.array(z.string().min(1)).min(1),
@@ -64,7 +71,7 @@ export function criarToolRodarBenchmarkInterno(client: OpenAI, db: DbClient): To
   return {
     name: 'rodar_benchmark_interno',
     description:
-      'Roda o benchmark interno: chama cada modelo candidato contra todos os casos de teste já curados de um fluxo e compara o resultado com o gabarito. Fluxos disponíveis: "conversa_texto" (acerto de tool calling — qual ferramenta e com quais argumentos, padrão quando não informado), "leitura_comprovante" (acerto dos campos extraídos de foto/PDF de comprovante), "interpretar_planilha" (acerto das transações extraídas de Excel) e "transcricao_voz" (acerto da transcrição de áudio). Gasta dinheiro real (uma chamada de IA por caso × modelo) — só rode quando o usuário pedir explicitamente pra comparar modelos, nunca por conta própria. modelos_candidatos são slugs do OpenRouter (ex: "openai/gpt-4o-mini", "qwen/qwen3-32b"). Ação de alto impacto (custo real) — só executa após confirmação.',
+      'Roda o benchmark interno: chama cada modelo candidato contra todos os casos de teste já curados de um fluxo e compara o resultado com o gabarito. Fluxos disponíveis: "conversa_texto" (acerto de tool calling — qual ferramenta e com quais argumentos, padrão quando não informado), "leitura_comprovante" (acerto dos campos extraídos de foto/PDF de comprovante), "interpretar_planilha" (acerto das transações extraídas de Excel), "transcricao_voz" (acerto da transcrição de áudio), "relatorio_mensal" e "analisar_qualidade" (esses dois geram prosa livre, então o acerto checa se os fatos-chave pré-calculados — ex: categoria de maior gasto, saldo positivo/negativo, se a situação piorou ou melhorou — aparecem certos no texto, não uma comparação exata). Gasta dinheiro real (uma chamada de IA por caso × modelo) — só rode quando o usuário pedir explicitamente pra comparar modelos, nunca por conta própria. modelos_candidatos são slugs do OpenRouter (ex: "openai/gpt-4o-mini", "qwen/qwen3-32b"). Ação de alto impacto (custo real) — só executa após confirmação.',
     schema: schemaRodarBenchmarkInterno,
     requerConfirmacao: true,
     resumoConfirmacao: (args) => {
