@@ -50,7 +50,7 @@
     <rect x="265" y="566" width="30" height="25" fill="#1c2430"/>
     <rect x="230" y="591" width="100" height="10" rx="4" fill="#1c2430"/>
 
-    <text x="280" y="624" font-size="10.5" fill="#4a5568" text-anchor="middle" font-weight="700">VM Oracle Cloud &#8212; Always Free</text>
+    <text x="280" y="624" font-size="10.5" fill="#4a5568" text-anchor="middle" font-weight="700">VM</text>
 
     <!-- arrows VM <-> OpenRouter (vertical) -->
     <line x1="260" y1="644" x2="260" y2="714" stroke="#5b6472" stroke-width="1.5" marker-end="url(#arrow)"/>
