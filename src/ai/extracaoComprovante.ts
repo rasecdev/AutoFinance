@@ -4,17 +4,12 @@ import type { DbClient } from '../db/client.js';
 import { obterModeloRoteamento } from '../db/repositories/roteamentoTarefas.js';
 import type { UsageComCusto } from './openrouter.js';
 
-// Achado real de teste manual (2026-09-22, usuário reportou leitura de foto
-// inconsistente): "Flash Lite" classificava a MESMA foto como "não é
-// comprovante" em algumas tentativas e corretamente em outras — resposta
-// bem formada (não é bug de parsing, ver motivoFalhaFormato abaixo), é
-// inconsistência real do modelo na tarefa. Trocado pro tier "Flash" (não
-// lite) da mesma família, validado lado a lado com a foto que falhava antes
-// de fixar a troca — confirmado pelo usuário ("melhorou bastante"). Modelo
-// próprio, isolado de MODELO_PADRAO — usado como fallback quando
-// roteamento_tarefas não tem linha pro fluxo ainda (mesmo padrão de
-// MODELO_ANALISAR_QUALIDADE/MODELO_TRANSCRICAO_VOZ).
-export const MODELO_LEITURA_COMPROVANTE = 'google/gemini-2.5-flash';
+// Trocado pro openai/gpt-6-luna (2026-09-22): benchmark interno do fluxo
+// leitura_comprovante validado pelo usuário contra o google/gemini-2.5-flash
+// anterior, com custo bem menor. Modelo próprio, isolado de MODELO_PADRAO —
+// usado como fallback quando roteamento_tarefas não tem linha pro fluxo
+// ainda (mesmo padrão de MODELO_ANALISAR_QUALIDADE/MODELO_TRANSCRICAO_VOZ).
+export const MODELO_LEITURA_COMPROVANTE = 'openai/gpt-6-luna';
 
 export const FLUXO_LEITURA_COMPROVANTE = 'leitura_comprovante';
 

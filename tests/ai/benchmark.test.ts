@@ -5,7 +5,9 @@ import Database from 'better-sqlite3-multiple-ciphers';
 import type OpenAI from 'openai';
 import writeXlsxFile from 'write-excel-file/node';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { DadosParaAnaliseQualidade } from '../../src/ai/analisarQualidade.js';
 import { executarBenchmarkFluxo } from '../../src/ai/benchmark.js';
+import type { DadosParaResumoMensal } from '../../src/ai/relatorioMensal.js';
 import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
 import { criarCasoTeste } from '../../src/db/repositories/casosTesteBenchmark.js';
@@ -362,6 +364,124 @@ describe('executarBenchmarkFluxo — transcricao_voz (Fase 6 parte 14)', () => {
     const { client } = criarClienteFalsoTranscricao('comprei um carro novo');
 
     const resultados = await executarBenchmarkFluxo(client, db, 'transcricao_voz', ['modelo']);
+
+    expect(resultados[0]).toMatchObject({ acertos: 0, acuracia: 0 });
+  });
+});
+
+function criarClienteFalsoTextoLivre(texto: string, cost = 0.0001) {
+  const create = vi.fn(async () => ({
+    choices: [{ message: { content: texto } }],
+    usage: { prompt_tokens: 50, completion_tokens: 10, cost },
+  }));
+  return { client: { chat: { completions: { create } } } as unknown as OpenAI, create };
+}
+
+describe('executarBenchmarkFluxo — relatorio_mensal (fatos-chave, prosa livre)', () => {
+  function dadosRelatorioMensal(overrides: Partial<DadosParaResumoMensal> = {}): DadosParaResumoMensal {
+    return {
+      inicio: '2026-09-01',
+      fim: '2026-09-30',
+      financeiro: {
+        totalReceita: 100,
+        totalDespesa: 50,
+        porCategoria: [{ categoria: 'Mercado', totalReceita: 0, totalDespesa: 50 }],
+        porConta: [],
+        saldoConsolidado: 50,
+      },
+      usoIa: {
+        porFluxoModelo: [],
+        totalTokensPrompt: 0,
+        totalTokensCompletion: 0,
+        totalCustoEstimado: 0.1,
+        interacoesIncorretas: 0,
+        metrica1: [],
+        metrica2: [],
+        metrica3: [],
+      },
+      financeiroAnterior: { totalReceita: 100, totalDespesa: 50, porCategoria: [], porConta: [], saldoConsolidado: 50 },
+      usoIaAnterior: {
+        porFluxoModelo: [],
+        totalTokensPrompt: 0,
+        totalTokensCompletion: 0,
+        totalCustoEstimado: 0.2,
+        interacoesIncorretas: 0,
+        metrica1: [],
+        metrica2: [],
+        metrica3: [],
+      },
+      ...overrides,
+    };
+  }
+
+  it('conta acerto quando o texto narra os fatos-chave certos', async () => {
+    criarCasoTeste(db, {
+      fluxo: 'relatorio_mensal',
+      entrada: JSON.stringify(dadosRelatorioMensal()),
+      saidaEsperada: { categoriaMaiorGasto: 'Mercado', saldoPositivo: true, custoIaSubiu: false },
+      origem: 'curado',
+    });
+    const { client } = criarClienteFalsoTextoLivre(
+      'O mês fechou com saldo positivo, maior gasto em Mercado, e o custo de IA caiu em relação ao mês anterior.',
+    );
+
+    const resultados = await executarBenchmarkFluxo(client, db, 'relatorio_mensal', ['modelo']);
+
+    expect(resultados[0]).toMatchObject({ acertos: 1, acuracia: 1 });
+  });
+
+  it('não conta acerto quando o texto erra a direção do saldo', async () => {
+    criarCasoTeste(db, {
+      fluxo: 'relatorio_mensal',
+      entrada: JSON.stringify(dadosRelatorioMensal()),
+      saidaEsperada: { saldoPositivo: true },
+      origem: 'curado',
+    });
+    const { client } = criarClienteFalsoTextoLivre('O mês fechou com saldo negativo.');
+
+    const resultados = await executarBenchmarkFluxo(client, db, 'relatorio_mensal', ['modelo']);
+
+    expect(resultados[0]).toMatchObject({ acertos: 0, acuracia: 0 });
+  });
+});
+
+describe('executarBenchmarkFluxo — analisar_qualidade (fatos-chave, prosa livre)', () => {
+  function dadosAnaliseQualidade(overrides: Partial<DadosParaAnaliseQualidade> = {}): DadosParaAnaliseQualidade {
+    return {
+      inicio: '2026-09-01',
+      fim: '2026-09-30',
+      atual: { porFluxoModelo: [], erroPorContexto: [], totalInteracoes: 10, totalIncorretas: 5, totalErrosTecnicos: 0 },
+      anterior: { porFluxoModelo: [], erroPorContexto: [], totalInteracoes: 10, totalIncorretas: 1, totalErrosTecnicos: 0 },
+      ...overrides,
+    };
+  }
+
+  it('conta acerto quando o texto cita a entidade certa e a direção certa', async () => {
+    criarCasoTeste(db, {
+      fluxo: 'analisar_qualidade',
+      entrada: JSON.stringify(dadosAnaliseQualidade()),
+      saidaEsperada: { entidadeDestaque: 'conversa_texto', situacaoPiorou: true },
+      origem: 'curado',
+    });
+    const { client } = criarClienteFalsoTextoLivre(
+      'A qualidade do fluxo conversa_texto piorou bastante em relação ao período anterior.',
+    );
+
+    const resultados = await executarBenchmarkFluxo(client, db, 'analisar_qualidade', ['modelo']);
+
+    expect(resultados[0]).toMatchObject({ acertos: 1, acuracia: 1 });
+  });
+
+  it('não conta acerto quando o texto erra a direção (diz que melhorou quando piorou)', async () => {
+    criarCasoTeste(db, {
+      fluxo: 'analisar_qualidade',
+      entrada: JSON.stringify(dadosAnaliseQualidade()),
+      saidaEsperada: { situacaoPiorou: true },
+      origem: 'curado',
+    });
+    const { client } = criarClienteFalsoTextoLivre('A qualidade melhorou em relação ao período anterior.');
+
+    const resultados = await executarBenchmarkFluxo(client, db, 'analisar_qualidade', ['modelo']);
 
     expect(resultados[0]).toMatchObject({ acertos: 0, acuracia: 0 });
   });
