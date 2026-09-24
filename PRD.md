@@ -45,12 +45,15 @@ Agrupadas pelo mesmo recorte do "Resumo financeiro" no PLANO.md. Cada uma mapeia
 **Consulta e visão geral**
 - Como usuário, quero perguntar qualquer coisa que uma ferramenta fixa não cobre (ex: "gastei mais aos sábados?") e receber gráfico quando fizer sentido, para não ficar limitado às perguntas que o bot já "pensou em responder" (`consultar_dados_dinamico`/`gerar_grafico`).
 - Como usuário, quero ver meu patrimônio líquido consolidado e uma projeção de fluxo de caixa, para saber se vou ter saldo suficiente até o próximo pagamento (`consultar_patrimonio_liquido`/`projetar_fluxo_caixa`).
-- Como usuário, quero um relatório semanal/mensal automático e um diário sob demanda, para acompanhar sem virar ruído de notificação todo dia.
+- Como usuário, quero um relatório semanal (imagem) e mensal (PDF) automático, além de um diário sob demanda, para acompanhar de forma visual e fácil de ler, sem virar ruído de notificação todo dia.
 
 **Automação de captura**
 - Como usuário, quero que fatura e boleto de parcela cheguem por e-mail e sejam lançados sozinhos (com minha confirmação), para não precisar digitar dado que já está estruturado num e-mail (Fase 7).
 - Como usuário, quero lembrete automático no Google Calendar pra cada vencimento, removido sozinho quando eu já tiver pago, para nunca esquecer uma data (Fase 7).
 - Como usuário, quero que meu extrato bancário seja conferido automaticamente contra o que já lancei, sem duplicar gasto de fatura/parcela já contado, para o chat deixar de ser meu único jeito de lançar dado (Fase 8, Open Finance).
+
+**Canais**
+- Como usuário, quero receber relatório e alerta também pelo WhatsApp, em paralelo ao Telegram, para não depender de estar num único app pra ser avisado (Fase 9).
 
 **Confiança no uso de IA**
 - Como usuário, quero que o bot pergunte antes de agir sempre que houver dúvida real (conta ambígua, valor incerto), para nunca ter um lançamento errado gravado por suposição.
@@ -84,6 +87,7 @@ Não há meta de crescimento/aquisição (produto single-user) — sucesso é me
 | 6 | Refinamentos: relatórios automáticos, benchmark de qualidade, consulta dinâmica/gráfico, projeções |
 | 7 | Integração com e-mail (fatura/boleto) e Google Calendar |
 | 8 | Agregação bancária via Open Finance ("Meu Pluggy") |
+| 9 | Multi-canal: relatórios e alertas também via WhatsApp (WAHA), em paralelo ao Telegram |
 
 ## Princípios de produto (aplicam-se a toda decisão de escopo)
 
