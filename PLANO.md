@@ -986,6 +986,7 @@ Perguntas já identificadas, ainda sem resposta fechada — nenhuma bloqueia o t
 
 - **Subcategoria hierárquica pra categoria** — reaberta em 2026-09-11 (ver [ADR 0002](docs/adr/0002-categoria-continua-texto-livre.md)): categoria segue texto livre por ora; taxonomia já pesquisada (`tasks/wayfinder/research/taxonomia-categorias-br.md`) fica de referência pra quando/se isso for revisitado com dado real de uso.
 - **Multi-moeda** *(mesmo achado da comparação com apps comerciais)* — o projeto assume Real (BRL) implicitamente em todo o design (valores, relatórios, patrimônio líquido) — nunca foi decisão explícita de ficar fora, só nunca apareceu como necessidade. Só vira relevante se você tiver conta/gasto em moeda estrangeira; do contrário, adicionar isso seria complexidade sem uso real (câmbio, conversão pra relatório consolidado).
+- **Resumo público de avaliação** *(identificado em 2026-09-28, ao comparar com o `docs/avaliacao.md` do `conductor`)* — `interacoes_ia`, `benchmarksModelos` e `analisesQualidade` já geram o dado de qualidade/custo por modelo, mas hoje só existe implícito no banco/código; não há um documento resumindo metodologia e números pra quem olha o repositório de fora. Vira relevante quando o projeto for usado como estudo de caso público (ver seção "Estudo de caso público no LinkedIn").
 
 ## Fora de escopo (decidido conscientemente, não graduará sozinho)
 
