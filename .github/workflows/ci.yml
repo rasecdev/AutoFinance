@@ -3,6 +3,7 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 jobs:
   gitleaks:
@@ -51,7 +52,14 @@ jobs:
 
   deploy:
     needs: [gitleaks, node, docker]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/development' || github.ref == 'refs/heads/master')
+    # Homologação sobe sozinha a cada push em development. Produção nunca é automática
+    # (ver CLAUDE.md "Promoção development → master") — só dispara via workflow_dispatch
+    # manual com a master já no estado que se quer publicar (achado real: push direto em
+    # master, incluindo os commits antigos das Tarefas 1/2, disparava deploy de produção
+    # com .env.producao ainda não preenchido, derrubando a VM em crash-loop).
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/development') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master')
     runs-on: ubuntu-latest
     steps:
       - name: Definir ambiente
