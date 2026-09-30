@@ -1,0 +1,46 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  deploy:
+    # Homologação sobe sozinha a cada push em development que passou no CI. Produção nunca é
+    # automática (ver CLAUDE.md "Promoção development → master") — só dispara via
+    # workflow_dispatch manual com a master já no estado que se quer publicar (achado real:
+    # push direto em master, incluindo os commits antigos das Tarefas 1/2, disparava deploy de
+    # produção com .env.producao ainda não preenchido, derrubando a VM em crash-loop).
+    #
+    # Roda via workflow_run (após o workflow CI, separado em ci.yml) em vez de no mesmo
+    # workflow, pra falha de deploy não deixar o badge de CI do README vermelho enquanto
+    # lint/test/docker continuam passando.
+    if: |
+      github.event.workflow_run.conclusion == 'success' &&
+      (
+        (github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'development') ||
+        (github.event.workflow_run.event == 'workflow_dispatch' && github.event.workflow_run.head_branch == 'master')
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - name: Definir ambiente
+        id: ambiente
+        run: |
+          if [ "${{ github.event.workflow_run.head_branch }}" = "master" ]; then
+            echo "nome=producao" >> "$GITHUB_OUTPUT"
+          else
+            echo "nome=homologacao" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Configurar acesso SSH à VM
+        run: |
+          install -m 700 -d ~/.ssh
+          echo "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo "${{ secrets.VM_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+      - name: Disparar deploy na VM
+        run: |
+          # A chave SSH usada aqui é restrita (via `command=` no authorized_keys, usuário
+          # dedicado sem sudo na VM) a rodar só /opt/autofinance-deploy/deploy.sh — o texto
+          # abaixo vira só o $SSH_ORIGINAL_COMMAND lido por esse script, não um comando livre.
+          ssh -i ~/.ssh/deploy_key -o UserKnownHostsFile=~/.ssh/known_hosts "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" "${{ steps.ambiente.outputs.nome }}"
