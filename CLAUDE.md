@@ -24,9 +24,11 @@ Por tarefa do `tasks/todo.md`:
 
 Nos checkpoints do `tasks/plan.md` (fim de cada sub-fase):
 - Rodar a lista de verificação do checkpoint inteira em `development` (já com os PRs das tarefas mergeados).
-- Registrar o marco no PROGRESSO.md (commit direto em `development`, sem PR — é só documentação do estado, não uma tarefa do todo.md).
+- Registrar o marco no PROGRESSO.md via branch própria (`docs/checkpoint-<slug>`) + PR contra `development` — push direto não é mais possível, ver abaixo.
 - Confirmar que todas as issues do milestone da rodada fecharam (todas via `Closes #N` no merge das tarefas) e fechar o milestone.
 - **Pausar para revisão do usuário antes de prosseguir pra próxima sub-fase.**
+
+**`master` e `development` são protegidas por um ruleset do GitHub** (deletion + non-fast-forward bloqueados, CI — `gitleaks`, `node`, `docker` — obrigatória antes de qualquer push, sem bypass nem pro owner). Push direto não é mais possível em nenhuma das duas, mesmo pra commits de documentação; tudo passa por branch + PR, inclusive fora do ciclo de tarefas.
 
 **Promoção `development` → `master` (produção) nunca é automática.** Só acontece quando o usuário disser explicitamente que quer promover — depois de testar manualmente o fluxo de verdade em Homologação, não só CI verde. CI passando é pré-requisito pra mergear em `development`, mas não autoriza produção sozinho.
 
