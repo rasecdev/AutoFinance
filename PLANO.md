@@ -608,6 +608,56 @@ Sequenciada depois da Fase 8 (última fase planejada até aqui) — decisão reg
 - **Rodada 1 desta fase (a ser planejada): só mensagens proativas (relatório semanal/mensal, alertas de preço/despesa fixa, erro crítico) também via WhatsApp, em paralelo ao Telegram — sem chat bidirecional pelo WhatsApp ainda.** Motivo do corte: os handlers de conversa (`src/bot/handlers/*`, roteamento em `router.ts`, teclado de confirmação, rastreio de resposta) são profundamente acoplados ao `Context` do `grammy` em ~20 arquivos — uma abstração de canal completa pro chat interativo é a "Rodada 2", fase própria, maior e mais arriscada, não bloqueia o valor imediato de já receber relatório/alerta no WhatsApp. Os dois canais ficam ativos ao mesmo tempo (mesma mensagem proativa sai pros dois, quando WhatsApp estiver configurado) — não "Homologação = Telegram, Produção = WhatsApp".
 - **Ambientes**: cada ambiente (Homologação/Produção) usa seu próprio número de telefone dedicado — mesmo princípio de isolamento total já usado em todo o resto do projeto (banco, bot Telegram, credenciais próprias por ambiente), já que uma sessão WAHA representa um único número.
 
+### Fase 10 — Regionalização (i18n: português/inglês/espanhol)
+Spec sintetizada via skill `to-spec` a partir de sessão de `grilling` (2026-09-24/2026-10-02). Publicada aqui, não no GitHub Issues, seguindo a mesma decisão já registrada em "Skills de suporte à implementação" (linha ~966): `to-spec` não publica no tracker neste projeto, o lugar de spec é o `PLANO.md`. Milestone/issues de tarefa continuam nascendo só na etapa de `planning-and-task-breakdown`, como em toda fase anterior.
+
+**Problema.** O bot só fala português — hoje strings fixas, resposta livre da IA (`SYSTEM_PROMPT` em `src/ai/systemPrompt.ts`) e relatórios visuais (`imagemSemanal.ts`, `pdfMensal.ts`) são 100% hardcoded em pt-BR. O usuário quer poder usar o bot (entender e ser entendido) também em inglês e espanhol.
+
+**Solução.** O bot entende e responde em português, inglês ou espanhol, com um idioma ativo único, global por instância (Produção/Homologação já isoladas por ambiente, nunca precisou ser por `chat_id`), trocável via comando de barra, cobrindo strings fixas + conversa livre da IA + relatórios visuais, só no canal Telegram por ora.
+
+**Histórias de usuário.**
+1. Como usuário do bot, quero trocar o idioma ativo com um comando (`/idioma en`/`/idioma es`/`/idioma pt`), pra não ficar travado em português.
+2. Como usuário, quero que o bot confirme o idioma trocado numa mensagem de resposta, pra saber que a troca funcionou.
+3. Como usuário, quero que `/ajuda` e as descrições do menu "/" do Telegram apareçam no idioma ativo.
+4. Como usuário, quero que toda mensagem de confirmação, erro e aviso (ex: alerta de preço, despesa fixa, limite de cartão) saia no idioma ativo.
+5. Como usuário, quero poder escrever pro bot em inglês ou espanhol e ser entendido do mesmo jeito que em português (registrar transação, perguntar saldo, etc.).
+6. Como usuário, quero que a resposta da IA na conversa livre (`conversa_texto`) venha no idioma ativo, não sempre em português.
+7. Como usuário, quero que o relatório semanal (imagem) e o mensal (PDF) tragam os textos fixos (títulos, rótulos de gráfico, "nenhuma despesa no período") no idioma ativo.
+8. Como usuário, quero que números, datas e valores em R$ continuem no formato pt-BR de sempre, independente do idioma do texto, pra não misturar duas convenções novas na mesma mudança.
+9. Como usuário, quero que categorias que eu digitar em outro idioma sejam aceitas como texto livre, sem o bot tentar "corrigir" ou normalizar pra um idioma canônico.
+10. Como usuário, se eu nunca trocar o idioma, quero que o bot continue respondendo em português exatamente como hoje (sem surpresa no deploy dessa feature).
+
+**Decisões de implementação.**
+- Novo módulo `src/i18n/` (nome a definir no detalhamento de tarefas): catálogo de strings por idioma (objeto plano `chave → texto`, com interpolação simples de parâmetros) + função `t(chave, idioma, params?)`. Sem dependência nova (`i18next` etc. descartado — volume de ~60 chaves não justifica).
+- Nova migration com tabela singleton (ex: `idioma_bot`, uma linha única, sem `chat_id` — decisão consciente de ficar global, diferente do padrão por-chat de `bot_pausado`/migration 0017, porque aqui não há necessidade real de granularidade por chat). Repositório próprio (`get`/`set`), mesmo padrão simples de `src/db/repositories/botPausado.ts`.
+- Linha inicial nasce com `pt` (sem auto-detect de `ctx.from.language_code` — avaliado e descartado: o ganho é marginal já que o idioma é global e o usuário já está em pt, e simplifica a lógica/teste).
+- Novo comando de barra (`/idioma <pt|en|es>`), registrado em `src/bot/comandos.ts` junto dos demais; grava o valor validado (enum fixo) via o repositório novo e responde confirmando a troca no idioma recém-selecionado.
+- `SYSTEM_PROMPT` (`src/ai/systemPrompt.ts`) continua com as 14 regras escritas em português (fonte única) — ganha uma diretiva dinâmica interpolada em runtime ("responda sempre em {idioma}"), confiando na compreensão multilíngue nativa dos modelos já roteados (não precisa de 3 prompts paralelos).
+- `setMyCommands` (`src/index.ts`) e os textos de `/ajuda`/demais handlers passam a resolver a descrição/mensagem via `t()` no idioma ativo lido do repositório, em vez de string literal.
+- Relatórios visuais (`imagemSemanal.ts`, `pdfMensal.ts`) trocam os textos fixos hoje hardcoded (títulos, "Despesa por categoria", "Nenhuma despesa no período", "Por categoria"/"Por conta", numeração de página) por chamadas a `t()`, recebendo o idioma ativo como parâmetro de quem monta o relatório (jobs `relatorioSemanal.ts`/`relatorioMensal.ts`).
+- Formatação de número/data/moeda **não muda** — continua sempre pt-BR (`R$ 1.234,56`, `dd/mm/aaaa`), independente do idioma do texto. Não reabre a decisão em aberto de multi-moeda.
+- Categoria em texto livre **sem normalização** entre idiomas — mesma extensão do risco já aceito consciente no [ADR 0002](docs/adr/0002-categoria-continua-texto-livre.md).
+- Escopo de canal: só Telegram. O desenho (strings fora do `Context` do grammy, idioma lido de uma tabela global) deve servir o WhatsApp (Fase 9) naturalmente quando a Rodada 2 dessa fase existir, sem acoplamento forçado agora.
+
+**Decisões de teste.**
+- `t()`: teste unitário puro (chave existente, chave ausente, interpolação de parâmetro) — mesmo padrão de `src/relatorios/formatarDelta.ts`.
+- Repositório do idioma ativo: teste de integração contra SQLite real (get default, set, get depois do set) — mesmo padrão de `tests/db/repositories/botPausado.test.ts` (ou equivalente).
+- Handler `/idioma`: teste com `ctx` mockado (valor válido grava e confirma; valor inválido rejeita sem gravar) — mesmo padrão de `pausar.ts`/`retomar.ts`.
+- Diretiva dinâmica do `SYSTEM_PROMPT`: teste unitário puro na função que monta o prompt, sem chamada real de IA.
+- Relatórios: estende os testes existentes de `imagemSemanal.ts`/`pdfMensal.ts`, passando idioma diferente e conferindo o texto traduzido esperado.
+- Regressão: suíte completa deve continuar passando com o idioma padrão (`pt`) sem nenhuma mudança de comportamento visível pra quem nunca troca de idioma.
+
+**Fora de escopo.**
+- Multiusuário / idioma por `chat_id` — permanece decisão de "Fora de escopo" do projeto; só reabre se a necessidade aparecer de verdade.
+- Troca de idioma via linguagem natural na conversa (ex: "fala em inglês comigo") — só comando de barra nesta rodada.
+- Auto-detecção do `language_code` do Telegram — avaliada e descartada (ver "Decisões de implementação").
+- Formatação de número/data/moeda por idioma — continua fixa em pt-BR.
+- Normalização/tradução de categoria entre idiomas.
+- Canal WhatsApp (Fase 9) — fora desta rodada, desenho só precisa não impedir a herança futura.
+- Tradução de dado vindo de fonte externa (ex: categoria em inglês já devolvida pela Pluggy, Fase 8) — sem mudança, é dado bruto de terceiro, não texto do bot.
+
+**Notas adicionais.** Sessão de descoberta completa (`grilling`, 3 rounds) nesta conversa, decisões já confirmadas pelo usuário antes desta spec ser escrita. Próximo passo no pipeline deste projeto: `planning-and-task-breakdown` (quebra em tarefas + milestone/issues no GitHub), como em toda fase anterior — não pular direto pra implementação sem esse passo, por convenção já estabelecida no `CLAUDE.md` do repositório.
+
 ---
 
 ## Papel do chat depois da automação (e-mail + Open Finance)
@@ -994,7 +1044,7 @@ Diferente da seção acima (perguntas ainda em aberto), estes itens já foram av
 
 - **Cache semântico de categorização via embeddings/`sqlite-vec`** — melhoria futura desenhada na seção "Cache", mas sem uso real que comprove que a correspondência exata do `cache_categorizacao` é insuficiente. Risco documentado de falso-positivo semântico (ver seção "Cache") é motivo suficiente pra não adiantar isso sem necessidade validada.
 - **Detecção automática de assinatura por padrão de transação** (à la Rocket Money) — identificada na comparação com apps comerciais, exigiria lógica de detecção de padrão nova, sem correspondência direta com nada já desenhado.
-- **Multiusuário** — todo o design assume um único titular/controlador dos dados (ver nota de LGPD na seção de Segurança); mudar isso reabriria decisões de modelo de dados, permissão e privacidade que não têm necessidade real hoje.
+- **Multiusuário** — todo o design assume um único titular/controlador dos dados (ver nota de LGPD na seção de Segurança); mudar isso reabriria decisões de modelo de dados, permissão e privacidade que não têm necessidade real hoje. Não é mudança incremental: toca modelo de dados (titular/dono em cada tabela, isolamento de consulta), identidade (`chat_id` hoje mapeia 1:1 pra "você"; passaria a precisar de privilégio por usuário — ver ASI03 na seção de Segurança), billing (custo de tokens de IA hoje é agregado, passaria a ser por usuário) e LGPD (deixa de ser N/A e passa a valer de verdade, ver nota na seção de Segurança). Também muda o cálculo do cache semântico de categorização via RAG (outro item desta lista): compartilhar embeddings entre titulares diferentes pra casar variações de descrição levanta risco de vazar padrão de gasto/categorização entre pessoas, o que reforça cautela em vez de justificar a adoção.
 - **Export CSV** dos relatórios/consultas — citado como ideia solta ao lado de `gerar_grafico`, nunca desenhado de fato (menos prioritário que o gráfico, que já saiu com mecanismo completo).
 - **Blog com hospedagem própria e plataformas de terceiro (dev.to, Hashnode) pro estudo de caso público** — pesquisado e descartado (ver [docs/progresso/01-planejamento.md](docs/progresso/01-planejamento.md)): README curado do próprio repositório cobre o papel de vitrine sem depender de audiência de terceiro em declínio.
 - **Cadastro de remetentes de e-mail confiáveis (`remetentes_confiaveis`)** — desenhado como plano futuro desde o início (Fase 7), não faz parte do MVP dessa fase.
