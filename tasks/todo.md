@@ -65,7 +65,7 @@ ciclo. `index.ts` chama essa função uma vez na subida, só se `env.googleOAuth
 **Verification:**
 - [x] Tests pass: `npx vitest run tests/bot/handlers/registrarEmail.test.ts tests/bot/lembreteReautorizacaoGoogle.test.ts` (fake timers pro agendamento)
 - [x] Build succeeds: `npm run build`
-- [ ] Manual check: cobre no checkpoint final (teste manual real em Homologação, com
+- [x] Manual check: cobre no checkpoint final (teste manual real em Homologação, com
       `INTERVALO_MS` reduzido temporariamente pra não esperar 5 dias de verdade)
 
 **Dependencies:** Tarefa 134
@@ -82,9 +82,9 @@ ciclo. `index.ts` chama essa função uma vez na subida, só se `env.googleOAuth
 ---
 
 ### Checkpoint: Rodada fechada (lembrete automático de reautorização)
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: confirmar que o lembrete chega no Telegram (com
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Teste manual em Homologação: confirmar que o lembrete chega no Telegram (com
       `INTERVALO_MS` reduzido só pro teste, revertido antes do merge final) e que colar o
       código vincula normalmente
-- [ ] PROGRESSO.md atualizado com o marco
-- [ ] Milestone "Lembrete automático de reautorização do Google" fechado no GitHub (2/2 issues)
+- [x] PROGRESSO.md atualizado com o marco
+- [x] Milestone "Lembrete automático de reautorização do Google" fechado no GitHub (2/2 issues)
