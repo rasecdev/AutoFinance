@@ -3,6 +3,8 @@ import { google, type Auth } from 'googleapis';
 import type { Env } from '../../config/env.js';
 import type { DbClient } from '../../db/client.js';
 import { obterRefreshToken, salvarRefreshToken } from '../../db/repositories/credenciaisGoogle.js';
+import { obterIdioma, type Idioma } from '../../db/repositories/idiomaBot.js';
+import { t } from '../../i18n/t.js';
 import type { Logger } from '../../logging/logger.js';
 import {
   definirPendenciaOAuthGoogle,
@@ -47,21 +49,8 @@ export function montarLinkVinculoGoogle(
   return url;
 }
 
-export function montarMensagemVinculoGoogle(url: string): string {
-  return (
-    'Vamos vincular sua conta Google. Uma única autorização resolve as DUAS integrações de uma vez: leitura ' +
-    'automática de fatura/boleto de e-mail (Gmail, só leitura) e criação de eventos de vencimento (Google ' +
-    'Calendar) — mesma conta, mesmo passo, nada a repetir depois.\n\n' +
-    `1. Abra este link e faça login com a conta Google que você quer usar:\n${url}\n\n` +
-    '2. O Google vai mostrar os dois pedidos de permissão (ler Gmail, gerenciar eventos do Calendar) — são ' +
-    'exatamente os dois escopos que o bot usa, nada além disso. Autorize.\n\n' +
-    '3. O navegador vai tentar abrir "http://localhost/?code=..." e vai dar erro de página não encontrada — ' +
-    'isso é esperado, não se preocupe. Copie o valor que vem depois de "code=" na barra de endereço (até o ' +
-    '"&" seguinte, se houver mais parâmetros).\n\n' +
-    '4. Cole esse código aqui nesta conversa, como uma mensagem normal.\n\n' +
-    'O vínculo fica pendente só nesta conversa até você colar o código (ou até o bot reiniciar — nesse caso é ' +
-    'só rodar "/registrar_email" de novo).'
-  );
+export function montarMensagemVinculoGoogle(url: string, idioma: Idioma = 'pt'): string {
+  return t('email_vinculo_mensagem', idioma, { url });
 }
 
 export function createHandlerRegistrarEmail(env: Env, db: DbClient) {
@@ -72,29 +61,21 @@ export function createHandlerRegistrarEmail(env: Env, db: DbClient) {
       return;
     }
 
+    const idioma = obterIdioma(db);
+
     if (!env.googleOAuthClient) {
-      await ctx.reply(
-        'Ainda não dá pra vincular — faltam GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET configurados no servidor ' +
-          '(criados uma vez no Google Cloud Console: projeto → ativar Gmail API e Calendar API → credencial ' +
-          'OAuth 2.0 do tipo "Aplicativo para computador"). Isso é feito por quem administra o servidor, não por ' +
-          'aqui — depois de configurado, "/registrar_email" passa a funcionar.',
-      );
+      await ctx.reply(t('email_sem_env', idioma));
       return;
     }
 
     if (obterRefreshToken(db) !== null && !PEDE_REAUTORIZACAO.test(texto)) {
-      await ctx.reply(
-        `Este ambiente já tem uma conta Google vinculada (agenda: "${env.googleOAuthClient.calendarId}") — cobre ` +
-          'leitura de fatura/boleto por e-mail e criação de eventos de vencimento no Calendar, os dois já ativos.\n\n' +
-          'Se quiser vincular outra conta mesmo assim (o vínculo antigo continua funcionando até você concluir o ' +
-          'novo), digite "/registrar_email confirmar".',
-      );
+      await ctx.reply(t('email_ja_vinculado', idioma, { calendarId: env.googleOAuthClient.calendarId }));
       return;
     }
 
     const url = montarLinkVinculoGoogle(env.googleOAuthClient, chatId);
 
-    await ctx.reply(montarMensagemVinculoGoogle(url));
+    await ctx.reply(montarMensagemVinculoGoogle(url, idioma));
   };
 }
 
@@ -105,6 +86,8 @@ export function createHandlerCodigoOAuthGoogle(db: DbClient, logger: Logger) {
     if (chatId === undefined || !codigo) {
       return;
     }
+
+    const idioma = obterIdioma(db);
 
     const oauth2Client = obterPendenciaOAuthGoogle(chatId);
     if (!oauth2Client) {
@@ -117,28 +100,17 @@ export function createHandlerCodigoOAuthGoogle(db: DbClient, logger: Logger) {
       ({ tokens } = await oauth2Client.getToken(codigo));
     } catch (erro) {
       logger.error({ err: erro, chatId }, 'falha ao trocar código OAuth do Google por token');
-      await ctx.reply(
-        'Não consegui trocar esse código por um token — ele pode ter expirado (a validade é curta) ou ter sido ' +
-          'colado incompleto. Rode "/registrar_email" de novo pra gerar um link novo.',
-      );
+      await ctx.reply(t('email_codigo_invalido', idioma));
       return;
     }
 
     if (!tokens.refresh_token) {
-      await ctx.reply(
-        'A autorização deu certo, mas o Google não devolveu um refresh_token dessa vez — normalmente acontece ' +
-          'quando essa conta já autorizou este mesmo app antes sem revogar o acesso. Revogue o acesso em ' +
-          'https://myaccount.google.com/permissions (procure o nome do app) e rode "/registrar_email confirmar" de novo.',
-      );
+      await ctx.reply(t('email_sem_refresh_token', idioma));
       return;
     }
 
     salvarRefreshToken(db, tokens.refresh_token);
 
-    await ctx.reply(
-      'Autorização concluída dos dois lados (Gmail + Calendar) e vínculo salvo — sem nenhum passo manual a mais. ' +
-        'Os jobs de leitura de e-mail e sincronização de calendário passam a usar esse vínculo a partir do próximo ' +
-        'ciclo deles, sem precisar reiniciar nada na mão.',
-    );
+    await ctx.reply(t('email_vinculo_concluido', idioma));
   };
 }

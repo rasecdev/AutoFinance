@@ -94,7 +94,7 @@ fixas do bot, resposta livre da IA (`conversa_texto`) e relatórios visuais
 
 ### Strings fixas — área 3 (entrada de dado)
 - [x] Tarefa 142: traduz `texto.ts`, `midia.ts`, `voz.ts` pra `t()`
-- [ ] Tarefa 143: traduz `registrarEmail.ts`, `registrarOpenFinance.ts` pra `t()`
+- [x] Tarefa 143: traduz `registrarEmail.ts`, `registrarOpenFinance.ts` pra `t()`
 
 ### Checkpoint: Strings fixas do bot 100% traduzidas
 - [ ] `npm run build`/`lint`/`test` sem erro

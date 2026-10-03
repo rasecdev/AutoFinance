@@ -262,26 +262,37 @@ a resposta gerada pela IA em si já foi resolvida na Tarefa 139).
 mapeamento ambíguo).
 
 **Acceptance criteria:**
-- [ ] Nenhuma string literal em português sobra nesses 2 arquivos
-- [ ] Testes existentes continuam passando com idioma padrão
+- [x] Nenhuma string literal em português sobra nesses 2 arquivos
+- [x] Testes existentes continuam passando com idioma padrão
+- [x] (achado: `montarMensagemVinculoGoogle` é compartilhada com
+      `lembreteReautorizacaoGoogle.ts`, Tarefa 144 — ganhou parâmetro `idioma`
+      também, com o prefixo próprio do lembrete traduzido junto, pra não
+      misturar idiomas na mesma mensagem)
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/bot/handlers/registrarEmail.test.ts tests/bot/handlers/registrarOpenFinance.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/bot/handlers/registrarEmail.test.ts tests/bot/handlers/registrarOpenFinance.test.ts tests/bot/lembreteReautorizacaoGoogle.test.ts`
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** Tarefa 137
 
 **Files likely touched:**
 - `src/bot/handlers/registrarEmail.ts`
-- `src/bot/handlers/registrarOpenFinance.ts`
+- `src/bot/handlers/registrarOpenFinance.ts` (ganhou parâmetro `db` novo em
+  `createHandlerRegistrarOpenFinance` — precisava do idioma, não tinha
+  acesso ao banco antes)
+- `src/bot/lembreteReautorizacaoGoogle.ts` (consumidor compartilhado de
+  `montarMensagemVinculoGoogle`, fora da lista original)
+- `src/index.ts` (wiring de `registrarOpenFinance` com `db`)
 - `src/i18n/catalogo.ts`
+- `tests/bot/handlers/{registrarEmail,registrarOpenFinance}.test.ts`,
+  `tests/bot/lembreteReautorizacaoGoogle.test.ts`
 
 **Estimated scope:** Medium
 
 ---
 
 ## Checkpoint: Strings fixas do bot 100% traduzidas
-- [ ] `npm run build`/`lint`/`test` sem erro
+- [x] `npm run build`/`lint`/`test` sem erro
 - [ ] Teste manual em Homologação: com `/idioma en`, exercitar `/ajuda`,
       confirmação de ação de alto impacto, erro comum, registro de e-mail/
       Open Finance — tudo em inglês

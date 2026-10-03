@@ -1,7 +1,9 @@
 import type { Bot } from 'grammy';
 import type { Env } from '../config/env.js';
 import type { DbClient } from '../db/client.js';
+import { obterIdioma, type Idioma } from '../db/repositories/idiomaBot.js';
 import { obterUltimoEnvio, registrarEnvio } from '../db/repositories/lembreteReautorizacaoGoogle.js';
+import { t } from '../i18n/t.js';
 import type { Logger } from '../logging/logger.js';
 import { montarLinkVinculoGoogle, montarMensagemVinculoGoogle } from './handlers/registrarEmail.js';
 
@@ -11,11 +13,8 @@ import { montarLinkVinculoGoogle, montarMensagemVinculoGoogle } from './handlers
 // dormirAte.ts (feito pra atrasos maiores que isso).
 const INTERVALO_MS = 5 * 24 * 60 * 60 * 1000;
 
-function montarMensagemLembrete(url: string): string {
-  return (
-    '🔔 Lembrete automático: pra evitar que o vínculo com o Google (Gmail + Calendar) expire sem aviso, ' +
-    'revincule agora -- leva só um minuto.\n\n' + montarMensagemVinculoGoogle(url)
-  );
+function montarMensagemLembrete(url: string, idioma: Idioma): string {
+  return t('lembrete_reautorizacao_prefixo', idioma) + montarMensagemVinculoGoogle(url, idioma);
 }
 
 // Roda dentro do processo principal do bot, não como serviço separado --
@@ -30,11 +29,12 @@ export function iniciarLembreteReautorizacaoGoogle(bot: Bot, env: Env, db: DbCli
   const googleOAuthClient = env.googleOAuthClient;
 
   async function enviarLembretes(): Promise<void> {
+    const idioma = obterIdioma(db);
     for (const chatIdStr of env.telegramAllowedChatIds) {
       const chatId = Number(chatIdStr);
       try {
         const url = montarLinkVinculoGoogle(googleOAuthClient, chatId);
-        await bot.api.sendMessage(chatId, montarMensagemLembrete(url));
+        await bot.api.sendMessage(chatId, montarMensagemLembrete(url, idioma));
       } catch (erro) {
         logger.error({ err: erro, chatId }, 'falha ao enviar lembrete de reautorização do Google');
       }
