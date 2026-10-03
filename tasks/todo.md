@@ -47,21 +47,24 @@ já venceu), manda mensagem própria (deixa claro que é automático) + link pra
 ciclo. `index.ts` chama essa função uma vez na subida, só se `env.googleOAuthClient` existir.
 
 **Acceptance criteria:**
-- [ ] Sem `env.googleOAuthClient`, nada é agendado (sem erro, sem timer criado)
-- [ ] Com `env.googleOAuthClient` e nenhum envio registrado ainda, o primeiro lembrete é
+- [x] Sem `env.googleOAuthClient`, nada é agendado (sem erro, sem timer criado)
+- [x] Com `env.googleOAuthClient` e nenhum envio registrado ainda, o primeiro lembrete é
       agendado pra 5 dias a partir de agora (não imediatamente)
-- [ ] Com um `enviado_em` já no passado (> 5 dias), o lembrete dispara assim que o processo
+- [x] Com um `enviado_em` já no passado (> 5 dias), o lembrete dispara assim que o processo
       sobe (delay 0), não espera mais 5 dias
-- [ ] Lembrete enviado marca `registrarEnvio` e reagenda o próximo ciclo pra +5 dias a partir
+- [x] Lembrete enviado marca `registrarEnvio` e reagenda o próximo ciclo pra +5 dias a partir
       do novo envio
-- [ ] Falha ao enviar pra um `chatId` não impede o envio pros outros (mesmo padrão de
+- [x] Falha ao enviar pra um `chatId` não impede o envio pros outros (mesmo padrão de
       `tratarErroCriticoJob`)
-- [ ] Colar o código recebido via lembrete funciona exatamente igual ao `/registrar_email`
-      manual (mesma pendência, mesmo `handlerCodigoOAuthGoogle`)
+- [x] Colar o código recebido via lembrete funciona exatamente igual ao `/registrar_email`
+      manual (mesma pendência, mesmo `handlerCodigoOAuthGoogle`) — garantido por construção
+      (mesma `montarLinkVinculoGoogle`/`definirPendenciaOAuthGoogle` dos dois caminhos,
+      confirmado por teste que a pendência real é criada); ponta a ponta fica pro teste
+      manual do checkpoint
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/bot/handlers/registrarEmail.test.ts tests/bot/lembreteReautorizacaoGoogle.test.ts` (fake timers pro agendamento)
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/bot/handlers/registrarEmail.test.ts tests/bot/lembreteReautorizacaoGoogle.test.ts` (fake timers pro agendamento)
+- [x] Build succeeds: `npm run build`
 - [ ] Manual check: cobre no checkpoint final (teste manual real em Homologação, com
       `INTERVALO_MS` reduzido temporariamente pra não esperar 5 dias de verdade)
 

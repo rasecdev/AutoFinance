@@ -12,6 +12,7 @@ import { createHandlerNaoSuportado } from './bot/handlers/naoSuportado.js';
 import { createHandlerPausar } from './bot/handlers/pausar.js';
 import { createHandlerRetomar } from './bot/handlers/retomar.js';
 import { createHandlerCodigoOAuthGoogle, createHandlerRegistrarEmail } from './bot/handlers/registrarEmail.js';
+import { iniciarLembreteReautorizacaoGoogle } from './bot/lembreteReautorizacaoGoogle.js';
 import {
   createHandlerMapeamentoOpenFinance,
   createHandlerRegistrarOpenFinance,
@@ -77,6 +78,8 @@ const bot = createBot(
 await bot.api.setMyCommands(
   COMANDOS_BOT.map(({ comando, descricao }) => ({ command: comando, description: descricao })),
 );
+
+iniciarLembreteReautorizacaoGoogle(bot, env, db, logger);
 
 bot.start({
   onStart: () => {

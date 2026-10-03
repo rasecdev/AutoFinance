@@ -27,6 +27,43 @@ const REDIRECT_URI = 'http://localhost';
 
 const PEDE_REAUTORIZACAO = /\bconfirmar\b/i;
 
+// Monta o client OAuth, gera a URL de autorização e marca a pendência pro
+// chat -- reaproveitado tanto pelo handler de /registrar_email quanto pelo
+// lembrete automático (src/bot/lembreteReautorizacaoGoogle.ts), que precisa
+// do mesmo link+pendência sem passar por uma mensagem do Telegram.
+export function montarLinkVinculoGoogle(
+  googleOAuthClient: NonNullable<Env['googleOAuthClient']>,
+  chatId: number,
+): string {
+  const oauth2Client = new google.auth.OAuth2(
+    googleOAuthClient.clientId,
+    googleOAuthClient.clientSecret,
+    REDIRECT_URI,
+  );
+  const url = oauth2Client.generateAuthUrl({ access_type: 'offline', scope: SCOPES, prompt: 'consent' });
+
+  definirPendenciaOAuthGoogle(chatId, oauth2Client);
+
+  return url;
+}
+
+export function montarMensagemVinculoGoogle(url: string): string {
+  return (
+    'Vamos vincular sua conta Google. Uma única autorização resolve as DUAS integrações de uma vez: leitura ' +
+    'automática de fatura/boleto de e-mail (Gmail, só leitura) e criação de eventos de vencimento (Google ' +
+    'Calendar) — mesma conta, mesmo passo, nada a repetir depois.\n\n' +
+    `1. Abra este link e faça login com a conta Google que você quer usar:\n${url}\n\n` +
+    '2. O Google vai mostrar os dois pedidos de permissão (ler Gmail, gerenciar eventos do Calendar) — são ' +
+    'exatamente os dois escopos que o bot usa, nada além disso. Autorize.\n\n' +
+    '3. O navegador vai tentar abrir "http://localhost/?code=..." e vai dar erro de página não encontrada — ' +
+    'isso é esperado, não se preocupe. Copie o valor que vem depois de "code=" na barra de endereço (até o ' +
+    '"&" seguinte, se houver mais parâmetros).\n\n' +
+    '4. Cole esse código aqui nesta conversa, como uma mensagem normal.\n\n' +
+    'O vínculo fica pendente só nesta conversa até você colar o código (ou até o bot reiniciar — nesse caso é ' +
+    'só rodar "/registrar_email" de novo).'
+  );
+}
+
 export function createHandlerRegistrarEmail(env: Env, db: DbClient) {
   return async function handlerRegistrarEmail(ctx: Context): Promise<void> {
     const chatId = ctx.chat?.id;
@@ -55,29 +92,9 @@ export function createHandlerRegistrarEmail(env: Env, db: DbClient) {
       return;
     }
 
-    const oauth2Client = new google.auth.OAuth2(
-      env.googleOAuthClient.clientId,
-      env.googleOAuthClient.clientSecret,
-      REDIRECT_URI,
-    );
-    const url = oauth2Client.generateAuthUrl({ access_type: 'offline', scope: SCOPES, prompt: 'consent' });
+    const url = montarLinkVinculoGoogle(env.googleOAuthClient, chatId);
 
-    definirPendenciaOAuthGoogle(chatId, oauth2Client);
-
-    await ctx.reply(
-      'Vamos vincular sua conta Google. Uma única autorização resolve as DUAS integrações de uma vez: leitura ' +
-        'automática de fatura/boleto de e-mail (Gmail, só leitura) e criação de eventos de vencimento (Google ' +
-        'Calendar) — mesma conta, mesmo passo, nada a repetir depois.\n\n' +
-        `1. Abra este link e faça login com a conta Google que você quer usar:\n${url}\n\n` +
-        '2. O Google vai mostrar os dois pedidos de permissão (ler Gmail, gerenciar eventos do Calendar) — são ' +
-        'exatamente os dois escopos que o bot usa, nada além disso. Autorize.\n\n' +
-        '3. O navegador vai tentar abrir "http://localhost/?code=..." e vai dar erro de página não encontrada — ' +
-        'isso é esperado, não se preocupe. Copie o valor que vem depois de "code=" na barra de endereço (até o ' +
-        '"&" seguinte, se houver mais parâmetros).\n\n' +
-        '4. Cole esse código aqui nesta conversa, como uma mensagem normal.\n\n' +
-        'O vínculo fica pendente só nesta conversa até você colar o código (ou até o bot reiniciar — nesse caso é ' +
-        'só rodar "/registrar_email" de novo).',
-    );
+    await ctx.reply(montarMensagemVinculoGoogle(url));
   };
 }
 
