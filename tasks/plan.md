@@ -1,78 +1,136 @@
-# Implementation Plan: Lembrete automático de reautorização do Google
+# Implementation Plan: Fase 10 — Regionalização (i18n: português/inglês/espanhol)
 
 ## Overview
 
-Depois da rodada "Persistência do refresh_token Google" (2026-10-03), o atrito operacional
-de reautorizar (SSH+editar `.env`+restart) já foi eliminado — mas o usuário ainda precisa
-*lembrar* de rodar `/registrar_email confirmar` a cada ~7 dias (o app OAuth continua em
-status "Testing" no Google Cloud Console, decisão de não publicar mantida). Esta rodada
-fecha esse último atrito: um lembrete automático a cada 5 dias (margem de 2 dias antes do
-token expirar) que já gera o link de autorização e manda pro chat, sem o usuário precisar
-digitar o comando — só clicar, autorizar e colar o código de volta, como já faz hoje.
+Spec completa em [PLANO.md](../PLANO.md), seção "Fase 10 — Regionalização
+(i18n: português/inglês/espanhol)" (publicada via `to-spec` a partir de sessão
+de `grilling`). O bot passa a entender e responder em português, inglês ou
+espanhol, com um idioma ativo único e global por instância (sem granularidade
+por `chat_id` — decisão consciente, projeto continua single-user), trocável
+via comando de barra (`/idioma <pt|en|es>`). Cobertura completa: strings
+fixas do bot, resposta livre da IA (`conversa_texto`) e relatórios visuais
+(imagem semanal, PDF mensal). Só o canal Telegram nesta rodada.
 
 ## Architecture Decisions
 
-- **Roda dentro do processo principal do bot (`index.ts`), não como serviço/script separado
-  no `docker-compose.yml`** — diferente do padrão usual de job em background deste projeto.
-  Motivo: o "vínculo pendente" (`src/bot/googleOAuthPendencia.ts`) é um `Map` em memória
-  **do processo que também roteia as mensagens recebidas** (`router.ts` decide se um texto é
-  o código OAuth checando esse mesmo `Map`). Um script separado (processo/container
-  diferente) que gerasse o link e marcasse a pendência não seria visto pelo processo
-  principal quando o usuário colasse o código de volta — a pendência precisa viver no mesmo
-  processo que vai consumi-la. Rodar dentro do `index.ts` evita esse problema de estado
-  cross-process sem precisar persistir o `Map` inteiro (fora de escopo, não pedido).
-- **Agendamento via `setTimeout` encadeado** (mesmo padrão simples já usado em
-  `dormirAte.ts`, mas aqui dentro de um processo que nunca sai por padrão) — 5 dias em ms
-  (432.000.000) fica bem dentro do limite de 32 bits do `setTimeout` (~24,8 dias), então não
-  precisa da lógica de encadeamento de `dormirAte.ts` (criada pra atrasos >24,8 dias, não é o
-  caso aqui).
-- **Nova tabela singleton `lembrete_reautorizacao_google`** (`enviado_em`, mesmo princípio de
-  `credenciais_google`/`bot_pausado`) guarda só "quando foi o último lembrete enviado" —
-  **desacoplada do estado real do token** (`credenciais_google.atualizado_em`) de propósito:
-  um lembrete dispara a cada 5 dias corridos, sempre, independente de o usuário já ter
-  revinculado fora desse ciclo (ex: por já ter batido um `invalid_grant` antes do lembrete).
-  Mais simples de raciocinar do que tentar sincronizar os dois relógios, e o pior caso (um
-  lembrete "redundante" se o usuário já revinculou por conta própria) é inofensivo — só
-  gera um link novo que pode ser ignorado.
-- **Reaproveita a lógica de `bot/handlers/registrarEmail.ts`** — extrai a parte de "montar
-  client OAuth, gerar URL, marcar pendência" pra uma função exportada
-  (`montarLinkVinculoGoogle`), chamada tanto pelo handler de `/registrar_email` quanto pelo
-  novo agendador. Mensagem de texto do lembrete é própria (deixa claro que é automático,
-  mesmo texto de passo a passo 1-4 reaproveitado).
-- **Primeiro lembrete só 5 dias depois do deploy desta feature**, não imediatamente — sem
-  registro em `lembrete_reautorizacao_google` ainda, a base do cálculo é "agora" (não "nunca
-  enviado, manda já"), pra não gerar um link redundante assim que o usuário acabou de
-  vincular manualmente hoje.
-- **Manda pra todos os `env.telegramAllowedChatIds`** (mesmo padrão de
-  `tratarErroCriticoJob.ts`) — falha ao enviar pra um chat não impede os outros.
-- **Só ativa com `env.googleOAuthClient` configurado** — sem isso, não agenda nada (mesmo
-  critério de "integração desligada" já usado nos outros consumidores do Google).
+- **Tabela singleton nova** (`idioma_bot`, sem `chat_id`) guarda só o idioma
+  ativo — diferente do padrão por-chat de `bot_pausado` (migration 0017), de
+  propósito: aqui não há necessidade real de granularidade por chat. Nasce
+  com `pt` (sem auto-detect do `language_code` do Telegram — avaliado e
+  descartado na sessão de `grilling`: ganho marginal, complexidade extra).
+- **Módulo `src/i18n/`** — catálogo de strings por idioma (objeto plano
+  `chave → texto` por idioma, com interpolação simples de parâmetro via
+  `{nome}`) + `t(chave, idioma, params?)`. Sem dependência nova (`i18next`
+  descartado — volume de ~60 chaves não justifica).
+- **`SYSTEM_PROMPT` continua em português, fonte única** (`src/ai/systemPrompt.ts`,
+  14 regras) — ganha uma diretiva dinâmica apendada em runtime ("Responda
+  sempre em {idioma}"), confiando na compreensão multilíngue nativa dos
+  modelos já roteados. `montarMensagemSystem`/`gerarResposta`
+  (`src/ai/openrouter.ts`) ganham parâmetro `idioma` (default `'pt'`, não
+  quebra `benchmark.ts`, que importa `SYSTEM_PROMPT` direto e fica de fora
+  desta rodada — casos de benchmark são fixos em português).
+- **`/idioma` precisa re-registrar `setMyCommands`** — a troca de idioma muda
+  as descrições do menu "/" do Telegram (`src/bot/comandos.ts` passa a usar
+  `t()`); o handler do comando chama `bot.api.setMyCommands` de novo depois
+  de gravar o novo idioma, não só na subida do processo (`index.ts`).
+- **Escopo de tradução de strings fixas, por área** (vertical, cada task abaixo
+  entrega uma área fechada e testável):
+  1. Comando `/idioma` + `comandos.ts` + `/ajuda`.
+  2. Handlers de confirmação/erro comuns (`callbackConfirmacao.ts`,
+     `feedback.ts`, `naoSuportado.ts`, `modelo.ts`, `modelos.ts`, `pausar.ts`,
+     `retomar.ts`).
+  3. Handlers de entrada de dado (`texto.ts`, `midia.ts`, `voz.ts`,
+     `registrarEmail.ts`, `registrarOpenFinance.ts`).
+  4. Alertas proativos (`monitorarPrecos.ts`, `verificarDespesasFixas.ts`,
+     alerta de limite de cartão embutido em `ai/tools/transacoes.ts`).
+- **Relatórios visuais** (`imagemSemanal.ts`, `pdfMensal.ts`) recebem `idioma`
+  como parâmetro de quem monta (`relatorioSemanal.ts`/`relatorioMensal.ts`/
+  `relatorioMensalCompleto.ts`), lido do repositório de idioma ativo.
+- **Formatação de número/data/moeda não muda** — sempre pt-BR, independente do
+  idioma do texto (decisão já fechada na spec).
+- **Categoria em texto livre sem normalização entre idiomas** (decisão já
+  fechada na spec, extensão do ADR 0002).
 
 ## Task List
 
-- [x] Tarefa 134: migration `0020_lembrete_reautorizacao_google.sql` (tabela singleton) +
-      repositório `src/db/repositories/lembreteReautorizacaoGoogle.ts`
-      (`obterUltimoEnvio`/`registrarEnvio`)
-- [x] Tarefa 135: extrai `montarLinkVinculoGoogle` em `registrarEmail.ts`; novo
-      `src/bot/lembreteReautorizacaoGoogle.ts` (agendador); liga em `index.ts`
+### Fundação
+- [ ] Tarefa 136: migration `idioma_bot` (tabela singleton) + repositório
+      `src/db/repositories/idiomaBot.ts` (`obterIdioma`/`definirIdioma`,
+      default `'pt'` sem linha)
+- [ ] Tarefa 137: módulo `src/i18n/` — `catalogo.ts` (chaves iniciais: handler
+      `/idioma`, confirmações genéricas) + `t(chave, idioma, params?)`
 
-### Checkpoint: Rodada fechada
-- [x] `npm run build`/`lint`/`test` sem erro
-- [x] Teste manual: `INTERVALO_MS` reduzido temporariamente numa branch isolada
-      (`teste/lembrete-intervalo-curto`, nunca mergeada), confirmado pelo usuário em
-      Homologação que o lembrete chegou no Telegram e que colar o código vinculou
-      normalmente (igual ao `/registrar_email` manual) — branch de teste revertida/deletada
-      depois, `development` de volta ao intervalo real de 5 dias
-- [x] PROGRESSO.md atualizado
-- [x] Milestone "Lembrete automático de reautorização do Google" fechado no GitHub
+### Checkpoint: Fundação
+- [ ] `npm run build`/`lint`/`test` sem erro
+
+### Comando de troca de idioma
+- [ ] Tarefa 138: handler `/idioma <pt|en|es>` (valida enum, grava via
+      Tarefa 136, responde confirmação via `t()` no novo idioma, re-chama
+      `bot.api.setMyCommands`); registrado em `comandos.ts`/`router.ts`/`index.ts`
+
+### Checkpoint: Troca de idioma funcional
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação: `/idioma en` confirma em inglês, menu "/"
+      muda de descrição, `/idioma pt` volta ao original
+
+### IA multilíngue
+- [ ] Tarefa 139: diretiva dinâmica de idioma em `montarMensagemSystem`/
+      `gerarResposta` (`src/ai/openrouter.ts`); `texto.ts`/`voz.ts`/`midia.ts`
+      passam a ler o idioma ativo (Tarefa 136) e propagar pra `gerarResposta`
+
+### Checkpoint: IA responde no idioma ativo
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação: com `/idioma en` ativo, perguntar algo em
+      inglês e em português — resposta da IA sai em inglês nos dois casos;
+      `/idioma pt` restaura o comportamento de hoje
+
+### Strings fixas — área 1 (comando/ajuda)
+- [ ] Tarefa 140: traduz `comandos.ts` (descrições) e `ajuda.ts` pra `t()`
+
+### Strings fixas — área 2 (confirmação/erro comuns)
+- [ ] Tarefa 141: traduz `callbackConfirmacao.ts`, `feedback.ts`,
+      `naoSuportado.ts`, `modelo.ts`, `modelos.ts`, `pausar.ts`, `retomar.ts`
+      pra `t()`
+
+### Strings fixas — área 3 (entrada de dado)
+- [ ] Tarefa 142: traduz `texto.ts`, `midia.ts`, `voz.ts` pra `t()`
+- [ ] Tarefa 143: traduz `registrarEmail.ts`, `registrarOpenFinance.ts` pra `t()`
+
+### Checkpoint: Strings fixas do bot 100% traduzidas
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação: com `/idioma en`, exercitar `/ajuda`,
+      confirmação de ação de alto impacto, erro comum, registro de e-mail/
+      Open Finance — tudo em inglês
+
+### Alertas proativos
+- [ ] Tarefa 144: traduz `monitorarPrecos.ts`/`verificarDespesasFixas.ts` e o
+      alerta de limite de cartão (`ai/tools/transacoes.ts`) pra `t()`, lendo
+      idioma ativo no início do job
+
+### Relatórios visuais
+- [ ] Tarefa 145: `imagemSemanal.ts` recebe `idioma`, troca textos fixos por
+      `t()`; `relatorioSemanal.ts` passa o idioma ativo
+- [ ] Tarefa 146: `pdfMensal.ts` recebe `idioma`, troca textos fixos por
+      `t()`; `relatorioMensal.ts`/`relatorioMensalCompleto.ts` passam o
+      idioma ativo
+
+### Checkpoint: Rodada fechada (Fase 10 completa)
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação: ciclo completo com `/idioma en` ativo —
+      conversa, relatório semanal (imagem) e mensal (PDF) saem em inglês;
+      `/idioma pt` restaura tudo ao comportamento original
+- [ ] PROGRESSO.md atualizado com o marco
+- [ ] PLANO.md: status da Fase 10 atualizado de "spec" pra "implementada"
+- [ ] Milestone "Fase 10 — Regionalização (i18n)" fechado no GitHub
 
 ## Risks and Mitigations
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Processo principal reinicia com frequência maior que 5 dias (deploy), timer nunca encadeia o suficiente pra disparar | Baixo — na prática deploys não são tão frequentes quanto durante uma sessão de implementação ativa | Base do cálculo vem do banco (`enviado_em`), não de um contador em memória — sobrevive a restart, só recalcula o delay restante |
-| Lembrete chega mas usuário ignora, token expira entre um lembrete e o próximo | Baixo — mitigação parcial por natureza (lembrete, não garantia) | Margem de 2 dias (5 de 7) já cobre a maioria dos casos; fora de escopo tentar garantir 100% |
+| Modelo "vaza" português mesmo com a diretiva de idioma (ex: usa termo técnico em pt no meio da resposta em inglês) | Médio — pode exigir reforçar a diretiva ou trocar de modelo no fluxo `conversa_texto` | Validar manualmente em Homologação antes de fechar o checkpoint de IA multilíngue; se persistir, registrar como achado e decidir caso a caso (mesmo padrão já usado pra outros achados de modelo no PROGRESSO.md) |
+| Volume de strings fixas (~60 chaves) maior do que o levantado nesta sessão, achado só durante a tradução (handler esquecido) | Baixo — não bloqueia, só estende uma das tasks de "Strings fixas" | Cada task de área já é uma vertical slice independente; chave faltante aparece como achado real registrado no PROGRESSO.md, não trava o checkpoint seguinte |
+| `setMyCommands` chamado repetidamente (troca de idioma frequente) bate rate limit da API do Telegram | Baixo — troca de idioma não é ação de alta frequência | Sem mitigação dedicada nesta rodada; revisitar só se acontecer na prática |
 
 ## Open Questions
 
-Nenhuma.
+Nenhuma — sessão de `grilling` (3 rounds) fechou a frontier antes da spec ser escrita.
