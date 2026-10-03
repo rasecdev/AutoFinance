@@ -4,6 +4,8 @@ import { configurarFormatacaoPadrao } from '../bot/formatoMensagens.js';
 import { loadEnv } from '../config/env.js';
 import { getDb, type DbClient } from '../db/client.js';
 import { jaFoiAlertado, registrarAlertaEnviado } from '../db/repositories/alertasPrecoEnviados.js';
+import { obterIdioma, type Idioma } from '../db/repositories/idiomaBot.js';
+import { t } from '../i18n/t.js';
 import {
   obterUltimoSnapshotPorModelo,
   obterUltimosSnapshots,
@@ -166,22 +168,33 @@ function registrarAlertasEnviados(db: DbClient, oportunidades: OportunidadePreco
 // real a pedido do usuário (2026-09-20). Preço negativo é sentinela do
 // OpenRouter pra modelo de preço variável (ex: "openrouter/auto", que
 // devolve -1 em prompt e completion) — não é um valor comparável de verdade.
-function formatarPreco(precoPorToken: number): string {
+function formatarPreco(precoPorToken: number, idioma: Idioma): string {
   if (precoPorToken < 0) {
-    return 'preço variável (não fixo)';
+    return t('preco_variavel', idioma);
   }
   return `US$ ${(precoPorToken * 1_000_000).toFixed(4)}/1M tokens`;
 }
 
-export function formatarMensagemAlerta(oportunidades: OportunidadePreco[]): string {
+export function formatarMensagemAlerta(oportunidades: OportunidadePreco[], idioma: Idioma = 'pt'): string {
   const linhas = oportunidades.map((oportunidade) => {
     if (oportunidade.tipo === 'preco_mudou') {
-      return `💰 Preço mudou — fluxo "${oportunidade.fluxo}" (${oportunidade.modelo}): ${formatarPreco(oportunidade.precoAntigo)} → ${formatarPreco(oportunidade.precoNovo)}`;
+      return t('alerta_preco_mudou', idioma, {
+        fluxo: oportunidade.fluxo,
+        modelo: oportunidade.modelo,
+        precoAntigo: formatarPreco(oportunidade.precoAntigo, idioma),
+        precoNovo: formatarPreco(oportunidade.precoNovo, idioma),
+      });
     }
-    return `🔎 Modelo mais barato disponível — fluxo "${oportunidade.fluxo}": "${oportunidade.modeloCandidato}" (${formatarPreco(oportunidade.precoCandidato)}) atende os requisitos e é mais barato que o atual "${oportunidade.modeloAtual}" (${formatarPreco(oportunidade.precoAtual)})`;
+    return t('alerta_modelo_mais_barato', idioma, {
+      fluxo: oportunidade.fluxo,
+      modeloCandidato: oportunidade.modeloCandidato,
+      precoCandidato: formatarPreco(oportunidade.precoCandidato, idioma),
+      modeloAtual: oportunidade.modeloAtual,
+      precoAtual: formatarPreco(oportunidade.precoAtual, idioma),
+    });
   });
 
-  return `Alerta de preço de modelos (OpenRouter):\n\n${linhas.join('\n')}\n\nNenhuma troca foi feita automaticamente — ajuste roteamento_tarefas manualmente se quiser.`;
+  return t('alerta_preco_envelope', idioma, { linhas: linhas.join('\n') });
 }
 
 export async function enviarAlertas(botToken: string, chatIds: string[], texto: string): Promise<void> {
@@ -204,7 +217,8 @@ async function main(): Promise<void> {
 
     const oportunidades = filtrarNaoAlertadas(db, detectarOportunidades(db));
     if (oportunidades.length > 0) {
-      await enviarAlertas(env.telegramBotToken, env.telegramAllowedChatIds, formatarMensagemAlerta(oportunidades));
+      const idioma = obterIdioma(db);
+      await enviarAlertas(env.telegramBotToken, env.telegramAllowedChatIds, formatarMensagemAlerta(oportunidades, idioma));
       registrarAlertasEnviados(db, oportunidades);
       logger.info({ total: oportunidades.length }, 'alerta de preço enviado');
     }

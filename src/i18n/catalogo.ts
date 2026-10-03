@@ -341,4 +341,34 @@ export const CATALOGO: Record<string, Record<Idioma, string>> = {
     en: 'Done — {quantidade} account(s) linked. Transaction sync will now run on its own from here on.',
     es: 'Listo — {quantidade} cuenta(s) vinculada(s). La sincronización de transacciones empezará a correr sola desde ahora.',
   },
+  preco_variavel: {
+    pt: 'preço variável (não fixo)',
+    en: 'variable price (not fixed)',
+    es: 'precio variable (no fijo)',
+  },
+  alerta_preco_mudou: {
+    pt: '💰 Preço mudou — fluxo "{fluxo}" ({modelo}): {precoAntigo} → {precoNovo}',
+    en: '💰 Price changed — flow "{fluxo}" ({modelo}): {precoAntigo} → {precoNovo}',
+    es: '💰 El precio cambió — flujo "{fluxo}" ({modelo}): {precoAntigo} → {precoNovo}',
+  },
+  alerta_modelo_mais_barato: {
+    pt: '🔎 Modelo mais barato disponível — fluxo "{fluxo}": "{modeloCandidato}" ({precoCandidato}) atende os requisitos e é mais barato que o atual "{modeloAtual}" ({precoAtual})',
+    en: '🔎 Cheaper model available — flow "{fluxo}": "{modeloCandidato}" ({precoCandidato}) meets the requirements and is cheaper than the current "{modeloAtual}" ({precoAtual})',
+    es: '🔎 Modelo más barato disponible — flujo "{fluxo}": "{modeloCandidato}" ({precoCandidato}) cumple los requisitos y es más barato que el actual "{modeloAtual}" ({precoAtual})',
+  },
+  alerta_preco_envelope: {
+    pt: 'Alerta de preço de modelos (OpenRouter):\n\n{linhas}\n\nNenhuma troca foi feita automaticamente — ajuste roteamento_tarefas manualmente se quiser.',
+    en: 'Model price alert (OpenRouter):\n\n{linhas}\n\nNo switch was made automatically — adjust roteamento_tarefas manually if you want.',
+    es: 'Alerta de precio de modelos (OpenRouter):\n\n{linhas}\n\nNo se hizo ningún cambio automáticamente — ajusta roteamento_tarefas manualmente si quieres.',
+  },
+  despesas_fixas_alerta_titulo: {
+    pt: '⚠️ <b>Despesas fixas que não apareceram em {inicio}–{fim}</b>',
+    en: "⚠️ <b>Fixed expenses that didn't show up in {inicio}–{fim}</b>",
+    es: '⚠️ <b>Gastos fijos que no aparecieron en {inicio}–{fim}</b>',
+  },
+  despesas_fixas_linha: {
+    pt: '- {descricao} (esperado: R$ {valor}, todo dia {dia})',
+    en: '- {descricao} (expected: R$ {valor}, every day {dia})',
+    es: '- {descricao} (esperado: R$ {valor}, cada día {dia})',
+  },
 };

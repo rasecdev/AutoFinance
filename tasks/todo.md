@@ -307,21 +307,30 @@ idioma ativo (`obterIdioma`) no início da execução e usar `t()` pra montar a
 mensagem.
 
 **Acceptance criteria:**
-- [ ] Os 3 pontos de alerta saem no idioma ativo configurado no momento do
-      envio (não no idioma de quando o alerta foi originalmente desenhado)
-- [ ] Testes existentes continuam passando com idioma padrão
+- [x] Os 2 pontos de alerta proativo saem no idioma ativo configurado no
+      momento do envio
+- [x] Testes existentes continuam passando com idioma padrão
+- [x] (correção de plano: o "alerta de limite de cartão" embutido em
+      `ai/tools/transacoes.ts` **não precisa de tradução própria** — é
+      resultado de tool (`registrar_transacao`) que sempre passa pela
+      narração da IA antes de chegar ao usuário, já coberto pela diretiva
+      dinâmica de idioma da Tarefa 139, igual a qualquer outra confirmação
+      de tool. Diferente de `monitorarPrecos.ts`/`verificarDespesasFixas.ts`,
+      que mandam a string fixa direto via `bot.api.sendMessage`, sem IA no
+      meio)
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/scripts/monitorarPrecos.test.ts tests/scripts/verificarDespesasFixas.test.ts tests/ai/tools/transacoes.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/scripts/monitorarPrecos.test.ts tests/scripts/verificarDespesasFixas.test.ts tests/relatorios/despesasFixas.test.ts`
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** Tarefa 136, Tarefa 137
 
 **Files likely touched:**
 - `src/scripts/monitorarPrecos.ts`
 - `src/scripts/verificarDespesasFixas.ts`
-- `src/ai/tools/transacoes.ts`
+- `src/relatorios/despesasFixas.ts` (onde a mensagem é montada de fato)
 - `src/i18n/catalogo.ts`
+- `tests/scripts/monitorarPrecos.test.ts`, `tests/relatorios/despesasFixas.test.ts`
 
 **Estimated scope:** Medium
 

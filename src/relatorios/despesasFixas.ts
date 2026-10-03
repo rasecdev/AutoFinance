@@ -1,6 +1,8 @@
 import type { DbClient } from '../db/client.js';
 import { listarDespesasFixasAtivas, type DespesaFixa } from '../db/repositories/despesasFixas.js';
+import type { Idioma } from '../db/repositories/idiomaBot.js';
 import { listarTransacoesAtivas } from '../db/repositories/transacoes.js';
+import { t } from '../i18n/t.js';
 import type { PeriodoRelatorio } from './financeiro.js';
 
 // Despesa fixa vinculada a cartão (cartaoId preenchido) fica fora da checagem
@@ -23,11 +25,19 @@ export function detectarDespesasFixasFaltantes(db: DbClient, janela: PeriodoRela
   });
 }
 
-export function formatarAlertaDespesasFixas(faltantes: DespesaFixa[], janela: PeriodoRelatorio): string {
-  const linhas = faltantes.map(
-    (despesa) =>
-      `- ${despesa.descricao} (esperado: R$ ${despesa.valorEsperado.toFixed(2)}, todo dia ${despesa.diaVencimentoEsperado})`,
+export function formatarAlertaDespesasFixas(
+  faltantes: DespesaFixa[],
+  janela: PeriodoRelatorio,
+  idioma: Idioma = 'pt',
+): string {
+  const linhas = faltantes.map((despesa) =>
+    t('despesas_fixas_linha', idioma, {
+      descricao: despesa.descricao,
+      valor: despesa.valorEsperado.toFixed(2),
+      dia: String(despesa.diaVencimentoEsperado),
+    }),
   );
 
-  return `⚠️ <b>Despesas fixas que não apareceram em ${janela.inicio}–${janela.fim}</b>\n\n${linhas.join('\n')}`;
+  const titulo = t('despesas_fixas_alerta_titulo', idioma, { inicio: janela.inicio, fim: janela.fim });
+  return `${titulo}\n\n${linhas.join('\n')}`;
 }
