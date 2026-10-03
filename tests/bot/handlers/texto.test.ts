@@ -180,4 +180,27 @@ describe('processarMensagemTexto — idioma ativo propagado pro SYSTEM_PROMPT', 
     const mensagemSystem = create.mock.calls[0]?.[0]?.messages[0].content;
     expect(mensagemSystem).toMatch(/Responda sempre em inglês\.$/);
   });
+
+  it('com idioma en ativo, "ação cancelada" ao recusar pendência sai em inglês', async () => {
+    definirIdioma(db, 'en');
+    const handlerFalso = vi.fn();
+    definirPendencia(785, { tool: { name: 'x', description: 'x', schema: {} as never, handler: handlerFalso }, argumentos: {} });
+
+    const ctx = criarContextoFake(785);
+    await processarMensagemTexto(ctx, db, {} as OpenAI, logger, [], 'não quero', 785);
+
+    expect(handlerFalso).not.toHaveBeenCalled();
+    expect(ctx.reply).toHaveBeenCalledWith('Action cancelled.');
+  });
+
+  it('com idioma en ativo, resposta vazia do modelo pede reformular em inglês', async () => {
+    definirIdioma(db, 'en');
+    const create = vi.fn(async () => ({ choices: [{ message: { content: '' } }] }));
+    const client = { chat: { completions: { create } } } as unknown as OpenAI;
+
+    const ctx = criarContextoFake(786);
+    await processarMensagemTexto(ctx, db, client, logger, [], 'hi', 786);
+
+    expect(ctx.reply).toHaveBeenCalledWith("I didn't understand, could you rephrase?", undefined);
+  });
 });

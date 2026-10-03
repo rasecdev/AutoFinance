@@ -16,24 +16,14 @@ import { exigirConfirmacaoDeRegistro, montarToolsConversa } from '../../ai/tools
 import { resolverCartaoId, resolverContaId } from '../../ai/tools/resolucao.js';
 import { criarToolRegistrarTransacoesEmLote } from '../../ai/tools/transacoesEmLote.js';
 import type { DbClient } from '../../db/client.js';
+import { obterIdioma } from '../../db/repositories/idiomaBot.js';
 import { registrarInteracaoIa } from '../../db/repositories/interacoesIa.js';
 import { registrarUsoTokens } from '../../db/repositories/usoTokens.js';
+import { t } from '../../i18n/t.js';
 import type { Logger } from '../../logging/logger.js';
 import { definirPendencia, montarTecladoConfirmacao } from '../confirmacao.js';
 import { definirRastroResposta } from '../rastroRespostas.js';
 import { processarMensagemTexto } from './texto.js';
-
-const MENSAGEM_NAO_COMPROVANTE =
-  'Não consegui reconhecer essa imagem como um comprovante financeiro. Manda uma foto nítida do comprovante, ou registra por texto/voz mesmo.';
-const MENSAGEM_FATURA_BOLETO =
-  'Isso parece ser uma fatura de cartão ou boleto de dívida, não um comprovante de compra do dia a dia — ainda não trato esse tipo de documento automaticamente. Se for uma compra, manda o comprovante da compra em si.';
-const MENSAGEM_TIPO_NAO_SUPORTADO = 'Esse tipo de arquivo ainda não é suportado — manda uma foto do comprovante.';
-const MENSAGEM_PDF_NAO_SUPORTADO = 'Ainda não consigo ler PDF, manda como foto.';
-const MENSAGEM_ERRO_EXTRACAO = 'Não consegui processar essa imagem agora, tente de novo em instantes.';
-const MENSAGEM_LEGENDA_NECESSARIA =
-  'Pra ler uma planilha preciso saber a conta ou cartão — reenvia o arquivo com a legenda dizendo qual (ex: "conta corrente").';
-const MENSAGEM_PLANILHA_SEM_TRANSACOES =
-  'Não encontrei nenhuma transação reconhecível nessa planilha. Confira se as colunas fazem sentido (data, descrição, valor) e tenta de novo.';
 
 const MIME_PLANILHA_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
@@ -125,10 +115,11 @@ async function processarPlanilha(
   chatId: number,
 ): Promise<void> {
   const log = logger.child({ chatId });
+  const idioma = obterIdioma(db);
 
   const resolucao = resolverContaOuCartaoDaLegenda(db, ctx.message?.caption);
   if (!resolucao.ok) {
-    await ctx.reply(MENSAGEM_LEGENDA_NECESSARIA);
+    await ctx.reply(t('midia_legenda_necessaria', idioma));
     return;
   }
 
@@ -151,7 +142,7 @@ async function processarPlanilha(
     });
 
     if (transacoes.length === 0) {
-      await ctx.reply(MENSAGEM_PLANILHA_SEM_TRANSACOES);
+      await ctx.reply(t('midia_planilha_sem_transacoes', idioma));
       return;
     }
 
@@ -164,13 +155,10 @@ async function processarPlanilha(
 
     definirPendencia(chatId, { tool, argumentos });
     const resumo = tool.avisoConfirmacao?.(argumentos) ?? `${transacoes.length} transações`;
-    await ctx.reply(
-      `Encontrei ${resumo}. Confirma? Toque em um botão abaixo, ou responda "sim" para registrar (qualquer outra coisa cancela).`,
-      { reply_markup: montarTecladoConfirmacao() },
-    );
+    await ctx.reply(t('midia_planilha_confirmacao', idioma, { resumo }), { reply_markup: montarTecladoConfirmacao() });
   } catch (erro) {
     log.error({ err: erro }, 'falha ao interpretar planilha');
-    await ctx.reply(MENSAGEM_ERRO_EXTRACAO);
+    await ctx.reply(t('midia_erro_extracao', idioma));
   }
 }
 
@@ -214,6 +202,7 @@ async function processarComprovante(
   mimeType: string,
 ): Promise<void> {
   const log = logger.child({ chatId });
+  const idioma = obterIdioma(db);
   const modelo = resolverModeloLeituraComprovante(db);
 
   let resultado: ResultadoExtracaoComprovante;
@@ -242,18 +231,18 @@ async function processarComprovante(
     // Achado real confirmado em teste manual: se o provedor rejeitar PDF
     // (formato ainda não aceito na chamada multimodal), a falha cai aqui —
     // mensagem específica de PDF em vez da genérica, sem tentar de novo.
-    const respostaErro = mimeType === 'application/pdf' ? MENSAGEM_PDF_NAO_SUPORTADO : MENSAGEM_ERRO_EXTRACAO;
+    const respostaErro = t(mimeType === 'application/pdf' ? 'midia_pdf_nao_suportado' : 'midia_erro_extracao', idioma);
     await responderERastrear(ctx, db, chatId, modelo, respostaErro, 'erro');
     return;
   }
 
   if (!resultado.eComprovante) {
-    await responderERastrear(ctx, db, chatId, modelo, MENSAGEM_NAO_COMPROVANTE, 'sucesso');
+    await responderERastrear(ctx, db, chatId, modelo, t('midia_nao_comprovante', idioma), 'sucesso');
     return;
   }
 
   if (resultado.tipoDocumento === 'fatura_cartao' || resultado.tipoDocumento === 'boleto_divida') {
-    await responderERastrear(ctx, db, chatId, modelo, MENSAGEM_FATURA_BOLETO, 'sucesso');
+    await responderERastrear(ctx, db, chatId, modelo, t('midia_fatura_boleto', idioma), 'sucesso');
     return;
   }
 
@@ -269,7 +258,7 @@ export function createHandlerMidia(client: OpenAI, db: DbClient, logger: Logger,
 
     const tipo = resolverTipoArquivo(ctx);
     if (tipo.tipo === 'nao_suportado') {
-      await ctx.reply(MENSAGEM_TIPO_NAO_SUPORTADO);
+      await ctx.reply(t('midia_tipo_nao_suportado', obterIdioma(db)));
       return;
     }
 

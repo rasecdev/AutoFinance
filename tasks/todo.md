@@ -235,13 +235,13 @@ mensagens fixas (erros de extração, avisos de formato não suportado, etc. —
 a resposta gerada pela IA em si já foi resolvida na Tarefa 139).
 
 **Acceptance criteria:**
-- [ ] Nenhuma string literal em português sobra nas mensagens fixas desses 3
+- [x] Nenhuma string literal em português sobra nas mensagens fixas desses 3
       arquivos
-- [ ] Testes existentes continuam passando com idioma padrão
+- [x] Testes existentes continuam passando com idioma padrão
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/bot/handlers/texto.test.ts tests/bot/handlers/midia.test.ts tests/bot/handlers/voz.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/bot/handlers/texto.test.ts tests/bot/handlers/midia.test.ts tests/bot/handlers/voz.test.ts`
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** Tarefa 137, Tarefa 139
 

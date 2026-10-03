@@ -11,6 +11,7 @@ import { obterTraceIdPorMensagem } from '../../../src/bot/rastroRespostas.js';
 import type { DbClient } from '../../../src/db/client.js';
 import { migrate } from '../../../src/db/migrate.js';
 import { criarConta } from '../../../src/db/repositories/contas.js';
+import { definirIdioma } from '../../../src/db/repositories/idiomaBot.js';
 import { atualizarAvaliacaoInteracao } from '../../../src/db/repositories/interacoesIa.js';
 import { listarUsoTokensPeriodo } from '../../../src/db/repositories/usoTokens.js';
 import { createLogger } from '../../../src/logging/logger.js';
@@ -152,6 +153,17 @@ describe('handlerMidia', () => {
 
     expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Não consegui reconhecer'));
     expect(processarMensagemTextoMock).not.toHaveBeenCalled();
+  });
+
+  it('com idioma en ativo, "não é comprovante" responde em inglês', async () => {
+    definirIdioma(db, 'en');
+    const client = criarClienteFalso(JSON.stringify({ eComprovante: false }));
+    const handler = createHandlerMidia(client, db, createLogger({ write() {} }), BOT_TOKEN);
+    const ctx = criarContextoFoto();
+
+    await handler(ctx);
+
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining("couldn't recognize"));
   });
 
   // Achado real de teste manual: /errado não funcionava nessas respostas
@@ -347,6 +359,34 @@ describe('handlerMidia', () => {
     expect(registros).toEqual([
       expect.objectContaining({ fluxo: 'interpretar_planilha', custoEstimado: 0.0003 }),
     ]);
+  });
+
+  it('com idioma en ativo, confirmação da planilha responde em inglês', async () => {
+    definirIdioma(db, 'en');
+    criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Principal' });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        arrayBuffer: async () =>
+          xlsxParaArrayBuffer([
+            ['Data', 'Histórico', 'Valor'],
+            ['10/09/2026', 'Mercado Central', '-45.00'],
+          ]),
+      }) as unknown as Response),
+    );
+    const client = criarClienteFalso(
+      JSON.stringify({
+        transacoes: [
+          { tipo: 'despesa', valor: 45, categoria: 'Mercado', descricao: 'Mercado Central', data: '2026-09-10' },
+        ],
+      }),
+    );
+    const handler = createHandlerMidia(client, db, createLogger({ write() {} }), BOT_TOKEN);
+    const ctx = criarContextoPlanilha('Principal');
+
+    await handler(ctx);
+
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Found'), expect.anything());
   });
 
   it('planilha sem legenda pede pra reenviar com a legenda, sem chamar a IA', async () => {
