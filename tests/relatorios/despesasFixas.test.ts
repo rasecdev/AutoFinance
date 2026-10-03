@@ -152,4 +152,19 @@ describe('formatarAlertaDespesasFixas', () => {
     expect(texto).toContain('Aluguel');
     expect(texto).toContain('Academia');
   });
+
+  it('com idioma en, formata o alerta em inglês', () => {
+    const despesa = criarDespesaFixa(db, {
+      contaId,
+      descricao: 'Aluguel',
+      categoria: 'Moradia',
+      valorEsperado: 1500,
+      diaVencimentoEsperado: 5,
+      criadoEm: '2026-09-02',
+    });
+
+    const texto = formatarAlertaDespesasFixas([despesa], JANELA, 'en');
+    expect(texto).toContain("didn't show up");
+    expect(texto).toContain('Aluguel (expected: R$ 1500.00, every day 5)');
+  });
 });

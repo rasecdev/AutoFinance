@@ -103,9 +103,10 @@ fixas do bot, resposta livre da IA (`conversa_texto`) e relatórios visuais
       Open Finance — tudo em inglês
 
 ### Alertas proativos
-- [ ] Tarefa 144: traduz `monitorarPrecos.ts`/`verificarDespesasFixas.ts` e o
-      alerta de limite de cartão (`ai/tools/transacoes.ts`) pra `t()`, lendo
-      idioma ativo no início do job
+- [x] Tarefa 144: traduz `monitorarPrecos.ts`/`verificarDespesasFixas.ts` pra
+      `t()`, lendo idioma ativo no início do job. Alerta de limite de cartão
+      (`ai/tools/transacoes.ts`) revisado e descartado — passa pela narração
+      da IA, já coberto pela Tarefa 139, sem string própria pra traduzir
 
 ### Relatórios visuais
 - [ ] Tarefa 145: `imagemSemanal.ts` recebe `idioma`, troca textos fixos por

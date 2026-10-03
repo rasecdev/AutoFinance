@@ -348,6 +348,16 @@ describe('formatarMensagemAlerta', () => {
     expect(texto).toContain('preço variável (não fixo)');
     expect(texto).not.toContain('(-2)');
   });
+
+  it('com idioma en, formata a mensagem em inglês', () => {
+    const texto = formatarMensagemAlerta(
+      [{ tipo: 'preco_mudou', fluxo: 'conversa_texto', modelo: 'openai/gpt-4o-mini', precoAntigo: 1, precoNovo: 2 }],
+      'en',
+    );
+
+    expect(texto).toContain('Price changed');
+    expect(texto).toContain('No switch was made automatically');
+  });
 });
 
 describe('enviarAlertas', () => {

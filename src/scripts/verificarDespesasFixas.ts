@@ -3,6 +3,7 @@ import { Bot } from 'grammy';
 import { configurarFormatacaoPadrao } from '../bot/formatoMensagens.js';
 import { loadEnv } from '../config/env.js';
 import { getDb, type DbClient } from '../db/client.js';
+import { obterIdioma } from '../db/repositories/idiomaBot.js';
 import { createLogger } from '../logging/logger.js';
 import { detectarDespesasFixasFaltantes, formatarAlertaDespesasFixas } from '../relatorios/despesasFixas.js';
 import { calcularJanelaPeriodo } from '../relatorios/janela.js';
@@ -38,7 +39,7 @@ export function obterAlertaDespesasFixas(db: DbClient, agora: Date = new Date())
     return undefined;
   }
 
-  return formatarAlertaDespesasFixas(faltantes, janela);
+  return formatarAlertaDespesasFixas(faltantes, janela, obterIdioma(db));
 }
 
 async function main(): Promise<void> {
