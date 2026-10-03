@@ -13,21 +13,21 @@ seção "Fase 10".
 quando não há linha) e `definirIdioma(db, idioma)` (upsert).
 
 **Acceptance criteria:**
-- [ ] `obterIdioma` devolve `'pt'` em banco novo, sem nenhuma linha gravada
-- [ ] `definirIdioma` grava e `obterIdioma` reflete o valor novo depois
-- [ ] `definirIdioma` chamado duas vezes não cria linha duplicada (upsert,
+- [x] `obterIdioma` devolve `'pt'` em banco novo, sem nenhuma linha gravada
+- [x] `definirIdioma` grava e `obterIdioma` reflete o valor novo depois
+- [x] `definirIdioma` chamado duas vezes não cria linha duplicada (upsert,
       mesmo padrão de `botPausado.pausar`)
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/db/repositories/idiomaBot.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/db/idiomaBot.test.ts`
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** None
 
 **Files likely touched:**
 - `src/db/migrations/0021_idioma_bot.sql`
 - `src/db/repositories/idiomaBot.ts`
-- `tests/db/repositories/idiomaBot.test.ts`
+- `tests/db/idiomaBot.test.ts`
 
 **Estimated scope:** Small
 
