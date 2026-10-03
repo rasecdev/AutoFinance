@@ -1,54 +1,124 @@
-# Implementation Plan: Multi-canal — WhatsApp via WAHA (Rodada 1: mensagens proativas)
+# Implementation Plan: Persistência do refresh_token do Google no banco
 
 ## Overview
 
-Fase 9 do PLANO.md (linha 601). Objetivo desta rodada: relatório semanal/mensal e alertas (preço, despesa fixa faltante, erro crítico) — que já saem proativamente por Telegram — também saem por WhatsApp, em paralelo, quando o canal estiver configurado. **Não inclui** chat bidirecional pelo WhatsApp (responder pergunta, tool calling, confirmação) — isso vira a Rodada 2, uma fase própria, maior: os handlers de conversa (`src/bot/handlers/*`, `router.ts`, `confirmacao.ts`, `rastroRespostas.ts`) são profundamente acoplados ao `Context` do `grammy` (`ctx.message`, `ctx.chat.id`, `ctx.reply`, `ctx.callbackQuery`, `ctx.getFile()`, etc., ~20 arquivos) — abstrair tudo isso de uma vez seria uma tarefa XL, e não é necessário pro valor imediato desta rodada (receber relatório/alerta no WhatsApp).
+O `refresh_token` do OAuth do Google (Gmail+Calendar) hoje vive em `GOOGLE_REFRESH_TOKEN`
+no `.env.*` da VM. Como o app OAuth está em status "Testing" no Google Cloud Console, o
+Google expira esse token sozinho a cada ~7 dias (`invalid_grant`, achado registrado em
+PROGRESSO.md 2026-10-01/02) — decisão já tomada de **não** publicar o app pra Production
+(scope `gmail.readonly` é "Restricted", exigiria avaliação de segurança CASA recorrente,
+desproporcional pra uso solo). Essa rodada não resolve a expiração em si — só remove o
+atrito manual de cada reautorização: hoje, depois de colar o código no `/registrar_email`,
+alguém precisa SSH na VM, editar `.env.*` e reiniciar os serviços. Com o token guardado no
+banco, `/registrar_email confirmar` passa a persistir sozinho e os jobs leem o valor atual
+na próxima execução, sem intervenção manual.
 
-Decisão de arquitetura (pesquisa via WebSearch/WebFetch, 2026-09-22 — ver PROGRESSO.md pro racional completo e fontes): **WAHA** (`waha.devlike.pro`, Apache-2.0, self-hosted), motor `NOWEB` (WebSocket, sem Chromium), não a Cloud API oficial da Meta. Ver PLANO.md (Fase 9) pro resumo da decisão. Risco aceito conscientemente pelo usuário: automação não-oficial, risco real (não zero) de banimento do número conectado — mitigado com número de telefone secundário dedicado ao bot, nunca o WhatsApp pessoal do usuário.
-
-Infraestrutura reaproveitada sem mudança: todos os 7 scripts que hoje mandam mensagem proativa (`relatorioSemanal.ts`, `relatorioMensal.ts`, `monitorarPrecos.ts`, `verificarDespesasFixas.ts`, `lerEmailFaturas.ts`, `sincronizarOpenFinance.ts`, `tratarErroCriticoJob.ts`) constroem seu próprio `new Bot(botToken)` e chamam `bot.api.sendMessage`/`sendPhoto`/`sendDocument` num loop de `chatIds` — nenhuma lógica de negócio muda, só um canal a mais no fan-out de envio.
+Pausa temporária da rodada "Multi-canal — WhatsApp" (nenhuma tarefa iniciada ainda) a
+pedido do usuário — arquivos movidos pra `tasks/plan-multicanal-whatsapp.md` /
+`tasks/todo-multicanal-whatsapp.md`, retomam de onde pararam quando voltar o foco.
 
 ## Architecture Decisions
 
-- **WAHA roda como serviço Docker próprio por ambiente** (`whatsapp-homologacao`/`whatsapp-producao` no `docker-compose.yml`, mesmo padrão de todo par de serviços já existente no projeto — volume próprio pra persistir a sessão do WhatsApp Web entre restarts, sem precisar reescanear QR code toda hora). Cada ambiente usa um número de telefone dedicado diferente (uma sessão WAHA = um número só) — mesmo princípio de isolamento total já usado no resto do projeto (banco, bot Telegram, credenciais próprias por ambiente).
-- **Sem servidor HTTP público novo — nem sequer interno nesta rodada.** Como esta rodada é só envio (proativo), não precisa receber nada da WAHA — o webhook de mensagem recebida (que seria container-a-container, nunca público) fica pra Rodada 2, quando existir handler de chat pra processar mensagem recebida. Nesta rodada, a configuração de webhook da sessão WAHA fica simplesmente vazia/não configurada.
-- **Cliente HTTP fino pro WAHA** (`src/canais/whatsapp.ts`), sem SDK novo — só `fetch` contra a REST API da WAHA (`POST /api/sendText`, `/api/sendImage`, `/api/sendFile`), autenticado por API key (header, gerada na configuração da sessão). Mídia (imagem semanal, PDF mensal) enviada via `file.data` em base64 — os Buffers já são gerados em memória pelo projeto, sem precisar hospedar URL pública do arquivo. Mesmo princípio de "cliente mínimo sobre HTTP" já usado pro resto do projeto (ex: `fetch` direto pro catálogo público do OpenRouter em `monitorarPrecos.ts`, sem SDK).
-- **Função de fan-out único** (`src/canais/notificar.ts`): `notificarTexto`/`notificarImagem`/`notificarDocumento(db, env, bot, chatIds, conteudo)` — manda pro Telegram (como já acontece) e, se `WHATSAPP_WAHA_URL`/`WHATSAPP_DESTINATARIOS` estiverem configurados no ambiente, também manda pro WhatsApp via `src/canais/whatsapp.ts`. Falha de envio num canal não derruba o outro (mesmo princípio já usado em `tratarErroCriticoJob`: "falha ao enviar pra um chat não impede os outros"). Os 7 scripts trocam a chamada direta `bot.api.sendX` por essa função — não existe abstração de "canal" genérica com adapter Telegram nesta rodada (seria prematuro sem o caso de uso do chat bidirecional) — é só um fan-out de envio.
-- **Configuração via env, mesmo padrão do par Google/Pluggy (`env.ts`)**: `WHATSAPP_WAHA_URL`, `WHATSAPP_WAHA_API_KEY`, `WHATSAPP_WAHA_SESSION`, `WHATSAPP_DESTINATARIOS` (lista de números, mesmo formato de `TELEGRAM_ALLOWED_CHAT_IDS`) — todos opcionais, mas exigidos juntos (`superRefine`, mesma regra do par `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`). Ausentes por completo é estado válido ("integração desligada") — mensagem proativa continua saindo só por Telegram, nada quebra enquanto o usuário não parear o WhatsApp.
-- **Pareamento inicial via script de linha de comando** (`scripts/parearWhatsapp.ts`), mesmo padrão de `configurarGoogleOAuth.ts`/`gerarConnectTokenPluggy.ts`: cria a sessão via `POST /api/sessions`, busca o QR code (`GET /api/{session}/auth/qr`) e salva como imagem local — usuário escaneia uma vez com o WhatsApp do número dedicado. Sessão persiste no volume Docker depois disso, sem precisar rodar de novo (a menos que desconecte).
-- **Sem confirmação de leitura/histórico de mensagem recebida nesta rodada** — como não há chat bidirecional ainda, não há nada pra rastrear além do envio em si (sucesso/falha, já logado como qualquer outro envio).
+- **`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`/`GOOGLE_CALENDAR_ID` continuam em `.env.*`** —
+  são estáticos (identidade do app OAuth registrado no Google Cloud, não rotacionam). Só o
+  `refresh_token` (o único valor que expira e precisa trocar) migra pro banco.
+  `env.googleOAuthClient` passa a incluir `calendarId` (default `'primary'`) e deixa de
+  depender da presença de refresh_token — fica disponível sempre que o par cliente existir,
+  independente de já ter vínculo feito.
+- **Nova tabela singleton `credenciais_google`** (`id INTEGER PRIMARY KEY CHECK(id=1)`, mesmo
+  princípio de `bot_pausado`/`emails_processados`: presença de linha = estado), via
+  `src/db/repositories/credenciaisGoogle.ts` (`obterRefreshToken`/`salvarRefreshToken`, upsert
+  por `id=1` — nunca mais de uma linha, mesmo trocando de conta Google).
+- **Restrição de segurança obrigatória, não negociável:** `credenciais_google` NUNCA pode
+  aparecer no whitelist de domínio de `consultar_dados_dinamico`/`consultar_e_graficar`
+  (`src/ai/tools/consultaDinamica.ts` → `DominioConsulta`/`TODAS_DIMENSOES`, resolvido em
+  `src/relatorios/consultaDinamica.ts`) nem em nenhuma tool que eco dado cru pro chat — essas
+  tools deixam o modelo de IA escolher dimensão/filtro por linguagem natural, e vazar o
+  `refresh_token` ali daria acesso de leitura ao Gmail/Calendar pra quem conseguisse formular
+  a pergunta certa (ou injetar instrução via e-mail/comprovante processado pelo bot — mesma
+  classe de risco já endereçada no estudo OWASP Agentic ASI06/ASI10). Guarda via comentário
+  bem visível na migration e no topo de `consultaDinamica.ts`/`relatorios/consultaDinamica.ts`
+  — essas duas tools só aceitam `dominio` de um enum fechado (`financeiro`/`uso_ia`), então
+  não incluir `credenciais_google` nesse enum já basta; o comentário é reforço, não controle
+  de acesso real.
+- **`criarClientesGoogle` (`src/integracoes/google/auth.ts`) não muda de assinatura** —
+  continua recebendo `{clientId, clientSecret, refreshToken, calendarId}` já montado; quem
+  muda é como esse objeto é montado nos chamadores (combinando `env.googleOAuthClient` +
+  `obterRefreshToken(db)` em vez de vir pronto de `env.google`).
+- **`env.google` deixa de existir** (campo composto removido de `Env`) — todo lugar que
+  checava `env.google === null`/usava `env.google.calendarId` passa a checar
+  `env.googleOAuthClient === null` (app não configurado) e, separadamente,
+  `obterRefreshToken(db) === null` (app configurado mas ainda sem vínculo feito) — mesma
+  distinção de estados que já existia, só com a fonte do token trocada.
+- **Token nunca mais aparece em texto no chat.** Hoje `/registrar_email` devolve o
+  `refresh_token` em claro na conversa (apagado em 5 min via `mensagens_pendentes_apagar`,
+  migration 0013) pra alguém colar manualmente no `.env`. Com persistência direta no banco,
+  essa exibição deixa de ser necessária — o fluxo some, e o mecanismo de
+  auto-apagar/`mensagens_pendentes_apagar` fica sem nenhum outro uso no código (confirmado via
+  grep, só esse handler consome). **Decisão: remover esse mecanismo morto** (repositório,
+  sweep de boot em `index.ts`, tabela via migration nova de `DROP TABLE` — migration antiga
+  0013 nunca é editada/apagada, só superada) em vez de deixar código sem uso no projeto.
+- **`scripts/configurarGoogleOAuth.ts` (CLI manual, caminho alternativo ao `/registrar_email`
+  desde a Fase 7) ganha o mesmo tratamento** — passa a persistir no banco via
+  `salvarRefreshToken`, não imprime mais instrução de colar no `.env`, pra não deixar um
+  segundo caminho desatualizado/inconsistente com o novo fluxo.
+- **Leitura do token pelos jobs:** `lerEmailFaturas.ts`/`sincronizarCalendario.ts` já seguem o
+  padrão "processo roda um ciclo e sai, `docker-compose` reinicia" (não são processos
+  long-lived) — ler o token do banco uma vez no início de cada execução já resolve "hot
+  reload" sem nenhum mecanismo extra de cache/invalidação.
 
 ## Task List
 
-1. Tarefa 122: `docker-compose.yml` — serviços `whatsapp-homologacao`/`whatsapp-producao` (WAHA, motor NOWEB) + `env.ts` (novas variáveis opcionais)
-2. Tarefa 123: `scripts/parearWhatsapp.ts` — pareamento inicial via QR code
-3. Tarefa 124: `src/canais/whatsapp.ts` — cliente HTTP fino (enviarTexto/enviarImagem/enviarDocumento)
-4. Tarefa 125: `src/canais/notificar.ts` — função de fan-out (Telegram + WhatsApp quando configurado)
+### Fase 1: Armazenamento
 
-### Checkpoint: Infraestrutura e envio funcionais (sem wiring nos jobs ainda)
+- [ ] Tarefa 128: migration `0018_credenciais_google.sql` (tabela singleton) + repositório
+      `src/db/repositories/credenciaisGoogle.ts` (`obterRefreshToken`/`salvarRefreshToken`)
+- [ ] Tarefa 129: `env.ts` — remove `GOOGLE_REFRESH_TOKEN` do schema e o campo `google`;
+      `googleOAuthClient` ganha `calendarId` (default `'primary''`, independente de token)
+
+### Checkpoint: Armazenamento pronto
 - [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual: sessão WAHA pareada em Homologação (QR escaneado com o número dedicado), `notificarTexto`/`notificarImagem`/`notificarDocumento` testados manualmente contra a sessão real (script avulso ou REPL) — mensagem chega no WhatsApp
-- [ ] Revisão com o usuário antes de prosseguir pro wiring nos jobs
+- [ ] Teste: `salvarRefreshToken` seguido de `salvarRefreshToken` com outro valor nunca cria
+      segunda linha (upsert de verdade)
+- [ ] Revisão rápida: `credenciais_google` não aparece em nenhum enum/mapa de
+      `consultaDinamica.ts`/`relatorios/consultaDinamica.ts`
 
-5. Tarefa 126: wiring — `relatorioSemanal.ts`, `relatorioMensal.ts`, `tratarErroCriticoJob.ts` passam a usar `notificar*` em vez de `bot.api.sendX` direto
-6. Tarefa 127: wiring — `monitorarPrecos.ts`, `verificarDespesasFixas.ts`, `lerEmailFaturas.ts`, `sincronizarOpenFinance.ts` passam a usar `notificar*`
+### Fase 2: Wiring nos consumidores
 
-### Checkpoint: Rodada 1 fechada (mensagens proativas no WhatsApp)
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: rodar `relatorioSemanal.js --agora`/`relatorioMensal.js --agora` de verdade — mensagem chega nos dois canais (Telegram e WhatsApp)
-- [ ] PROGRESSO.md atualizado com o marco
-- [ ] Revisão com o usuário antes de considerar a Rodada 2 (chat bidirecional)
+- [ ] Tarefa 130: `lerEmailFaturas.ts`/`sincronizarCalendario.ts` — trocam checagem
+      `env.google === null` por `env.googleOAuthClient === null` + leitura de
+      `obterRefreshToken(db)`, montam o objeto pra `criarClientesGoogle` combinando os dois
+- [ ] Tarefa 131: `scripts/configurarGoogleOAuth.ts` — persiste via `salvarRefreshToken` em
+      vez de imprimir instrução de `.env`
+- [ ] Tarefa 132: `bot/handlers/registrarEmail.ts` — `createHandlerRegistrarEmail` passa a
+      receber `db`; checagem "já vinculado" usa `obterRefreshToken(db)`; mensagem de vínculo
+      existente usa `env.googleOAuthClient.calendarId`; `createHandlerCodigoOAuthGoogle`
+      chama `salvarRefreshToken(db, tokens.refresh_token)` em vez de devolver o token em texto
+      — remove a chamada a `agendarAutoApagar`/`agendarApagarPersistido` deste handler
+- [ ] Tarefa 133: remove o mecanismo `mensagens_pendentes_apagar` (ficou sem uso depois da
+      Tarefa 132): migration `0019_remove_mensagens_pendentes_apagar.sql` (`DROP TABLE`),
+      apaga `src/db/repositories/mensagensPendentesApagar.ts` e o sweep de boot em `index.ts`
+      (`apagarMensagensPendentesAtrasadas`, import de `listarVencidas`/`removerAgendamento`)
+
+### Checkpoint: Rodada fechada
+- [ ] `npm run build`/`lint`/`test` sem erro, suite completa
+- [ ] Teste manual em Homologação: `/registrar_email confirmar`, autorizar, colar código —
+      bot confirma vínculo sem pedir nada manual na VM; `docker compose restart
+      ler-email-faturas-homologacao sincronizar-calendario-homologacao` (ou esperar o próximo
+      ciclo natural) e confirmar que os dois jobs funcionam lendo o token do banco
+  - [ ] PROGRESSO.md atualizado com o marco e fechamento do achado de 2026-10-01/02
+      (atrito manual resolvido; expiração a cada ~7 dias continua existindo, sem mudança)
+      - [ ] Milestone "Persistência do refresh_token Google" fechado no GitHub (6/6 issues)
+  - [ ] Revisão com o usuário antes de retomar a rodada WhatsApp pausada
 
 ## Risks and Mitigations
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Número WhatsApp conectado ser banido pela Meta (WAHA é automação não-oficial) | Médio-Alto (perde o canal, não o projeto — Telegram continua intacto) | Número secundário dedicado só ao bot (nunca o WhatsApp pessoal do usuário), decisão consciente já tomada; mensagem proativa vai só pra 1 contato conhecido (o próprio usuário), não mensagem em massa — perfil de risco bem menor que o cenário que a doc do WAHA alerta |
-| Sessão WAHA cair/desconectar sozinha (comum em automação de WhatsApp Web) e ninguém perceber | Médio | `notificarTexto`/etc. logam falha de envio (mesmo padrão de `tratarErroCriticoJob`) sem derrubar o job nem o outro canal — falha de envio WhatsApp vira uma linha de log observável, não um silêncio |
-| Volume Docker da sessão corromper ou se perder num redeploy, exigindo reescanear QR | Baixo | Mesmo tratamento de qualquer volume do projeto (backup já cobre bancos, não sessões WAHA — sessão é reconectável manualmente via `parearWhatsapp.ts`, não é dado crítico irrecuperável) |
-| WAHA (protocolo reverso) quebrar com uma atualização do WhatsApp e parar de funcionar até a lib atualizar | Baixo-Médio | Fora do controle do projeto — mesma classe de risco já aceita ao escolher a lib; Telegram continua como canal primário garantido enquanto isso não acontecer |
+| `credenciais_google` acabar incluída, hoje ou no futuro, em alguma tool de consulta dinâmica (vazamento do refresh_token via chat) | Alto — acesso de leitura ao Gmail/Calendar pra quem formular a pergunta certa | Comentário de alerta na migration e no topo dos dois arquivos de `consultaDinamica`; enum fechado de domínio já exclui por padrão (não é passthrough de nome de tabela) |
+| Job em execução no momento exato de uma reautorização lê o token antigo (ainda não trocou) | Baixo — o antigo só fica inválido depois do `invalid_grant`, não há janela de corrida real | Nenhuma — processo de vida curta, próximo ciclo já lê o valor novo |
+| Remover `mensagens_pendentes_apagar` quebrar algo que dependia dela sem eu ter visto | Baixo | Grep confirmou uso restrito a este handler antes de decidir remover; build/lint/testes cobrem import quebrado |
 
 ## Open Questions
 
-- Rodada 2 (chat bidirecional pelo WhatsApp — responder pergunta, tool calling, confirmação) fica pra quando a Rodada 1 provar que vale a pena manter o canal ativo na prática — não planejada em detalhe aqui, só citada como próximo passo natural se a Rodada 1 for bem.
-- Vale, na Rodada 2, extrair de fato uma interface `Canal` genérica (a ideia original do PLANO.md) pra evitar duplicar handler por canal, ou é mais simples ter um adapter WhatsApp específico que só reaproveita a lógica de negócio (não a camada de handler em si)? Não decidido — decisão de design pra quando a Rodada 2 for planejada, com o código de verdade da Rodada 1 já em mãos como referência.
+Nenhuma — decisões de arquitetura fechadas na conversa antes de planejar.

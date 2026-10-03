@@ -1,28 +1,64 @@
-# Todo: Multi-canal — WhatsApp via WAHA (Rodada 1: mensagens proativas)
+# Todo: Persistência do refresh_token do Google no banco
 
-Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 1 cobre só envio proativo (relatório semanal/mensal, alertas) via WhatsApp, em paralelo ao Telegram — chat bidirecional fica pra uma Rodada 2 futura.
+Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada motivada pelo
+achado `invalid_grant` de 2026-10-01/02 (PROGRESSO.md) — não resolve a expiração do token em
+si (decisão já tomada de não publicar o app pra Production), só remove o atrito manual
+(SSH + editar `.env` + restart) de cada reautorização.
 
 ---
 
-### Tarefa 122: `docker-compose.yml` (serviços WAHA) + `env.ts` (novas variáveis)
+### Tarefa 128: migration `credenciais_google` + repositório
 
-**Description:** Dois novos serviços no `docker-compose.yml`, mesmo padrão de todo par existente (imagem oficial `devlikeapro/waha`, sem `build:` próprio — é imagem publicada, diferente do resto do projeto que sempre builda a própria): `whatsapp-homologacao`/`whatsapp-producao`, motor `NOWEB` via env var (`WHATSAPP_DEFAULT_ENGINE=NOWEB`), volume próprio por ambiente pra persistir a sessão (evita reescanear QR a cada restart), variável de API key própria por ambiente. `env.ts` ganha `WHATSAPP_WAHA_URL`, `WHATSAPP_WAHA_API_KEY`, `WHATSAPP_WAHA_SESSION`, `WHATSAPP_DESTINATARIOS` (lista de números, mesmo formato de `TELEGRAM_ALLOWED_CHAT_IDS`) — todas opcionais mas exigidas juntas (`superRefine`, mesma regra do par Google/Pluggy). Ausentes por completo é estado válido.
+**Description:** Tabela singleton nova (`id INTEGER PRIMARY KEY CHECK(id=1)`, mesmo padrão
+de `bot_pausado`) pra guardar o `refresh_token` atual do Google. Repositório
+`src/db/repositories/credenciaisGoogle.ts`: `salvarRefreshToken(db, token)` (upsert por
+`id=1`, nunca duplica linha nem acumula histórico) e `obterRefreshToken(db): string | null`.
+Comentário na migration alertando que esta tabela nunca entra em nenhuma tool de consulta
+dinâmica (ver Architecture Decisions do plan).
 
 **Acceptance criteria:**
-- [ ] `docker compose config` valida sem erro com os dois serviços novos
-- [ ] `env.ts`: as 4 variáveis ausentes juntas não geram erro de validação (integração desligada)
-- [ ] `env.ts`: só parte das 4 variáveis presentes gera erro de validação claro (mesmo padrão do par Google)
-- [ ] Serviço `whatsapp-homologacao` sobe localmente (`docker compose up whatsapp-homologacao`) e responde no endpoint de health/QR da WAHA
+- [ ] `obterRefreshToken` devolve `null` com a tabela vazia
+- [ ] `salvarRefreshToken` seguido de `obterRefreshToken` devolve o valor salvo
+- [ ] `salvarRefreshToken` chamado duas vezes com valores diferentes deixa só uma linha na
+      tabela (upsert, não insert duplicado) e `obterRefreshToken` devolve o valor mais
+      recente
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/config/env.test.ts`
+- [ ] Tests pass: `npx vitest run tests/db/repositories/credenciaisGoogle.test.ts`
 - [ ] Build succeeds: `npm run build`
-- [ ] Manual check: `docker compose up whatsapp-homologacao` sobe sem erro, `curl` no endpoint da API confirma resposta
 
 **Dependencies:** None
 
 **Files likely touched:**
-- `docker-compose.yml`
+- `src/db/migrations/0018_credenciais_google.sql`
+- `src/db/repositories/credenciaisGoogle.ts`
+- `tests/db/repositories/credenciaisGoogle.test.ts`
+
+**Estimated scope:** Small
+
+---
+
+### Tarefa 129: `env.ts` — remove `GOOGLE_REFRESH_TOKEN`, `googleOAuthClient` ganha `calendarId`
+
+**Description:** Remove `GOOGLE_REFRESH_TOKEN` do schema Zod e o campo composto `google` do
+tipo `Env` (deixa de existir — token não mora mais em env). `googleOAuthClient` passa a
+incluir `calendarId` (lido de `GOOGLE_CALENDAR_ID`, default `'primary'`) e fica disponível
+sempre que `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` estiverem presentes, sem depender de
+token nenhum.
+
+**Acceptance criteria:**
+- [ ] `env.google` não existe mais (erro de compilação em qualquer lugar que ainda referencie)
+- [ ] `googleOAuthClient` presente (com `calendarId`) só com `CLIENT_ID`/`CLIENT_SECRET`
+      configurados, independente de `GOOGLE_REFRESH_TOKEN` (que nem existe mais no schema)
+- [ ] `GOOGLE_CALENDAR_ID` ausente → `calendarId` default `'primary'`
+
+**Verification:**
+- [ ] Tests pass: `npx vitest run tests/config/env.test.ts`
+- [ ] Build succeeds: `npm run build`
+
+**Dependencies:** None
+
+**Files likely touched:**
 - `src/config/env.ts`
 - `tests/config/env.test.ts`
 
@@ -30,136 +66,151 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 1
 
 ---
 
-### Tarefa 123: `scripts/parearWhatsapp.ts` (pareamento inicial via QR code)
-
-**Description:** Script de linha de comando, rodado uma vez (mesmo padrão de `configurarGoogleOAuth.ts`/`gerarConnectTokenPluggy.ts`): cria a sessão via `POST {WAHA_URL}/api/sessions` (nome da sessão de `WHATSAPP_WAHA_SESSION`), busca o QR code via `GET {WAHA_URL}/api/{session}/auth/qr` e salva como arquivo `.png` local (`qr-whatsapp.png` ou similar) — usuário abre o arquivo e escaneia com o WhatsApp do número dedicado. Roda dentro do container (`docker compose run --rm --no-deps whatsapp-homologacao ...` não se aplica — é o *bot* que chama a API da WAHA, não a WAHA em si; rodar como `docker compose run --rm --no-deps homologacao node dist/scripts/parearWhatsapp.js`, mesmo padrão dos outros scripts avulsos).
-
-**Acceptance criteria:**
-- [ ] Cria a sessão se ainda não existir (idempotente — sessão já criada não é erro)
-- [ ] QR code salvo como arquivo de imagem válido, path informado no console
-- [ ] Erro claro se `WHATSAPP_WAHA_URL`/`WHATSAPP_WAHA_API_KEY`/`WHATSAPP_WAHA_SESSION` não estiverem configurados
-
-**Verification:**
-- [ ] Tests pass: `npx vitest run tests/scripts/parearWhatsapp.test.ts` (mocka a API da WAHA — não depende de sessão real)
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: QR gerado de verdade contra a sessão WAHA de Homologação, escaneado com o número dedicado, sessão fica `WORKING`
-
-**Dependencies:** Tarefa 122
-
-**Files likely touched:**
-- `src/scripts/parearWhatsapp.ts`
-- `tests/scripts/parearWhatsapp.test.ts`
-
-**Estimated scope:** Small
-
----
-
-### Tarefa 124: `src/canais/whatsapp.ts` (cliente HTTP fino pra WAHA)
-
-**Description:** `enviarTextoWhatsapp(config, destinatario, texto)`, `enviarImagemWhatsapp(config, destinatario, imagem: Buffer, legenda?)`, `enviarDocumentoWhatsapp(config, destinatario, documento: Buffer, nomeArquivo)` — `fetch` direto contra `POST {WAHA_URL}/api/sendText`/`/api/sendImage`/`/api/sendFile`, autenticado via header de API key, mídia em base64 (`file.data`). `config` é `{ url, apiKey, session }` (vem de `env`, mas função pura o suficiente pra testar sem carregar env de verdade). `destinatario` no formato de número que a WAHA espera (`<numero>@c.us`) — validar/normalizar formato antes de montar o payload.
-
-**Acceptance criteria:**
-- [ ] `enviarTextoWhatsapp` monta o payload certo (`session`, `chatId`, `text`) e inclui o header de API key
-- [ ] `enviarImagemWhatsapp`/`enviarDocumentoWhatsapp` codificam o Buffer em base64 no campo `file.data`, com `mimetype`/`filename` corretos
-- [ ] Erro de rede/resposta não-2xx da WAHA propaga como exceção clara (mensagem inclui status HTTP), não falha silenciosa
-- [ ] Número de destinatário sem o sufixo `@c.us` é normalizado antes do envio
-
-**Verification:**
-- [ ] Tests pass: `npx vitest run tests/canais/whatsapp.test.ts` (mocka `fetch` global)
-- [ ] Build succeeds: `npm run build`
-
-**Dependencies:** None (não depende da Tarefa 122/123 pra existir — só pra ser testado de verdade)
-
-**Files likely touched:**
-- `src/canais/whatsapp.ts`
-- `tests/canais/whatsapp.test.ts`
-
-**Estimated scope:** Small
-
----
-
-### Tarefa 125: `src/canais/notificar.ts` (fan-out Telegram + WhatsApp)
-
-**Description:** `notificarTexto(env, bot, chatIds, texto)`, `notificarImagem(env, bot, chatIds, imagem, legenda?)`, `notificarDocumento(env, bot, chatIds, documento, nomeArquivo)` — manda pro Telegram como cada script já faz hoje (`bot.api.sendMessage`/`sendPhoto`/`sendDocument` por `chatId`), e adicionalmente, se `env.whatsappWahaUrl` (e demais variáveis) estiverem presentes, manda a mesma mensagem por WhatsApp via `src/canais/whatsapp.ts` pra cada número de `env.whatsappDestinatarios`. Falha de envio num canal não impede o outro nem lança exceção pro chamador (mesmo princípio já usado em `tratarErroCriticoJob` — loga e segue).
-
-**Acceptance criteria:**
-- [ ] Com WhatsApp configurado: mensagem sai pros dois canais
-- [ ] Sem WhatsApp configurado: mensagem sai só por Telegram, sem erro nem log de "tentou e falhou"
-- [ ] Falha no envio WhatsApp (ex: sessão desconectada) não impede o envio Telegram, e vice-versa
-- [ ] Falha em qualquer canal é logada, não lançada como exceção (chamador não precisa de try/catch pra isso)
-
-**Verification:**
-- [ ] Tests pass: `npx vitest run tests/canais/notificar.test.ts`
-- [ ] Build succeeds: `npm run build`
-
-**Dependencies:** Tarefa 124
-
-**Files likely touched:**
-- `src/canais/notificar.ts`
-- `tests/canais/notificar.test.ts`
-
-**Estimated scope:** Medium
-
----
-
-## Checkpoint: Infraestrutura e envio funcionais (sem wiring nos jobs ainda)
+### Checkpoint: Armazenamento pronto
 - [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual: sessão WAHA pareada em Homologação, `notificarTexto`/`notificarImagem`/`notificarDocumento` testados contra a sessão real — mensagem chega no WhatsApp
-- [ ] Revisão com o usuário antes de prosseguir pro wiring nos jobs
+- [ ] Revisão rápida: `credenciais_google` não aparece em `DominioConsulta`, `TODAS_DIMENSOES`
+      nem em nenhum mapa de coluna de `src/ai/tools/consultaDinamica.ts` ou
+      `src/relatorios/consultaDinamica.ts`
 
 ---
 
-### Tarefa 126: wiring — relatórios e erro crítico
+### Tarefa 130: jobs (`lerEmailFaturas.ts`/`sincronizarCalendario.ts`) leem token do banco
 
-**Description:** `relatorioSemanal.ts` (`notificarImagem` em vez de `bot.api.sendPhoto`), `relatorioMensal.ts` (`notificarDocumento` em vez de `bot.api.sendDocument`), `tratarErroCriticoJob.ts` (`notificarTexto` em vez de `bot.api.sendMessage`) — comportamento de negócio idêntico, só troca o mecanismo de envio final. Assinatura de `tratarErroCriticoJob` ganha `env` no lugar de (ou junto de) `botToken`/`chatIds` crus, pra ter acesso às variáveis do WhatsApp.
-
-**Acceptance criteria:**
-- [ ] Os 3 scripts continuam funcionando exatamente igual quando WhatsApp não está configurado (regressão zero)
-- [ ] Com WhatsApp configurado, os 3 passam a mandar a mesma mídia/texto pros dois canais
-
-**Verification:**
-- [ ] Tests pass: `npx vitest run tests/scripts/relatorioSemanal.test.ts tests/scripts/relatorioMensal.test.ts tests/scripts/tratarErroCriticoJob.test.ts`
-- [ ] Build succeeds: `npm run build`
-
-**Dependencies:** Tarefa 125
-
-**Files likely touched:**
-- `src/scripts/relatorioSemanal.ts`
-- `src/scripts/relatorioMensal.ts`
-- `src/scripts/tratarErroCriticoJob.ts`
-- Testes correspondentes
-
-**Estimated scope:** Medium
-
----
-
-### Tarefa 127: wiring — alertas operacionais
-
-**Description:** `monitorarPrecos.ts`, `verificarDespesasFixas.ts`, `lerEmailFaturas.ts`, `sincronizarOpenFinance.ts` — mesma troca de `bot.api.sendX` por `notificar*` da Tarefa 126, aplicada aos 4 scripts restantes que mandam mensagem proativa.
+**Description:** Troca a checagem `env.google === null` por `env.googleOAuthClient === null`
+(app não configurado — mesmo comportamento de "integração desligada" de hoje). Com o app
+configurado, lê `obterRefreshToken(db)`; se vier `null` (configurado mas nunca vinculado),
+mesmo caminho de "integração desligada" (dorme o intervalo normal e sai, sem busy-loop).
+Com token presente, monta `{...env.googleOAuthClient, refreshToken}` pra
+`criarClientesGoogle` (assinatura da função não muda).
 
 **Acceptance criteria:**
-- [ ] Os 4 scripts continuam funcionando exatamente igual quando WhatsApp não está configurado (regressão zero)
-- [ ] Com WhatsApp configurado, os 4 passam a mandar a mesma mensagem pros dois canais
+- [ ] `googleOAuthClient === null` → comportamento idêntico ao `env.google === null` de hoje
+      (loga, dorme o intervalo, sai sem rodar nada)
+- [ ] `googleOAuthClient` presente mas `obterRefreshToken(db) === null` → mesmo caminho de
+      "desligada" (nunca tenta montar client sem token)
+- [ ] Token presente → `criarClientesGoogle` recebe `calendarId` de `env.googleOAuthClient`
+      e `refreshToken` do banco, comportamento de leitura/sincronização inalterado
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/scripts/monitorarPrecos.test.ts tests/scripts/verificarDespesasFixas.test.ts tests/scripts/lerEmailFaturas.test.ts tests/scripts/sincronizarOpenFinance.test.ts`
+- [ ] Tests pass: `npx vitest run tests/scripts/lerEmailFaturas.test.ts tests/scripts/sincronizarCalendario.test.ts`
 - [ ] Build succeeds: `npm run build`
+- [ ] Manual check: nenhum (cobre na Tarefa de checkpoint final, teste manual real em Homologação)
 
-**Dependencies:** Tarefa 125
+**Dependencies:** Tarefas 128, 129
 
 **Files likely touched:**
-- `src/scripts/monitorarPrecos.ts`
-- `src/scripts/verificarDespesasFixas.ts`
 - `src/scripts/lerEmailFaturas.ts`
-- `src/scripts/sincronizarOpenFinance.ts`
-- Testes correspondentes
+- `src/scripts/sincronizarCalendario.ts`
+- `tests/scripts/lerEmailFaturas.test.ts`
+- `tests/scripts/sincronizarCalendario.test.ts`
 
-**Estimated scope:** Medium
+**Estimated scope:** Small
 
 ---
 
-## Checkpoint: Rodada 1 fechada (mensagens proativas no WhatsApp)
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: `relatorioSemanal.js --agora`/`relatorioMensal.js --agora` de verdade — mensagem chega nos dois canais
-- [ ] PROGRESSO.md atualizado com o marco
-- [ ] Revisão com o usuário antes de considerar a Rodada 2 (chat bidirecional)
+### Tarefa 131: `scripts/configurarGoogleOAuth.ts` persiste no banco
+
+**Description:** CLI manual (caminho alternativo ao `/registrar_email` desde a Fase 7) passa
+a chamar `salvarRefreshToken(db, token)` depois de obter o token, em vez de só imprimir
+instrução pra colar no `.env` — evita deixar um segundo caminho desatualizado em relação ao
+novo fluxo.
+
+**Acceptance criteria:**
+- [ ] Script abre o banco (mesmo padrão de outros scripts, `getDb(env)`) e persiste o token
+      obtido via `salvarRefreshToken`
+- [ ] Mensagem de console final confirma persistência no banco, sem mencionar `.env`/restart
+
+**Verification:**
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: leitura do código confirma a chamada a `salvarRefreshToken` antes do
+      `console.log` final (script é interativo via stdin, sem teste automatizado de ponta a
+      ponta já existente)
+
+**Dependencies:** Tarefa 128
+
+**Files likely touched:**
+- `src/scripts/configurarGoogleOAuth.ts`
+
+**Estimated scope:** Small
+
+---
+
+### Tarefa 132: `/registrar_email` persiste direto, token nunca mais aparece em texto
+
+**Description:** `createHandlerRegistrarEmail` passa a receber `db` (além de `env`). A
+checagem "este ambiente já tem vínculo" usa `obterRefreshToken(db) !== null` em vez de
+`env.google`; a mensagem correspondente usa `env.googleOAuthClient.calendarId`.
+`createHandlerCodigoOAuthGoogle` chama `salvarRefreshToken(db, tokens.refresh_token)` e
+responde confirmando o vínculo — sem exibir o token em texto, então remove a chamada a
+`agendarAutoApagar` (e o import de `agendarApagarPersistido`/`removerAgendamento`) deste
+handler. `src/index.ts` passa `db` na construção do handler.
+
+**Acceptance criteria:**
+- [ ] Colar o código de autorização salva o token no banco (via `salvarRefreshToken`) e a
+      resposta do bot não contém o valor do `refresh_token` em texto
+- [ ] "Este ambiente já tem vínculo" passa a ser decidido por `obterRefreshToken(db)`, não por
+      `env.google`
+- [ ] Mensagem de vínculo existente mostra a agenda via `env.googleOAuthClient.calendarId`
+
+**Verification:**
+- [ ] Tests pass: `npx vitest run tests/bot/handlers/registrarEmail.test.ts`
+- [ ] Build succeeds: `npm run build`
+
+**Dependencies:** Tarefas 128, 129
+
+**Files likely touched:**
+- `src/bot/handlers/registrarEmail.ts`
+- `src/index.ts`
+- `tests/bot/handlers/registrarEmail.test.ts`
+
+**Estimated scope:** Small
+
+---
+
+### Tarefa 133: remove o mecanismo `mensagens_pendentes_apagar` (código morto)
+
+**Description:** Depois da Tarefa 132, nada mais chama `agendarApagarPersistido`/
+`listarVencidas`/`removerAgendamento` em lugar nenhum do projeto (confirmado por grep antes
+de planejar) — remove em vez de deixar código sem uso. Migration nova
+`0019_remove_mensagens_pendentes_apagar.sql` (`DROP TABLE mensagens_pendentes_apagar`) —
+migration antiga 0013 nunca é editada/apagada, só superada. Remove
+`src/db/repositories/mensagensPendentesApagar.ts` e, em `src/index.ts`, a função
+`apagarMensagensPendentesAtrasadas` e o import de `listarVencidas`/`removerAgendamento`.
+
+**Acceptance criteria:**
+- [ ] `grep -r "mensagensPendentesApagar\|listarVencidas\|removerAgendamento\|agendarApagarPersistido" src/`
+      não retorna nada
+- [ ] Migration `0019` dropa a tabela sem erro rodando sobre um banco já migrado até 0018
+- [ ] `index.ts` sobe sem o sweep de boot removido, sem erro
+
+**Verification:**
+- [ ] Tests pass: `npm test` (suite completa — garante que nenhum outro teste dependia do
+      repositório removido)
+- [ ] Build succeeds: `npm run build`
+
+**Dependencies:** Tarefa 132
+
+**Files likely touched:**
+- `src/db/migrations/0019_remove_mensagens_pendentes_apagar.sql`
+- `src/db/repositories/mensagensPendentesApagar.ts` (removido)
+- `tests/db/repositories/mensagensPendentesApagar.test.ts` (removido, se existir)
+- `src/index.ts`
+
+**Estimated scope:** Small
+
+---
+
+### Checkpoint: Rodada fechada (persistência do refresh_token no banco)
+- [ ] `npm run build`/`lint`/`test` sem erro, suite completa
+- [ ] Teste manual em Homologação: `/registrar_email confirmar` → autorizar → colar código →
+      bot confirma vínculo sem pedir nada manual na VM (sem exibir token, sem instrução de
+      `.env`/restart)
+- [ ] Teste manual: `docker compose restart ler-email-faturas-homologacao
+      sincronizar-calendario-homologacao` (ou esperar o próximo ciclo natural) e confirmar que
+      os dois jobs funcionam lendo o token do banco
+- [ ] PROGRESSO.md atualizado com o marco — e nota de que o achado de 2026-10-01/02 teve o
+      atrito manual resolvido, mas a expiração a cada ~7 dias continua existindo (sem mudança
+      de decisão sobre publicar o app)
+- [ ] Milestone "Persistência do refresh_token Google" fechado no GitHub (6/6 issues)
+- [ ] Revisão com o usuário antes de retomar a rodada WhatsApp pausada
+      (`tasks/plan-multicanal-whatsapp.md`/`tasks/todo-multicanal-whatsapp.md`)
