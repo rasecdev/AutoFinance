@@ -14,13 +14,13 @@ guardando só `enviado_em` (quando foi o último lembrete automático enviado). 
 `registrarEnvio(db): void` (upsert por `id=1`).
 
 **Acceptance criteria:**
-- [ ] `obterUltimoEnvio` devolve `null` com a tabela vazia
-- [ ] `registrarEnvio` seguido de `obterUltimoEnvio` devolve uma `Date` próxima de "agora"
-- [ ] `registrarEnvio` chamado duas vezes não duplica linha (upsert)
+- [x] `obterUltimoEnvio` devolve `null` com a tabela vazia
+- [x] `registrarEnvio` seguido de `obterUltimoEnvio` devolve uma `Date` próxima de "agora"
+- [x] `registrarEnvio` chamado duas vezes não duplica linha (upsert)
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/db/lembreteReautorizacaoGoogle.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/db/lembreteReautorizacaoGoogle.test.ts`
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** None
 
