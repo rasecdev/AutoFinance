@@ -7,7 +7,9 @@ import { FLUXO_RELATORIO_MENSAL, MODELO_RELATORIO_MENSAL } from '../../ai/relato
 import { FLUXO_RESUMIR_CONTEXTO, MODELO_RESUMO } from '../../ai/resumirContexto.js';
 import { FLUXO_TRANSCRICAO_VOZ, MODELO_TRANSCRICAO_VOZ } from '../../ai/transcricao.js';
 import type { DbClient } from '../../db/client.js';
+import { obterIdioma } from '../../db/repositories/idiomaBot.js';
 import { obterModeloRoteamento } from '../../db/repositories/roteamentoTarefas.js';
+import { t } from '../../i18n/t.js';
 import { obterOverrideModelo } from '../modeloAtivo.js';
 
 const FLUXO_CONVERSA_TEXTO = 'conversa_texto';
@@ -33,6 +35,7 @@ export function createHandlerModelos(db: DbClient) {
       return;
     }
 
+    const idioma = obterIdioma(db);
     const linhas = FLUXOS_ROTEADOS.map(({ fluxo, padrao }) => {
       const modelo = obterModeloRoteamento(db, fluxo) ?? padrao;
       return `- ${fluxo}: ${modelo}`;
@@ -40,9 +43,9 @@ export function createHandlerModelos(db: DbClient) {
 
     const overrideChat = obterOverrideModelo(chatId);
     const avisoOverride = overrideChat
-      ? `\n\nEste chat tem um override manual ativo (/modelo): "${overrideChat}" — substitui só o modelo de ${FLUXO_CONVERSA_TEXTO} listado acima, só aqui.`
+      ? t('modelos_override_aviso', idioma, { override: overrideChat, fluxo: FLUXO_CONVERSA_TEXTO })
       : '';
 
-    await ctx.reply(`Modelos por fluxo:\n${linhas.join('\n')}${avisoOverride}`);
+    await ctx.reply(`${t('modelos_por_fluxo_cabecalho', idioma)}\n${linhas.join('\n')}${avisoOverride}`);
   };
 }

@@ -3,6 +3,8 @@ import { extrairResultadoTool } from '../../ai/openrouter.js';
 import type { ToolDefinition } from '../../ai/tools/types.js';
 import type { DbClient } from '../../db/client.js';
 import { obterPendenciaPersistida, removerPendenciaPersistida } from '../../db/repositories/confirmacoesPendentes.js';
+import { obterIdioma } from '../../db/repositories/idiomaBot.js';
+import { t } from '../../i18n/t.js';
 import type { Logger } from '../../logging/logger.js';
 import { CALLBACK_DATA_CONFIRMAR, obterPendencia, removerPendencia } from '../confirmacao.js';
 
@@ -20,11 +22,12 @@ export function createHandlerCallbackConfirmacao(db: DbClient, logger: Logger, t
       return;
     }
 
+    const idioma = obterIdioma(db);
     const pendencia = obterPendencia(chatId);
     const pendenciaPersistida = pendencia ? undefined : obterPendenciaPersistida(db, chatId);
 
     if (!pendencia && !pendenciaPersistida) {
-      await ctx.answerCallbackQuery({ text: 'Isso já foi respondido ou expirou.' });
+      await ctx.answerCallbackQuery({ text: t('callback_expirado', idioma) });
       await ctx.editMessageReplyMarkup(undefined).catch(() => undefined);
       return;
     }
@@ -36,11 +39,11 @@ export function createHandlerCallbackConfirmacao(db: DbClient, logger: Logger, t
     await ctx.editMessageReplyMarkup(undefined).catch(() => undefined);
 
     if (dados !== CALLBACK_DATA_CONFIRMAR) {
-      await ctx.reply('Ação cancelada.');
+      await ctx.reply(t('acao_cancelada', idioma));
       return;
     }
 
-    const tool = pendencia?.tool ?? tools.find((t) => t.name === pendenciaPersistida?.toolName);
+    const tool = pendencia?.tool ?? tools.find((tl) => tl.name === pendenciaPersistida?.toolName);
     const argumentos = pendencia?.argumentos ?? pendenciaPersistida?.argumentos;
 
     if (!tool) {
@@ -48,7 +51,7 @@ export function createHandlerCallbackConfirmacao(db: DbClient, logger: Logger, t
         { toolName: pendenciaPersistida?.toolName },
         'callback de confirmação referencia tool desconhecida',
       );
-      await ctx.reply('Não consegui concluir a ação confirmada, tente novamente.');
+      await ctx.reply(t('nao_consegui_concluir_acao', idioma));
       return;
     }
 
@@ -60,7 +63,7 @@ export function createHandlerCallbackConfirmacao(db: DbClient, logger: Logger, t
       if (documento) await ctx.replyWithDocument(new InputFile(documento.buffer, documento.nomeArquivo));
     } catch (erro) {
       logger.error({ err: erro }, 'falha ao executar ação confirmada pelo usuário (botão)');
-      await ctx.reply('Não consegui concluir a ação confirmada, tente novamente.');
+      await ctx.reply(t('nao_consegui_concluir_acao', idioma));
     }
   };
 }
