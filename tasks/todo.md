@@ -165,22 +165,27 @@ Catálogo (`src/i18n/catalogo.ts`) ganha as chaves correspondentes nos 3
 idiomas.
 
 **Acceptance criteria:**
-- [ ] Com idioma `en` ativo, `/ajuda` responde em inglês
-- [ ] `setMyCommands` (Tarefa 138) usa as mesmas chaves, sem string duplicada
+- [x] Com idioma `en` ativo, `/ajuda` responde em inglês
+- [x] `setMyCommands` (Tarefa 138) usa as mesmas chaves, sem string duplicada
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/bot/handlers/ajuda.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/bot/handlers/ajuda.test.ts tests/bot/comandos.test.ts tests/bot/handlers/idioma.test.ts`
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** Tarefa 137, Tarefa 138
 
 **Files likely touched:**
-- `src/bot/comandos.ts`
-- `src/bot/handlers/ajuda.ts`
+- `src/bot/comandos.ts` (campo `descricao` passa a guardar a chave de
+  tradução, nova `descricaoComando(cmd, idioma)`)
+- `src/bot/handlers/ajuda.ts` (categorias localizadas direto no arquivo —
+  conteúdo longo de uso único, não entra no catálogo compartilhado)
+- `src/bot/handlers/idioma.ts`/`src/index.ts` (consumidores de `descricao`
+  atualizados pra `descricaoComando`)
 - `src/i18n/catalogo.ts`
 - `tests/bot/handlers/ajuda.test.ts`
 
-**Estimated scope:** Small
+**Estimated scope:** Medium (maior que o previsto — `descricao` virou chave
+em vez de texto literal, exigiu atualizar os 3 consumidores)
 
 ---
 

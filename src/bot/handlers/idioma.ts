@@ -1,5 +1,5 @@
 import type { Context } from 'grammy';
-import { COMANDOS_BOT } from '../comandos.js';
+import { COMANDOS_BOT, descricaoComando } from '../comandos.js';
 import type { DbClient } from '../../db/client.js';
 import { definirIdioma, obterIdioma, type Idioma } from '../../db/repositories/idiomaBot.js';
 import { t } from '../../i18n/t.js';
@@ -36,6 +36,8 @@ export function createHandlerIdioma(db: DbClient) {
 
     definirIdioma(db, valor);
     await ctx.reply(t('idioma_confirmacao', valor));
-    await ctx.api.setMyCommands(COMANDOS_BOT.map(({ comando, descricao }) => ({ command: comando, description: descricao })));
+    await ctx.api.setMyCommands(
+      COMANDOS_BOT.map((cmd) => ({ command: cmd.comando, description: descricaoComando(cmd, valor) })),
+    );
   };
 }

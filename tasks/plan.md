@@ -85,7 +85,7 @@ fixas do bot, resposta livre da IA (`conversa_texto`) e relatórios visuais
       `/idioma pt` restaura o comportamento de hoje
 
 ### Strings fixas — área 1 (comando/ajuda)
-- [ ] Tarefa 140: traduz `comandos.ts` (descrições) e `ajuda.ts` pra `t()`
+- [x] Tarefa 140: traduz `comandos.ts` (descrições) e `ajuda.ts` pra `t()`
 
 ### Strings fixas — área 2 (confirmação/erro comuns)
 - [ ] Tarefa 141: traduz `callbackConfirmacao.ts`, `feedback.ts`,
