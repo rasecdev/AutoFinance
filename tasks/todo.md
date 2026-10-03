@@ -378,22 +378,36 @@ IA no período", textos de comparação de benchmark, numeração de página) po
 ativo.
 
 **Acceptance criteria:**
-- [ ] Com idioma `en`, o PDF gerado traz todos os textos fixos em inglês
-- [ ] Idioma padrão (`pt`) produz exatamente o PDF de hoje
-- [ ] Nenhum texto fixo em português sobra hardcoded no arquivo
+- [x] Com idioma `en`, o PDF gerado traz todos os textos fixos em inglês
+- [x] Idioma padrão (`pt`) produz exatamente o PDF de hoje
+- [x] Nenhum texto fixo em português sobra hardcoded no arquivo
+- [x] (extra, achado durante a tarefa) o resumo narrado pela IA
+      (`gerarResumoMensal`/`PROMPT_RELATORIO_MENSAL`) também ganhou a
+      diretiva dinâmica de idioma — sem isso, o PDF ficaria com todos os
+      rótulos em inglês mas o parágrafo de resumo sempre em português,
+      a mesma lacuna que a Tarefa 139 resolveu só pro `conversa_texto`.
+      Extraído helper `montarDiretivaIdioma` (`src/i18n/diretivaIdioma.ts`)
+      pra não duplicar o `NOME_IDIOMA` entre `openrouter.ts` e
+      `relatorioMensal.ts`
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/relatorios/pdfMensal.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/relatorios/pdfMensal.test.ts tests/relatorios/relatorioMensalCompleto.test.ts tests/ai/relatorioMensal.test.ts tests/ai/openrouter.test.ts tests/i18n/`
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** Tarefa 136, Tarefa 137
 
 **Files likely touched:**
 - `src/relatorios/pdfMensal.ts`
-- `src/scripts/relatorioMensal.ts`
-- `src/relatorios/relatorioMensalCompleto.ts`
+- `src/relatorios/relatorioMensalCompleto.ts` (lê idioma via `db`, propaga
+  pro PDF e pro resumo narrado — `relatorioMensal.ts`/script e
+  `ai/tools/relatorios.ts` não precisaram de mudança, mesmo padrão da
+  Tarefa 145)
+- `src/ai/relatorioMensal.ts` (diretiva de idioma no `PROMPT_RELATORIO_MENSAL`)
+- `src/ai/openrouter.ts` (refatorado pra reaproveitar `montarDiretivaIdioma`)
+- `src/i18n/diretivaIdioma.ts` (novo, helper compartilhado)
 - `src/i18n/catalogo.ts`
-- `tests/relatorios/pdfMensal.test.ts`
+- `tests/relatorios/pdfMensal.test.ts`, `tests/relatorios/relatorioMensalCompleto.test.ts`,
+  `tests/ai/relatorioMensal.test.ts`, `tests/i18n/diretivaIdioma.test.ts`
 
 **Estimated scope:** Large (muitas chaves novas, mas mecânico — sem lógica nova)
 

@@ -1,6 +1,8 @@
 import type OpenAI from 'openai';
 import type { DbClient } from '../db/client.js';
+import type { Idioma } from '../db/repositories/idiomaBot.js';
 import { obterModeloRoteamento } from '../db/repositories/roteamentoTarefas.js';
+import { montarDiretivaIdioma } from '../i18n/diretivaIdioma.js';
 import type { AgregacaoFinanceira } from '../relatorios/financeiro.js';
 import type { AgregacaoUsoIa } from '../relatorios/usoIa.js';
 import type { UsageComCusto } from './openrouter.js';
@@ -51,11 +53,12 @@ export async function gerarResumoMensal(
   client: OpenAI,
   dados: DadosParaResumoMensal,
   modelo: string = MODELO_RELATORIO_MENSAL,
+  idioma: Idioma = 'pt',
 ): Promise<ResultadoResumoMensal> {
   const completion = await client.chat.completions.create({
     model: modelo,
     messages: [
-      { role: 'system', content: PROMPT_RELATORIO_MENSAL },
+      { role: 'system', content: `${PROMPT_RELATORIO_MENSAL}${montarDiretivaIdioma(idioma)}` },
       { role: 'user', content: montarPromptDados(dados) },
     ],
   });

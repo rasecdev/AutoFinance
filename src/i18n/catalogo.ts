@@ -411,4 +411,139 @@ export const CATALOGO: Record<string, Record<Idioma, string>> = {
     en: 'No expense in the period.',
     es: 'Ningún gasto en el período.',
   },
+  mensal_titulo: {
+    pt: 'AUTOFINANCE — RELATÓRIO GERENCIAL',
+    en: 'AUTOFINANCE — MANAGEMENT REPORT',
+    es: 'AUTOFINANCE — INFORME GERENCIAL',
+  },
+  mensal_cabecalho: {
+    pt: 'Relatório mensal — {periodo}',
+    en: 'Monthly report — {periodo}',
+    es: 'Informe mensual — {periodo}',
+  },
+  secao_financeiro: {
+    pt: 'Financeiro',
+    en: 'Financial',
+    es: 'Financiero',
+  },
+  nenhuma_transacao_periodo: {
+    pt: 'Nenhuma transação no período.',
+    en: 'No transaction in the period.',
+    es: 'Ninguna transacción en el período.',
+  },
+  kpi_receita_total: {
+    pt: 'Receita total',
+    en: 'Total income',
+    es: 'Ingreso total',
+  },
+  kpi_despesa_total: {
+    pt: 'Despesa total',
+    en: 'Total expense',
+    es: 'Gasto total',
+  },
+  secao_por_categoria: {
+    pt: 'Por categoria',
+    en: 'By category',
+    es: 'Por categoría',
+  },
+  secao_por_conta: {
+    pt: 'Por conta',
+    en: 'By account',
+    es: 'Por cuenta',
+  },
+  coluna_categoria: {
+    pt: 'Categoria',
+    en: 'Category',
+    es: 'Categoría',
+  },
+  coluna_conta: {
+    pt: 'Conta',
+    en: 'Account',
+    es: 'Cuenta',
+  },
+  coluna_saldo_atual: {
+    pt: 'Saldo atual',
+    en: 'Current balance',
+    es: 'Saldo actual',
+  },
+  secao_uso_ia: {
+    pt: 'Uso de IA',
+    en: 'AI usage',
+    es: 'Uso de IA',
+  },
+  nenhum_uso_ia_periodo: {
+    pt: 'Nenhum uso de IA registrado no período.',
+    en: 'No AI usage recorded in the period.',
+    es: 'Ningún uso de IA registrado en el período.',
+  },
+  uso_ia_total: {
+    pt: 'Total: {tokens} tokens · custo estimado {custo}',
+    en: 'Total: {tokens} tokens · estimated cost {custo}',
+    es: 'Total: {tokens} tokens · costo estimado {custo}',
+  },
+  coluna_fluxo: {
+    pt: 'Fluxo',
+    en: 'Flow',
+    es: 'Flujo',
+  },
+  coluna_modelo: {
+    pt: 'Modelo',
+    en: 'Model',
+    es: 'Modelo',
+  },
+  coluna_tokens: {
+    pt: 'Tokens',
+    en: 'Tokens',
+    es: 'Tokens',
+  },
+  coluna_custo: {
+    pt: 'Custo',
+    en: 'Cost',
+    es: 'Costo',
+  },
+  respostas_incorretas: {
+    pt: 'Respostas marcadas como incorretas no período: {quantidade}',
+    en: 'Replies marked as incorrect in the period: {quantidade}',
+    es: 'Respuestas marcadas como incorrectas en el período: {quantidade}',
+  },
+  comparacao_hipotetica: {
+    pt: 'Comparação hipotética (mesmo volume de tokens, preço de modelos de referência — estimativa):',
+    en: 'Hypothetical comparison (same token volume, reference model prices — estimate):',
+    es: 'Comparación hipotética (mismo volumen de tokens, precio de modelos de referencia — estimación):',
+  },
+  benchmark_real_uso: {
+    pt: 'Benchmark do modelo real em uso, por fluxo:',
+    en: 'Benchmark of the real model in use, per flow:',
+    es: 'Benchmark del modelo real en uso, por flujo:',
+  },
+  bullet_benchmark: {
+    pt: '• {fluxo} ({modelo}): {custo} no período — {metrica}: {valor} (fonte: {url})',
+    en: '• {fluxo} ({modelo}): {custo} in the period — {metrica}: {valor} (source: {url})',
+    es: '• {fluxo} ({modelo}): {custo} en el período — {metrica}: {valor} (fuente: {url})',
+  },
+  bullet_candidato: {
+    pt: '• {nome}: {custo}',
+    en: '• {nome}: {custo}',
+    es: '• {nome}: {custo}',
+  },
+  ajustado_por: {
+    pt: '   ajustado por {metrica} em {fluxo}: {custo} (estimativa)',
+    en: '   adjusted by {metrica} in {fluxo}: {custo} (estimate)',
+    es: '   ajustado por {metrica} en {fluxo}: {custo} (estimación)',
+  },
+  secao_resumo_mes: {
+    pt: 'Resumo do mês',
+    en: 'Summary of the month',
+    es: 'Resumen del mes',
+  },
+  erros_tecnicos_periodo: {
+    pt: 'Erros técnicos no período: {quantidade}.',
+    en: 'Technical errors in the period: {quantidade}.',
+    es: 'Errores técnicos en el período: {quantidade}.',
+  },
+  pagina_de: {
+    pt: 'Página {atual} de {total}',
+    en: 'Page {atual} of {total}',
+    es: 'Página {atual} de {total}',
+  },
 };
