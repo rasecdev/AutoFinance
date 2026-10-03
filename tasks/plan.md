@@ -71,37 +71,43 @@ pedido do usuário — arquivos movidos pra `tasks/plan-multicanal-whatsapp.md` 
 
 ### Fase 1: Armazenamento
 
-- [ ] Tarefa 128: migration `0018_credenciais_google.sql` (tabela singleton) + repositório
+- [x] Tarefa 128: migration `0018_credenciais_google.sql` (tabela singleton) + repositório
       `src/db/repositories/credenciaisGoogle.ts` (`obterRefreshToken`/`salvarRefreshToken`)
-- [ ] Tarefa 129: `env.ts` — remove `GOOGLE_REFRESH_TOKEN` do schema e o campo `google`;
+- [x] Tarefa 129: `env.ts` — remove `GOOGLE_REFRESH_TOKEN` do schema e o campo `google`;
       `googleOAuthClient` ganha `calendarId` (default `'primary''`, independente de token)
 
 ### Checkpoint: Armazenamento pronto
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste: `salvarRefreshToken` seguido de `salvarRefreshToken` com outro valor nunca cria
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Teste: `salvarRefreshToken` seguido de `salvarRefreshToken` com outro valor nunca cria
       segunda linha (upsert de verdade)
-- [ ] Revisão rápida: `credenciais_google` não aparece em nenhum enum/mapa de
+- [x] Revisão rápida: `credenciais_google` não aparece em nenhum enum/mapa de
       `consultaDinamica.ts`/`relatorios/consultaDinamica.ts`
 
 ### Fase 2: Wiring nos consumidores
 
-- [ ] Tarefa 130: `lerEmailFaturas.ts`/`sincronizarCalendario.ts` — trocam checagem
+- [x] Tarefa 130: `lerEmailFaturas.ts`/`sincronizarCalendario.ts` — trocam checagem
       `env.google === null` por `env.googleOAuthClient === null` + leitura de
       `obterRefreshToken(db)`, montam o objeto pra `criarClientesGoogle` combinando os dois
-- [ ] Tarefa 131: `scripts/configurarGoogleOAuth.ts` — persiste via `salvarRefreshToken` em
+- [x] Tarefa 131: `scripts/configurarGoogleOAuth.ts` — persiste via `salvarRefreshToken` em
       vez de imprimir instrução de `.env`
-- [ ] Tarefa 132: `bot/handlers/registrarEmail.ts` — `createHandlerRegistrarEmail` passa a
+- [x] Tarefa 132: `bot/handlers/registrarEmail.ts` — `createHandlerRegistrarEmail` passa a
       receber `db`; checagem "já vinculado" usa `obterRefreshToken(db)`; mensagem de vínculo
       existente usa `env.googleOAuthClient.calendarId`; `createHandlerCodigoOAuthGoogle`
       chama `salvarRefreshToken(db, tokens.refresh_token)` em vez de devolver o token em texto
       — remove a chamada a `agendarAutoApagar`/`agendarApagarPersistido` deste handler
-- [ ] Tarefa 133: remove o mecanismo `mensagens_pendentes_apagar` (ficou sem uso depois da
+- [x] Tarefa 133: remove o mecanismo `mensagens_pendentes_apagar` (ficou sem uso depois da
       Tarefa 132): migration `0019_remove_mensagens_pendentes_apagar.sql` (`DROP TABLE`),
       apaga `src/db/repositories/mensagensPendentesApagar.ts` e o sweep de boot em `index.ts`
       (`apagarMensagensPendentesAtrasadas`, import de `listarVencidas`/`removerAgendamento`)
 
+**Achado durante a implementação:** as Tarefas 129-133 saíram num commit/PR só (#354), não
+uma por uma como o plano previa — remover `env.google` quebra a build em todo consumidor
+simultaneamente, não dá pra mergear uma sozinha com CI verde. Atomicidade real não prevista
+ao planejar; Tarefa 128 (sem consumidores) seguiu separada normalmente (#353).
+
 ### Checkpoint: Rodada fechada
-- [ ] `npm run build`/`lint`/`test` sem erro, suite completa
+- [x] `npm run build`/`lint`/`test` sem erro, suite completa (962 testes — 6 falhas de
+      timeout isoladas por carga local, confirmadas não relacionadas)
 - [ ] Teste manual em Homologação: `/registrar_email confirmar`, autorizar, colar código —
       bot confirma vínculo sem pedir nada manual na VM; `docker compose restart
       ler-email-faturas-homologacao sincronizar-calendario-homologacao` (ou esperar o próximo
