@@ -1,130 +1,76 @@
-# Implementation Plan: Persistência do refresh_token do Google no banco
+# Implementation Plan: Lembrete automático de reautorização do Google
 
 ## Overview
 
-O `refresh_token` do OAuth do Google (Gmail+Calendar) hoje vive em `GOOGLE_REFRESH_TOKEN`
-no `.env.*` da VM. Como o app OAuth está em status "Testing" no Google Cloud Console, o
-Google expira esse token sozinho a cada ~7 dias (`invalid_grant`, achado registrado em
-PROGRESSO.md 2026-10-01/02) — decisão já tomada de **não** publicar o app pra Production
-(scope `gmail.readonly` é "Restricted", exigiria avaliação de segurança CASA recorrente,
-desproporcional pra uso solo). Essa rodada não resolve a expiração em si — só remove o
-atrito manual de cada reautorização: hoje, depois de colar o código no `/registrar_email`,
-alguém precisa SSH na VM, editar `.env.*` e reiniciar os serviços. Com o token guardado no
-banco, `/registrar_email confirmar` passa a persistir sozinho e os jobs leem o valor atual
-na próxima execução, sem intervenção manual.
-
-Pausa temporária da rodada "Multi-canal — WhatsApp" (nenhuma tarefa iniciada ainda) a
-pedido do usuário — arquivos movidos pra `tasks/plan-multicanal-whatsapp.md` /
-`tasks/todo-multicanal-whatsapp.md`, retomam de onde pararam quando voltar o foco.
+Depois da rodada "Persistência do refresh_token Google" (2026-10-03), o atrito operacional
+de reautorizar (SSH+editar `.env`+restart) já foi eliminado — mas o usuário ainda precisa
+*lembrar* de rodar `/registrar_email confirmar` a cada ~7 dias (o app OAuth continua em
+status "Testing" no Google Cloud Console, decisão de não publicar mantida). Esta rodada
+fecha esse último atrito: um lembrete automático a cada 5 dias (margem de 2 dias antes do
+token expirar) que já gera o link de autorização e manda pro chat, sem o usuário precisar
+digitar o comando — só clicar, autorizar e colar o código de volta, como já faz hoje.
 
 ## Architecture Decisions
 
-- **`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`/`GOOGLE_CALENDAR_ID` continuam em `.env.*`** —
-  são estáticos (identidade do app OAuth registrado no Google Cloud, não rotacionam). Só o
-  `refresh_token` (o único valor que expira e precisa trocar) migra pro banco.
-  `env.googleOAuthClient` passa a incluir `calendarId` (default `'primary'`) e deixa de
-  depender da presença de refresh_token — fica disponível sempre que o par cliente existir,
-  independente de já ter vínculo feito.
-- **Nova tabela singleton `credenciais_google`** (`id INTEGER PRIMARY KEY CHECK(id=1)`, mesmo
-  princípio de `bot_pausado`/`emails_processados`: presença de linha = estado), via
-  `src/db/repositories/credenciaisGoogle.ts` (`obterRefreshToken`/`salvarRefreshToken`, upsert
-  por `id=1` — nunca mais de uma linha, mesmo trocando de conta Google).
-- **Restrição de segurança obrigatória, não negociável:** `credenciais_google` NUNCA pode
-  aparecer no whitelist de domínio de `consultar_dados_dinamico`/`consultar_e_graficar`
-  (`src/ai/tools/consultaDinamica.ts` → `DominioConsulta`/`TODAS_DIMENSOES`, resolvido em
-  `src/relatorios/consultaDinamica.ts`) nem em nenhuma tool que eco dado cru pro chat — essas
-  tools deixam o modelo de IA escolher dimensão/filtro por linguagem natural, e vazar o
-  `refresh_token` ali daria acesso de leitura ao Gmail/Calendar pra quem conseguisse formular
-  a pergunta certa (ou injetar instrução via e-mail/comprovante processado pelo bot — mesma
-  classe de risco já endereçada no estudo OWASP Agentic ASI06/ASI10). Guarda via comentário
-  bem visível na migration e no topo de `consultaDinamica.ts`/`relatorios/consultaDinamica.ts`
-  — essas duas tools só aceitam `dominio` de um enum fechado (`financeiro`/`uso_ia`), então
-  não incluir `credenciais_google` nesse enum já basta; o comentário é reforço, não controle
-  de acesso real.
-- **`criarClientesGoogle` (`src/integracoes/google/auth.ts`) não muda de assinatura** —
-  continua recebendo `{clientId, clientSecret, refreshToken, calendarId}` já montado; quem
-  muda é como esse objeto é montado nos chamadores (combinando `env.googleOAuthClient` +
-  `obterRefreshToken(db)` em vez de vir pronto de `env.google`).
-- **`env.google` deixa de existir** (campo composto removido de `Env`) — todo lugar que
-  checava `env.google === null`/usava `env.google.calendarId` passa a checar
-  `env.googleOAuthClient === null` (app não configurado) e, separadamente,
-  `obterRefreshToken(db) === null` (app configurado mas ainda sem vínculo feito) — mesma
-  distinção de estados que já existia, só com a fonte do token trocada.
-- **Token nunca mais aparece em texto no chat.** Hoje `/registrar_email` devolve o
-  `refresh_token` em claro na conversa (apagado em 5 min via `mensagens_pendentes_apagar`,
-  migration 0013) pra alguém colar manualmente no `.env`. Com persistência direta no banco,
-  essa exibição deixa de ser necessária — o fluxo some, e o mecanismo de
-  auto-apagar/`mensagens_pendentes_apagar` fica sem nenhum outro uso no código (confirmado via
-  grep, só esse handler consome). **Decisão: remover esse mecanismo morto** (repositório,
-  sweep de boot em `index.ts`, tabela via migration nova de `DROP TABLE` — migration antiga
-  0013 nunca é editada/apagada, só superada) em vez de deixar código sem uso no projeto.
-- **`scripts/configurarGoogleOAuth.ts` (CLI manual, caminho alternativo ao `/registrar_email`
-  desde a Fase 7) ganha o mesmo tratamento** — passa a persistir no banco via
-  `salvarRefreshToken`, não imprime mais instrução de colar no `.env`, pra não deixar um
-  segundo caminho desatualizado/inconsistente com o novo fluxo.
-- **Leitura do token pelos jobs:** `lerEmailFaturas.ts`/`sincronizarCalendario.ts` já seguem o
-  padrão "processo roda um ciclo e sai, `docker-compose` reinicia" (não são processos
-  long-lived) — ler o token do banco uma vez no início de cada execução já resolve "hot
-  reload" sem nenhum mecanismo extra de cache/invalidação.
+- **Roda dentro do processo principal do bot (`index.ts`), não como serviço/script separado
+  no `docker-compose.yml`** — diferente do padrão usual de job em background deste projeto.
+  Motivo: o "vínculo pendente" (`src/bot/googleOAuthPendencia.ts`) é um `Map` em memória
+  **do processo que também roteia as mensagens recebidas** (`router.ts` decide se um texto é
+  o código OAuth checando esse mesmo `Map`). Um script separado (processo/container
+  diferente) que gerasse o link e marcasse a pendência não seria visto pelo processo
+  principal quando o usuário colasse o código de volta — a pendência precisa viver no mesmo
+  processo que vai consumi-la. Rodar dentro do `index.ts` evita esse problema de estado
+  cross-process sem precisar persistir o `Map` inteiro (fora de escopo, não pedido).
+- **Agendamento via `setTimeout` encadeado** (mesmo padrão simples já usado em
+  `dormirAte.ts`, mas aqui dentro de um processo que nunca sai por padrão) — 5 dias em ms
+  (432.000.000) fica bem dentro do limite de 32 bits do `setTimeout` (~24,8 dias), então não
+  precisa da lógica de encadeamento de `dormirAte.ts` (criada pra atrasos >24,8 dias, não é o
+  caso aqui).
+- **Nova tabela singleton `lembrete_reautorizacao_google`** (`enviado_em`, mesmo princípio de
+  `credenciais_google`/`bot_pausado`) guarda só "quando foi o último lembrete enviado" —
+  **desacoplada do estado real do token** (`credenciais_google.atualizado_em`) de propósito:
+  um lembrete dispara a cada 5 dias corridos, sempre, independente de o usuário já ter
+  revinculado fora desse ciclo (ex: por já ter batido um `invalid_grant` antes do lembrete).
+  Mais simples de raciocinar do que tentar sincronizar os dois relógios, e o pior caso (um
+  lembrete "redundante" se o usuário já revinculou por conta própria) é inofensivo — só
+  gera um link novo que pode ser ignorado.
+- **Reaproveita a lógica de `bot/handlers/registrarEmail.ts`** — extrai a parte de "montar
+  client OAuth, gerar URL, marcar pendência" pra uma função exportada
+  (`montarLinkVinculoGoogle`), chamada tanto pelo handler de `/registrar_email` quanto pelo
+  novo agendador. Mensagem de texto do lembrete é própria (deixa claro que é automático,
+  mesmo texto de passo a passo 1-4 reaproveitado).
+- **Primeiro lembrete só 5 dias depois do deploy desta feature**, não imediatamente — sem
+  registro em `lembrete_reautorizacao_google` ainda, a base do cálculo é "agora" (não "nunca
+  enviado, manda já"), pra não gerar um link redundante assim que o usuário acabou de
+  vincular manualmente hoje.
+- **Manda pra todos os `env.telegramAllowedChatIds`** (mesmo padrão de
+  `tratarErroCriticoJob.ts`) — falha ao enviar pra um chat não impede os outros.
+- **Só ativa com `env.googleOAuthClient` configurado** — sem isso, não agenda nada (mesmo
+  critério de "integração desligada" já usado nos outros consumidores do Google).
 
 ## Task List
 
-### Fase 1: Armazenamento
-
-- [x] Tarefa 128: migration `0018_credenciais_google.sql` (tabela singleton) + repositório
-      `src/db/repositories/credenciaisGoogle.ts` (`obterRefreshToken`/`salvarRefreshToken`)
-- [x] Tarefa 129: `env.ts` — remove `GOOGLE_REFRESH_TOKEN` do schema e o campo `google`;
-      `googleOAuthClient` ganha `calendarId` (default `'primary''`, independente de token)
-
-### Checkpoint: Armazenamento pronto
-- [x] `npm run build`/`lint`/`test` sem erro
-- [x] Teste: `salvarRefreshToken` seguido de `salvarRefreshToken` com outro valor nunca cria
-      segunda linha (upsert de verdade)
-- [x] Revisão rápida: `credenciais_google` não aparece em nenhum enum/mapa de
-      `consultaDinamica.ts`/`relatorios/consultaDinamica.ts`
-
-### Fase 2: Wiring nos consumidores
-
-- [x] Tarefa 130: `lerEmailFaturas.ts`/`sincronizarCalendario.ts` — trocam checagem
-      `env.google === null` por `env.googleOAuthClient === null` + leitura de
-      `obterRefreshToken(db)`, montam o objeto pra `criarClientesGoogle` combinando os dois
-- [x] Tarefa 131: `scripts/configurarGoogleOAuth.ts` — persiste via `salvarRefreshToken` em
-      vez de imprimir instrução de `.env`
-- [x] Tarefa 132: `bot/handlers/registrarEmail.ts` — `createHandlerRegistrarEmail` passa a
-      receber `db`; checagem "já vinculado" usa `obterRefreshToken(db)`; mensagem de vínculo
-      existente usa `env.googleOAuthClient.calendarId`; `createHandlerCodigoOAuthGoogle`
-      chama `salvarRefreshToken(db, tokens.refresh_token)` em vez de devolver o token em texto
-      — remove a chamada a `agendarAutoApagar`/`agendarApagarPersistido` deste handler
-- [x] Tarefa 133: remove o mecanismo `mensagens_pendentes_apagar` (ficou sem uso depois da
-      Tarefa 132): migration `0019_remove_mensagens_pendentes_apagar.sql` (`DROP TABLE`),
-      apaga `src/db/repositories/mensagensPendentesApagar.ts` e o sweep de boot em `index.ts`
-      (`apagarMensagensPendentesAtrasadas`, import de `listarVencidas`/`removerAgendamento`)
-
-**Achado durante a implementação:** as Tarefas 129-133 saíram num commit/PR só (#354), não
-uma por uma como o plano previa — remover `env.google` quebra a build em todo consumidor
-simultaneamente, não dá pra mergear uma sozinha com CI verde. Atomicidade real não prevista
-ao planejar; Tarefa 128 (sem consumidores) seguiu separada normalmente (#353).
+- [ ] Tarefa 134: migration `0020_lembrete_reautorizacao_google.sql` (tabela singleton) +
+      repositório `src/db/repositories/lembreteReautorizacaoGoogle.ts`
+      (`obterUltimoEnvio`/`registrarEnvio`)
+- [ ] Tarefa 135: extrai `montarLinkVinculoGoogle` em `registrarEmail.ts`; novo
+      `src/bot/lembreteReautorizacaoGoogle.ts` (agendador); liga em `index.ts`
 
 ### Checkpoint: Rodada fechada
-- [x] `npm run build`/`lint`/`test` sem erro, suite completa (962 testes — 6 falhas de
-      timeout isoladas por carga local, confirmadas não relacionadas)
-- [ ] Teste manual em Homologação: `/registrar_email confirmar`, autorizar, colar código —
-      bot confirma vínculo sem pedir nada manual na VM; `docker compose restart
-      ler-email-faturas-homologacao sincronizar-calendario-homologacao` (ou esperar o próximo
-      ciclo natural) e confirmar que os dois jobs funcionam lendo o token do banco
-  - [ ] PROGRESSO.md atualizado com o marco e fechamento do achado de 2026-10-01/02
-      (atrito manual resolvido; expiração a cada ~7 dias continua existindo, sem mudança)
-      - [ ] Milestone "Persistência do refresh_token Google" fechado no GitHub (6/6 issues)
-  - [ ] Revisão com o usuário antes de retomar a rodada WhatsApp pausada
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual: reduzir `INTERVALO_MS` temporariamente (ou usar fake timers só no teste
+      automatizado) pra confirmar que o lembrete chega no Telegram e que colar o código
+      funciona igual ao `/registrar_email` manual
+- [ ] PROGRESSO.md atualizado
+- [ ] Milestone "Lembrete automático de reautorização do Google" fechado no GitHub
 
 ## Risks and Mitigations
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| `credenciais_google` acabar incluída, hoje ou no futuro, em alguma tool de consulta dinâmica (vazamento do refresh_token via chat) | Alto — acesso de leitura ao Gmail/Calendar pra quem formular a pergunta certa | Comentário de alerta na migration e no topo dos dois arquivos de `consultaDinamica`; enum fechado de domínio já exclui por padrão (não é passthrough de nome de tabela) |
-| Job em execução no momento exato de uma reautorização lê o token antigo (ainda não trocou) | Baixo — o antigo só fica inválido depois do `invalid_grant`, não há janela de corrida real | Nenhuma — processo de vida curta, próximo ciclo já lê o valor novo |
-| Remover `mensagens_pendentes_apagar` quebrar algo que dependia dela sem eu ter visto | Baixo | Grep confirmou uso restrito a este handler antes de decidir remover; build/lint/testes cobrem import quebrado |
+| Processo principal reinicia com frequência maior que 5 dias (deploy), timer nunca encadeia o suficiente pra disparar | Baixo — na prática deploys não são tão frequentes quanto durante uma sessão de implementação ativa | Base do cálculo vem do banco (`enviado_em`), não de um contador em memória — sobrevive a restart, só recalcula o delay restante |
+| Lembrete chega mas usuário ignora, token expira entre um lembrete e o próximo | Baixo — mitigação parcial por natureza (lembrete, não garantia) | Margem de 2 dias (5 de 7) já cobre a maioria dos casos; fora de escopo tentar garantir 100% |
 
 ## Open Questions
 
-Nenhuma — decisões de arquitetura fechadas na conversa antes de planejar.
+Nenhuma.
