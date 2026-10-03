@@ -609,7 +609,7 @@ Sequenciada depois da Fase 8 (última fase planejada até aqui) — decisão reg
 - **Ambientes**: cada ambiente (Homologação/Produção) usa seu próprio número de telefone dedicado — mesmo princípio de isolamento total já usado em todo o resto do projeto (banco, bot Telegram, credenciais próprias por ambiente), já que uma sessão WAHA representa um único número.
 
 ### Fase 10 — Regionalização (i18n: português/inglês/espanhol)
-Spec sintetizada via skill `to-spec` a partir de sessão de `grilling` (2026-09-24/2026-10-02). Publicada aqui, não no GitHub Issues, seguindo a mesma decisão já registrada em "Skills de suporte à implementação" (linha ~966): `to-spec` não publica no tracker neste projeto, o lugar de spec é o `PLANO.md`. Milestone/issues de tarefa continuam nascendo só na etapa de `planning-and-task-breakdown`, como em toda fase anterior.
+**Status (2026-10-03): código completo (11/11 tarefas, milestone #36), teste manual em Homologação pendente.** Spec sintetizada via skill `to-spec` a partir de sessão de `grilling` (2026-09-24/2026-10-02). Publicada aqui, não no GitHub Issues, seguindo a mesma decisão já registrada em "Skills de suporte à implementação" (linha ~966): `to-spec` não publica no tracker neste projeto, o lugar de spec é o `PLANO.md`. Milestone/issues de tarefa continuam nascendo só na etapa de `planning-and-task-breakdown`, como em toda fase anterior. Detalhe de implementação por tarefa em PROGRESSO.md.
 
 **Problema.** O bot só fala português — hoje strings fixas, resposta livre da IA (`SYSTEM_PROMPT` em `src/ai/systemPrompt.ts`) e relatórios visuais (`imagemSemanal.ts`, `pdfMensal.ts`) são 100% hardcoded em pt-BR. O usuário quer poder usar o bot (entender e ser entendido) também em inglês e espanhol.
 
@@ -656,7 +656,7 @@ Spec sintetizada via skill `to-spec` a partir de sessão de `grilling` (2026-09-
 - Canal WhatsApp (Fase 9) — fora desta rodada, desenho só precisa não impedir a herança futura.
 - Tradução de dado vindo de fonte externa (ex: categoria em inglês já devolvida pela Pluggy, Fase 8) — sem mudança, é dado bruto de terceiro, não texto do bot.
 
-**Notas adicionais.** Sessão de descoberta completa (`grilling`, 3 rounds) nesta conversa, decisões já confirmadas pelo usuário antes desta spec ser escrita. Próximo passo no pipeline deste projeto: `planning-and-task-breakdown` (quebra em tarefas + milestone/issues no GitHub), como em toda fase anterior — não pular direto pra implementação sem esse passo, por convenção já estabelecida no `CLAUDE.md` do repositório.
+**Notas adicionais.** Sessão de descoberta completa (`grilling`, 3 rounds) nesta conversa, decisões já confirmadas pelo usuário antes desta spec ser escrita. Quebrada em 11 tarefas via `planning-and-task-breakdown` (milestone "Fase 10 — Regionalização (i18n)" #36, issues #365-375) e implementada por completo — ver PROGRESSO.md pro detalhe de cada tarefa, incluindo achados reais (ex: resumo narrado do relatório mensal tinha prompt próprio, fora da diretiva dinâmica de idioma da Tarefa 139, corrigido na Tarefa 146). Falta só o teste manual em Homologação pra fechar o checkpoint.
 
 ---
 
