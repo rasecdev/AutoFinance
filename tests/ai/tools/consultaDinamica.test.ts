@@ -11,6 +11,12 @@ import { migrate } from '../../../src/db/migrate.js';
 
 const CHAVE_TESTE = 'chave-teste-tool-consulta-dinamica';
 
+// "mês atual" no handler é o mês real do sistema no momento do teste — datas
+// fixas em testes que dependem desse default quebram sozinhas na virada do
+// mês (achado real, 2026-10-02). Usar o mês atual de verdade aqui também.
+const hoje = new Date();
+const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+
 let dir: string;
 let db: DbClient;
 let contaId: number;
@@ -31,8 +37,8 @@ afterEach(() => {
 
 describe('tool consultar_dados_dinamico', () => {
   it('pergunta simples (1 dimensão) retorna resultado com eco de interpretação', async () => {
-    criarTransacao(db, { contaId, tipo: 'despesa', valor: 100, categoria: 'Mercado', data: '2026-09-01' });
-    criarTransacao(db, { contaId, tipo: 'despesa', valor: 300, categoria: 'Transporte', data: '2026-09-02' });
+    criarTransacao(db, { contaId, tipo: 'despesa', valor: 100, categoria: 'Mercado', data: `${mesAtual}-01` });
+    criarTransacao(db, { contaId, tipo: 'despesa', valor: 300, categoria: 'Transporte', data: `${mesAtual}-02` });
 
     const tool = criarToolConsultarDadosDinamico(db);
     const resultado = await tool.handler(
@@ -95,7 +101,7 @@ describe('tool consultar_dados_dinamico', () => {
   it('dominio uso_ia funciona chamando o mesmo motor', async () => {
     db.prepare(
       `INSERT INTO uso_tokens (fluxo, modelo, tokens_prompt, tokens_completion, custo_estimado, origem, data_hora)
-       VALUES ('conversa_texto', 'gpt-4o-mini', 100, 50, 0.01, 'uso_real', '2026-09-01T10:00:00.000Z')`,
+       VALUES ('conversa_texto', 'gpt-4o-mini', 100, 50, 0.01, 'uso_real', '${mesAtual}-01T10:00:00.000Z')`,
     ).run();
 
     const tool = criarToolConsultarDadosDinamico(db);
