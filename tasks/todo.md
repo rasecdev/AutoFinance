@@ -43,28 +43,28 @@ Tarefa 138 precisa) — as tasks de "Strings fixas" adicionam o resto
 incrementalmente no mesmo arquivo.
 
 **Acceptance criteria:**
-- [ ] `t('chave_existente', 'en')` devolve o texto em inglês
-- [ ] `t('chave_com_param', 'pt', { nome: 'X' })` interpola `{nome}` por `X`
-- [ ] Chave ausente lança erro claro em vez de devolver `undefined`/string vazia
+- [x] `t('chave_existente', 'en')` devolve o texto em inglês
+- [x] `t('chave_com_param', 'pt', { nome: 'X' })` interpola `{nome}` por `X`
+- [x] Chave ausente lança erro claro em vez de devolver `undefined`/string vazia
       (evita mensagem em branco silenciosa no chat)
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/i18n/catalogo.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/i18n/t.test.ts`
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** None
 
 **Files likely touched:**
 - `src/i18n/catalogo.ts`
 - `src/i18n/t.ts`
-- `tests/i18n/catalogo.test.ts`
+- `tests/i18n/t.test.ts`
 
 **Estimated scope:** Small
 
 ---
 
 ## Checkpoint: Fundação
-- [ ] `npm run build`/`lint`/`test` sem erro
+- [x] `npm run build`/`lint`/`test` sem erro
 
 ---
 

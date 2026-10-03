@@ -57,11 +57,11 @@ fixas do bot, resposta livre da IA (`conversa_texto`) e relatórios visuais
 - [x] Tarefa 136: migration `idioma_bot` (tabela singleton) + repositório
       `src/db/repositories/idiomaBot.ts` (`obterIdioma`/`definirIdioma`,
       default `'pt'` sem linha)
-- [ ] Tarefa 137: módulo `src/i18n/` — `catalogo.ts` (chaves iniciais: handler
+- [x] Tarefa 137: módulo `src/i18n/` — `catalogo.ts` (chaves iniciais: handler
       `/idioma`, confirmações genéricas) + `t(chave, idioma, params?)`
 
 ### Checkpoint: Fundação
-- [ ] `npm run build`/`lint`/`test` sem erro
+- [x] `npm run build`/`lint`/`test` sem erro
 
 ### Comando de troca de idioma
 - [ ] Tarefa 138: handler `/idioma <pt|en|es>` (valida enum, grava via
