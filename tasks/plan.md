@@ -109,8 +109,9 @@ fixas do bot, resposta livre da IA (`conversa_texto`) e relatórios visuais
       da IA, já coberto pela Tarefa 139, sem string própria pra traduzir
 
 ### Relatórios visuais
-- [ ] Tarefa 145: `imagemSemanal.ts` recebe `idioma`, troca textos fixos por
-      `t()`; `relatorioSemanal.ts` passa o idioma ativo
+- [x] Tarefa 145: `imagemSemanal.ts` lê o idioma direto do `db` que já
+      recebe como parâmetro (sem precisar threading explícito pelos
+      callers), troca textos fixos por `t()`
 - [ ] Tarefa 146: `pdfMensal.ts` recebe `idioma`, troca textos fixos por
       `t()`; `relatorioMensal.ts`/`relatorioMensalCompleto.ts` passam o
       idioma ativo

@@ -1,5 +1,7 @@
 import { createCanvas, loadImage } from 'canvas';
 import type { DbClient } from '../db/client.js';
+import { obterIdioma } from '../db/repositories/idiomaBot.js';
+import { t } from '../i18n/t.js';
 import { montarDadosDespesaPorCategoria } from './dadosGrafico.js';
 import { agregarFinanceiroPeriodo } from './financeiro.js';
 import { formatarDelta } from './formatarDelta.js';
@@ -35,6 +37,7 @@ function formatarMoeda(valor: number): string {
 // confusos numa imagem, mesmo motivo que tornou o texto confuso) — continuam
 // disponíveis via relatorio(periodo=semana) no chat, sem mudança.
 export async function montarImagemRelatorioSemanal(db: DbClient, agora: Date = new Date()): Promise<Buffer> {
+  const idioma = obterIdioma(db);
   const janelaAtual = calcularJanelaPeriodo('semana', agora);
   const janelaAnterior = calcularJanelaAnterior('semana', janelaAtual);
 
@@ -58,15 +61,15 @@ export async function montarImagemRelatorioSemanal(db: DbClient, agora: Date = n
   ctx.fillRect(0, 0, LARGURA, ALTURA_CABECALHO_FAIXA);
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 11px sans-serif';
-  ctx.fillText('AUTOFINANCE — RELATÓRIO SEMANAL', MARGEM, 34);
+  ctx.fillText(t('semanal_titulo', idioma), MARGEM, 34);
   ctx.font = 'bold 22px sans-serif';
   ctx.fillText(`${janelaAtual.inicio} a ${janelaAtual.fim}`, MARGEM, 62);
 
   const colunas = [
-    { rotulo: 'Receita', valor: financeiro.totalReceita, delta: financeiro.totalReceita - financeiroAnterior.totalReceita, cor: COR_RECEITA },
-    { rotulo: 'Despesa', valor: financeiro.totalDespesa, delta: financeiro.totalDespesa - financeiroAnterior.totalDespesa, cor: COR_DESPESA },
+    { rotulo: t('rotulo_receita', idioma), valor: financeiro.totalReceita, delta: financeiro.totalReceita - financeiroAnterior.totalReceita, cor: COR_RECEITA },
+    { rotulo: t('rotulo_despesa', idioma), valor: financeiro.totalDespesa, delta: financeiro.totalDespesa - financeiroAnterior.totalDespesa, cor: COR_DESPESA },
     {
-      rotulo: 'Saldo consolidado',
+      rotulo: t('rotulo_saldo_consolidado', idioma),
       valor: financeiro.saldoConsolidado,
       delta: undefined,
       cor: financeiro.saldoConsolidado >= 0 ? COR_RECEITA : COR_DESPESA,
@@ -97,21 +100,21 @@ export async function montarImagemRelatorioSemanal(db: DbClient, agora: Date = n
       ctx.fillText(formatarDelta(coluna.delta), x + 16, yCartoes + 72);
       ctx.font = '11px sans-serif';
       ctx.fillStyle = COR_TEXTO_MUTED;
-      ctx.fillText('vs. semana anterior', x + 16, yCartoes + 86);
+      ctx.fillText(t('vs_semana_anterior', idioma), x + 16, yCartoes + 86);
     }
   });
 
   const yCustoIa = yCartoes + alturaCartao + 30;
   ctx.font = '15px sans-serif';
   ctx.fillStyle = COR_TEXTO_MUTED;
-  ctx.fillText(`Custo de IA no período: US$ ${usoIa.totalCustoEstimado.toFixed(6)}`, MARGEM, yCustoIa);
+  ctx.fillText(t('custo_ia_periodo', idioma, { valor: usoIa.totalCustoEstimado.toFixed(6) }), MARGEM, yCustoIa);
 
   const ySecaoGrafico = yCustoIa + 30;
   ctx.fillStyle = COR_ACENTO;
   ctx.fillRect(MARGEM, ySecaoGrafico - 11, 4, 14);
   ctx.font = 'bold 14px sans-serif';
   ctx.fillStyle = COR_PRIMARIA;
-  ctx.fillText('Despesa por categoria', MARGEM + 12, ySecaoGrafico);
+  ctx.fillText(t('despesa_por_categoria', idioma), MARGEM + 12, ySecaoGrafico);
 
   if (graficoBuffer) {
     const imagemGrafico = await loadImage(graficoBuffer);
@@ -119,7 +122,7 @@ export async function montarImagemRelatorioSemanal(db: DbClient, agora: Date = n
   } else {
     ctx.font = '15px sans-serif';
     ctx.fillStyle = COR_TEXTO_MUTED;
-    ctx.fillText('Nenhuma despesa no período.', MARGEM, ALTURA_CABECALHO + 30);
+    ctx.fillText(t('nenhuma_despesa_periodo', idioma), MARGEM, ALTURA_CABECALHO + 30);
   }
 
   return canvas.toBuffer('image/png');

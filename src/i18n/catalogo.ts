@@ -371,4 +371,44 @@ export const CATALOGO: Record<string, Record<Idioma, string>> = {
     en: '- {descricao} (expected: R$ {valor}, every day {dia})',
     es: '- {descricao} (esperado: R$ {valor}, cada día {dia})',
   },
+  semanal_titulo: {
+    pt: 'AUTOFINANCE — RELATÓRIO SEMANAL',
+    en: 'AUTOFINANCE — WEEKLY REPORT',
+    es: 'AUTOFINANCE — INFORME SEMANAL',
+  },
+  rotulo_receita: {
+    pt: 'Receita',
+    en: 'Income',
+    es: 'Ingreso',
+  },
+  rotulo_despesa: {
+    pt: 'Despesa',
+    en: 'Expense',
+    es: 'Gasto',
+  },
+  rotulo_saldo_consolidado: {
+    pt: 'Saldo consolidado',
+    en: 'Consolidated balance',
+    es: 'Saldo consolidado',
+  },
+  vs_semana_anterior: {
+    pt: 'vs. semana anterior',
+    en: 'vs. previous week',
+    es: 'vs. semana anterior',
+  },
+  custo_ia_periodo: {
+    pt: 'Custo de IA no período: US$ {valor}',
+    en: 'AI cost in the period: US$ {valor}',
+    es: 'Costo de IA en el período: US$ {valor}',
+  },
+  despesa_por_categoria: {
+    pt: 'Despesa por categoria',
+    en: 'Expense by category',
+    es: 'Gasto por categoría',
+  },
+  nenhuma_despesa_periodo: {
+    pt: 'Nenhuma despesa no período.',
+    en: 'No expense in the period.',
+    es: 'Ningún gasto en el período.',
+  },
 };
