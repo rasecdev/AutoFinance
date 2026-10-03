@@ -50,19 +50,21 @@ digitar o comando — só clicar, autorizar e colar o código de volta, como já
 
 ## Task List
 
-- [ ] Tarefa 134: migration `0020_lembrete_reautorizacao_google.sql` (tabela singleton) +
+- [x] Tarefa 134: migration `0020_lembrete_reautorizacao_google.sql` (tabela singleton) +
       repositório `src/db/repositories/lembreteReautorizacaoGoogle.ts`
       (`obterUltimoEnvio`/`registrarEnvio`)
-- [ ] Tarefa 135: extrai `montarLinkVinculoGoogle` em `registrarEmail.ts`; novo
+- [x] Tarefa 135: extrai `montarLinkVinculoGoogle` em `registrarEmail.ts`; novo
       `src/bot/lembreteReautorizacaoGoogle.ts` (agendador); liga em `index.ts`
 
 ### Checkpoint: Rodada fechada
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual: reduzir `INTERVALO_MS` temporariamente (ou usar fake timers só no teste
-      automatizado) pra confirmar que o lembrete chega no Telegram e que colar o código
-      funciona igual ao `/registrar_email` manual
-- [ ] PROGRESSO.md atualizado
-- [ ] Milestone "Lembrete automático de reautorização do Google" fechado no GitHub
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Teste manual: `INTERVALO_MS` reduzido temporariamente numa branch isolada
+      (`teste/lembrete-intervalo-curto`, nunca mergeada), confirmado pelo usuário em
+      Homologação que o lembrete chegou no Telegram e que colar o código vinculou
+      normalmente (igual ao `/registrar_email` manual) — branch de teste revertida/deletada
+      depois, `development` de volta ao intervalo real de 5 dias
+- [x] PROGRESSO.md atualizado
+- [x] Milestone "Lembrete automático de reautorização do Google" fechado no GitHub
 
 ## Risks and Mitigations
 
