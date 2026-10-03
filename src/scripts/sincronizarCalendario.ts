@@ -14,6 +14,7 @@ import {
   atualizarEventoCalendarioParcela,
   listarParcelasComEventoParaRemover,
 } from '../db/repositories/parcelas.js';
+import { obterRefreshToken } from '../db/repositories/credenciaisGoogle.js';
 import { criarClientesGoogle } from '../integracoes/google/auth.js';
 import { createLogger, type Logger } from '../logging/logger.js';
 import { calcularDataVencimentoFatura } from '../relatorios/fluxoCaixa.js';
@@ -173,17 +174,23 @@ async function main(): Promise<void> {
   const logger = createLogger(undefined, env.logLevel);
   const db = getDb(env);
 
-  if (env.google === null) {
+  const refreshToken = env.googleOAuthClient ? obterRefreshToken(db) : null;
+
+  if (env.googleOAuthClient === null || refreshToken === null) {
     // Sem sleep aqui, o loop `while true; do node ...; done` do compose
     // reiniciaria o processo instantaneamente pra sempre (busy-loop) — dorme
     // pelo mesmo intervalo do polling normal antes de sair, mesmo com --agora
-    // (não faz sentido "testar agora" um caminho que não faz nada).
-    logger.info('integração Google desligada (env.google === null) — sincronização de calendário não vai rodar');
+    // (não faz sentido "testar agora" um caminho que não faz nada). Cobre os
+    // dois estados de "desligada": app OAuth não configurado, ou configurado
+    // mas ainda sem vínculo feito via /registrar_email (token no banco).
+    logger.info(
+      'integração Google desligada (sem app configurado ou sem vínculo feito) — sincronização de calendário não vai rodar',
+    );
     await dormirAte(Date.now() + INTERVALO_SINCRONIZACAO_MS);
     return;
   }
 
-  const { calendar } = criarClientesGoogle(env.google);
+  const { calendar } = criarClientesGoogle({ ...env.googleOAuthClient, refreshToken });
 
   try {
     if (!process.argv.includes('--agora')) {
@@ -191,7 +198,7 @@ async function main(): Promise<void> {
       await dormirAte(Date.now() + INTERVALO_SINCRONIZACAO_MS);
     }
 
-    await sincronizarCalendario(db, calendar, env.google.calendarId, logger);
+    await sincronizarCalendario(db, calendar, env.googleOAuthClient.calendarId, logger);
   } catch (erro) {
     await tratarErroCriticoJob(db, logger, 'sincronizar_calendario', erro, env.telegramBotToken, env.telegramAllowedChatIds);
     throw erro;

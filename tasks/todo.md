@@ -47,14 +47,14 @@ sempre que `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` estiverem presentes, sem de
 token nenhum.
 
 **Acceptance criteria:**
-- [ ] `env.google` não existe mais (erro de compilação em qualquer lugar que ainda referencie)
-- [ ] `googleOAuthClient` presente (com `calendarId`) só com `CLIENT_ID`/`CLIENT_SECRET`
+- [x] `env.google` não existe mais (erro de compilação em qualquer lugar que ainda referencie)
+- [x] `googleOAuthClient` presente (com `calendarId`) só com `CLIENT_ID`/`CLIENT_SECRET`
       configurados, independente de `GOOGLE_REFRESH_TOKEN` (que nem existe mais no schema)
-- [ ] `GOOGLE_CALENDAR_ID` ausente → `calendarId` default `'primary'`
+- [x] `GOOGLE_CALENDAR_ID` ausente → `calendarId` default `'primary'`
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/config/env.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/config/env.test.ts`
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** None
 
@@ -67,8 +67,8 @@ token nenhum.
 ---
 
 ### Checkpoint: Armazenamento pronto
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Revisão rápida: `credenciais_google` não aparece em `DominioConsulta`, `TODAS_DIMENSOES`
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Revisão rápida: `credenciais_google` não aparece em `DominioConsulta`, `TODAS_DIMENSOES`
       nem em nenhum mapa de coluna de `src/ai/tools/consultaDinamica.ts` ou
       `src/relatorios/consultaDinamica.ts`
 
@@ -84,17 +84,17 @@ Com token presente, monta `{...env.googleOAuthClient, refreshToken}` pra
 `criarClientesGoogle` (assinatura da função não muda).
 
 **Acceptance criteria:**
-- [ ] `googleOAuthClient === null` → comportamento idêntico ao `env.google === null` de hoje
+- [x] `googleOAuthClient === null` → comportamento idêntico ao `env.google === null` de hoje
       (loga, dorme o intervalo, sai sem rodar nada)
-- [ ] `googleOAuthClient` presente mas `obterRefreshToken(db) === null` → mesmo caminho de
+- [x] `googleOAuthClient` presente mas `obterRefreshToken(db) === null` → mesmo caminho de
       "desligada" (nunca tenta montar client sem token)
-- [ ] Token presente → `criarClientesGoogle` recebe `calendarId` de `env.googleOAuthClient`
+- [x] Token presente → `criarClientesGoogle` recebe `calendarId` de `env.googleOAuthClient`
       e `refreshToken` do banco, comportamento de leitura/sincronização inalterado
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/scripts/lerEmailFaturas.test.ts tests/scripts/sincronizarCalendario.test.ts`
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: nenhum (cobre na Tarefa de checkpoint final, teste manual real em Homologação)
+- [x] Tests pass: `npx vitest run tests/scripts/lerEmailFaturas.test.ts tests/scripts/sincronizarCalendario.test.ts`
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: nenhum (cobre na Tarefa de checkpoint final, teste manual real em Homologação)
 
 **Dependencies:** Tarefas 128, 129
 
@@ -116,13 +116,13 @@ instrução pra colar no `.env` — evita deixar um segundo caminho desatualizad
 novo fluxo.
 
 **Acceptance criteria:**
-- [ ] Script abre o banco (mesmo padrão de outros scripts, `getDb(env)`) e persiste o token
+- [x] Script abre o banco (mesmo padrão de outros scripts, `getDb(env)`) e persiste o token
       obtido via `salvarRefreshToken`
-- [ ] Mensagem de console final confirma persistência no banco, sem mencionar `.env`/restart
+- [x] Mensagem de console final confirma persistência no banco, sem mencionar `.env`/restart
 
 **Verification:**
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: leitura do código confirma a chamada a `salvarRefreshToken` antes do
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: leitura do código confirma a chamada a `salvarRefreshToken` antes do
       `console.log` final (script é interativo via stdin, sem teste automatizado de ponta a
       ponta já existente)
 
@@ -146,15 +146,15 @@ responde confirmando o vínculo — sem exibir o token em texto, então remove a
 handler. `src/index.ts` passa `db` na construção do handler.
 
 **Acceptance criteria:**
-- [ ] Colar o código de autorização salva o token no banco (via `salvarRefreshToken`) e a
+- [x] Colar o código de autorização salva o token no banco (via `salvarRefreshToken`) e a
       resposta do bot não contém o valor do `refresh_token` em texto
-- [ ] "Este ambiente já tem vínculo" passa a ser decidido por `obterRefreshToken(db)`, não por
+- [x] "Este ambiente já tem vínculo" passa a ser decidido por `obterRefreshToken(db)`, não por
       `env.google`
-- [ ] Mensagem de vínculo existente mostra a agenda via `env.googleOAuthClient.calendarId`
+- [x] Mensagem de vínculo existente mostra a agenda via `env.googleOAuthClient.calendarId`
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/bot/handlers/registrarEmail.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/bot/handlers/registrarEmail.test.ts`
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** Tarefas 128, 129
 
@@ -178,15 +178,16 @@ migration antiga 0013 nunca é editada/apagada, só superada. Remove
 `apagarMensagensPendentesAtrasadas` e o import de `listarVencidas`/`removerAgendamento`.
 
 **Acceptance criteria:**
-- [ ] `grep -r "mensagensPendentesApagar\|listarVencidas\|removerAgendamento\|agendarApagarPersistido" src/`
+- [x] `grep -r "mensagensPendentesApagar\|listarVencidas\|removerAgendamento\|agendarApagarPersistido" src/`
       não retorna nada
-- [ ] Migration `0019` dropa a tabela sem erro rodando sobre um banco já migrado até 0018
-- [ ] `index.ts` sobe sem o sweep de boot removido, sem erro
+- [x] Migration `0019` dropa a tabela sem erro rodando sobre um banco já migrado até 0018
+- [x] `index.ts` sobe sem o sweep de boot removido, sem erro
 
 **Verification:**
-- [ ] Tests pass: `npm test` (suite completa — garante que nenhum outro teste dependia do
-      repositório removido)
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npm test` (suite completa, 962 testes — 6 falhas de timeout isoladas por
+      carga da máquina, não relacionadas; confirmado passando ao rodar os 5 arquivos
+      isoladamente, 102/102)
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** Tarefa 132
 

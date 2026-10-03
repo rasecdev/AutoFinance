@@ -12,8 +12,8 @@ import {
 } from '../../../src/bot/googleOAuthPendencia.js';
 import type { Env } from '../../../src/config/env.js';
 import type { DbClient } from '../../../src/db/client.js';
+import { obterRefreshToken, salvarRefreshToken } from '../../../src/db/repositories/credenciaisGoogle.js';
 import { migrate } from '../../../src/db/migrate.js';
-import { listarVencidas } from '../../../src/db/repositories/mensagensPendentesApagar.js';
 import { createLogger } from '../../../src/logging/logger.js';
 
 const logger = createLogger(undefined, 'fatal');
@@ -42,7 +42,6 @@ const ENV_BASE: Env = {
   databasePath: './data/teste.db',
   databaseEncryptionKey: 'chave-cifragem',
   logLevel: 'info',
-  google: null,
   googleOAuthClient: null,
   pluggy: null,
 };
@@ -61,11 +60,12 @@ afterEach(() => {
   removerPendenciaOAuthGoogle(6001);
   removerPendenciaOAuthGoogle(6002);
   removerPendenciaOAuthGoogle(6003);
+  db.prepare('DELETE FROM credenciais_google').run();
 });
 
 describe('handlerRegistrarEmail (/registrar_email)', () => {
   it('sem GOOGLE_CLIENT_ID/SECRET configurados, avisa que precisa configurar no servidor', async () => {
-    const handler = createHandlerRegistrarEmail(ENV_BASE);
+    const handler = createHandlerRegistrarEmail(ENV_BASE, db);
     const ctx = criarContextoFake('/registrar_email', 6001);
 
     await handler(ctx);
@@ -75,8 +75,11 @@ describe('handlerRegistrarEmail (/registrar_email)', () => {
   });
 
   it('com par cliente configurado e sem vínculo ativo, gera link e cria pendência mencionando e-mail e calendário', async () => {
-    const env: Env = { ...ENV_BASE, googleOAuthClient: { clientId: 'id-teste', clientSecret: 'secret-teste' } };
-    const handler = createHandlerRegistrarEmail(env);
+    const env: Env = {
+      ...ENV_BASE,
+      googleOAuthClient: { clientId: 'id-teste', clientSecret: 'secret-teste', calendarId: 'primary' },
+    };
+    const handler = createHandlerRegistrarEmail(env, db);
     const ctx = criarContextoFake('/registrar_email', 6002);
 
     await handler(ctx);
@@ -90,12 +93,12 @@ describe('handlerRegistrarEmail (/registrar_email)', () => {
   });
 
   it('com vínculo já ativo e sem "confirmar", avisa que já está vinculado e não mexe na pendência', async () => {
+    salvarRefreshToken(db, 'refresh-teste');
     const env: Env = {
       ...ENV_BASE,
-      googleOAuthClient: { clientId: 'id-teste', clientSecret: 'secret-teste' },
-      google: { clientId: 'id-teste', clientSecret: 'secret-teste', refreshToken: 'refresh-teste', calendarId: 'primary' },
+      googleOAuthClient: { clientId: 'id-teste', clientSecret: 'secret-teste', calendarId: 'primary' },
     };
-    const handler = createHandlerRegistrarEmail(env);
+    const handler = createHandlerRegistrarEmail(env, db);
     const ctx = criarContextoFake('/registrar_email', 6003);
 
     await handler(ctx);
@@ -105,12 +108,12 @@ describe('handlerRegistrarEmail (/registrar_email)', () => {
   });
 
   it('com vínculo já ativo e "confirmar", gera um link novo mesmo assim', async () => {
+    salvarRefreshToken(db, 'refresh-teste');
     const env: Env = {
       ...ENV_BASE,
-      googleOAuthClient: { clientId: 'id-teste', clientSecret: 'secret-teste' },
-      google: { clientId: 'id-teste', clientSecret: 'secret-teste', refreshToken: 'refresh-teste', calendarId: 'primary' },
+      googleOAuthClient: { clientId: 'id-teste', clientSecret: 'secret-teste', calendarId: 'primary' },
     };
-    const handler = createHandlerRegistrarEmail(env);
+    const handler = createHandlerRegistrarEmail(env, db);
     const ctx = criarContextoFake('/registrar_email confirmar', 6003);
 
     await handler(ctx);
@@ -130,7 +133,7 @@ describe('handlerCodigoOAuthGoogle', () => {
     expect(ctx.reply).not.toHaveBeenCalled();
   });
 
-  it('troca o código com sucesso e devolve o refresh_token, removendo a pendência', async () => {
+  it('troca o código com sucesso, persiste o refresh_token no banco e confirma sem exibir o valor', async () => {
     const getToken = vi.fn(async () => ({ tokens: { refresh_token: 'refresh-novo-123' } }));
     definirPendenciaOAuthGoogle(6002, { getToken } as never);
 
@@ -140,52 +143,14 @@ describe('handlerCodigoOAuthGoogle', () => {
     await handler(ctx);
 
     expect(getToken).toHaveBeenCalledWith('4/0Acodigo');
-    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('refresh-novo-123'));
-    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('GOOGLE_REFRESH_TOKEN'));
-    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('apague esta mensagem'));
+    expect(obterRefreshToken(db)).toBe('refresh-novo-123');
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('vínculo salvo'));
+    const mensagem = ctx.reply.mock.calls[0]?.[0] as string;
+    expect(mensagem).not.toContain('refresh-novo-123');
     expect(obterPendenciaOAuthGoogle(6002)).toBeUndefined();
   });
 
-  it('agenda o auto-apagar da mensagem com o token pra 5 minutos depois, não antes', async () => {
-    vi.useFakeTimers();
-    try {
-      const getToken = vi.fn(async () => ({ tokens: { refresh_token: 'refresh-novo-123' } }));
-      definirPendenciaOAuthGoogle(6002, { getToken } as never);
-
-      const handler = createHandlerCodigoOAuthGoogle(db, logger);
-      const ctx = criarContextoFake('4/0Acodigo', 6002);
-
-      await handler(ctx);
-
-      expect(ctx.api.deleteMessage).not.toHaveBeenCalled();
-
-      await vi.advanceTimersByTimeAsync(5 * 60 * 1000 - 1);
-      expect(ctx.api.deleteMessage).not.toHaveBeenCalled();
-
-      await vi.advanceTimersByTimeAsync(1);
-      expect(ctx.api.deleteMessage).toHaveBeenCalledWith(6002, 4242);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it('grava o agendamento no banco (achado real: sobrevive a restart do bot antes do setTimeout disparar)', async () => {
-    const getToken = vi.fn(async () => ({ tokens: { refresh_token: 'refresh-novo-123' } }));
-    definirPendenciaOAuthGoogle(6002, { getToken } as never);
-
-    const handler = createHandlerCodigoOAuthGoogle(db, logger);
-    const ctx = criarContextoFake('4/0Acodigo', 6002);
-
-    await handler(ctx);
-
-    expect(listarVencidas(db)).toEqual([]); // ainda não venceu, mas o registro existe (checado indiretamente abaixo)
-    expect(db.prepare('SELECT chat_id, message_id FROM mensagens_pendentes_apagar WHERE chat_id = ?').get(6002)).toEqual({
-      chat_id: 6002,
-      message_id: 4242,
-    });
-  });
-
-  it('sucesso sem refresh_token (conta já autorizada antes): orienta a revogar o acesso', async () => {
+  it('sucesso sem refresh_token (conta já autorizada antes): orienta a revogar o acesso, sem persistir nada', async () => {
     const getToken = vi.fn(async () => ({ tokens: {} }));
     definirPendenciaOAuthGoogle(6002, { getToken } as never);
 
@@ -195,6 +160,7 @@ describe('handlerCodigoOAuthGoogle', () => {
     await handler(ctx);
 
     expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('myaccount.google.com/permissions'));
+    expect(obterRefreshToken(db)).toBeNull();
   });
 
   it('código inválido/expirado: avisa e sugere rodar o comando de novo', async () => {
