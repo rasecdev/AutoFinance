@@ -54,7 +54,7 @@ fixas do bot, resposta livre da IA (`conversa_texto`) e relatórios visuais
 ## Task List
 
 ### Fundação
-- [ ] Tarefa 136: migration `idioma_bot` (tabela singleton) + repositório
+- [x] Tarefa 136: migration `idioma_bot` (tabela singleton) + repositório
       `src/db/repositories/idiomaBot.ts` (`obterIdioma`/`definirIdioma`,
       default `'pt'` sem linha)
 - [ ] Tarefa 137: módulo `src/i18n/` — `catalogo.ts` (chaves iniciais: handler
