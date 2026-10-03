@@ -34,6 +34,10 @@ Nos checkpoints do `tasks/plan.md` (fim de cada sub-fase):
 
 Fora desse ciclo (mudança pontual, não relacionada a uma tarefa do todo.md), commit/PR/merge continuam exigindo pedido explícito — esse fluxo automático vale só pra progressão das tarefas do plano ativo, sempre dentro de `development`.
 
+## Dados sigilosos
+
+Nunca gravar segredo real (token, refresh_token, chave de API, client secret, IP público, hostname/instance name da VM) em nenhum arquivo versionado — PROGRESSO.md, PLANO.md, mensagem de commit, corpo de PR/issue. Descrever o achado/decisão sem o valor (ex: "refresh_token revogado", não o token em si). `gitleaks` no CI é rede de segurança automática, não a regra principal — ela só pega padrões conhecidos, revisar antes de comitar continua necessário.
+
 ## Convenções de código (Fase 1)
 
 - Estrutura: `src/config`, `src/db`, `src/logging`, `src/bot`, `src/ai`, `scripts/`, `tests/` (espelha `src/`).
