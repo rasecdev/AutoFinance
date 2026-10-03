@@ -88,7 +88,7 @@ fixas do bot, resposta livre da IA (`conversa_texto`) e relatórios visuais
 - [x] Tarefa 140: traduz `comandos.ts` (descrições) e `ajuda.ts` pra `t()`
 
 ### Strings fixas — área 2 (confirmação/erro comuns)
-- [ ] Tarefa 141: traduz `callbackConfirmacao.ts`, `feedback.ts`,
+- [x] Tarefa 141: traduz `callbackConfirmacao.ts`, `feedback.ts`,
       `naoSuportado.ts`, `modelo.ts`, `modelos.ts`, `pausar.ts`, `retomar.ts`
       pra `t()`
 

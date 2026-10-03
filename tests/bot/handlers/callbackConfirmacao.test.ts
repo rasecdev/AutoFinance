@@ -9,6 +9,7 @@ import { CALLBACK_DATA_CANCELAR, CALLBACK_DATA_CONFIRMAR, definirPendencia, obte
 import { createHandlerCallbackConfirmacao } from '../../../src/bot/handlers/callbackConfirmacao.js';
 import type { DbClient } from '../../../src/db/client.js';
 import { definirPendenciaPersistida, obterPendenciaPersistida } from '../../../src/db/repositories/confirmacoesPendentes.js';
+import { definirIdioma } from '../../../src/db/repositories/idiomaBot.js';
 import { migrate } from '../../../src/db/migrate.js';
 import { createLogger } from '../../../src/logging/logger.js';
 
@@ -84,6 +85,18 @@ describe('handlerCallbackConfirmacao — pendência em memória (confirmacao.ts)
 
     expect(ctx.answerCallbackQuery).toHaveBeenCalledWith({ text: 'Isso já foi respondido ou expirou.' });
     expect(ctx.reply).not.toHaveBeenCalled();
+  });
+
+  it('com idioma en ativo, cancelamento responde em inglês', async () => {
+    definirIdioma(db, 'en');
+    const tool: ToolDefinition = { name: 'tool_teste', description: 'x', schema: {} as never, handler: vi.fn() };
+    definirPendencia(9007, { tool, argumentos: {} });
+
+    const ctx = criarContextoFake(9007, CALLBACK_DATA_CANCELAR);
+    const handler = createHandlerCallbackConfirmacao(db, logger, []);
+    await handler(ctx);
+
+    expect(ctx.reply).toHaveBeenCalledWith('Action cancelled.');
   });
 });
 

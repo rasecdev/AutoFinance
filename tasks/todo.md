@@ -196,26 +196,33 @@ em vez de texto literal, exigiu atualizar os 3 consumidores)
 toda mensagem fixa ao usuário.
 
 **Acceptance criteria:**
-- [ ] Nenhum `ctx.reply()` com string literal em português sobra nesses 7
+- [x] Nenhum `ctx.reply()` com string literal em português sobra nesses 7
       arquivos (todas passam por `t()`)
-- [ ] Testes existentes desses handlers continuam passando com idioma padrão
+- [x] Testes existentes desses handlers continuam passando com idioma padrão
       (`pt`), sem mudança de texto visível
+- [x] (achado: `modelo.ts`/`modelos.ts`/`naoSuportado.ts`/`feedback.ts` não
+      tinham teste dedicado nenhum antes — criados do zero, cobrindo pelo
+      menos o comportamento padrão e a tradução em inglês)
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/bot/handlers/callbackConfirmacao.test.ts tests/bot/handlers/feedback.test.ts tests/bot/handlers/pausar.test.ts tests/bot/handlers/retomar.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/bot/handlers/callbackConfirmacao.test.ts tests/bot/handlers/feedback.test.ts tests/bot/handlers/pausar.test.ts tests/bot/handlers/retomar.test.ts tests/bot/handlers/modelo.test.ts tests/bot/handlers/modelos.test.ts tests/bot/handlers/naoSuportado.test.ts`
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** Tarefa 137
 
 **Files likely touched:**
 - `src/bot/handlers/callbackConfirmacao.ts`
 - `src/bot/handlers/feedback.ts`
-- `src/bot/handlers/naoSuportado.ts`
+- `src/bot/handlers/naoSuportado.ts` (ganhou parâmetro `db` novo — precisava
+  do idioma ativo, não tinha acesso ao banco antes)
 - `src/bot/handlers/modelo.ts`
 - `src/bot/handlers/modelos.ts`
 - `src/bot/handlers/pausar.ts`
 - `src/bot/handlers/retomar.ts`
+- `src/index.ts` (wiring de `naoSuportado` com `db`)
 - `src/i18n/catalogo.ts`
+- `tests/bot/handlers/{pausar,retomar,callbackConfirmacao}.test.ts` (teste en
+  adicionado) + `{modelo,modelos,naoSuportado,feedback}.test.ts` (novos)
 
 **Estimated scope:** Large (7 arquivos de handler, mas cada um é uma troca mecânica e independente — sem lógica nova)
 

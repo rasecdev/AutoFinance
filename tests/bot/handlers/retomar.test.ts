@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DbClient } from '../../../src/db/client.js';
 import { migrate } from '../../../src/db/migrate.js';
 import { estaPausado, pausar } from '../../../src/db/repositories/botPausado.js';
+import { definirIdioma } from '../../../src/db/repositories/idiomaBot.js';
 import { createHandlerRetomar } from '../../../src/bot/handlers/retomar.js';
 
 const CHAVE_TESTE = 'chave-teste-handler-retomar';
@@ -51,5 +52,16 @@ describe('handlerRetomar', () => {
 
     expect(estaPausado(db, 100)).toBe(false);
     expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Não havia pausa'));
+  });
+
+  it('com idioma en ativo, confirma em inglês', async () => {
+    definirIdioma(db, 'en');
+    pausar(db, 102);
+    const handler = createHandlerRetomar(db);
+    const ctx = criarContextoFake(102);
+
+    await handler(ctx);
+
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Bot resumed'));
   });
 });
