@@ -12,6 +12,11 @@ import { migrate } from '../../../src/db/migrate.js';
 const CHAVE_TESTE = 'chave-teste-tool-consulta-e-graficar';
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
 
+// "mês atual" no handler é o mês real do sistema no momento do teste — data
+// fixa quebra sozinha na virada do mês (mesmo achado de consultaDinamica.test.ts).
+const hoje = new Date();
+const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+
 let dir: string;
 let db: DbClient;
 let contaId: number;
@@ -32,8 +37,8 @@ afterEach(() => {
 
 describe('tool consultar_e_graficar', () => {
   it('chamada única retorna texto (com eco) + imagem, sem round-trip extra', async () => {
-    criarTransacao(db, { contaId, tipo: 'despesa', valor: 100, categoria: 'Mercado', data: '2026-09-01' });
-    criarTransacao(db, { contaId, tipo: 'despesa', valor: 300, categoria: 'Transporte', data: '2026-09-02' });
+    criarTransacao(db, { contaId, tipo: 'despesa', valor: 100, categoria: 'Mercado', data: `${mesAtual}-01` });
+    criarTransacao(db, { contaId, tipo: 'despesa', valor: 300, categoria: 'Transporte', data: `${mesAtual}-02` });
 
     const tool = criarToolConsultarEGraficar(db);
     const resultado = await tool.handler(
