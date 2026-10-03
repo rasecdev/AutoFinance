@@ -1,7 +1,17 @@
 import OpenAI from 'openai';
+import type { Idioma } from '../db/repositories/idiomaBot.js';
 import { SYSTEM_PROMPT } from './systemPrompt.js';
 import { paraDefinicaoOpenAI } from './tools/registry.js';
 import type { ResultadoTool, ToolContext, ToolDefinition } from './tools/types.js';
+
+// Nome do idioma em português -- a diretiva dinâmica abaixo é apendada ao
+// SYSTEM_PROMPT, que continua inteiro em português (fonte única, Fase 10,
+// ver PLANO.md); só o idioma 'pt' não precisa de diretiva nenhuma, mesmo
+// comportamento/cache de hoje.
+const NOME_IDIOMA: Record<Exclude<Idioma, 'pt'>, string> = {
+  en: 'inglês',
+  es: 'espanhol',
+};
 
 export const MODELO_PADRAO = 'openai/gpt-4o-mini';
 
@@ -80,14 +90,20 @@ type BlocoTextoComCache = OpenAI.Chat.Completions.ChatCompletionContentPartText 
 // aparece de fato em openrouter.ai/settings/profile.
 export type UsageComCusto = OpenAI.CompletionUsage & { cost?: number };
 
-function montarMensagemSystem(modelo: string): OpenAI.Chat.Completions.ChatCompletionMessageParam {
+export function montarMensagemSystem(
+  modelo: string,
+  idioma: Idioma = 'pt',
+): OpenAI.Chat.Completions.ChatCompletionMessageParam {
+  const texto =
+    idioma === 'pt' ? SYSTEM_PROMPT : `${SYSTEM_PROMPT}\n\nResponda sempre em ${NOME_IDIOMA[idioma]}.`;
+
   if (!modelo.startsWith('anthropic/')) {
-    return { role: 'system', content: SYSTEM_PROMPT };
+    return { role: 'system', content: texto };
   }
 
   const bloco: BlocoTextoComCache = {
     type: 'text',
-    text: SYSTEM_PROMPT,
+    text: texto,
     cache_control: { type: 'ephemeral', ttl: '1h' },
   };
 
@@ -101,13 +117,14 @@ export async function gerarResposta(
   ctx: ToolContext = { chatId: 0 },
   historico: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [],
   modelo: string = MODELO_PADRAO,
+  idioma: Idioma = 'pt',
 ): Promise<RespostaGerada> {
   const inicio = Date.now();
   const registry = new Map(tools.map((tool) => [tool.name, tool]));
   const ferramentas = tools.length > 0 ? tools.map(paraDefinicaoOpenAI) : undefined;
 
   const mensagens: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-    montarMensagemSystem(modelo),
+    montarMensagemSystem(modelo, idioma),
     ...historico,
     { role: 'user', content: mensagemUsuario },
   ];

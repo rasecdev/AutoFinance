@@ -11,6 +11,7 @@ import {
   obterPendenciaPersistida,
   removerPendenciaPersistida,
 } from '../../db/repositories/confirmacoesPendentes.js';
+import { obterIdioma } from '../../db/repositories/idiomaBot.js';
 import { registrarInteracaoIa } from '../../db/repositories/interacoesIa.js';
 import { registrarUsoTokens } from '../../db/repositories/usoTokens.js';
 import type { Logger } from '../../logging/logger.js';
@@ -155,7 +156,15 @@ export async function processarMensagemTexto(
       pendenciaConfirmacao,
     } = await comIndicadorDigitando(
       ctx,
-      gerarResposta(client, mensagemUsuario, tools, { chatId }, historico, resolverModeloConversa(db, chatId)),
+      gerarResposta(
+        client,
+        mensagemUsuario,
+        tools,
+        { chatId },
+        historico,
+        resolverModeloConversa(db, chatId),
+        obterIdioma(db),
+      ),
       log,
     );
 

@@ -176,6 +176,56 @@ describe('gerarResposta — prompt caching nativo (Fase 5, Tarefa 25)', () => {
   });
 });
 
+describe('gerarResposta — diretiva dinâmica de idioma (Fase 10, i18n)', () => {
+  it("idioma 'pt' (ou omitido) produz exatamente o SYSTEM_PROMPT de hoje, sem diretiva extra", async () => {
+    const client = criarClienteFalso(respostaTexto('olá!'));
+    const create = client.chat.completions.create as unknown as ReturnType<typeof vi.fn>;
+
+    await gerarResposta(client, 'oi', [], { chatId: 0 }, [], 'openai/gpt-4o-mini', 'pt');
+
+    const semIdioma = create.mock.calls[0]?.[0]?.messages[0].content;
+
+    const client2 = criarClienteFalso(respostaTexto('olá!'));
+    const create2 = client2.chat.completions.create as unknown as ReturnType<typeof vi.fn>;
+    await gerarResposta(client2, 'oi', [], { chatId: 0 }, [], 'openai/gpt-4o-mini');
+    const comDefault = create2.mock.calls[0]?.[0]?.messages[0].content;
+
+    expect(semIdioma).toBe(comDefault);
+    expect(semIdioma).not.toMatch(/Responda sempre em/);
+  });
+
+  it("idioma 'en' apenda a diretiva em inglês ao SYSTEM_PROMPT", async () => {
+    const client = criarClienteFalso(respostaTexto('olá!'));
+    const create = client.chat.completions.create as unknown as ReturnType<typeof vi.fn>;
+
+    await gerarResposta(client, 'oi', [], { chatId: 0 }, [], 'openai/gpt-4o-mini', 'en');
+
+    const mensagemSystem = create.mock.calls[0]?.[0]?.messages[0].content;
+    expect(mensagemSystem).toMatch(/Responda sempre em inglês\.$/);
+  });
+
+  it("idioma 'es' apenda a diretiva em espanhol ao SYSTEM_PROMPT", async () => {
+    const client = criarClienteFalso(respostaTexto('olá!'));
+    const create = client.chat.completions.create as unknown as ReturnType<typeof vi.fn>;
+
+    await gerarResposta(client, 'oi', [], { chatId: 0 }, [], 'openai/gpt-4o-mini', 'es');
+
+    const mensagemSystem = create.mock.calls[0]?.[0]?.messages[0].content;
+    expect(mensagemSystem).toMatch(/Responda sempre em espanhol\.$/);
+  });
+
+  it('diretiva de idioma também é apendada dentro do bloco com cache_control (modelo Anthropic)', async () => {
+    const client = criarClienteFalso(respostaTexto('olá!'));
+    const create = client.chat.completions.create as unknown as ReturnType<typeof vi.fn>;
+
+    await gerarResposta(client, 'oi', [], { chatId: 0 }, [], 'anthropic/claude-3-haiku', 'en');
+
+    const mensagemSystem = create.mock.calls[0]?.[0]?.messages[0].content;
+    expect(mensagemSystem[0].text).toMatch(/Responda sempre em inglês\.$/);
+    expect(mensagemSystem[0].cache_control).toEqual({ type: 'ephemeral', ttl: '1h' });
+  });
+});
+
 describe('gerarResposta — loop de tool calling', () => {
   const ecoar: ToolDefinition = {
     name: 'ecoar',

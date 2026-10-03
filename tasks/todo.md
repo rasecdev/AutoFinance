@@ -127,23 +127,23 @@ idioma ativo (`obterIdioma`, Tarefa 136) e propagam pra `gerarResposta`.
 benchmark são fixos em português).
 
 **Acceptance criteria:**
-- [ ] `idioma: 'pt'` (ou omitido) produz exatamente o `SYSTEM_PROMPT` de hoje,
+- [x] `idioma: 'pt'` (ou omitido) produz exatamente o `SYSTEM_PROMPT` de hoje,
       sem diretiva extra
-- [ ] `idioma: 'en'`/`'es'` apenda a diretiva correspondente
-- [ ] `texto.ts` passa o idioma ativo lido do banco pra `gerarResposta`
+- [x] `idioma: 'en'`/`'es'` apenda a diretiva correspondente
+- [x] `texto.ts` passa o idioma ativo lido do banco pra `gerarResposta`
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/ai/openrouter.test.ts tests/bot/handlers/texto.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/ai/openrouter.test.ts tests/bot/handlers/texto.test.ts`
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** Tarefa 136
 
 **Files likely touched:**
 - `src/ai/openrouter.ts`
-- `src/bot/handlers/texto.ts`
-- `src/bot/handlers/voz.ts`
-- `src/bot/handlers/midia.ts`
-- Testes correspondentes
+- `src/bot/handlers/texto.ts` (`voz.ts`/`midia.ts` não precisaram de mudança —
+  os dois chamam `processarMensagemTexto`, não `gerarResposta` direto)
+- `tests/ai/openrouter.test.ts`
+- `tests/bot/handlers/texto.test.ts`
 
 **Estimated scope:** Medium
 
