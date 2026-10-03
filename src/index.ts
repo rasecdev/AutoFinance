@@ -5,6 +5,7 @@ import { COMANDOS_BOT } from './bot/comandos.js';
 import { createHandlerAjuda } from './bot/handlers/ajuda.js';
 import { createHandlerCallbackConfirmacao } from './bot/handlers/callbackConfirmacao.js';
 import { createHandlerFeedback } from './bot/handlers/feedback.js';
+import { createHandlerIdioma } from './bot/handlers/idioma.js';
 import { createHandlerMidia } from './bot/handlers/midia.js';
 import { createHandlerModelo } from './bot/handlers/modelo.js';
 import { createHandlerModelos } from './bot/handlers/modelos.js';
@@ -50,6 +51,7 @@ const handlerMapeamentoOpenFinance = createHandlerMapeamentoOpenFinance(db, logg
 const handlerCallbackConfirmacao = createHandlerCallbackConfirmacao(db, logger, montarToolsConversa(db, openRouterClient));
 const handlerPausar = createHandlerPausar(db);
 const handlerRetomar = createHandlerRetomar(db);
+const handlerIdioma = createHandlerIdioma(db);
 
 const bot = createBot(
   env,
@@ -71,6 +73,7 @@ const bot = createBot(
   handlerCallbackConfirmacao,
   handlerPausar,
   handlerRetomar,
+  handlerIdioma,
 );
 
 // Menu "/" do Telegram com autocomplete (filtra conforme digita) — mesma

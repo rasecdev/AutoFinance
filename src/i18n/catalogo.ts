@@ -15,4 +15,9 @@ export const CATALOGO: Record<string, Record<Idioma, string>> = {
     en: 'Invalid language: "{valor}". Use /idioma pt, /idioma en or /idioma es.',
     es: 'Idioma no válido: "{valor}". Usa /idioma pt, /idioma en o /idioma es.',
   },
+  idioma_atual: {
+    pt: 'Idioma ativo: português. Use /idioma en ou /idioma es pra trocar.',
+    en: 'Active language: English. Use /idioma pt or /idioma es to switch.',
+    es: 'Idioma activo: español. Usa /idioma pt o /idioma en para cambiar.',
+  },
 };

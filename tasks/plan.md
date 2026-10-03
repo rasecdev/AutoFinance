@@ -64,7 +64,7 @@ fixas do bot, resposta livre da IA (`conversa_texto`) e relatórios visuais
 - [x] `npm run build`/`lint`/`test` sem erro
 
 ### Comando de troca de idioma
-- [ ] Tarefa 138: handler `/idioma <pt|en|es>` (valida enum, grava via
+- [x] Tarefa 138: handler `/idioma <pt|en|es>` (valida enum, grava via
       Tarefa 136, responde confirmação via `t()` no novo idioma, re-chama
       `bot.api.setMyCommands`); registrado em `comandos.ts`/`router.ts`/`index.ts`
 
