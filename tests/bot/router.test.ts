@@ -46,6 +46,7 @@ describe('registerRoutes', () => {
     const handlerCallbackConfirmacao = vi.fn();
     const handlerPausar = vi.fn();
     const handlerRetomar = vi.fn();
+    const handlerIdioma = vi.fn();
 
     registerRoutes(
       bot,
@@ -65,6 +66,7 @@ describe('registerRoutes', () => {
       handlerCallbackConfirmacao,
       handlerPausar,
       handlerRetomar,
+      handlerIdioma,
     );
 
     expect(bot.on).toHaveBeenCalledWith('message:text', handlerTexto);
@@ -88,6 +90,7 @@ describe('registerRoutes', () => {
     const handlerCallbackConfirmacao = vi.fn();
     const handlerPausar = vi.fn();
     const handlerRetomar = vi.fn();
+    const handlerIdioma = vi.fn();
 
     registerRoutes(
       bot,
@@ -107,6 +110,7 @@ describe('registerRoutes', () => {
       handlerCallbackConfirmacao,
       handlerPausar,
       handlerRetomar,
+      handlerIdioma,
     );
 
     expect(bot.on).toHaveBeenCalledWith(['message:photo', 'message:document'], handlerMidia);
@@ -130,6 +134,7 @@ describe('registerRoutes', () => {
     const handlerCallbackConfirmacao = vi.fn();
     const handlerPausar = vi.fn();
     const handlerRetomar = vi.fn();
+    const handlerIdioma = vi.fn();
 
     registerRoutes(
       bot,
@@ -149,6 +154,7 @@ describe('registerRoutes', () => {
       handlerCallbackConfirmacao,
       handlerPausar,
       handlerRetomar,
+      handlerIdioma,
     );
 
     expect(bot.on).toHaveBeenCalledWith('message:voice', handlerVoz);
@@ -172,6 +178,7 @@ describe('registerRoutes', () => {
     const handlerCallbackConfirmacao = vi.fn();
     const handlerPausar = vi.fn();
     const handlerRetomar = vi.fn();
+    const handlerIdioma = vi.fn();
 
     registerRoutes(
       bot,
@@ -191,6 +198,7 @@ describe('registerRoutes', () => {
       handlerCallbackConfirmacao,
       handlerPausar,
       handlerRetomar,
+      handlerIdioma,
     );
 
     expect(bot.on).toHaveBeenCalledWith('message', handlerNaoSuportado);
@@ -214,6 +222,7 @@ describe('registerRoutes', () => {
     const handlerCallbackConfirmacao = vi.fn();
     const handlerPausar = vi.fn();
     const handlerRetomar = vi.fn();
+    const handlerIdioma = vi.fn();
 
     registerRoutes(
       bot,
@@ -233,6 +242,7 @@ describe('registerRoutes', () => {
       handlerCallbackConfirmacao,
       handlerPausar,
       handlerRetomar,
+      handlerIdioma,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerFeedback);
@@ -261,6 +271,7 @@ describe('registerRoutes', () => {
     const handlerCallbackConfirmacao = vi.fn();
     const handlerPausar = vi.fn();
     const handlerRetomar = vi.fn();
+    const handlerIdioma = vi.fn();
 
     registerRoutes(
       bot,
@@ -280,6 +291,7 @@ describe('registerRoutes', () => {
       handlerCallbackConfirmacao,
       handlerPausar,
       handlerRetomar,
+      handlerIdioma,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerFeedbackCorreto);
@@ -309,6 +321,7 @@ describe('registerRoutes', () => {
     const handlerCallbackConfirmacao = vi.fn();
     const handlerPausar = vi.fn();
     const handlerRetomar = vi.fn();
+    const handlerIdioma = vi.fn();
 
     registerRoutes(
       bot,
@@ -328,6 +341,7 @@ describe('registerRoutes', () => {
       handlerCallbackConfirmacao,
       handlerPausar,
       handlerRetomar,
+      handlerIdioma,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerModelos);
@@ -356,6 +370,7 @@ describe('registerRoutes', () => {
     const handlerCallbackConfirmacao = vi.fn();
     const handlerPausar = vi.fn();
     const handlerRetomar = vi.fn();
+    const handlerIdioma = vi.fn();
 
     registerRoutes(
       bot,
@@ -375,6 +390,7 @@ describe('registerRoutes', () => {
       handlerCallbackConfirmacao,
       handlerPausar,
       handlerRetomar,
+      handlerIdioma,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerModelo);
@@ -404,6 +420,7 @@ describe('registerRoutes', () => {
     const handlerCallbackConfirmacao = vi.fn();
     const handlerPausar = vi.fn();
     const handlerRetomar = vi.fn();
+    const handlerIdioma = vi.fn();
 
     registerRoutes(
       bot,
@@ -423,6 +440,7 @@ describe('registerRoutes', () => {
       handlerCallbackConfirmacao,
       handlerPausar,
       handlerRetomar,
+      handlerIdioma,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerRegistrarEmail);
@@ -450,6 +468,7 @@ describe('registerRoutes', () => {
     const handlerCallbackConfirmacao = vi.fn();
     const handlerPausar = vi.fn();
     const handlerRetomar = vi.fn();
+    const handlerIdioma = vi.fn();
 
     registerRoutes(
       bot,
@@ -469,6 +488,7 @@ describe('registerRoutes', () => {
       handlerCallbackConfirmacao,
       handlerPausar,
       handlerRetomar,
+      handlerIdioma,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerAjuda);
@@ -496,6 +516,7 @@ describe('registerRoutes', () => {
     const handlerCallbackConfirmacao = vi.fn();
     const handlerPausar = vi.fn();
     const handlerRetomar = vi.fn();
+    const handlerIdioma = vi.fn();
 
     registerRoutes(
       bot,
@@ -515,6 +536,7 @@ describe('registerRoutes', () => {
       handlerCallbackConfirmacao,
       handlerPausar,
       handlerRetomar,
+      handlerIdioma,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerRegistrarOpenFinance);
@@ -542,6 +564,7 @@ describe('registerRoutes', () => {
     const handlerCallbackConfirmacao = vi.fn();
     const handlerPausar = vi.fn();
     const handlerRetomar = vi.fn();
+    const handlerIdioma = vi.fn();
 
     registerRoutes(
       bot,
@@ -561,10 +584,11 @@ describe('registerRoutes', () => {
       handlerCallbackConfirmacao,
       handlerPausar,
       handlerRetomar,
+      handlerIdioma,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerCodigoOAuthGoogle);
-    const predicado = bot.filter.mock.calls[9]?.[0] as (ctx: Context) => boolean;
+    const predicado = bot.filter.mock.calls[10]?.[0] as (ctx: Context) => boolean;
 
     expect(predicado(criarCtxComTextoEChat('4/0Acodigo-qualquer', 9999))).toBe(false);
 
@@ -591,6 +615,7 @@ describe('registerRoutes', () => {
     const handlerCallbackConfirmacao = vi.fn();
     const handlerPausar = vi.fn();
     const handlerRetomar = vi.fn();
+    const handlerIdioma = vi.fn();
 
     registerRoutes(
       bot,
@@ -610,10 +635,11 @@ describe('registerRoutes', () => {
       handlerCallbackConfirmacao,
       handlerPausar,
       handlerRetomar,
+      handlerIdioma,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerMapeamentoOpenFinance);
-    const predicado = bot.filter.mock.calls[10]?.[0] as (ctx: Context) => boolean;
+    const predicado = bot.filter.mock.calls[11]?.[0] as (ctx: Context) => boolean;
 
     expect(predicado(criarCtxComTextoEChat('1 = Principal', 9999))).toBe(false);
 
@@ -640,6 +666,7 @@ describe('registerRoutes', () => {
     const handlerCallbackConfirmacao = vi.fn();
     const handlerPausar = vi.fn();
     const handlerRetomar = vi.fn();
+    const handlerIdioma = vi.fn();
 
     registerRoutes(
       bot,
@@ -659,6 +686,7 @@ describe('registerRoutes', () => {
       handlerCallbackConfirmacao,
       handlerPausar,
       handlerRetomar,
+      handlerIdioma,
     );
 
     expect(bot.on).toHaveBeenCalledWith('callback_query:data', handlerCallbackConfirmacao);
@@ -682,6 +710,7 @@ describe('registerRoutes', () => {
     const handlerCallbackConfirmacao = vi.fn();
     const handlerPausar = vi.fn();
     const handlerRetomar = vi.fn();
+    const handlerIdioma = vi.fn();
 
     registerRoutes(
       bot,
@@ -701,6 +730,7 @@ describe('registerRoutes', () => {
       handlerCallbackConfirmacao,
       handlerPausar,
       handlerRetomar,
+      handlerIdioma,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerPausar);
@@ -729,6 +759,7 @@ describe('registerRoutes', () => {
     const handlerCallbackConfirmacao = vi.fn();
     const handlerPausar = vi.fn();
     const handlerRetomar = vi.fn();
+    const handlerIdioma = vi.fn();
 
     registerRoutes(
       bot,
@@ -748,6 +779,7 @@ describe('registerRoutes', () => {
       handlerCallbackConfirmacao,
       handlerPausar,
       handlerRetomar,
+      handlerIdioma,
     );
 
     expect(bot.filter).toHaveBeenCalledWith(expect.any(Function), handlerRetomar);

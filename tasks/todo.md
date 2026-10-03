@@ -78,23 +78,31 @@ descrições do menu "/" no idioma recém-selecionado. Valor inválido (ex:
 `comandos.ts` (nova entrada) e roteado em `router.ts`/`index.ts`.
 
 **Acceptance criteria:**
-- [ ] `/idioma en` grava `'en'` e responde confirmação em inglês
-- [ ] `/idioma fr` (não suportado) não grava nada, responde erro no idioma
+- [x] `/idioma en` grava `'en'` e responde confirmação em inglês
+- [x] `/idioma fr` (não suportado) não grava nada, responde erro no idioma
       ativo atual
-- [ ] Depois de `/idioma en`, o bot chama `setMyCommands` com descrições em
-      inglês (verificável via mock/spy no teste)
+- [x] Depois de `/idioma en`, o bot chama `setMyCommands` de novo (verificado
+      via spy no teste — descrições em si só variam por idioma a partir da
+      Tarefa 140, já que `comandos.ts` ainda não usa `t()`)
+- [x] (extra, não previsto no plano) `/idioma` sem argumento mostra o idioma
+      ativo, sem gravar nada — mesmo padrão de "mostrar atual" já usado em
+      `/modelo`
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/bot/handlers/idioma.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/bot/handlers/idioma.test.ts tests/bot/router.test.ts tests/bot/comandos.test.ts`
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** Tarefa 136, Tarefa 137
 
 **Files likely touched:**
 - `src/bot/handlers/idioma.ts`
 - `src/bot/comandos.ts`
+- `src/bot/router.ts`
+- `src/bot/bot.ts`
 - `src/index.ts`
+- `src/i18n/catalogo.ts`
 - `tests/bot/handlers/idioma.test.ts`
+- `tests/bot/router.test.ts`
 
 **Estimated scope:** Medium
 

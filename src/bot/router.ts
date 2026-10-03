@@ -30,6 +30,7 @@ export function registerRoutes(
   handlerCallbackConfirmacao: Handler,
   handlerPausar: Handler,
   handlerRetomar: Handler,
+  handlerIdioma: Handler,
 ): void {
   const handlersPorComando: Record<string, Handler> = {
     errado: handlerFeedback,
@@ -41,6 +42,7 @@ export function registerRoutes(
     registrar_open_finance: handlerRegistrarOpenFinance,
     pausar: handlerPausar,
     retomar: handlerRetomar,
+    idioma: handlerIdioma,
   };
 
   for (const { comando, regex } of COMANDOS_BOT) {

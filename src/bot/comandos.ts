@@ -62,4 +62,9 @@ export const COMANDOS_BOT: ComandoBot[] = [
     descricao: 'Retoma o bot depois de um /pausar',
     regex: REGEX_RETOMAR,
   },
+  {
+    comando: 'idioma',
+    descricao: 'Mostra ou troca o idioma do bot (pt, en ou es)',
+    regex: /^\/idioma\b/i,
+  },
 ];

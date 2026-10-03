@@ -27,6 +27,7 @@ export function createBot(
   handlerCallbackConfirmacao: Handler,
   handlerPausar: Handler,
   handlerRetomar: Handler,
+  handlerIdioma: Handler,
 ): Bot {
   const bot = new Bot(env.telegramBotToken);
 
@@ -52,6 +53,7 @@ export function createBot(
     handlerCallbackConfirmacao,
     handlerPausar,
     handlerRetomar,
+    handlerIdioma,
   );
 
   bot.catch((erro) => {
