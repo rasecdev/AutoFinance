@@ -1,90 +1,367 @@
-# Todo: Lembrete automático de reautorização do Google
+# Tarefas — Fase 10 (Regionalização i18n: português/inglês/espanhol)
 
-Ver `tasks/plan.md` pro racional completo. Fecha o último atrito da rodada
-"Persistência do refresh_token Google" (2026-10-03): o usuário não precisa mais lembrar de
-rodar `/registrar_email confirmar` sozinho — o bot manda o lembrete + link a cada 5 dias.
+Plano completo em [tasks/plan.md](plan.md). Spec em [PLANO.md](../PLANO.md),
+seção "Fase 10".
 
 ---
 
-### Tarefa 134: migration `lembrete_reautorizacao_google` + repositório
+### Tarefa 136: tabela `idioma_bot` + repositório
 
-**Description:** Tabela singleton nova (mesmo padrão de `credenciais_google`/`bot_pausado`)
-guardando só `enviado_em` (quando foi o último lembrete automático enviado). Repositório
-`src/db/repositories/lembreteReautorizacaoGoogle.ts`: `obterUltimoEnvio(db): Date | null` e
-`registrarEnvio(db): void` (upsert por `id=1`).
+**Description:** Migration nova com tabela singleton `idioma_bot` (sem
+`chat_id` — idioma é global por instância) e repositório
+`src/db/repositories/idiomaBot.ts` com `obterIdioma(db)` (devolve `'pt'`
+quando não há linha) e `definirIdioma(db, idioma)` (upsert).
 
 **Acceptance criteria:**
-- [x] `obterUltimoEnvio` devolve `null` com a tabela vazia
-- [x] `registrarEnvio` seguido de `obterUltimoEnvio` devolve uma `Date` próxima de "agora"
-- [x] `registrarEnvio` chamado duas vezes não duplica linha (upsert)
+- [ ] `obterIdioma` devolve `'pt'` em banco novo, sem nenhuma linha gravada
+- [ ] `definirIdioma` grava e `obterIdioma` reflete o valor novo depois
+- [ ] `definirIdioma` chamado duas vezes não cria linha duplicada (upsert,
+      mesmo padrão de `botPausado.pausar`)
 
 **Verification:**
-- [x] Tests pass: `npx vitest run tests/db/lembreteReautorizacaoGoogle.test.ts`
-- [x] Build succeeds: `npm run build`
+- [ ] Tests pass: `npx vitest run tests/db/repositories/idiomaBot.test.ts`
+- [ ] Build succeeds: `npm run build`
 
 **Dependencies:** None
 
 **Files likely touched:**
-- `src/db/migrations/0020_lembrete_reautorizacao_google.sql`
-- `src/db/repositories/lembreteReautorizacaoGoogle.ts`
-- `tests/db/lembreteReautorizacaoGoogle.test.ts`
+- `src/db/migrations/0021_idioma_bot.sql`
+- `src/db/repositories/idiomaBot.ts`
+- `tests/db/repositories/idiomaBot.test.ts`
 
 **Estimated scope:** Small
 
 ---
 
-### Tarefa 135: agendador do lembrete + wiring em `index.ts`
+### Tarefa 137: módulo `src/i18n/`
 
-**Description:** Extrai de `bot/handlers/registrarEmail.ts` a função `montarLinkVinculoGoogle`
-(monta `OAuth2Client`, gera a URL de autorização, marca a pendência via
-`definirPendenciaOAuthGoogle`) e `montarMensagemVinculoGoogle` (texto reaproveitável do
-passo a passo 1-4), ambas exportadas. `handlerRegistrarEmail` passa a chamar essas funções em
-vez de duplicar a lógica. Novo `src/bot/lembreteReautorizacaoGoogle.ts`:
-`iniciarLembreteReautorizacaoGoogle(bot, env, db, logger)` — agenda via `setTimeout`
-encadeado (base de cálculo em `obterUltimoEnvio(db)` + `INTERVALO_MS` de 5 dias, delay 0 se
-já venceu), manda mensagem própria (deixa claro que é automático) + link pra cada
-`env.telegramAllowedChatIds`, chama `registrarEnvio(db)` depois de mandar, reagenda o próximo
-ciclo. `index.ts` chama essa função uma vez na subida, só se `env.googleOAuthClient` existir.
+**Description:** Catálogo de strings por idioma (pt/en/es) e função
+`t(chave, idioma, params?)` com interpolação simples (`{nome}` no texto
+vira o valor de `params.nome`). Chaves iniciais: confirmação de troca de
+idioma, erro de valor inválido no comando `/idioma` (as únicas chaves que a
+Tarefa 138 precisa) — as tasks de "Strings fixas" adicionam o resto
+incrementalmente no mesmo arquivo.
 
 **Acceptance criteria:**
-- [x] Sem `env.googleOAuthClient`, nada é agendado (sem erro, sem timer criado)
-- [x] Com `env.googleOAuthClient` e nenhum envio registrado ainda, o primeiro lembrete é
-      agendado pra 5 dias a partir de agora (não imediatamente)
-- [x] Com um `enviado_em` já no passado (> 5 dias), o lembrete dispara assim que o processo
-      sobe (delay 0), não espera mais 5 dias
-- [x] Lembrete enviado marca `registrarEnvio` e reagenda o próximo ciclo pra +5 dias a partir
-      do novo envio
-- [x] Falha ao enviar pra um `chatId` não impede o envio pros outros (mesmo padrão de
-      `tratarErroCriticoJob`)
-- [x] Colar o código recebido via lembrete funciona exatamente igual ao `/registrar_email`
-      manual (mesma pendência, mesmo `handlerCodigoOAuthGoogle`) — garantido por construção
-      (mesma `montarLinkVinculoGoogle`/`definirPendenciaOAuthGoogle` dos dois caminhos,
-      confirmado por teste que a pendência real é criada); ponta a ponta fica pro teste
-      manual do checkpoint
+- [ ] `t('chave_existente', 'en')` devolve o texto em inglês
+- [ ] `t('chave_com_param', 'pt', { nome: 'X' })` interpola `{nome}` por `X`
+- [ ] Chave ausente lança erro claro em vez de devolver `undefined`/string vazia
+      (evita mensagem em branco silenciosa no chat)
 
 **Verification:**
-- [x] Tests pass: `npx vitest run tests/bot/handlers/registrarEmail.test.ts tests/bot/lembreteReautorizacaoGoogle.test.ts` (fake timers pro agendamento)
-- [x] Build succeeds: `npm run build`
-- [x] Manual check: cobre no checkpoint final (teste manual real em Homologação, com
-      `INTERVALO_MS` reduzido temporariamente pra não esperar 5 dias de verdade)
+- [ ] Tests pass: `npx vitest run tests/i18n/catalogo.test.ts`
+- [ ] Build succeeds: `npm run build`
 
-**Dependencies:** Tarefa 134
+**Dependencies:** None
+
+**Files likely touched:**
+- `src/i18n/catalogo.ts`
+- `src/i18n/t.ts`
+- `tests/i18n/catalogo.test.ts`
+
+**Estimated scope:** Small
+
+---
+
+## Checkpoint: Fundação
+- [ ] `npm run build`/`lint`/`test` sem erro
+
+---
+
+### Tarefa 138: comando `/idioma <pt|en|es>`
+
+**Description:** Novo handler que valida o argumento (enum fixo `pt`/`en`/`es`),
+grava via `definirIdioma` (Tarefa 136), responde confirmando a troca com
+`t()` já no idioma novo, e re-chama `bot.api.setMyCommands` pra atualizar as
+descrições do menu "/" no idioma recém-selecionado. Valor inválido (ex:
+`/idioma fr`) responde com erro claro, sem gravar nada. Registrado em
+`comandos.ts` (nova entrada) e roteado em `router.ts`/`index.ts`.
+
+**Acceptance criteria:**
+- [ ] `/idioma en` grava `'en'` e responde confirmação em inglês
+- [ ] `/idioma fr` (não suportado) não grava nada, responde erro no idioma
+      ativo atual
+- [ ] Depois de `/idioma en`, o bot chama `setMyCommands` com descrições em
+      inglês (verificável via mock/spy no teste)
+
+**Verification:**
+- [ ] Tests pass: `npx vitest run tests/bot/handlers/idioma.test.ts`
+- [ ] Build succeeds: `npm run build`
+
+**Dependencies:** Tarefa 136, Tarefa 137
+
+**Files likely touched:**
+- `src/bot/handlers/idioma.ts`
+- `src/bot/comandos.ts`
+- `src/index.ts`
+- `tests/bot/handlers/idioma.test.ts`
+
+**Estimated scope:** Medium
+
+---
+
+## Checkpoint: Troca de idioma funcional
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação: `/idioma en` confirma em inglês, menu "/"
+      muda de descrição, `/idioma pt` volta ao original
+
+---
+
+### Tarefa 139: diretiva dinâmica de idioma no `SYSTEM_PROMPT`
+
+**Description:** `montarMensagemSystem`/`gerarResposta` (`src/ai/openrouter.ts`)
+ganham parâmetro `idioma` (default `'pt'`), apendando uma diretiva ("Responda
+sempre em {idioma}") ao `SYSTEM_PROMPT` original quando o idioma não é `'pt'`
+(sem diretiva extra no caso padrão, pra não mudar o comportamento de hoje
+nem o cache de prompt da Anthropic). `texto.ts`/`voz.ts`/`midia.ts` leem o
+idioma ativo (`obterIdioma`, Tarefa 136) e propagam pra `gerarResposta`.
+`benchmark.ts` fica de fora (continua usando `SYSTEM_PROMPT` puro, casos de
+benchmark são fixos em português).
+
+**Acceptance criteria:**
+- [ ] `idioma: 'pt'` (ou omitido) produz exatamente o `SYSTEM_PROMPT` de hoje,
+      sem diretiva extra
+- [ ] `idioma: 'en'`/`'es'` apenda a diretiva correspondente
+- [ ] `texto.ts` passa o idioma ativo lido do banco pra `gerarResposta`
+
+**Verification:**
+- [ ] Tests pass: `npx vitest run tests/ai/openrouter.test.ts tests/bot/handlers/texto.test.ts`
+- [ ] Build succeeds: `npm run build`
+
+**Dependencies:** Tarefa 136
+
+**Files likely touched:**
+- `src/ai/openrouter.ts`
+- `src/bot/handlers/texto.ts`
+- `src/bot/handlers/voz.ts`
+- `src/bot/handlers/midia.ts`
+- Testes correspondentes
+
+**Estimated scope:** Medium
+
+---
+
+## Checkpoint: IA responde no idioma ativo
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação: com `/idioma en` ativo, perguntar algo em
+      inglês e em português — resposta da IA sai em inglês nos dois casos;
+      `/idioma pt` restaura o comportamento de hoje
+
+---
+
+### Tarefa 140: traduz comando/ajuda
+
+**Description:** `comandos.ts` (campo `descricao`) e `ajuda.ts` passam a
+resolver o texto via `t()` no idioma ativo, em vez de string literal fixa.
+Catálogo (`src/i18n/catalogo.ts`) ganha as chaves correspondentes nos 3
+idiomas.
+
+**Acceptance criteria:**
+- [ ] Com idioma `en` ativo, `/ajuda` responde em inglês
+- [ ] `setMyCommands` (Tarefa 138) usa as mesmas chaves, sem string duplicada
+
+**Verification:**
+- [ ] Tests pass: `npx vitest run tests/bot/handlers/ajuda.test.ts`
+- [ ] Build succeeds: `npm run build`
+
+**Dependencies:** Tarefa 137, Tarefa 138
+
+**Files likely touched:**
+- `src/bot/comandos.ts`
+- `src/bot/handlers/ajuda.ts`
+- `src/i18n/catalogo.ts`
+- `tests/bot/handlers/ajuda.test.ts`
+
+**Estimated scope:** Small
+
+---
+
+### Tarefa 141: traduz confirmação/erro comuns
+
+**Description:** `callbackConfirmacao.ts`, `feedback.ts`, `naoSuportado.ts`,
+`modelo.ts`, `modelos.ts`, `pausar.ts`, `retomar.ts` passam a usar `t()` pra
+toda mensagem fixa ao usuário.
+
+**Acceptance criteria:**
+- [ ] Nenhum `ctx.reply()` com string literal em português sobra nesses 7
+      arquivos (todas passam por `t()`)
+- [ ] Testes existentes desses handlers continuam passando com idioma padrão
+      (`pt`), sem mudança de texto visível
+
+**Verification:**
+- [ ] Tests pass: `npx vitest run tests/bot/handlers/callbackConfirmacao.test.ts tests/bot/handlers/feedback.test.ts tests/bot/handlers/pausar.test.ts tests/bot/handlers/retomar.test.ts`
+- [ ] Build succeeds: `npm run build`
+
+**Dependencies:** Tarefa 137
+
+**Files likely touched:**
+- `src/bot/handlers/callbackConfirmacao.ts`
+- `src/bot/handlers/feedback.ts`
+- `src/bot/handlers/naoSuportado.ts`
+- `src/bot/handlers/modelo.ts`
+- `src/bot/handlers/modelos.ts`
+- `src/bot/handlers/pausar.ts`
+- `src/bot/handlers/retomar.ts`
+- `src/i18n/catalogo.ts`
+
+**Estimated scope:** Large (7 arquivos de handler, mas cada um é uma troca mecânica e independente — sem lógica nova)
+
+---
+
+### Tarefa 142: traduz entrada de dado (texto/mídia/voz)
+
+**Description:** `texto.ts`, `midia.ts`, `voz.ts` passam a usar `t()` pras
+mensagens fixas (erros de extração, avisos de formato não suportado, etc. —
+a resposta gerada pela IA em si já foi resolvida na Tarefa 139).
+
+**Acceptance criteria:**
+- [ ] Nenhuma string literal em português sobra nas mensagens fixas desses 3
+      arquivos
+- [ ] Testes existentes continuam passando com idioma padrão
+
+**Verification:**
+- [ ] Tests pass: `npx vitest run tests/bot/handlers/texto.test.ts tests/bot/handlers/midia.test.ts tests/bot/handlers/voz.test.ts`
+- [ ] Build succeeds: `npm run build`
+
+**Dependencies:** Tarefa 137, Tarefa 139
+
+**Files likely touched:**
+- `src/bot/handlers/texto.ts`
+- `src/bot/handlers/midia.ts`
+- `src/bot/handlers/voz.ts`
+- `src/i18n/catalogo.ts`
+
+**Estimated scope:** Medium
+
+---
+
+### Tarefa 143: traduz registro de e-mail/Open Finance
+
+**Description:** `registrarEmail.ts` e `registrarOpenFinance.ts` passam a usar
+`t()` pras mensagens fixas (passo a passo de vínculo, confirmação, erro de
+mapeamento ambíguo).
+
+**Acceptance criteria:**
+- [ ] Nenhuma string literal em português sobra nesses 2 arquivos
+- [ ] Testes existentes continuam passando com idioma padrão
+
+**Verification:**
+- [ ] Tests pass: `npx vitest run tests/bot/handlers/registrarEmail.test.ts tests/bot/handlers/registrarOpenFinance.test.ts`
+- [ ] Build succeeds: `npm run build`
+
+**Dependencies:** Tarefa 137
 
 **Files likely touched:**
 - `src/bot/handlers/registrarEmail.ts`
-- `src/bot/lembreteReautorizacaoGoogle.ts`
-- `src/index.ts`
-- `tests/bot/handlers/registrarEmail.test.ts`
-- `tests/bot/lembreteReautorizacaoGoogle.test.ts`
+- `src/bot/handlers/registrarOpenFinance.ts`
+- `src/i18n/catalogo.ts`
 
-**Estimated scope:** Small
+**Estimated scope:** Medium
 
 ---
 
-### Checkpoint: Rodada fechada (lembrete automático de reautorização)
-- [x] `npm run build`/`lint`/`test` sem erro
-- [x] Teste manual em Homologação: confirmar que o lembrete chega no Telegram (com
-      `INTERVALO_MS` reduzido só pro teste, revertido antes do merge final) e que colar o
-      código vincula normalmente
-- [x] PROGRESSO.md atualizado com o marco
-- [x] Milestone "Lembrete automático de reautorização do Google" fechado no GitHub (2/2 issues)
+## Checkpoint: Strings fixas do bot 100% traduzidas
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação: com `/idioma en`, exercitar `/ajuda`,
+      confirmação de ação de alto impacto, erro comum, registro de e-mail/
+      Open Finance — tudo em inglês
+
+---
+
+### Tarefa 144: traduz alertas proativos
+
+**Description:** `monitorarPrecos.ts`, `verificarDespesasFixas.ts` e o alerta
+de limite de cartão embutido em `ai/tools/transacoes.ts` passam a ler o
+idioma ativo (`obterIdioma`) no início da execução e usar `t()` pra montar a
+mensagem.
+
+**Acceptance criteria:**
+- [ ] Os 3 pontos de alerta saem no idioma ativo configurado no momento do
+      envio (não no idioma de quando o alerta foi originalmente desenhado)
+- [ ] Testes existentes continuam passando com idioma padrão
+
+**Verification:**
+- [ ] Tests pass: `npx vitest run tests/scripts/monitorarPrecos.test.ts tests/scripts/verificarDespesasFixas.test.ts tests/ai/tools/transacoes.test.ts`
+- [ ] Build succeeds: `npm run build`
+
+**Dependencies:** Tarefa 136, Tarefa 137
+
+**Files likely touched:**
+- `src/scripts/monitorarPrecos.ts`
+- `src/scripts/verificarDespesasFixas.ts`
+- `src/ai/tools/transacoes.ts`
+- `src/i18n/catalogo.ts`
+
+**Estimated scope:** Medium
+
+---
+
+### Tarefa 145: idioma no relatório semanal (imagem)
+
+**Description:** `montarImagemRelatorioSemanal` (`imagemSemanal.ts`) recebe
+`idioma` como parâmetro e troca os textos fixos (título, "vs. semana
+anterior", "Despesa por categoria", "Nenhuma despesa no período") por `t()`.
+`relatorioSemanal.ts` (job) e a tool `relatorio(periodo="semana")` passam o
+idioma ativo lido do banco.
+
+**Acceptance criteria:**
+- [ ] Com idioma `en`, a imagem gerada traz os rótulos em inglês (verificável
+      no teste por asserção de texto, mesmo padrão já usado no arquivo)
+- [ ] Idioma padrão (`pt`) produz exatamente a imagem de hoje
+
+**Verification:**
+- [ ] Tests pass: `npx vitest run tests/relatorios/imagemSemanal.test.ts`
+- [ ] Build succeeds: `npm run build`
+
+**Dependencies:** Tarefa 136, Tarefa 137
+
+**Files likely touched:**
+- `src/relatorios/imagemSemanal.ts`
+- `src/scripts/relatorioSemanal.ts`
+- `src/ai/tools/relatorio.ts` (ou equivalente)
+- `src/i18n/catalogo.ts`
+- `tests/relatorios/imagemSemanal.test.ts`
+
+**Estimated scope:** Medium
+
+---
+
+### Tarefa 146: idioma no relatório mensal (PDF)
+
+**Description:** `gerarPdfRelatorioMensal` (`pdfMensal.ts`) recebe `idioma`
+como parâmetro e troca todos os textos fixos (título, seções "Financeiro"/
+"Uso de IA"/"Resumo do mês", cabeçalhos de tabela, "Nenhuma transação/uso de
+IA no período", textos de comparação de benchmark, numeração de página) por
+`t()`. `relatorioMensal.ts`/`relatorioMensalCompleto.ts` passam o idioma
+ativo.
+
+**Acceptance criteria:**
+- [ ] Com idioma `en`, o PDF gerado traz todos os textos fixos em inglês
+- [ ] Idioma padrão (`pt`) produz exatamente o PDF de hoje
+- [ ] Nenhum texto fixo em português sobra hardcoded no arquivo
+
+**Verification:**
+- [ ] Tests pass: `npx vitest run tests/relatorios/pdfMensal.test.ts`
+- [ ] Build succeeds: `npm run build`
+
+**Dependencies:** Tarefa 136, Tarefa 137
+
+**Files likely touched:**
+- `src/relatorios/pdfMensal.ts`
+- `src/scripts/relatorioMensal.ts`
+- `src/relatorios/relatorioMensalCompleto.ts`
+- `src/i18n/catalogo.ts`
+- `tests/relatorios/pdfMensal.test.ts`
+
+**Estimated scope:** Large (muitas chaves novas, mas mecânico — sem lógica nova)
+
+---
+
+## Checkpoint: Rodada fechada (Fase 10 completa)
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação: ciclo completo com `/idioma en` ativo —
+      conversa, relatório semanal (imagem) e mensal (PDF) saem em inglês;
+      `/idioma pt` restaura tudo ao comportamento original
+- [ ] PROGRESSO.md atualizado com o marco
+- [ ] PLANO.md: status da Fase 10 atualizado de "spec" pra "implementada"
+- [ ] Milestone "Fase 10 — Regionalização (i18n)" fechado no GitHub
