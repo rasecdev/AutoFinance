@@ -155,4 +155,64 @@ export const CATALOGO: Record<string, Record<Idioma, string>> = {
     en: "I couldn't complete the confirmed action, please try again.",
     es: 'No pude completar la acción confirmada, intenta de nuevo.',
   },
+  nao_entendi_reformular: {
+    pt: 'Não entendi, pode reformular?',
+    en: "I didn't understand, could you rephrase?",
+    es: 'No entendí, ¿puedes reformular?',
+  },
+  erro_modelo_invalido: {
+    pt: 'Não consegui usar o modelo configurado nesse chat — o OpenRouter recusou, provavelmente porque o nome não é um slug válido. Confira com /modelo, ou troque de novo usando o slug do OpenRouter (ex: "openai/gpt-4o-mini", "qwen/qwen3-32b"), não o nome de exibição.',
+    en: 'I couldn\'t use the model configured for this chat — OpenRouter rejected it, probably because the name isn\'t a valid slug. Check with /modelo, or switch again using the OpenRouter slug (e.g. "openai/gpt-4o-mini", "qwen/qwen3-32b"), not the display name.',
+    es: 'No pude usar el modelo configurado en este chat — OpenRouter lo rechazó, probablemente porque el nombre no es un slug válido. Revisa con /modelo, o cambia de nuevo usando el slug de OpenRouter (ej: "openai/gpt-4o-mini", "qwen/qwen3-32b"), no el nombre de visualización.',
+  },
+  erro_processar_mensagem: {
+    pt: 'Não consegui processar sua mensagem agora, tente de novo em instantes.',
+    en: "I couldn't process your message right now, try again in a moment.",
+    es: 'No pude procesar tu mensaje ahora, intenta de nuevo en un momento.',
+  },
+  midia_nao_comprovante: {
+    pt: 'Não consegui reconhecer essa imagem como um comprovante financeiro. Manda uma foto nítida do comprovante, ou registra por texto/voz mesmo.',
+    en: "I couldn't recognize this image as a financial receipt. Send a clear photo of the receipt, or just register it by text/voice.",
+    es: 'No pude reconocer esta imagen como un comprobante financiero. Envía una foto nítida del comprobante, o regístralo por texto/voz directamente.',
+  },
+  midia_fatura_boleto: {
+    pt: 'Isso parece ser uma fatura de cartão ou boleto de dívida, não um comprovante de compra do dia a dia — ainda não trato esse tipo de documento automaticamente. Se for uma compra, manda o comprovante da compra em si.',
+    en: "This looks like a card bill or a debt slip, not an everyday purchase receipt — I don't handle this type of document automatically yet. If it's a purchase, send the receipt of the purchase itself.",
+    es: 'Esto parece ser una factura de tarjeta o un boleto de deuda, no un comprobante de compra del día a día — todavía no trato este tipo de documento automáticamente. Si es una compra, envía el comprobante de la compra en sí.',
+  },
+  midia_tipo_nao_suportado: {
+    pt: 'Esse tipo de arquivo ainda não é suportado — manda uma foto do comprovante.',
+    en: "This file type isn't supported yet — send a photo of the receipt.",
+    es: 'Este tipo de archivo aún no es compatible — envía una foto del comprobante.',
+  },
+  midia_pdf_nao_suportado: {
+    pt: 'Ainda não consigo ler PDF, manda como foto.',
+    en: "I still can't read PDFs, send it as a photo.",
+    es: 'Todavía no puedo leer PDF, envíalo como foto.',
+  },
+  midia_erro_extracao: {
+    pt: 'Não consegui processar essa imagem agora, tente de novo em instantes.',
+    en: "I couldn't process this image right now, try again in a moment.",
+    es: 'No pude procesar esta imagen ahora, intenta de nuevo en un momento.',
+  },
+  midia_legenda_necessaria: {
+    pt: 'Pra ler uma planilha preciso saber a conta ou cartão — reenvia o arquivo com a legenda dizendo qual (ex: "conta corrente").',
+    en: 'To read a spreadsheet I need to know the account or card — resend the file with a caption saying which one (e.g. "checking account").',
+    es: 'Para leer una planilla necesito saber la cuenta o tarjeta — reenvía el archivo con el pie de foto diciendo cuál (ej: "cuenta corriente").',
+  },
+  midia_planilha_sem_transacoes: {
+    pt: 'Não encontrei nenhuma transação reconhecível nessa planilha. Confira se as colunas fazem sentido (data, descrição, valor) e tenta de novo.',
+    en: "I couldn't find any recognizable transaction in this spreadsheet. Check if the columns make sense (date, description, amount) and try again.",
+    es: 'No encontré ninguna transacción reconocible en esta planilla. Revisa si las columnas tienen sentido (fecha, descripción, monto) e intenta de nuevo.',
+  },
+  midia_planilha_confirmacao: {
+    pt: 'Encontrei {resumo}. Confirma? Toque em um botão abaixo, ou responda "sim" para registrar (qualquer outra coisa cancela).',
+    en: 'Found {resumo}. Confirm? Tap a button below, or reply "yes" to register (anything else cancels).',
+    es: 'Encontré {resumo}. ¿Confirmas? Toca un botón abajo, o responde "sí" para registrar (cualquier otra cosa cancela).',
+  },
+  voz_erro_transcricao: {
+    pt: 'Não consegui entender o áudio, tenta de novo ou manda por texto.',
+    en: "I couldn't understand the audio, try again or send it as text.",
+    es: 'No pude entender el audio, intenta de nuevo o envíalo por texto.',
+  },
 };

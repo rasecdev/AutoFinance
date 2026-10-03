@@ -3,12 +3,11 @@ import type OpenAI from 'openai';
 import { resolverModeloTranscricaoVoz, transcreverAudio, FLUXO_TRANSCRICAO_VOZ } from '../../ai/transcricao.js';
 import { montarToolsConversa } from '../../ai/tools/conversaTools.js';
 import type { DbClient } from '../../db/client.js';
+import { obterIdioma } from '../../db/repositories/idiomaBot.js';
 import { registrarUsoTokens } from '../../db/repositories/usoTokens.js';
+import { t } from '../../i18n/t.js';
 import type { Logger } from '../../logging/logger.js';
 import { processarMensagemTexto } from './texto.js';
-
-const MENSAGEM_ERRO_TRANSCRICAO =
-  'Não consegui entender o áudio, tenta de novo ou manda por texto.';
 
 async function baixarArquivo(ctx: Context, botToken: string): Promise<Buffer> {
   const arquivo = await ctx.getFile();
@@ -26,6 +25,7 @@ export function createHandlerVoz(client: OpenAI, db: DbClient, logger: Logger, b
     if (chatId === undefined) return;
 
     const log = logger.child({ chatId });
+    const idioma = obterIdioma(db);
 
     let textoTranscrito: string;
     try {
@@ -45,12 +45,12 @@ export function createHandlerVoz(client: OpenAI, db: DbClient, logger: Logger, b
       textoTranscrito = texto;
     } catch (erro) {
       log.error({ err: erro }, 'falha ao transcrever áudio');
-      await ctx.reply(MENSAGEM_ERRO_TRANSCRICAO);
+      await ctx.reply(t('voz_erro_transcricao', idioma));
       return;
     }
 
     if (textoTranscrito.trim().length === 0) {
-      await ctx.reply(MENSAGEM_ERRO_TRANSCRICAO);
+      await ctx.reply(t('voz_erro_transcricao', idioma));
       return;
     }
 

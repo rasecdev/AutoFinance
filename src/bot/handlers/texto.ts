@@ -12,6 +12,7 @@ import {
   removerPendenciaPersistida,
 } from '../../db/repositories/confirmacoesPendentes.js';
 import { obterIdioma } from '../../db/repositories/idiomaBot.js';
+import { t } from '../../i18n/t.js';
 import { registrarInteracaoIa } from '../../db/repositories/interacoesIa.js';
 import { registrarUsoTokens } from '../../db/repositories/usoTokens.js';
 import type { Logger } from '../../logging/logger.js';
@@ -71,12 +72,14 @@ export async function processarMensagemTexto(
   mensagemUsuario: string,
   chatId: number,
 ): Promise<void> {
+  const idioma = obterIdioma(db);
+
   const pendencia = obterPendencia(chatId);
   if (pendencia) {
     removerPendencia(chatId);
 
     if (!ehConfirmacaoAfirmativa(mensagemUsuario)) {
-      await ctx.reply('Ação cancelada.');
+      await ctx.reply(t('acao_cancelada', idioma));
       return;
     }
 
@@ -92,7 +95,7 @@ export async function processarMensagemTexto(
       if (documento) await ctx.replyWithDocument(new InputFile(documento.buffer, documento.nomeArquivo));
     } catch (erro) {
       logger.error({ err: erro }, 'falha ao executar ação confirmada pelo usuário');
-      await ctx.reply('Não consegui concluir a ação confirmada, tente novamente.');
+      await ctx.reply(t('nao_consegui_concluir_acao', idioma));
     }
     return;
   }
@@ -108,14 +111,14 @@ export async function processarMensagemTexto(
     removerPendenciaPersistida(db, chatId);
 
     if (!ehConfirmacaoAfirmativa(mensagemUsuario)) {
-      await ctx.reply('Ação cancelada.');
+      await ctx.reply(t('acao_cancelada', idioma));
       return;
     }
 
-    const tool = tools.find((t) => t.name === pendenciaPersistida.toolName);
+    const tool = tools.find((tl) => tl.name === pendenciaPersistida.toolName);
     if (!tool) {
       logger.error({ toolName: pendenciaPersistida.toolName }, 'pendência persistida referencia tool desconhecida');
-      await ctx.reply('Não consegui concluir a ação confirmada, tente novamente.');
+      await ctx.reply(t('nao_consegui_concluir_acao', idioma));
       return;
     }
 
@@ -131,7 +134,7 @@ export async function processarMensagemTexto(
       if (documento) await ctx.replyWithDocument(new InputFile(documento.buffer, documento.nomeArquivo));
     } catch (erro) {
       logger.error({ err: erro }, 'falha ao executar ação confirmada pelo usuário (pendência persistida)');
-      await ctx.reply('Não consegui concluir a ação confirmada, tente novamente.');
+      await ctx.reply(t('nao_consegui_concluir_acao', idioma));
     }
     return;
   }
@@ -163,7 +166,7 @@ export async function processarMensagemTexto(
         { chatId },
         historico,
         resolverModeloConversa(db, chatId),
-        obterIdioma(db),
+        idioma,
       ),
       log,
     );
@@ -199,7 +202,7 @@ export async function processarMensagemTexto(
       'interação com IA registrada',
     );
     const mensagemEnviada = await ctx.reply(
-      resposta.trim().length > 0 ? resposta : 'Não entendi, pode reformular?',
+      resposta.trim().length > 0 ? resposta : t('nao_entendi_reformular', idioma),
       pendenciaConfirmacao ? { reply_markup: montarTecladoConfirmacao() } : undefined,
     );
     definirRastroResposta(mensagemEnviada.message_id, traceId);
@@ -228,11 +231,7 @@ export async function processarMensagemTexto(
     });
 
     log.error({ err: erro }, 'falha ao chamar OpenRouter');
-    await ctx.reply(
-      ehErroModeloInvalido(erro)
-        ? 'Não consegui usar o modelo configurado nesse chat — o OpenRouter recusou, provavelmente porque o nome não é um slug válido. Confira com /modelo, ou troque de novo usando o slug do OpenRouter (ex: "openai/gpt-4o-mini", "qwen/qwen3-32b"), não o nome de exibição.'
-        : 'Não consegui processar sua mensagem agora, tente de novo em instantes.',
-    );
+    await ctx.reply(t(ehErroModeloInvalido(erro) ? 'erro_modelo_invalido' : 'erro_processar_mensagem', idioma));
   }
 }
 

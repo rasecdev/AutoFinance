@@ -7,6 +7,7 @@ import type OpenAI from 'openai';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DbClient } from '../../../src/db/client.js';
 import { migrate } from '../../../src/db/migrate.js';
+import { definirIdioma } from '../../../src/db/repositories/idiomaBot.js';
 import { listarUsoTokensPeriodo } from '../../../src/db/repositories/usoTokens.js';
 import { createLogger } from '../../../src/logging/logger.js';
 
@@ -107,6 +108,17 @@ describe('handlerVoz', () => {
 
     expect(ctx.reply).toHaveBeenCalledWith('Não consegui entender o áudio, tenta de novo ou manda por texto.');
     expect(processarMensagemTextoMock).not.toHaveBeenCalled();
+  });
+
+  it('com idioma en ativo, erro de transcrição responde em inglês', async () => {
+    definirIdioma(db, 'en');
+    const client = criarClienteFalso({ text: '   ' });
+    const handler = createHandlerVoz(client, db, createLogger({ write() {} }), BOT_TOKEN);
+    const ctx = criarContextoFake();
+
+    await handler(ctx);
+
+    expect(ctx.reply).toHaveBeenCalledWith("I couldn't understand the audio, try again or send it as text.");
   });
 
   it('sem chatId, não faz nada', async () => {
