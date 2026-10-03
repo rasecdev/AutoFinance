@@ -7,6 +7,7 @@ import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
 import { criarConta } from '../../src/db/repositories/contas.js';
 import { criarTransacao } from '../../src/db/repositories/transacoes.js';
+import { definirIdioma } from '../../src/db/repositories/idiomaBot.js';
 import { montarImagemRelatorioSemanal } from '../../src/relatorios/imagemSemanal.js';
 
 const CHAVE_TESTE = 'chave-teste-imagem-semanal';
@@ -60,6 +61,16 @@ describe('montarImagemRelatorioSemanal', () => {
   it('valor grande (R$ 999.999,99) não lança exceção nem quebra a geração', async () => {
     const agora = new Date(2026, 8, 24);
     criarTransacao(db, { contaId, tipo: 'despesa', valor: 999999.99, categoria: 'Imóvel', data: '2026-09-22' });
+
+    const buffer = await montarImagemRelatorioSemanal(db, agora);
+
+    expect(buffer.subarray(0, 4)).toEqual(PNG_MAGIC);
+  });
+
+  it('com idioma en ativo, gera um PNG válido normalmente (rótulos em inglês, sem asserção visual de texto)', async () => {
+    definirIdioma(db, 'en');
+    const agora = new Date(2026, 8, 24);
+    criarTransacao(db, { contaId, tipo: 'despesa', valor: 100, categoria: 'Mercado', data: '2026-09-22' });
 
     const buffer = await montarImagemRelatorioSemanal(db, agora);
 

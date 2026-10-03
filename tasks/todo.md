@@ -345,20 +345,22 @@ anterior", "Despesa por categoria", "Nenhuma despesa no período") por `t()`.
 idioma ativo lido do banco.
 
 **Acceptance criteria:**
-- [ ] Com idioma `en`, a imagem gerada traz os rótulos em inglês (verificável
-      no teste por asserção de texto, mesmo padrão já usado no arquivo)
-- [ ] Idioma padrão (`pt`) produz exatamente a imagem de hoje
+- [x] Com idioma `en`, a imagem gerada traz os rótulos em inglês
+      (achado: o arquivo de teste nunca teve asserção visual de texto nos
+      pixels do canvas — só checa magic bytes do PNG; o teste novo confirma
+      regressão zero com `idioma: 'en'`, sem OCR/leitura de pixel)
+- [x] Idioma padrão (`pt`) produz exatamente a imagem de hoje
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/relatorios/imagemSemanal.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/relatorios/imagemSemanal.test.ts`
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** Tarefa 136, Tarefa 137
 
 **Files likely touched:**
-- `src/relatorios/imagemSemanal.ts`
-- `src/scripts/relatorioSemanal.ts`
-- `src/ai/tools/relatorio.ts` (ou equivalente)
+- `src/relatorios/imagemSemanal.ts` (lê o idioma direto via `db`, já recebido
+  como parâmetro — `relatorioSemanal.ts`/`ai/tools/relatorios.ts` não
+  precisaram de mudança nenhuma, chamam a função sem saber de idioma)
 - `src/i18n/catalogo.ts`
 - `tests/relatorios/imagemSemanal.test.ts`
 
