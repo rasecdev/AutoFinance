@@ -17,15 +17,15 @@ Comentário na migration alertando que esta tabela nunca entra em nenhuma tool d
 dinâmica (ver Architecture Decisions do plan).
 
 **Acceptance criteria:**
-- [ ] `obterRefreshToken` devolve `null` com a tabela vazia
-- [ ] `salvarRefreshToken` seguido de `obterRefreshToken` devolve o valor salvo
-- [ ] `salvarRefreshToken` chamado duas vezes com valores diferentes deixa só uma linha na
+- [x] `obterRefreshToken` devolve `null` com a tabela vazia
+- [x] `salvarRefreshToken` seguido de `obterRefreshToken` devolve o valor salvo
+- [x] `salvarRefreshToken` chamado duas vezes com valores diferentes deixa só uma linha na
       tabela (upsert, não insert duplicado) e `obterRefreshToken` devolve o valor mais
       recente
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/db/repositories/credenciaisGoogle.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/db/credenciaisGoogle.test.ts`
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** None
 
