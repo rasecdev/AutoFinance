@@ -154,7 +154,7 @@ describe('sincronizarCalendario', () => {
   });
 });
 
-// O guard de env.google === null fica em main() (não em sincronizarCalendario,
-// que já recebe o client Calendar pronto) — mesma decisão de não testar main()
-// diretamente já usada em verificarDespesasFixas.test.ts, coberta por teste
-// manual em Homologação (ver tasks/plan.md, Risks).
+// O guard de "integração desligada" (googleOAuthClient null ou sem token no
+// banco) fica em main() (não em sincronizarCalendario, que já recebe o client
+// Calendar pronto) — mesma decisão de não testar main() diretamente já usada
+// em verificarDespesasFixas.test.ts, coberta por teste manual em Homologação.

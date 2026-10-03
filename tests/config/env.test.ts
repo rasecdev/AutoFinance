@@ -22,7 +22,6 @@ describe('loadEnv', () => {
       databasePath: './data/teste.db',
       databaseEncryptionKey: 'chave-cifragem-teste',
       logLevel: 'info',
-      google: null,
       googleOAuthClient: null,
       pluggy: null,
     });
@@ -47,23 +46,21 @@ describe('loadEnv', () => {
     expect(() => loadEnv({ ...validEnv, AMBIENTE: 'staging' })).toThrowError();
   });
 
-  it('sem nenhuma variável Google, env.google é null', () => {
+  it('sem nenhuma variável Google, googleOAuthClient é null', () => {
     const env = loadEnv(validEnv);
-    expect(env.google).toBeNull();
+    expect(env.googleOAuthClient).toBeNull();
   });
 
-  it('grupo Google completo sem GOOGLE_CALENDAR_ID usa default primary', () => {
+  it('par cliente completo sem GOOGLE_CALENDAR_ID usa default primary', () => {
     const env = loadEnv({
       ...validEnv,
       GOOGLE_CLIENT_ID: 'client-id-teste',
       GOOGLE_CLIENT_SECRET: 'client-secret-teste',
-      GOOGLE_REFRESH_TOKEN: 'refresh-token-teste',
     });
 
-    expect(env.google).toEqual({
+    expect(env.googleOAuthClient).toEqual({
       clientId: 'client-id-teste',
       clientSecret: 'client-secret-teste',
-      refreshToken: 'refresh-token-teste',
       calendarId: 'primary',
     });
   });
@@ -74,44 +71,15 @@ describe('loadEnv', () => {
     ).toThrowError(/GOOGLE_CLIENT_SECRET/);
   });
 
-  it('GOOGLE_REFRESH_TOKEN sozinho (sem o par cliente) lança erro', () => {
-    expect(() =>
-      loadEnv({ ...validEnv, GOOGLE_REFRESH_TOKEN: 'refresh-token-teste' }),
-    ).toThrowError(/GOOGLE_REFRESH_TOKEN/);
-  });
-
-  it('grupo Google completo com GOOGLE_CALENDAR_ID customizado', () => {
+  it('par cliente completo com GOOGLE_CALENDAR_ID customizado', () => {
     const env = loadEnv({
       ...validEnv,
       GOOGLE_CLIENT_ID: 'client-id-teste',
       GOOGLE_CLIENT_SECRET: 'client-secret-teste',
-      GOOGLE_REFRESH_TOKEN: 'refresh-token-teste',
       GOOGLE_CALENDAR_ID: 'calendario-teste@group.calendar.google.com',
     });
 
-    expect(env.google?.calendarId).toBe('calendario-teste@group.calendar.google.com');
-  });
-
-  it('só o par cliente (sem refresh token) é válido — google null, googleOAuthClient preenchido', () => {
-    const env = loadEnv({
-      ...validEnv,
-      GOOGLE_CLIENT_ID: 'client-id-teste',
-      GOOGLE_CLIENT_SECRET: 'client-secret-teste',
-    });
-
-    expect(env.google).toBeNull();
-    expect(env.googleOAuthClient).toEqual({ clientId: 'client-id-teste', clientSecret: 'client-secret-teste' });
-  });
-
-  it('grupo completo também preenche googleOAuthClient com o mesmo par', () => {
-    const env = loadEnv({
-      ...validEnv,
-      GOOGLE_CLIENT_ID: 'client-id-teste',
-      GOOGLE_CLIENT_SECRET: 'client-secret-teste',
-      GOOGLE_REFRESH_TOKEN: 'refresh-token-teste',
-    });
-
-    expect(env.googleOAuthClient).toEqual({ clientId: 'client-id-teste', clientSecret: 'client-secret-teste' });
+    expect(env.googleOAuthClient?.calendarId).toBe('calendario-teste@group.calendar.google.com');
   });
 
   it('sem nenhuma variável Pluggy, env.pluggy é null', () => {

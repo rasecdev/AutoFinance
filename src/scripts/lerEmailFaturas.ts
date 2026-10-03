@@ -12,6 +12,7 @@ import { loadEnv } from '../config/env.js';
 import { getDb, type DbClient } from '../db/client.js';
 import { criarClientesGoogle } from '../integracoes/google/auth.js';
 import { definirPendenciaPersistida } from '../db/repositories/confirmacoesPendentes.js';
+import { obterRefreshToken } from '../db/repositories/credenciaisGoogle.js';
 import { emailJaProcessado, marcarEmailProcessado } from '../db/repositories/emailsProcessados.js';
 import { registrarUsoTokens } from '../db/repositories/usoTokens.js';
 import { createLogger, type Logger } from '../logging/logger.js';
@@ -190,17 +191,23 @@ async function main(): Promise<void> {
   const bot = new Bot(env.telegramBotToken);
   configurarFormatacaoPadrao(bot);
 
-  if (env.google === null) {
+  const refreshToken = env.googleOAuthClient ? obterRefreshToken(db) : null;
+
+  if (env.googleOAuthClient === null || refreshToken === null) {
     // Sem sleep aqui, o loop `while true; do node ...; done` do compose
     // reiniciaria o processo instantaneamente pra sempre (busy-loop) — dorme
     // pelo mesmo intervalo do polling normal antes de sair, mesmo com --agora
-    // (não faz sentido "testar agora" um caminho que não faz nada).
-    logger.info('integração Google desligada (env.google === null) — job de leitura de e-mail não vai rodar');
+    // (não faz sentido "testar agora" um caminho que não faz nada). Cobre os
+    // dois estados de "desligada": app OAuth não configurado, ou configurado
+    // mas ainda sem vínculo feito via /registrar_email (token no banco).
+    logger.info(
+      'integração Google desligada (sem app configurado ou sem vínculo feito) — job de leitura de e-mail não vai rodar',
+    );
     await dormirAte(Date.now() + INTERVALO_POLLING_MS);
     return;
   }
 
-  const { gmail } = criarClientesGoogle(env.google);
+  const { gmail } = criarClientesGoogle({ ...env.googleOAuthClient, refreshToken });
   const clienteIa = createOpenRouterClient(env.openrouterApiKey);
 
   try {
