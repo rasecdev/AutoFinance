@@ -3,6 +3,7 @@ import type OpenAI from 'openai';
 import { FLUXO_RELATORIO_MENSAL, gerarResumoMensal, resolverModeloRelatorioMensal } from '../ai/relatorioMensal.js';
 import type { DbClient } from '../db/client.js';
 import { contarErrosPeriodo } from '../db/repositories/errosExecucao.js';
+import { obterIdioma } from '../db/repositories/idiomaBot.js';
 import { registrarInteracaoIa } from '../db/repositories/interacoesIa.js';
 import { registrarUsoTokens } from '../db/repositories/usoTokens.js';
 import { montarDadosComparativoReceitaDespesa, montarDadosDespesaPorCategoria } from './dadosGrafico.js';
@@ -25,6 +26,7 @@ export type RelatorioMensalPdf = {
 // explícito do usuário (2026-09-22): quer o resumo narrado sempre presente,
 // mesmo pagando o custo extra de uma chamada por pedido no chat.
 export async function gerarRelatorioMensalCompleto(db: DbClient, client: OpenAI, agora: Date = new Date()): Promise<RelatorioMensalPdf> {
+  const idioma = obterIdioma(db);
   const janelaAtual = calcularJanelaPeriodo('mes', agora);
   const janelaAnterior = calcularJanelaAnterior('mes', janelaAtual);
 
@@ -38,6 +40,7 @@ export async function gerarRelatorioMensalCompleto(db: DbClient, client: OpenAI,
     client,
     { inicio: janelaAtual.inicio, fim: janelaAtual.fim, financeiro, usoIa, financeiroAnterior, usoIaAnterior },
     modelo,
+    idioma,
   );
 
   registrarInteracaoIa(db, {
@@ -81,6 +84,7 @@ export async function gerarRelatorioMensalCompleto(db: DbClient, client: OpenAI,
     resultado.resumoTexto,
     graficoDespesa,
     graficoComparativo,
+    idioma,
   );
 
   return { buffer, nomeArquivo: `relatorio-mensal-${rotuloAtual}.pdf` };

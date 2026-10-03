@@ -1,4 +1,6 @@
 import PDFDocument from 'pdfkit';
+import type { Idioma } from '../db/repositories/idiomaBot.js';
+import { t } from '../i18n/t.js';
 import type { AgregacaoFinanceira, TotalPorCategoria, TotalPorConta } from './financeiro.js';
 import type { DadosRelatorio } from './formatar.js';
 import type { AgregacaoUsoIa, TotalPorFluxoModelo } from './usoIa.js';
@@ -56,13 +58,13 @@ function escreverParagrafo(
   return y + doc.heightOfString(texto, { width: largura, ...opcoes });
 }
 
-function desenharCabecalho(doc: PDFKit.PDFDocument, periodo: string): number {
+function desenharCabecalho(doc: PDFKit.PDFDocument, periodo: string, idioma: Idioma): number {
   const largura = doc.page.width;
   const altura = 90;
   doc.rect(0, 0, largura, altura).fill(COR_PRIMARIA);
 
-  doc.fillColor('#ffffff').fontSize(10).font('Helvetica-Bold').text('AUTOFINANCE — RELATÓRIO GERENCIAL', MARGEM, 28);
-  doc.fontSize(20).text(`Relatório mensal — ${periodo}`, MARGEM, 44);
+  doc.fillColor('#ffffff').fontSize(10).font('Helvetica-Bold').text(t('mensal_titulo', idioma), MARGEM, 28);
+  doc.fontSize(20).text(t('mensal_cabecalho', idioma, { periodo }), MARGEM, 44);
   doc.font('Helvetica').fillColor(COR_TEXTO);
 
   return altura + 30;
@@ -156,31 +158,31 @@ function desenharTabela<T>(doc: PDFKit.PDFDocument, y: number, colunas: ColunaTa
   return yAtual + 10;
 }
 
-function escreverSecaoFinanceira(doc: PDFKit.PDFDocument, y: number, financeiro: AgregacaoFinanceira): number {
-  let yAtual = desenharTituloSecao(doc, y, 'Financeiro');
+function escreverSecaoFinanceira(doc: PDFKit.PDFDocument, y: number, financeiro: AgregacaoFinanceira, idioma: Idioma): number {
+  let yAtual = desenharTituloSecao(doc, y, t('secao_financeiro', idioma));
 
   if (financeiro.porCategoria.length === 0) {
-    return escreverParagrafo(doc, 'Nenhuma transação no período.', MARGEM, yAtual, larguraUtil(doc)) + 16;
+    return escreverParagrafo(doc, t('nenhuma_transacao_periodo', idioma), MARGEM, yAtual, larguraUtil(doc)) + 16;
   }
 
   const largura = larguraUtil(doc);
   const larguraCartao = (largura - 2 * 12) / 3;
   yAtual = garantirEspaco(doc, yAtual, 56);
-  desenharCartaoKpi(doc, MARGEM, yAtual, larguraCartao, 'Receita total', financeiro.totalReceita, COR_RECEITA);
-  desenharCartaoKpi(doc, MARGEM + larguraCartao + 12, yAtual, larguraCartao, 'Despesa total', financeiro.totalDespesa, COR_DESPESA);
+  desenharCartaoKpi(doc, MARGEM, yAtual, larguraCartao, t('kpi_receita_total', idioma), financeiro.totalReceita, COR_RECEITA);
+  desenharCartaoKpi(doc, MARGEM + larguraCartao + 12, yAtual, larguraCartao, t('kpi_despesa_total', idioma), financeiro.totalDespesa, COR_DESPESA);
   desenharCartaoKpi(
     doc,
     MARGEM + 2 * (larguraCartao + 12),
     yAtual,
     larguraCartao,
-    'Saldo consolidado',
+    t('rotulo_saldo_consolidado', idioma),
     financeiro.saldoConsolidado,
     financeiro.saldoConsolidado >= 0 ? COR_RECEITA : COR_DESPESA,
   );
   yAtual += 56 + 20;
 
   yAtual = garantirEspaco(doc, yAtual, 40);
-  doc.fillColor(COR_TEXTO_MUTED).fontSize(10).font('Helvetica-Bold').text('Por categoria', MARGEM, yAtual);
+  doc.fillColor(COR_TEXTO_MUTED).fontSize(10).font('Helvetica-Bold').text(t('secao_por_categoria', idioma), MARGEM, yAtual);
   doc.font('Helvetica').fillColor(COR_TEXTO);
   yAtual += 18;
 
@@ -188,16 +190,16 @@ function escreverSecaoFinanceira(doc: PDFKit.PDFDocument, y: number, financeiro:
     doc,
     yAtual,
     [
-      { cabecalho: 'Categoria', largura: largura * 0.5, valor: (c) => c.categoria },
-      { cabecalho: 'Receita', largura: largura * 0.25, alinhar: 'right', valor: (c) => formatarMoeda(c.totalReceita) },
-      { cabecalho: 'Despesa', largura: largura * 0.25, alinhar: 'right', valor: (c) => formatarMoeda(c.totalDespesa) },
+      { cabecalho: t('coluna_categoria', idioma), largura: largura * 0.5, valor: (c) => c.categoria },
+      { cabecalho: t('rotulo_receita', idioma), largura: largura * 0.25, alinhar: 'right', valor: (c) => formatarMoeda(c.totalReceita) },
+      { cabecalho: t('rotulo_despesa', idioma), largura: largura * 0.25, alinhar: 'right', valor: (c) => formatarMoeda(c.totalDespesa) },
     ],
     financeiro.porCategoria,
   );
 
   if (financeiro.porConta.length > 0) {
     yAtual = garantirEspaco(doc, yAtual, 40);
-    doc.fillColor(COR_TEXTO_MUTED).fontSize(10).font('Helvetica-Bold').text('Por conta', MARGEM, yAtual);
+    doc.fillColor(COR_TEXTO_MUTED).fontSize(10).font('Helvetica-Bold').text(t('secao_por_conta', idioma), MARGEM, yAtual);
     doc.font('Helvetica').fillColor(COR_TEXTO);
     yAtual += 18;
 
@@ -205,10 +207,10 @@ function escreverSecaoFinanceira(doc: PDFKit.PDFDocument, y: number, financeiro:
       doc,
       yAtual,
       [
-        { cabecalho: 'Conta', largura: largura * 0.34, valor: (c) => c.apelido },
-        { cabecalho: 'Receita', largura: largura * 0.22, alinhar: 'right', valor: (c) => formatarMoeda(c.totalReceita) },
-        { cabecalho: 'Despesa', largura: largura * 0.22, alinhar: 'right', valor: (c) => formatarMoeda(c.totalDespesa) },
-        { cabecalho: 'Saldo atual', largura: largura * 0.22, alinhar: 'right', valor: (c) => formatarMoeda(c.saldoAtual) },
+        { cabecalho: t('coluna_conta', idioma), largura: largura * 0.34, valor: (c) => c.apelido },
+        { cabecalho: t('rotulo_receita', idioma), largura: largura * 0.22, alinhar: 'right', valor: (c) => formatarMoeda(c.totalReceita) },
+        { cabecalho: t('rotulo_despesa', idioma), largura: largura * 0.22, alinhar: 'right', valor: (c) => formatarMoeda(c.totalDespesa) },
+        { cabecalho: t('coluna_saldo_atual', idioma), largura: largura * 0.22, alinhar: 'right', valor: (c) => formatarMoeda(c.saldoAtual) },
       ],
       financeiro.porConta,
     );
@@ -217,11 +219,11 @@ function escreverSecaoFinanceira(doc: PDFKit.PDFDocument, y: number, financeiro:
   return yAtual + 6;
 }
 
-function escreverSecaoUsoIa(doc: PDFKit.PDFDocument, y: number, usoIa: AgregacaoUsoIa): number {
-  let yAtual = desenharTituloSecao(doc, y, 'Uso de IA');
+function escreverSecaoUsoIa(doc: PDFKit.PDFDocument, y: number, usoIa: AgregacaoUsoIa, idioma: Idioma): number {
+  let yAtual = desenharTituloSecao(doc, y, t('secao_uso_ia', idioma));
 
   if (usoIa.porFluxoModelo.length === 0) {
-    return escreverParagrafo(doc, 'Nenhum uso de IA registrado no período.', MARGEM, yAtual, larguraUtil(doc)) + 16;
+    return escreverParagrafo(doc, t('nenhum_uso_ia_periodo', idioma), MARGEM, yAtual, larguraUtil(doc)) + 16;
   }
 
   const largura = larguraUtil(doc);
@@ -229,7 +231,10 @@ function escreverSecaoUsoIa(doc: PDFKit.PDFDocument, y: number, usoIa: Agregacao
   yAtual = garantirEspaco(doc, yAtual, 20);
   yAtual = escreverParagrafo(
     doc,
-    `Total: ${formatarNumero(usoIa.totalTokensPrompt + usoIa.totalTokensCompletion)} tokens · custo estimado ${formatarCustoUsd(usoIa.totalCustoEstimado)}`,
+    t('uso_ia_total', idioma, {
+      tokens: formatarNumero(usoIa.totalTokensPrompt + usoIa.totalTokensCompletion),
+      custo: formatarCustoUsd(usoIa.totalCustoEstimado),
+    }),
     MARGEM,
     yAtual,
     largura,
@@ -240,10 +245,10 @@ function escreverSecaoUsoIa(doc: PDFKit.PDFDocument, y: number, usoIa: Agregacao
     doc,
     yAtual,
     [
-      { cabecalho: 'Fluxo', largura: largura * 0.28, valor: (i) => i.fluxo },
-      { cabecalho: 'Modelo', largura: largura * 0.37, valor: (i) => i.modelo },
-      { cabecalho: 'Tokens', largura: largura * 0.15, alinhar: 'right', valor: (i) => formatarNumero(i.tokensPrompt + i.tokensCompletion) },
-      { cabecalho: 'Custo', largura: largura * 0.2, alinhar: 'right', valor: (i) => formatarCustoUsd(i.custoEstimado) },
+      { cabecalho: t('coluna_fluxo', idioma), largura: largura * 0.28, valor: (i) => i.fluxo },
+      { cabecalho: t('coluna_modelo', idioma), largura: largura * 0.37, valor: (i) => i.modelo },
+      { cabecalho: t('coluna_tokens', idioma), largura: largura * 0.15, alinhar: 'right', valor: (i) => formatarNumero(i.tokensPrompt + i.tokensCompletion) },
+      { cabecalho: t('coluna_custo', idioma), largura: largura * 0.2, alinhar: 'right', valor: (i) => formatarCustoUsd(i.custoEstimado) },
     ],
     usoIa.porFluxoModelo,
   );
@@ -252,7 +257,7 @@ function escreverSecaoUsoIa(doc: PDFKit.PDFDocument, y: number, usoIa: Agregacao
     yAtual = garantirEspaco(doc, yAtual, 20);
     yAtual = escreverParagrafo(
       doc,
-      `Respostas marcadas como incorretas no período: ${usoIa.interacoesIncorretas}`,
+      t('respostas_incorretas', idioma, { quantidade: String(usoIa.interacoesIncorretas) }),
       MARGEM,
       yAtual,
       largura,
@@ -263,18 +268,12 @@ function escreverSecaoUsoIa(doc: PDFKit.PDFDocument, y: number, usoIa: Agregacao
   if (usoIa.metrica1.length > 0) {
     yAtual = garantirEspaco(doc, yAtual, 40);
     doc.fillColor(COR_TEXTO_MUTED).fontSize(9).font('Helvetica-Oblique');
-    yAtual = escreverParagrafo(
-      doc,
-      'Comparação hipotética (mesmo volume de tokens, preço de modelos de referência — estimativa):',
-      MARGEM,
-      yAtual,
-      largura,
-    );
+    yAtual = escreverParagrafo(doc, t('comparacao_hipotetica', idioma), MARGEM, yAtual, largura);
     for (const candidato of usoIa.metrica1) {
       yAtual = garantirEspaco(doc, yAtual, 14);
       yAtual = escreverParagrafo(
         doc,
-        `• ${candidato.nomeExibicao}: ${formatarCustoUsd(candidato.custoEstimado)}`,
+        t('bullet_candidato', idioma, { nome: candidato.nomeExibicao, custo: formatarCustoUsd(candidato.custoEstimado) }),
         MARGEM,
         yAtual,
         largura,
@@ -285,7 +284,11 @@ function escreverSecaoUsoIa(doc: PDFKit.PDFDocument, y: number, usoIa: Agregacao
         yAtual = garantirEspaco(doc, yAtual, 14);
         yAtual = escreverParagrafo(
           doc,
-          `   ajustado por ${ajustado.metrica} em ${ajustado.fluxo}: ${formatarCustoUsd(ajustado.custoAjustado)} (estimativa)`,
+          t('ajustado_por', idioma, {
+            metrica: ajustado.metrica,
+            fluxo: ajustado.fluxo,
+            custo: formatarCustoUsd(ajustado.custoAjustado),
+          }),
           MARGEM,
           yAtual,
           largura,
@@ -299,12 +302,19 @@ function escreverSecaoUsoIa(doc: PDFKit.PDFDocument, y: number, usoIa: Agregacao
   if (usoIa.metrica3.length > 0) {
     yAtual = garantirEspaco(doc, yAtual, 30);
     doc.fillColor(COR_TEXTO_MUTED).fontSize(9).font('Helvetica-Oblique');
-    yAtual = escreverParagrafo(doc, 'Benchmark do modelo real em uso, por fluxo:', MARGEM, yAtual, largura);
+    yAtual = escreverParagrafo(doc, t('benchmark_real_uso', idioma), MARGEM, yAtual, largura);
     for (const item of usoIa.metrica3) {
       yAtual = garantirEspaco(doc, yAtual, 14);
       yAtual = escreverParagrafo(
         doc,
-        `• ${item.fluxo} (${item.modelo}): ${formatarCustoUsd(item.custoEstimado)} no período — ${item.metrica}: ${item.valor} (fonte: ${item.fonteUrl})`,
+        t('bullet_benchmark', idioma, {
+          fluxo: item.fluxo,
+          modelo: item.modelo,
+          custo: formatarCustoUsd(item.custoEstimado),
+          metrica: item.metrica,
+          valor: String(item.valor),
+          url: item.fonteUrl,
+        }),
         MARGEM,
         yAtual,
         largura,
@@ -325,8 +335,8 @@ function desenharGrafico(doc: PDFKit.PDFDocument, y: number, grafico: Buffer): n
   return yAtual + altura + 20;
 }
 
-function escreverResumoMes(doc: PDFKit.PDFDocument, y: number, resumoTexto: string): number {
-  let yAtual = desenharTituloSecao(doc, y, 'Resumo do mês');
+function escreverResumoMes(doc: PDFKit.PDFDocument, y: number, resumoTexto: string, idioma: Idioma): number {
+  let yAtual = desenharTituloSecao(doc, y, t('secao_resumo_mes', idioma));
   const largura = larguraUtil(doc) - 24;
   const alturaTexto = doc.font('Helvetica-Oblique').fontSize(10).heightOfString(resumoTexto, { width: largura });
   yAtual = garantirEspaco(doc, yAtual, alturaTexto + 24);
@@ -343,7 +353,7 @@ function escreverResumoMes(doc: PDFKit.PDFDocument, y: number, resumoTexto: stri
 // pdfkit calcular que "não cabe" e inserir uma página nova sozinho (checa
 // a posição contra page.height - margins.bottom antes de desenhar) — reduz
 // a margem temporariamente pra caber o rodapé, sem que doc.addPage() dispare.
-function desenharRodapes(doc: PDFKit.PDFDocument): void {
+function desenharRodapes(doc: PDFKit.PDFDocument, idioma: Idioma): void {
   const paginas = doc.bufferedPageRange();
   const margemOriginal = doc.page.margins.bottom;
 
@@ -354,7 +364,10 @@ function desenharRodapes(doc: PDFKit.PDFDocument): void {
     doc
       .fontSize(8)
       .fillColor(COR_TEXTO_MUTED)
-      .text(`Página ${i + 1} de ${paginas.count}`, MARGEM, y, { width: larguraUtil(doc), align: 'right' });
+      .text(t('pagina_de', idioma, { atual: String(i + 1), total: String(paginas.count) }), MARGEM, y, {
+        width: larguraUtil(doc),
+        align: 'right',
+      });
     doc.page.margins.bottom = margemOriginal;
   }
 }
@@ -369,6 +382,7 @@ export async function gerarPdfRelatorioMensal(
   resumoTexto: string,
   graficoDespesa: Buffer | undefined,
   graficoComparativo: Buffer | undefined,
+  idioma: Idioma = 'pt',
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: MARGEM, bufferPages: true });
@@ -378,19 +392,19 @@ export async function gerarPdfRelatorioMensal(
     doc.on('error', reject);
 
     const periodo = dados.inicio === dados.fim ? dados.inicio : `${dados.inicio} a ${dados.fim}`;
-    let y = desenharCabecalho(doc, periodo);
+    let y = desenharCabecalho(doc, periodo, idioma);
 
-    y = escreverSecaoFinanceira(doc, y, dados.financeiro);
+    y = escreverSecaoFinanceira(doc, y, dados.financeiro, idioma);
     if (graficoDespesa) {
       y = desenharGrafico(doc, y, graficoDespesa);
     }
 
-    y = escreverSecaoUsoIa(doc, y, dados.usoIa);
+    y = escreverSecaoUsoIa(doc, y, dados.usoIa, idioma);
 
     if (dados.errosTecnicos > 0) {
       y = garantirEspaco(doc, y, 20);
       doc.fillColor(COR_DESPESA).fontSize(10);
-      y = escreverParagrafo(doc, `Erros técnicos no período: ${dados.errosTecnicos}.`, MARGEM, y, larguraUtil(doc));
+      y = escreverParagrafo(doc, t('erros_tecnicos_periodo', idioma, { quantidade: String(dados.errosTecnicos) }), MARGEM, y, larguraUtil(doc));
       doc.fillColor(COR_TEXTO);
       y += 10;
     }
@@ -399,9 +413,9 @@ export async function gerarPdfRelatorioMensal(
       y = desenharGrafico(doc, y, graficoComparativo);
     }
 
-    escreverResumoMes(doc, y, resumoTexto);
+    escreverResumoMes(doc, y, resumoTexto, idioma);
 
-    desenharRodapes(doc);
+    desenharRodapes(doc, idioma);
     doc.end();
   });
 }

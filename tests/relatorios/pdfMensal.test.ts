@@ -68,4 +68,11 @@ describe('gerarPdfRelatorioMensal', () => {
 
     expect(buffer.subarray(0, 5).toString('latin1')).toBe('%PDF-');
   });
+
+  it('com idioma en, gera PDF válido normalmente (sem quebrar com os textos fixos em inglês)', async () => {
+    const buffer = await gerarPdfRelatorioMensal(dados(), 'Short summary.', pngDeTeste(), pngDeTeste(), 'en');
+
+    expect(buffer.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+    expect(buffer.toString('latin1')).toContain('%%EOF');
+  });
 });

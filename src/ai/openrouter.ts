@@ -1,17 +1,9 @@
 import OpenAI from 'openai';
 import type { Idioma } from '../db/repositories/idiomaBot.js';
+import { montarDiretivaIdioma } from '../i18n/diretivaIdioma.js';
 import { SYSTEM_PROMPT } from './systemPrompt.js';
 import { paraDefinicaoOpenAI } from './tools/registry.js';
 import type { ResultadoTool, ToolContext, ToolDefinition } from './tools/types.js';
-
-// Nome do idioma em português -- a diretiva dinâmica abaixo é apendada ao
-// SYSTEM_PROMPT, que continua inteiro em português (fonte única, Fase 10,
-// ver PLANO.md); só o idioma 'pt' não precisa de diretiva nenhuma, mesmo
-// comportamento/cache de hoje.
-const NOME_IDIOMA: Record<Exclude<Idioma, 'pt'>, string> = {
-  en: 'inglês',
-  es: 'espanhol',
-};
 
 export const MODELO_PADRAO = 'openai/gpt-4o-mini';
 
@@ -94,8 +86,7 @@ export function montarMensagemSystem(
   modelo: string,
   idioma: Idioma = 'pt',
 ): OpenAI.Chat.Completions.ChatCompletionMessageParam {
-  const texto =
-    idioma === 'pt' ? SYSTEM_PROMPT : `${SYSTEM_PROMPT}\n\nResponda sempre em ${NOME_IDIOMA[idioma]}.`;
+  const texto = `${SYSTEM_PROMPT}${montarDiretivaIdioma(idioma)}`;
 
   if (!modelo.startsWith('anthropic/')) {
     return { role: 'system', content: texto };

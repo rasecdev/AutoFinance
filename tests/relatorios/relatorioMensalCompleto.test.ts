@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
 import { criarConta } from '../../src/db/repositories/contas.js';
+import { definirIdioma } from '../../src/db/repositories/idiomaBot.js';
 import { definirRoteamento } from '../../src/db/repositories/roteamentoTarefas.js';
 import { criarTransacao } from '../../src/db/repositories/transacoes.js';
 import { gerarRelatorioMensalCompleto } from '../../src/relatorios/relatorioMensalCompleto.js';
@@ -89,5 +90,15 @@ describe('gerarRelatorioMensalCompleto', () => {
     await gerarRelatorioMensalCompleto(db, client, new Date(2026, 2, 20, 12, 0));
 
     expect(create.mock.calls[0]?.[0]?.model).toBe('qwen/qwen3-32b');
+  });
+
+  it('com idioma en ativo, propaga a diretiva de idioma pro prompt do resumo', async () => {
+    definirIdioma(db, 'en');
+    const { client, create } = criarClienteFalso('summary');
+
+    await gerarRelatorioMensalCompleto(db, client, new Date(2026, 2, 20, 12, 0));
+
+    const mensagensEnviadas = create.mock.calls[0]?.[0]?.messages;
+    expect(mensagensEnviadas[0].content).toMatch(/Responda sempre em inglês\.$/);
   });
 });

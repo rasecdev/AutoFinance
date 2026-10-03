@@ -73,4 +73,18 @@ describe('gerarResumoMensal', () => {
 
     expect(create.mock.calls[0]?.[0]?.model).toBe('qwen/qwen3-32b');
   });
+
+  it('com idioma en, apenda a diretiva de idioma ao prompt', async () => {
+    const { client, create } = criarClienteFalso('summary');
+
+    await gerarResumoMensal(
+      client,
+      { inicio: '2026-03-01', fim: '2026-03-31', financeiro: financeiroVazio, usoIa: usoIaVazio, financeiroAnterior: financeiroVazio, usoIaAnterior: usoIaVazio },
+      MODELO_RELATORIO_MENSAL,
+      'en',
+    );
+
+    const mensagensEnviadas = create.mock.calls[0]?.[0]?.messages;
+    expect(mensagensEnviadas[0].content).toMatch(/Responda sempre em inglês\.$/);
+  });
 });
