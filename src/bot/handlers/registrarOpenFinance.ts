@@ -2,7 +2,9 @@ import type { Context } from 'grammy';
 import type { Env } from '../../config/env.js';
 import type { DbClient } from '../../db/client.js';
 import { registrarMapeamentoOpenFinance } from '../../db/repositories/contasOpenFinance.js';
+import { obterIdioma } from '../../db/repositories/idiomaBot.js';
 import { resolverCartaoId, resolverContaId } from '../../ai/tools/resolucao.js';
+import { t } from '../../i18n/t.js';
 import { autenticar, listarContasDoItem, obterItem, type ContaPluggy } from '../../integracoes/pluggy/cliente.js';
 import type { Logger } from '../../logging/logger.js';
 import {
@@ -18,7 +20,7 @@ function descreverConta(conta: ContaPluggy, indice: number): string {
   return `${indice + 1}. ${conta.type} — "${conta.name}"${numero}`;
 }
 
-export function createHandlerRegistrarOpenFinance(env: Env, logger: Logger) {
+export function createHandlerRegistrarOpenFinance(env: Env, db: DbClient, logger: Logger) {
   return async function handlerRegistrarOpenFinance(ctx: Context): Promise<void> {
     const chatId = ctx.chat?.id;
     const texto = ctx.message?.text ?? '';
@@ -26,22 +28,16 @@ export function createHandlerRegistrarOpenFinance(env: Env, logger: Logger) {
       return;
     }
 
+    const idioma = obterIdioma(db);
+
     if (!env.pluggy) {
-      await ctx.reply(
-        'Ainda não dá pra conectar contas — faltam PLUGGY_CLIENT_ID e PLUGGY_CLIENT_SECRET configurados no ' +
-          'servidor (criados uma vez no dashboard da Pluggy, dashboard.pluggy.ai). Isso é feito por quem administra ' +
-          'o servidor, não por aqui — depois de configurado, "/registrar_open_finance" passa a funcionar.',
-      );
+      await ctx.reply(t('of_sem_env', idioma));
       return;
     }
 
     const match = COMANDO_COM_ITEM_ID.exec(texto);
     if (!match) {
-      await ctx.reply(
-        'Faltou o item_id. Primeiro conecte sua conta abrindo scripts/pluggyConnectWidget.html no navegador ' +
-          '(gere o connect_token com "node dist/scripts/gerarConnectTokenPluggy.js") — ao terminar, a página mostra ' +
-          'um item_id. Depois rode "/registrar_open_finance <item_id>" com esse valor.',
-      );
+      await ctx.reply(t('of_falta_item_id', idioma));
       return;
     }
     const itemId = match[1] as string;
@@ -51,7 +47,7 @@ export function createHandlerRegistrarOpenFinance(env: Env, logger: Logger) {
       apiKey = await autenticar(env.pluggy.clientId, env.pluggy.clientSecret);
     } catch (erro) {
       logger.error({ err: erro }, 'falha ao autenticar com a Pluggy');
-      await ctx.reply('Não consegui autenticar com a Pluggy — tente de novo em alguns minutos.');
+      await ctx.reply(t('of_falha_autenticar', idioma));
       return;
     }
 
@@ -59,24 +55,20 @@ export function createHandlerRegistrarOpenFinance(env: Env, logger: Logger) {
       await obterItem(apiKey, itemId);
     } catch (erro) {
       logger.error({ err: erro, itemId }, 'item_id da Pluggy não encontrado');
-      await ctx.reply('Não encontrei esse item_id na Pluggy — confira se copiou certo da página de conexão.');
+      await ctx.reply(t('of_item_nao_encontrado', idioma));
       return;
     }
 
     const contas = await listarContasDoItem(apiKey, itemId);
     if (contas.length === 0) {
-      await ctx.reply('Esse item não trouxe nenhuma conta — pode ter falhado a conexão, tente de novo.');
+      await ctx.reply(t('of_sem_contas', idioma));
       return;
     }
 
     definirPendenciaOpenFinance(chatId, { itemId, contas });
 
     const listaContas = contas.map(descreverConta).join('\n');
-    await ctx.reply(
-      `Encontrei ${contas.length} conta(s) nesse item:\n\n${listaContas}\n\n` +
-        'Responda com uma linha por conta, no formato "número = nome da conta ou cartão já cadastrado no ' +
-        'AutoFinance". Exemplo:\n1 = Principal\n2 = Nubank',
-    );
+    await ctx.reply(t('of_contas_encontradas', idioma, { quantidade: String(contas.length), lista: listaContas }));
   };
 }
 
@@ -102,6 +94,8 @@ export function createHandlerMapeamentoOpenFinance(db: DbClient, logger: Logger)
       return;
     }
 
+    const idioma = obterIdioma(db);
+
     const pendencia = obterPendenciaOpenFinance(chatId);
     if (!pendencia) {
       return;
@@ -109,9 +103,7 @@ export function createHandlerMapeamentoOpenFinance(db: DbClient, logger: Logger)
 
     const linhas = interpretarLinhas(texto);
     if (linhas.length !== pendencia.contas.length) {
-      await ctx.reply(
-        `Preciso de uma linha por conta (${pendencia.contas.length} no total), no formato "número = nome". Tente de novo.`,
-      );
+      await ctx.reply(t('of_linhas_insuficientes', idioma, { quantidade: String(pendencia.contas.length) }));
       return;
     }
 
@@ -119,7 +111,7 @@ export function createHandlerMapeamentoOpenFinance(db: DbClient, logger: Logger)
     for (const { indice, nome } of linhas) {
       const conta = pendencia.contas[indice - 1];
       if (!conta) {
-        await ctx.reply(`Número inválido: ${indice} (só existem ${pendencia.contas.length} contas).`);
+        await ctx.reply(t('of_numero_invalido', idioma, { numero: String(indice), total: String(pendencia.contas.length) }));
         return;
       }
 
@@ -148,7 +140,7 @@ export function createHandlerMapeamentoOpenFinance(db: DbClient, logger: Logger)
         return;
       }
 
-      await ctx.reply(`Não encontrei conta nem cartão chamado "${nome}" — confira o nome e tente de novo.`);
+      await ctx.reply(t('of_nao_encontrado', idioma, { nome }));
       return;
     }
 
@@ -163,13 +155,11 @@ export function createHandlerMapeamentoOpenFinance(db: DbClient, logger: Logger)
       }
     } catch (erro) {
       logger.error({ err: erro, chatId }, 'falha ao gravar mapeamento de conta Open Finance');
-      await ctx.reply('Não consegui salvar o mapeamento, tente de novo.');
+      await ctx.reply(t('of_falha_salvar_mapeamento', idioma));
       return;
     }
 
     removerPendenciaOpenFinance(chatId);
-    await ctx.reply(
-      `Pronto — ${mapeamentos.length} conta(s) vinculada(s). A sincronização de transações passa a rodar sozinha a partir de agora.`,
-    );
+    await ctx.reply(t('of_mapeamento_concluido', idioma, { quantidade: String(mapeamentos.length) }));
   };
 }

@@ -215,4 +215,130 @@ export const CATALOGO: Record<string, Record<Idioma, string>> = {
     en: "I couldn't understand the audio, try again or send it as text.",
     es: 'No pude entender el audio, intenta de nuevo o envíalo por texto.',
   },
+  email_sem_env: {
+    pt: 'Ainda não dá pra vincular — faltam GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET configurados no servidor (criados uma vez no Google Cloud Console: projeto → ativar Gmail API e Calendar API → credencial OAuth 2.0 do tipo "Aplicativo para computador"). Isso é feito por quem administra o servidor, não por aqui — depois de configurado, "/registrar_email" passa a funcionar.',
+    en: 'Can\'t link yet — GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET aren\'t configured on the server (created once in Google Cloud Console: project → enable Gmail API and Calendar API → OAuth 2.0 credential of type "Desktop app"). This is done by whoever administers the server, not here — once configured, "/registrar_email" will work.',
+    es: 'Todavía no se puede vincular — faltan GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET configurados en el servidor (creados una vez en Google Cloud Console: proyecto → activar Gmail API y Calendar API → credencial OAuth 2.0 del tipo "Aplicación de escritorio"). Esto lo hace quien administra el servidor, no aquí — una vez configurado, "/registrar_email" empieza a funcionar.',
+  },
+  email_ja_vinculado: {
+    pt: 'Este ambiente já tem uma conta Google vinculada (agenda: "{calendarId}") — cobre leitura de fatura/boleto por e-mail e criação de eventos de vencimento no Calendar, os dois já ativos.\n\nSe quiser vincular outra conta mesmo assim (o vínculo antigo continua funcionando até você concluir o novo), digite "/registrar_email confirmar".',
+    en: 'This environment already has a Google account linked (calendar: "{calendarId}") — covers reading bills/invoices by email and creating due-date events in Calendar, both already active.\n\nIf you want to link another account anyway (the old link keeps working until you finish the new one), type "/registrar_email confirmar".',
+    es: 'Este entorno ya tiene una cuenta de Google vinculada (agenda: "{calendarId}") — cubre la lectura de facturas/boletas por correo y la creación de eventos de vencimiento en Calendar, los dos ya activos.\n\nSi quieres vincular otra cuenta de todos modos (el vínculo anterior sigue funcionando hasta que completes el nuevo), escribe "/registrar_email confirmar".',
+  },
+  email_vinculo_mensagem: {
+    pt:
+      'Vamos vincular sua conta Google. Uma única autorização resolve as DUAS integrações de uma vez: leitura ' +
+      'automática de fatura/boleto de e-mail (Gmail, só leitura) e criação de eventos de vencimento (Google ' +
+      'Calendar) — mesma conta, mesmo passo, nada a repetir depois.\n\n' +
+      '1. Abra este link e faça login com a conta Google que você quer usar:\n{url}\n\n' +
+      '2. O Google vai mostrar os dois pedidos de permissão (ler Gmail, gerenciar eventos do Calendar) — são ' +
+      'exatamente os dois escopos que o bot usa, nada além disso. Autorize.\n\n' +
+      '3. O navegador vai tentar abrir "http://localhost/?code=..." e vai dar erro de página não encontrada — ' +
+      'isso é esperado, não se preocupe. Copie o valor que vem depois de "code=" na barra de endereço (até o ' +
+      '"&" seguinte, se houver mais parâmetros).\n\n' +
+      '4. Cole esse código aqui nesta conversa, como uma mensagem normal.\n\n' +
+      'O vínculo fica pendente só nesta conversa até você colar o código (ou até o bot reiniciar — nesse caso é ' +
+      'só rodar "/registrar_email" de novo).',
+    en:
+      "Let's link your Google account. A single authorization covers BOTH integrations at once: automatic " +
+      'reading of bills/invoices from email (Gmail, read-only) and creating due-date events (Google Calendar) — ' +
+      'same account, same step, nothing to repeat later.\n\n' +
+      '1. Open this link and sign in with the Google account you want to use:\n{url}\n\n' +
+      '2. Google will show the two permission requests (read Gmail, manage Calendar events) — these are ' +
+      'exactly the two scopes the bot uses, nothing more. Authorize them.\n\n' +
+      '3. The browser will try to open "http://localhost/?code=..." and will show a page-not-found error — ' +
+      'that\'s expected, don\'t worry. Copy the value that comes after "code=" in the address bar (up to the ' +
+      'next "&", if there are more parameters).\n\n' +
+      '4. Paste that code here in this conversation, as a normal message.\n\n' +
+      'The link stays pending only in this conversation until you paste the code (or until the bot restarts — ' +
+      'in that case just run "/registrar_email" again).',
+    es:
+      'Vamos a vincular tu cuenta de Google. Una sola autorización resuelve las DOS integraciones a la vez: ' +
+      'lectura automática de facturas/boletas por correo (Gmail, solo lectura) y creación de eventos de ' +
+      'vencimiento (Google Calendar) — misma cuenta, mismo paso, nada que repetir después.\n\n' +
+      '1. Abre este enlace e inicia sesión con la cuenta de Google que quieres usar:\n{url}\n\n' +
+      '2. Google va a mostrar las dos solicitudes de permiso (leer Gmail, gestionar eventos de Calendar) — son ' +
+      'exactamente los dos alcances que usa el bot, nada más. Autorízalos.\n\n' +
+      '3. El navegador va a intentar abrir "http://localhost/?code=..." y va a dar un error de página no ' +
+      'encontrada — eso es esperado, no te preocupes. Copia el valor que viene después de "code=" en la barra ' +
+      'de direcciones (hasta el siguiente "&", si hay más parámetros).\n\n' +
+      '4. Pega ese código aquí en esta conversación, como un mensaje normal.\n\n' +
+      'El vínculo queda pendiente solo en esta conversación hasta que pegues el código (o hasta que el bot se ' +
+      'reinicie — en ese caso solo ejecuta "/registrar_email" de nuevo).',
+  },
+  email_codigo_invalido: {
+    pt: 'Não consegui trocar esse código por um token — ele pode ter expirado (a validade é curta) ou ter sido colado incompleto. Rode "/registrar_email" de novo pra gerar um link novo.',
+    en: 'I couldn\'t exchange that code for a token — it may have expired (it\'s short-lived) or been pasted incomplete. Run "/registrar_email" again to generate a new link.',
+    es: 'No pude cambiar ese código por un token — puede haber expirado (la validez es corta) o haber sido pegado incompleto. Ejecuta "/registrar_email" de nuevo para generar un enlace nuevo.',
+  },
+  email_sem_refresh_token: {
+    pt: 'A autorização deu certo, mas o Google não devolveu um refresh_token dessa vez — normalmente acontece quando essa conta já autorizou este mesmo app antes sem revogar o acesso. Revogue o acesso em https://myaccount.google.com/permissions (procure o nome do app) e rode "/registrar_email confirmar" de novo.',
+    en: 'The authorization worked, but Google didn\'t return a refresh_token this time — this usually happens when this account already authorized this same app before without revoking access. Revoke access at https://myaccount.google.com/permissions (look for the app name) and run "/registrar_email confirmar" again.',
+    es: 'La autorización funcionó, pero Google no devolvió un refresh_token esta vez — normalmente pasa cuando esta cuenta ya autorizó esta misma app antes sin revocar el acceso. Revoca el acceso en https://myaccount.google.com/permissions (busca el nombre de la app) y ejecuta "/registrar_email confirmar" de nuevo.',
+  },
+  email_vinculo_concluido: {
+    pt: 'Autorização concluída dos dois lados (Gmail + Calendar) e vínculo salvo — sem nenhum passo manual a mais. Os jobs de leitura de e-mail e sincronização de calendário passam a usar esse vínculo a partir do próximo ciclo deles, sem precisar reiniciar nada na mão.',
+    en: "Authorization completed on both sides (Gmail + Calendar) and the link saved — no extra manual step needed. The email-reading and calendar-sync jobs start using this link from their next cycle, no need to restart anything by hand.",
+    es: 'Autorización completada en los dos lados (Gmail + Calendar) y vínculo guardado — sin ningún paso manual adicional. Los jobs de lectura de correo y sincronización de calendario empiezan a usar este vínculo desde su próximo ciclo, sin necesidad de reiniciar nada manualmente.',
+  },
+  of_sem_env: {
+    pt: 'Ainda não dá pra conectar contas — faltam PLUGGY_CLIENT_ID e PLUGGY_CLIENT_SECRET configurados no servidor (criados uma vez no dashboard da Pluggy, dashboard.pluggy.ai). Isso é feito por quem administra o servidor, não por aqui — depois de configurado, "/registrar_open_finance" passa a funcionar.',
+    en: 'Can\'t connect accounts yet — PLUGGY_CLIENT_ID and PLUGGY_CLIENT_SECRET aren\'t configured on the server (created once in the Pluggy dashboard, dashboard.pluggy.ai). This is done by whoever administers the server, not here — once configured, "/registrar_open_finance" will work.',
+    es: 'Todavía no se puede conectar cuentas — faltan PLUGGY_CLIENT_ID y PLUGGY_CLIENT_SECRET configurados en el servidor (creados una vez en el dashboard de Pluggy, dashboard.pluggy.ai). Esto lo hace quien administra el servidor, no aquí — una vez configurado, "/registrar_open_finance" empieza a funcionar.',
+  },
+  of_falta_item_id: {
+    pt: 'Faltou o item_id. Primeiro conecte sua conta abrindo scripts/pluggyConnectWidget.html no navegador (gere o connect_token com "node dist/scripts/gerarConnectTokenPluggy.js") — ao terminar, a página mostra um item_id. Depois rode "/registrar_open_finance <item_id>" com esse valor.',
+    en: 'Missing the item_id. First connect your account by opening scripts/pluggyConnectWidget.html in your browser (generate the connect_token with "node dist/scripts/gerarConnectTokenPluggy.js") — once done, the page shows an item_id. Then run "/registrar_open_finance <item_id>" with that value.',
+    es: 'Falta el item_id. Primero conecta tu cuenta abriendo scripts/pluggyConnectWidget.html en el navegador (genera el connect_token con "node dist/scripts/gerarConnectTokenPluggy.js") — al terminar, la página muestra un item_id. Después ejecuta "/registrar_open_finance <item_id>" con ese valor.',
+  },
+  of_falha_autenticar: {
+    pt: 'Não consegui autenticar com a Pluggy — tente de novo em alguns minutos.',
+    en: "I couldn't authenticate with Pluggy — try again in a few minutes.",
+    es: 'No pude autenticar con Pluggy — intenta de nuevo en unos minutos.',
+  },
+  of_item_nao_encontrado: {
+    pt: 'Não encontrei esse item_id na Pluggy — confira se copiou certo da página de conexão.',
+    en: "I couldn't find that item_id on Pluggy — check if you copied it correctly from the connection page.",
+    es: 'No encontré ese item_id en Pluggy — revisa si lo copiaste bien desde la página de conexión.',
+  },
+  of_sem_contas: {
+    pt: 'Esse item não trouxe nenhuma conta — pode ter falhado a conexão, tente de novo.',
+    en: "That item didn't bring any account — the connection may have failed, try again.",
+    es: 'Ese item no trajo ninguna cuenta — puede haber fallado la conexión, intenta de nuevo.',
+  },
+  of_contas_encontradas: {
+    pt: 'Encontrei {quantidade} conta(s) nesse item:\n\n{lista}\n\nResponda com uma linha por conta, no formato "número = nome da conta ou cartão já cadastrado no AutoFinance". Exemplo:\n1 = Principal\n2 = Nubank',
+    en: 'Found {quantidade} account(s) in that item:\n\n{lista}\n\nReply with one line per account, in the format "number = name of the account or card already registered in AutoFinance". Example:\n1 = Principal\n2 = Nubank',
+    es: 'Encontré {quantidade} cuenta(s) en ese item:\n\n{lista}\n\nResponde con una línea por cuenta, en el formato "número = nombre de la cuenta o tarjeta ya registrada en AutoFinance". Ejemplo:\n1 = Principal\n2 = Nubank',
+  },
+  of_linhas_insuficientes: {
+    pt: 'Preciso de uma linha por conta ({quantidade} no total), no formato "número = nome". Tente de novo.',
+    en: 'I need one line per account ({quantidade} total), in the format "number = name". Try again.',
+    es: 'Necesito una línea por cuenta ({quantidade} en total), en el formato "número = nombre". Intenta de nuevo.',
+  },
+  of_numero_invalido: {
+    pt: 'Número inválido: {numero} (só existem {total} contas).',
+    en: 'Invalid number: {numero} (there are only {total} accounts).',
+    es: 'Número inválido: {numero} (solo existen {total} cuentas).',
+  },
+  of_nao_encontrado: {
+    pt: 'Não encontrei conta nem cartão chamado "{nome}" — confira o nome e tente de novo.',
+    en: 'I couldn\'t find an account or card called "{nome}" — check the name and try again.',
+    es: 'No encontré cuenta ni tarjeta llamada "{nome}" — revisa el nombre e intenta de nuevo.',
+  },
+  of_falha_salvar_mapeamento: {
+    pt: 'Não consegui salvar o mapeamento, tente de novo.',
+    en: "I couldn't save the mapping, try again.",
+    es: 'No pude guardar el mapeo, intenta de nuevo.',
+  },
+  lembrete_reautorizacao_prefixo: {
+    pt: '🔔 Lembrete automático: pra evitar que o vínculo com o Google (Gmail + Calendar) expire sem aviso, revincule agora — leva só um minuto.\n\n',
+    en: "🔔 Automatic reminder: to prevent the Google link (Gmail + Calendar) from expiring without warning, relink now — it only takes a minute.\n\n",
+    es: '🔔 Recordatorio automático: para evitar que el vínculo con Google (Gmail + Calendar) expire sin avisar, revincula ahora — solo toma un minuto.\n\n',
+  },
+  of_mapeamento_concluido: {
+    pt: 'Pronto — {quantidade} conta(s) vinculada(s). A sincronização de transações passa a rodar sozinha a partir de agora.',
+    en: 'Done — {quantidade} account(s) linked. Transaction sync will now run on its own from here on.',
+    es: 'Listo — {quantidade} cuenta(s) vinculada(s). La sincronización de transacciones empezará a correr sola desde ahora.',
+  },
 };

@@ -8,6 +8,7 @@ import type { Env } from '../../../src/config/env.js';
 import type { DbClient } from '../../../src/db/client.js';
 import { criarCartao } from '../../../src/db/repositories/cartoes.js';
 import { criarConta } from '../../../src/db/repositories/contas.js';
+import { definirIdioma } from '../../../src/db/repositories/idiomaBot.js';
 import { migrate } from '../../../src/db/migrate.js';
 import { createLogger } from '../../../src/logging/logger.js';
 import { removerPendenciaOpenFinance } from '../../../src/bot/openFinancePendencia.js';
@@ -71,7 +72,7 @@ afterEach(() => {
 
 describe('handlerRegistrarOpenFinance (/registrar_open_finance)', () => {
   it('sem PLUGGY_CLIENT_ID/SECRET configurados, avisa que precisa configurar no servidor', async () => {
-    const handler = createHandlerRegistrarOpenFinance(ENV_SEM_PLUGGY, logger);
+    const handler = createHandlerRegistrarOpenFinance(ENV_SEM_PLUGGY, db, logger);
     const ctx = criarContextoFake('/registrar_open_finance item-1', 7001);
 
     await handler(ctx);
@@ -80,8 +81,18 @@ describe('handlerRegistrarOpenFinance (/registrar_open_finance)', () => {
     expect(autenticar).not.toHaveBeenCalled();
   });
 
+  it('com idioma en ativo, responde em inglês', async () => {
+    definirIdioma(db, 'en');
+    const handler = createHandlerRegistrarOpenFinance(ENV_SEM_PLUGGY, db, logger);
+    const ctx = criarContextoFake('/registrar_open_finance item-1', 7001);
+
+    await handler(ctx);
+
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining("Can't connect accounts yet"));
+  });
+
   it('sem item_id na mensagem, explica como conseguir um', async () => {
-    const handler = createHandlerRegistrarOpenFinance(ENV_COM_PLUGGY, logger);
+    const handler = createHandlerRegistrarOpenFinance(ENV_COM_PLUGGY, db, logger);
     const ctx = criarContextoFake('/registrar_open_finance', 7001);
 
     await handler(ctx);
@@ -91,7 +102,7 @@ describe('handlerRegistrarOpenFinance (/registrar_open_finance)', () => {
 
   it('falha ao autenticar com a Pluggy, avisa e não segue', async () => {
     vi.mocked(autenticar).mockRejectedValue(new Error('falha de rede'));
-    const handler = createHandlerRegistrarOpenFinance(ENV_COM_PLUGGY, logger);
+    const handler = createHandlerRegistrarOpenFinance(ENV_COM_PLUGGY, db, logger);
     const ctx = criarContextoFake('/registrar_open_finance item-1', 7001);
 
     await handler(ctx);
@@ -103,7 +114,7 @@ describe('handlerRegistrarOpenFinance (/registrar_open_finance)', () => {
   it('item_id inexistente, avisa e não segue', async () => {
     vi.mocked(autenticar).mockResolvedValue('api-key-teste');
     vi.mocked(obterItem).mockRejectedValue(new Error('404'));
-    const handler = createHandlerRegistrarOpenFinance(ENV_COM_PLUGGY, logger);
+    const handler = createHandlerRegistrarOpenFinance(ENV_COM_PLUGGY, db, logger);
     const ctx = criarContextoFake('/registrar_open_finance item-invalido', 7001);
 
     await handler(ctx);
@@ -116,7 +127,7 @@ describe('handlerRegistrarOpenFinance (/registrar_open_finance)', () => {
     vi.mocked(autenticar).mockResolvedValue('api-key-teste');
     vi.mocked(obterItem).mockResolvedValue({ id: 'item-1', status: 'UPDATED' });
     vi.mocked(listarContasDoItem).mockResolvedValue([]);
-    const handler = createHandlerRegistrarOpenFinance(ENV_COM_PLUGGY, logger);
+    const handler = createHandlerRegistrarOpenFinance(ENV_COM_PLUGGY, db, logger);
     const ctx = criarContextoFake('/registrar_open_finance item-1', 7001);
 
     await handler(ctx);
@@ -130,7 +141,7 @@ describe('handlerRegistrarOpenFinance (/registrar_open_finance)', () => {
     vi.mocked(listarContasDoItem).mockResolvedValue([
       { id: 'conta-pluggy-1', itemId: 'item-1', type: 'BANK', name: 'Conta Corrente', number: '1234' },
     ]);
-    const handler = createHandlerRegistrarOpenFinance(ENV_COM_PLUGGY, logger);
+    const handler = createHandlerRegistrarOpenFinance(ENV_COM_PLUGGY, db, logger);
     const ctx = criarContextoFake('/registrar_open_finance item-1', 7001);
 
     await handler(ctx);
@@ -161,7 +172,7 @@ describe('handlerMapeamentoOpenFinance', () => {
       { id: 'conta-pluggy-1', itemId: 'item-1', type: 'BANK', name: 'Conta Corrente' },
       { id: 'conta-pluggy-2', itemId: 'item-1', type: 'CREDIT', name: 'Cartão' },
     ]);
-    const handlerComando = createHandlerRegistrarOpenFinance(ENV_COM_PLUGGY, logger);
+    const handlerComando = createHandlerRegistrarOpenFinance(ENV_COM_PLUGGY, db, logger);
     await handlerComando(criarContextoFake('/registrar_open_finance item-1', 7002));
 
     const handlerMapeamento = createHandlerMapeamentoOpenFinance(db, logger);
@@ -185,7 +196,7 @@ describe('handlerMapeamentoOpenFinance', () => {
       { id: 'conta-pluggy-1', itemId: 'item-1', type: 'BANK', name: 'Conta Corrente' },
       { id: 'conta-pluggy-2', itemId: 'item-1', type: 'CREDIT', name: 'Cartão' },
     ]);
-    const handlerComando = createHandlerRegistrarOpenFinance(ENV_COM_PLUGGY, logger);
+    const handlerComando = createHandlerRegistrarOpenFinance(ENV_COM_PLUGGY, db, logger);
     await handlerComando(criarContextoFake('/registrar_open_finance item-1', 7002));
 
     const handlerMapeamento = createHandlerMapeamentoOpenFinance(db, logger);
@@ -203,7 +214,7 @@ describe('handlerMapeamentoOpenFinance', () => {
     vi.mocked(listarContasDoItem).mockResolvedValue([
       { id: 'conta-pluggy-1', itemId: 'item-1', type: 'BANK', name: 'Conta Corrente' },
     ]);
-    const handlerComando = createHandlerRegistrarOpenFinance(ENV_COM_PLUGGY, logger);
+    const handlerComando = createHandlerRegistrarOpenFinance(ENV_COM_PLUGGY, db, logger);
     await handlerComando(criarContextoFake('/registrar_open_finance item-1', 7002));
 
     const handlerMapeamento = createHandlerMapeamentoOpenFinance(db, logger);
@@ -227,7 +238,7 @@ describe('handlerMapeamentoOpenFinance', () => {
     vi.mocked(listarContasDoItem).mockResolvedValue([
       { id: 'conta-pluggy-1', itemId: 'item-1', type: 'CREDIT', name: 'Cartão' },
     ]);
-    const handlerComando = createHandlerRegistrarOpenFinance(ENV_COM_PLUGGY, logger);
+    const handlerComando = createHandlerRegistrarOpenFinance(ENV_COM_PLUGGY, db, logger);
     await handlerComando(criarContextoFake('/registrar_open_finance item-1', 7002));
 
     const handlerMapeamento = createHandlerMapeamentoOpenFinance(db, logger);

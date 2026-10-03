@@ -13,6 +13,7 @@ import {
 import type { Env } from '../../../src/config/env.js';
 import type { DbClient } from '../../../src/db/client.js';
 import { obterRefreshToken, salvarRefreshToken } from '../../../src/db/repositories/credenciaisGoogle.js';
+import { definirIdioma } from '../../../src/db/repositories/idiomaBot.js';
 import { migrate } from '../../../src/db/migrate.js';
 import { createLogger } from '../../../src/logging/logger.js';
 
@@ -60,7 +61,9 @@ afterEach(() => {
   removerPendenciaOAuthGoogle(6001);
   removerPendenciaOAuthGoogle(6002);
   removerPendenciaOAuthGoogle(6003);
+  removerPendenciaOAuthGoogle(6004);
   db.prepare('DELETE FROM credenciais_google').run();
+  definirIdioma(db, 'pt');
 });
 
 describe('handlerRegistrarEmail (/registrar_email)', () => {
@@ -90,6 +93,20 @@ describe('handlerRegistrarEmail (/registrar_email)', () => {
     expect(mensagem).toContain('Calendar');
     expect(mensagem).toContain('https://accounts.google.com');
     expect(obterPendenciaOAuthGoogle(6002)).toBeDefined();
+  });
+
+  it('com idioma en ativo, responde em inglês', async () => {
+    definirIdioma(db, 'en');
+    const env: Env = {
+      ...ENV_BASE,
+      googleOAuthClient: { clientId: 'id-teste', clientSecret: 'secret-teste', calendarId: 'primary' },
+    };
+    const handler = createHandlerRegistrarEmail(env, db);
+    const ctx = criarContextoFake('/registrar_email', 6004);
+
+    await handler(ctx);
+
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining("Let's link your Google account"));
   });
 
   it('com vínculo já ativo e sem "confirmar", avisa que já está vinculado e não mexe na pendência', async () => {

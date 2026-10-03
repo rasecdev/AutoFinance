@@ -9,6 +9,7 @@ import { obterPendenciaOAuthGoogle, removerPendenciaOAuthGoogle } from '../../sr
 import type { Env } from '../../src/config/env.js';
 import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
+import { definirIdioma } from '../../src/db/repositories/idiomaBot.js';
 import { obterUltimoEnvio, registrarEnvio } from '../../src/db/repositories/lembreteReautorizacaoGoogle.js';
 import { createLogger } from '../../src/logging/logger.js';
 
@@ -76,6 +77,18 @@ describe('iniciarLembreteReautorizacaoGoogle', () => {
     expect(bot.api.sendMessage).toHaveBeenCalledTimes(1);
     expect(bot.api.sendMessage.mock.calls[0]?.[0]).toBe(7001);
     expect(bot.api.sendMessage.mock.calls[0]?.[1] as string).toContain('Lembrete automático');
+  });
+
+  it('com idioma en ativo, manda o lembrete em inglês', async () => {
+    definirIdioma(db, 'en');
+    vi.useFakeTimers();
+    const bot = criarBotFake();
+    const env: Env = { ...ENV_BASE, googleOAuthClient: { clientId: 'id', clientSecret: 'secret', calendarId: 'primary' } };
+
+    iniciarLembreteReautorizacaoGoogle(bot, env, db, logger);
+    await vi.advanceTimersByTimeAsync(INTERVALO_MS);
+
+    expect(bot.api.sendMessage.mock.calls[0]?.[1] as string).toContain('Automatic reminder');
   });
 
   it('com envio já vencido (mais de 5 dias no passado), manda assim que o processo sobe', async () => {
