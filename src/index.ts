@@ -1,7 +1,7 @@
 import { createOpenRouterClient } from './ai/openrouter.js';
 import { montarToolsConversa } from './ai/tools/conversaTools.js';
 import { createBot } from './bot/bot.js';
-import { COMANDOS_BOT } from './bot/comandos.js';
+import { COMANDOS_BOT, descricaoComando } from './bot/comandos.js';
 import { createHandlerAjuda } from './bot/handlers/ajuda.js';
 import { createHandlerCallbackConfirmacao } from './bot/handlers/callbackConfirmacao.js';
 import { createHandlerFeedback } from './bot/handlers/feedback.js';
@@ -23,6 +23,7 @@ import { createHandlerVoz } from './bot/handlers/voz.js';
 import { loadEnv } from './config/env.js';
 import { getDb } from './db/client.js';
 import { migrate } from './db/migrate.js';
+import { obterIdioma } from './db/repositories/idiomaBot.js';
 import { registerGlobalErrorHandlers } from './logging/errorHandler.js';
 import { createLogger } from './logging/logger.js';
 
@@ -45,7 +46,7 @@ const handlerModelo = createHandlerModelo(db);
 const handlerModelos = createHandlerModelos(db);
 const handlerRegistrarEmail = createHandlerRegistrarEmail(env, db);
 const handlerCodigoOAuthGoogle = createHandlerCodigoOAuthGoogle(db, logger);
-const handlerAjuda = createHandlerAjuda();
+const handlerAjuda = createHandlerAjuda(db);
 const handlerRegistrarOpenFinance = createHandlerRegistrarOpenFinance(env, logger);
 const handlerMapeamentoOpenFinance = createHandlerMapeamentoOpenFinance(db, logger);
 const handlerCallbackConfirmacao = createHandlerCallbackConfirmacao(db, logger, montarToolsConversa(db, openRouterClient));
@@ -78,8 +79,10 @@ const bot = createBot(
 
 // Menu "/" do Telegram com autocomplete (filtra conforme digita) — mesma
 // fonte (comandos.ts) usada pelo roteamento em router.ts, nunca dessincroniza.
+// Descrição resolvida no idioma ativo (Fase 10, i18n) — reflete o que foi
+// configurado antes do processo reiniciar, não sempre português.
 await bot.api.setMyCommands(
-  COMANDOS_BOT.map(({ comando, descricao }) => ({ command: comando, description: descricao })),
+  COMANDOS_BOT.map((cmd) => ({ command: cmd.comando, description: descricaoComando(cmd, obterIdioma(db)) })),
 );
 
 iniciarLembreteReautorizacaoGoogle(bot, env, db, logger);
