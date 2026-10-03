@@ -414,10 +414,13 @@ ativo.
 ---
 
 ## Checkpoint: Rodada fechada (Fase 10 completa)
-- [ ] `npm run build`/`lint`/`test` sem erro
+- [x] `npm run build`/`lint`/`test` sem erro (CI verde nos 11 PRs de tarefa;
+      suíte local 1016/1018, 2 falhas da mesma classe de flake sob carga
+      total já documentada, não relacionadas)
 - [ ] Teste manual em Homologação: ciclo completo com `/idioma en` ativo —
       conversa, relatório semanal (imagem) e mensal (PDF) saem em inglês;
       `/idioma pt` restaura tudo ao comportamento original
-- [ ] PROGRESSO.md atualizado com o marco
+- [x] PROGRESSO.md atualizado com o marco (incremental, por tarefa)
 - [ ] PLANO.md: status da Fase 10 atualizado de "spec" pra "implementada"
-- [ ] Milestone "Fase 10 — Regionalização (i18n)" fechado no GitHub
+- [ ] Milestone "Fase 10 — Regionalização (i18n)" fechado no GitHub (aguarda
+      teste manual, por convenção do checkpoint)
