@@ -74,7 +74,7 @@ fixas do bot, resposta livre da IA (`conversa_texto`) e relatórios visuais
       muda de descrição, `/idioma pt` volta ao original
 
 ### IA multilíngue
-- [ ] Tarefa 139: diretiva dinâmica de idioma em `montarMensagemSystem`/
+- [x] Tarefa 139: diretiva dinâmica de idioma em `montarMensagemSystem`/
       `gerarResposta` (`src/ai/openrouter.ts`); `texto.ts`/`voz.ts`/`midia.ts`
       passam a ler o idioma ativo (Tarefa 136) e propagar pra `gerarResposta`
 

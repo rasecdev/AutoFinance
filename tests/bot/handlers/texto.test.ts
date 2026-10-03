@@ -15,6 +15,7 @@ import {
   obterPendenciaPersistida,
 } from '../../../src/db/repositories/confirmacoesPendentes.js';
 import { migrate } from '../../../src/db/migrate.js';
+import { definirIdioma } from '../../../src/db/repositories/idiomaBot.js';
 import { createLogger } from '../../../src/logging/logger.js';
 
 const CHAVE_TESTE = 'chave-teste-handler-texto-pendencia-persistida';
@@ -151,5 +152,32 @@ describe('processarMensagemTexto — pergunta de confirmação nova vem com tecl
     await processarMensagemTexto(ctx, db, client, logger, [], 'oi', 782);
 
     expect(ctx.reply).toHaveBeenCalledWith('olá!', undefined);
+  });
+});
+
+// Fase 10 (i18n, ver PLANO.md/tasks/plan.md) — processarMensagemTexto lê o
+// idioma ativo (global, tabela idioma_bot) e propaga pra gerarResposta.
+describe('processarMensagemTexto — idioma ativo propagado pro SYSTEM_PROMPT', () => {
+  it('com idioma pt (padrão), o system prompt não tem diretiva de idioma', async () => {
+    const create = vi.fn(async () => ({ choices: [{ message: { content: 'olá!' } }] }));
+    const client = { chat: { completions: { create } } } as unknown as OpenAI;
+
+    const ctx = criarContextoFake(783);
+    await processarMensagemTexto(ctx, db, client, logger, [], 'oi', 783);
+
+    const mensagemSystem = create.mock.calls[0]?.[0]?.messages[0].content;
+    expect(mensagemSystem).not.toMatch(/Responda sempre em/);
+  });
+
+  it('com idioma en ativo, o system prompt ganha a diretiva em inglês', async () => {
+    definirIdioma(db, 'en');
+    const create = vi.fn(async () => ({ choices: [{ message: { content: 'hi!' } }] }));
+    const client = { chat: { completions: { create } } } as unknown as OpenAI;
+
+    const ctx = criarContextoFake(784);
+    await processarMensagemTexto(ctx, db, client, logger, [], 'hi', 784);
+
+    const mensagemSystem = create.mock.calls[0]?.[0]?.messages[0].content;
+    expect(mensagemSystem).toMatch(/Responda sempre em inglês\.$/);
   });
 });
