@@ -423,4 +423,4 @@ ativo.
 - [x] PROGRESSO.md atualizado com o marco (incremental, por tarefa)
 - [x] PLANO.md: status da Fase 10 atualizado de "spec" pra "implementada"
 - [x] Milestone "Fase 10 — Regionalização (i18n)" fechado no GitHub (fechado depois do
-      o teste manual, por convenção do checkpoint)
+      teste manual, por convenção do checkpoint)
