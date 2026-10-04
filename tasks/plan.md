@@ -69,8 +69,8 @@ fixas do bot, resposta livre da IA (`conversa_texto`) e relatórios visuais
       `bot.api.setMyCommands`); registrado em `comandos.ts`/`router.ts`/`index.ts`
 
 ### Checkpoint: Troca de idioma funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: `/idioma en` confirma em inglês, menu "/"
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Teste manual em Homologação: `/idioma en` confirma em inglês, menu "/"
       muda de descrição, `/idioma pt` volta ao original
 
 ### IA multilíngue
@@ -79,8 +79,8 @@ fixas do bot, resposta livre da IA (`conversa_texto`) e relatórios visuais
       passam a ler o idioma ativo (Tarefa 136) e propagar pra `gerarResposta`
 
 ### Checkpoint: IA responde no idioma ativo
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: com `/idioma en` ativo, perguntar algo em
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Teste manual em Homologação: com `/idioma en` ativo, perguntar algo em
       inglês e em português — resposta da IA sai em inglês nos dois casos;
       `/idioma pt` restaura o comportamento de hoje
 
@@ -97,8 +97,8 @@ fixas do bot, resposta livre da IA (`conversa_texto`) e relatórios visuais
 - [x] Tarefa 143: traduz `registrarEmail.ts`, `registrarOpenFinance.ts` pra `t()`
 
 ### Checkpoint: Strings fixas do bot 100% traduzidas
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: com `/idioma en`, exercitar `/ajuda`,
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Teste manual em Homologação: com `/idioma en`, exercitar `/ajuda`,
       confirmação de ação de alto impacto, erro comum, registro de e-mail/
       Open Finance — tudo em inglês
 
@@ -117,13 +117,13 @@ fixas do bot, resposta livre da IA (`conversa_texto`) e relatórios visuais
       idioma ativo
 
 ### Checkpoint: Rodada fechada (Fase 10 completa)
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: ciclo completo com `/idioma en` ativo —
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Teste manual em Homologação: ciclo completo com `/idioma en` ativo —
       conversa, relatório semanal (imagem) e mensal (PDF) saem em inglês;
       `/idioma pt` restaura tudo ao comportamento original
-- [ ] PROGRESSO.md atualizado com o marco
-- [ ] PLANO.md: status da Fase 10 atualizado de "spec" pra "implementada"
-- [ ] Milestone "Fase 10 — Regionalização (i18n)" fechado no GitHub
+- [x] PROGRESSO.md atualizado com o marco
+- [x] PLANO.md: status da Fase 10 atualizado de "spec" pra "implementada"
+- [x] Milestone "Fase 10 — Regionalização (i18n)" fechado no GitHub
 
 ## Risks and Mitigations
 

@@ -109,8 +109,8 @@ descrições do menu "/" no idioma recém-selecionado. Valor inválido (ex:
 ---
 
 ## Checkpoint: Troca de idioma funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: `/idioma en` confirma em inglês, menu "/"
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Teste manual em Homologação: `/idioma en` confirma em inglês, menu "/"
       muda de descrição, `/idioma pt` volta ao original
 
 ---
@@ -150,8 +150,8 @@ benchmark são fixos em português).
 ---
 
 ## Checkpoint: IA responde no idioma ativo
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: com `/idioma en` ativo, perguntar algo em
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Teste manual em Homologação: com `/idioma en` ativo, perguntar algo em
       inglês e em português — resposta da IA sai em inglês nos dois casos;
       `/idioma pt` restaura o comportamento de hoje
 
@@ -293,7 +293,7 @@ mapeamento ambíguo).
 
 ## Checkpoint: Strings fixas do bot 100% traduzidas
 - [x] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: com `/idioma en`, exercitar `/ajuda`,
+- [x] Teste manual em Homologação: com `/idioma en`, exercitar `/ajuda`,
       confirmação de ação de alto impacto, erro comum, registro de e-mail/
       Open Finance — tudo em inglês
 
@@ -417,10 +417,10 @@ ativo.
 - [x] `npm run build`/`lint`/`test` sem erro (CI verde nos 11 PRs de tarefa;
       suíte local 1016/1018, 2 falhas da mesma classe de flake sob carga
       total já documentada, não relacionadas)
-- [ ] Teste manual em Homologação: ciclo completo com `/idioma en` ativo —
+- [x] Teste manual em Homologação: ciclo completo com `/idioma en` ativo —
       conversa, relatório semanal (imagem) e mensal (PDF) saem em inglês;
       `/idioma pt` restaura tudo ao comportamento original
 - [x] PROGRESSO.md atualizado com o marco (incremental, por tarefa)
-- [ ] PLANO.md: status da Fase 10 atualizado de "spec" pra "implementada"
-- [ ] Milestone "Fase 10 — Regionalização (i18n)" fechado no GitHub (aguarda
-      teste manual, por convenção do checkpoint)
+- [x] PLANO.md: status da Fase 10 atualizado de "spec" pra "implementada"
+- [x] Milestone "Fase 10 — Regionalização (i18n)" fechado no GitHub (fechado depois do
+      o teste manual, por convenção do checkpoint)
