@@ -658,6 +658,25 @@ Sequenciada depois da Fase 8 (última fase planejada até aqui) — decisão reg
 
 **Notas adicionais.** Sessão de descoberta completa (`grilling`, 3 rounds) nesta conversa, decisões já confirmadas pelo usuário antes desta spec ser escrita. Quebrada em 11 tarefas via `planning-and-task-breakdown` (milestone "Fase 10 — Regionalização (i18n)" #36, issues #365-375) e implementada por completo — ver PROGRESSO.md pro detalhe de cada tarefa, incluindo achados reais (ex: resumo narrado do relatório mensal tinha prompt próprio, fora da diretiva dinâmica de idioma da Tarefa 139, corrigido na Tarefa 146). Teste manual em Homologação confirmado pelo usuário; checkpoint fechado.
 
+### Fase 11 — Pré-produção: publicar o app OAuth do Google (fim da expiração de 7 dias do token)
+**Status (2026-10-06): planejada, não iniciada. Sequenciada depois da Fase 9 (WhatsApp), junto da colocação do projeto em produção** — decisão do usuário, não é urgência.
+
+**Problema.** O app OAuth do Google (Gmail `gmail.readonly` + Calendar `calendar.events`) está com status de publicação "Testing" e tipo de usuário Externo. Nesse estado o Google emite refresh token que expira em **7 dias** (regra oficial: [Using OAuth 2.0 to Access Google APIs](https://developers.google.com/identity/protocols/oauth2#expiration)) — por isso o lembrete de reautorização (`src/bot/lembreteReautorizacaoGoogle.ts`) existe. O tipo de cliente OAuth (Desktop ou Web) não muda essa regra; o que a elimina é o status **"In production"** (ou tipo Internal, só em Workspace).
+
+**Achados da investigação (2026-10-06).**
+- O botão "Publicar app" (página Público-alvo) fica desabilitado enquanto a página **Branding** não estiver completa: pede **página inicial**, **política de privacidade** e **termos de serviço** (com domínio autorizado), mesmo sem pedir verificação do Google. Sem verificação, o app mostra o aviso "app não verificado" no consentimento (Avançado → continuar) e tem teto de 100 usuários — aceitável pra uso pessoal.
+- Foi preparado em PR separado (branch de rascunho) um `docs/` com três páginas curtas (início, privacidade, termos) + `_config.yml` excluindo `docs/progresso/` e `docs/adr/` da publicação, pra servir via GitHub Pages (`master`, pasta `/docs`). O PR contra a `master` ficou travado: a `master` ainda está na versão de dependências anterior às fases recentes (o job `npm audit` falhava por `brace-expansion`, corrigido no próprio PR) e o ruleset exige o check `docker`, que o workflow antigo da `master` não tem — resolve sozinho quando a `development` for promovida.
+- Links temporários com domínio placeholder não são recomendados: domínio de terceiro vira "página do app" na tela de consentimento e links quebrados podem ser sinalizados pelo Google.
+
+**Escopo (a quebrar em tarefas na hora de abrir a fase).**
+1. Promover `development` → `master` (produção) — só com decisão explícita do usuário, depois de teste manual em Homologação, como sempre.
+2. Publicar as páginas legais no GitHub Pages (reaproveitar o rascunho acima), ativar Pages na `master`/`docs`.
+3. No Google Cloud (projeto de Homologação e de Produção, se forem projetos separados): preencher Branding com as URLs do Pages, clicar em "Publicar app" na página Público-alvo.
+4. Refazer o consentimento uma vez por ambiente (`/registrar_email` ou `src/scripts/configurarGoogleOAuth.ts`) pra obter refresh token novo — os emitidos em "Testing" continuam com validade de 7 dias.
+5. Observar ~8 dias; se o token continuar válido, remover o lembrete de reautorização (`lembreteReautorizacaoGoogle.ts`) e a lógica ligada a ele.
+
+**Fora de escopo.** Verificação do app pelo Google (não necessária pro uso pessoal); mudar o tipo de cliente OAuth; migrar pra conta Workspace/Internal.
+
 ---
 
 ## Papel do chat depois da automação (e-mail + Open Finance)
