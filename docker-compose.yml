@@ -296,9 +296,12 @@ services:
   # repositório. Porta local (não publicada pra fora da VM) só pra permitir
   # curl/QR code manual durante pareamento (scripts/parearWhatsapp.ts) e
   # verificação de health — não é o servidor HTTP público que a Rodada 1
-  # dispensa (ver tasks/plan.md).
+  # dispensa (ver tasks/plan.md). Tag `noweb-arm`, não `latest`/`noweb`: a VM
+  # (Oracle Ampere A1) é ARM64, e `devlikeapro/waha` só publica manifesto
+  # arm64 nas tags com sufixo `-arm` — achado real ao rodar `docker compose
+  # up -d` na VM (`latest` deu "no matching manifest for linux/arm64/v8").
   whatsapp-homologacao:
-    image: devlikeapro/waha:latest
+    image: devlikeapro/waha:noweb-arm
     environment:
       WHATSAPP_DEFAULT_ENGINE: NOWEB
     ports:
@@ -313,7 +316,7 @@ services:
         max-file: '3'
 
   whatsapp-producao:
-    image: devlikeapro/waha:latest
+    image: devlikeapro/waha:noweb-arm
     environment:
       WHATSAPP_DEFAULT_ENGINE: NOWEB
     ports:
