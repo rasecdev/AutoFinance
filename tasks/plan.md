@@ -1,138 +1,54 @@
-# Implementation Plan: Fase 10 — Regionalização (i18n: português/inglês/espanhol)
+# Implementation Plan: Multi-canal — WhatsApp via WAHA (Rodada 1: mensagens proativas)
 
 ## Overview
 
-Spec completa em [PLANO.md](../PLANO.md), seção "Fase 10 — Regionalização
-(i18n: português/inglês/espanhol)" (publicada via `to-spec` a partir de sessão
-de `grilling`). O bot passa a entender e responder em português, inglês ou
-espanhol, com um idioma ativo único e global por instância (sem granularidade
-por `chat_id` — decisão consciente, projeto continua single-user), trocável
-via comando de barra (`/idioma <pt|en|es>`). Cobertura completa: strings
-fixas do bot, resposta livre da IA (`conversa_texto`) e relatórios visuais
-(imagem semanal, PDF mensal). Só o canal Telegram nesta rodada.
+Fase 9 do PLANO.md (linha 601). Objetivo desta rodada: relatório semanal/mensal e alertas (preço, despesa fixa faltante, erro crítico) — que já saem proativamente por Telegram — também saem por WhatsApp, em paralelo, quando o canal estiver configurado. **Não inclui** chat bidirecional pelo WhatsApp (responder pergunta, tool calling, confirmação) — isso vira a Rodada 2, uma fase própria, maior: os handlers de conversa (`src/bot/handlers/*`, `router.ts`, `confirmacao.ts`, `rastroRespostas.ts`) são profundamente acoplados ao `Context` do `grammy` (`ctx.message`, `ctx.chat.id`, `ctx.reply`, `ctx.callbackQuery`, `ctx.getFile()`, etc., ~20 arquivos) — abstrair tudo isso de uma vez seria uma tarefa XL, e não é necessário pro valor imediato desta rodada (receber relatório/alerta no WhatsApp).
+
+Decisão de arquitetura (pesquisa via WebSearch/WebFetch, 2026-09-22 — ver PROGRESSO.md pro racional completo e fontes): **WAHA** (`waha.devlike.pro`, Apache-2.0, self-hosted), motor `NOWEB` (WebSocket, sem Chromium), não a Cloud API oficial da Meta. Ver PLANO.md (Fase 9) pro resumo da decisão. Risco aceito conscientemente pelo usuário: automação não-oficial, risco real (não zero) de banimento do número conectado — mitigado com número de telefone secundário dedicado ao bot, nunca o WhatsApp pessoal do usuário.
+
+Infraestrutura reaproveitada sem mudança: todos os 7 scripts que hoje mandam mensagem proativa (`relatorioSemanal.ts`, `relatorioMensal.ts`, `monitorarPrecos.ts`, `verificarDespesasFixas.ts`, `lerEmailFaturas.ts`, `sincronizarOpenFinance.ts`, `tratarErroCriticoJob.ts`) constroem seu próprio `new Bot(botToken)` e chamam `bot.api.sendMessage`/`sendPhoto`/`sendDocument` num loop de `chatIds` — nenhuma lógica de negócio muda, só um canal a mais no fan-out de envio.
 
 ## Architecture Decisions
 
-- **Tabela singleton nova** (`idioma_bot`, sem `chat_id`) guarda só o idioma
-  ativo — diferente do padrão por-chat de `bot_pausado` (migration 0017), de
-  propósito: aqui não há necessidade real de granularidade por chat. Nasce
-  com `pt` (sem auto-detect do `language_code` do Telegram — avaliado e
-  descartado na sessão de `grilling`: ganho marginal, complexidade extra).
-- **Módulo `src/i18n/`** — catálogo de strings por idioma (objeto plano
-  `chave → texto` por idioma, com interpolação simples de parâmetro via
-  `{nome}`) + `t(chave, idioma, params?)`. Sem dependência nova (`i18next`
-  descartado — volume de ~60 chaves não justifica).
-- **`SYSTEM_PROMPT` continua em português, fonte única** (`src/ai/systemPrompt.ts`,
-  14 regras) — ganha uma diretiva dinâmica apendada em runtime ("Responda
-  sempre em {idioma}"), confiando na compreensão multilíngue nativa dos
-  modelos já roteados. `montarMensagemSystem`/`gerarResposta`
-  (`src/ai/openrouter.ts`) ganham parâmetro `idioma` (default `'pt'`, não
-  quebra `benchmark.ts`, que importa `SYSTEM_PROMPT` direto e fica de fora
-  desta rodada — casos de benchmark são fixos em português).
-- **`/idioma` precisa re-registrar `setMyCommands`** — a troca de idioma muda
-  as descrições do menu "/" do Telegram (`src/bot/comandos.ts` passa a usar
-  `t()`); o handler do comando chama `bot.api.setMyCommands` de novo depois
-  de gravar o novo idioma, não só na subida do processo (`index.ts`).
-- **Escopo de tradução de strings fixas, por área** (vertical, cada task abaixo
-  entrega uma área fechada e testável):
-  1. Comando `/idioma` + `comandos.ts` + `/ajuda`.
-  2. Handlers de confirmação/erro comuns (`callbackConfirmacao.ts`,
-     `feedback.ts`, `naoSuportado.ts`, `modelo.ts`, `modelos.ts`, `pausar.ts`,
-     `retomar.ts`).
-  3. Handlers de entrada de dado (`texto.ts`, `midia.ts`, `voz.ts`,
-     `registrarEmail.ts`, `registrarOpenFinance.ts`).
-  4. Alertas proativos (`monitorarPrecos.ts`, `verificarDespesasFixas.ts`,
-     alerta de limite de cartão embutido em `ai/tools/transacoes.ts`).
-- **Relatórios visuais** (`imagemSemanal.ts`, `pdfMensal.ts`) recebem `idioma`
-  como parâmetro de quem monta (`relatorioSemanal.ts`/`relatorioMensal.ts`/
-  `relatorioMensalCompleto.ts`), lido do repositório de idioma ativo.
-- **Formatação de número/data/moeda não muda** — sempre pt-BR, independente do
-  idioma do texto (decisão já fechada na spec).
-- **Categoria em texto livre sem normalização entre idiomas** (decisão já
-  fechada na spec, extensão do ADR 0002).
+- **WAHA roda como serviço Docker próprio por ambiente** (`whatsapp-homologacao`/`whatsapp-producao` no `docker-compose.yml`, mesmo padrão de todo par de serviços já existente no projeto — volume próprio pra persistir a sessão do WhatsApp Web entre restarts, sem precisar reescanear QR code toda hora). Cada ambiente usa um número de telefone dedicado diferente (uma sessão WAHA = um número só) — mesmo princípio de isolamento total já usado no resto do projeto (banco, bot Telegram, credenciais próprias por ambiente).
+- **Sem servidor HTTP público novo — nem sequer interno nesta rodada.** Como esta rodada é só envio (proativo), não precisa receber nada da WAHA — o webhook de mensagem recebida (que seria container-a-container, nunca público) fica pra Rodada 2, quando existir handler de chat pra processar mensagem recebida. Nesta rodada, a configuração de webhook da sessão WAHA fica simplesmente vazia/não configurada.
+- **Cliente HTTP fino pro WAHA** (`src/canais/whatsapp.ts`), sem SDK novo — só `fetch` contra a REST API da WAHA (`POST /api/sendText`, `/api/sendImage`, `/api/sendFile`), autenticado por API key (header, gerada na configuração da sessão). Mídia (imagem semanal, PDF mensal) enviada via `file.data` em base64 — os Buffers já são gerados em memória pelo projeto, sem precisar hospedar URL pública do arquivo. Mesmo princípio de "cliente mínimo sobre HTTP" já usado pro resto do projeto (ex: `fetch` direto pro catálogo público do OpenRouter em `monitorarPrecos.ts`, sem SDK).
+- **Função de fan-out único** (`src/canais/notificar.ts`): `notificarTexto`/`notificarImagem`/`notificarDocumento(db, env, bot, chatIds, conteudo)` — manda pro Telegram (como já acontece) e, se `WHATSAPP_WAHA_URL`/`WHATSAPP_DESTINATARIOS` estiverem configurados no ambiente, também manda pro WhatsApp via `src/canais/whatsapp.ts`. Falha de envio num canal não derruba o outro (mesmo princípio já usado em `tratarErroCriticoJob`: "falha ao enviar pra um chat não impede os outros"). Os 7 scripts trocam a chamada direta `bot.api.sendX` por essa função — não existe abstração de "canal" genérica com adapter Telegram nesta rodada (seria prematuro sem o caso de uso do chat bidirecional) — é só um fan-out de envio.
+- **Configuração via env, mesmo padrão do par Google/Pluggy (`env.ts`)**: `WHATSAPP_WAHA_URL`, `WHATSAPP_WAHA_API_KEY`, `WHATSAPP_WAHA_SESSION`, `WHATSAPP_DESTINATARIOS` (lista de números, mesmo formato de `TELEGRAM_ALLOWED_CHAT_IDS`) — todos opcionais, mas exigidos juntos (`superRefine`, mesma regra do par `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`). Ausentes por completo é estado válido ("integração desligada") — mensagem proativa continua saindo só por Telegram, nada quebra enquanto o usuário não parear o WhatsApp.
+- **Pareamento inicial via script de linha de comando** (`scripts/parearWhatsapp.ts`), mesmo padrão de `configurarGoogleOAuth.ts`/`gerarConnectTokenPluggy.ts`: cria a sessão via `POST /api/sessions`, busca o QR code (`GET /api/{session}/auth/qr`) e salva como imagem local — usuário escaneia uma vez com o WhatsApp do número dedicado. Sessão persiste no volume Docker depois disso, sem precisar rodar de novo (a menos que desconecte).
+- **Sem confirmação de leitura/histórico de mensagem recebida nesta rodada** — como não há chat bidirecional ainda, não há nada pra rastrear além do envio em si (sucesso/falha, já logado como qualquer outro envio).
 
 ## Task List
 
-### Fundação
-- [x] Tarefa 136: migration `idioma_bot` (tabela singleton) + repositório
-      `src/db/repositories/idiomaBot.ts` (`obterIdioma`/`definirIdioma`,
-      default `'pt'` sem linha)
-- [x] Tarefa 137: módulo `src/i18n/` — `catalogo.ts` (chaves iniciais: handler
-      `/idioma`, confirmações genéricas) + `t(chave, idioma, params?)`
+1. Tarefa 122: `docker-compose.yml` — serviços `whatsapp-homologacao`/`whatsapp-producao` (WAHA, motor NOWEB) + `env.ts` (novas variáveis opcionais)
+2. Tarefa 123: `scripts/parearWhatsapp.ts` — pareamento inicial via QR code
+3. Tarefa 124: `src/canais/whatsapp.ts` — cliente HTTP fino (enviarTexto/enviarImagem/enviarDocumento)
+4. Tarefa 125: `src/canais/notificar.ts` — função de fan-out (Telegram + WhatsApp quando configurado)
 
-### Checkpoint: Fundação
-- [x] `npm run build`/`lint`/`test` sem erro
+### Checkpoint: Infraestrutura e envio funcionais (sem wiring nos jobs ainda)
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual: sessão WAHA pareada em Homologação (QR escaneado com o número dedicado), `notificarTexto`/`notificarImagem`/`notificarDocumento` testados manualmente contra a sessão real (script avulso ou REPL) — mensagem chega no WhatsApp
+- [ ] Revisão com o usuário antes de prosseguir pro wiring nos jobs
 
-### Comando de troca de idioma
-- [x] Tarefa 138: handler `/idioma <pt|en|es>` (valida enum, grava via
-      Tarefa 136, responde confirmação via `t()` no novo idioma, re-chama
-      `bot.api.setMyCommands`); registrado em `comandos.ts`/`router.ts`/`index.ts`
+5. Tarefa 126: wiring — `relatorioSemanal.ts`, `relatorioMensal.ts`, `tratarErroCriticoJob.ts` passam a usar `notificar*` em vez de `bot.api.sendX` direto
+6. Tarefa 127: wiring — `monitorarPrecos.ts`, `verificarDespesasFixas.ts`, `lerEmailFaturas.ts`, `sincronizarOpenFinance.ts` passam a usar `notificar*`
 
-### Checkpoint: Troca de idioma funcional
-- [x] `npm run build`/`lint`/`test` sem erro
-- [x] Teste manual em Homologação: `/idioma en` confirma em inglês, menu "/"
-      muda de descrição, `/idioma pt` volta ao original
-
-### IA multilíngue
-- [x] Tarefa 139: diretiva dinâmica de idioma em `montarMensagemSystem`/
-      `gerarResposta` (`src/ai/openrouter.ts`); `texto.ts`/`voz.ts`/`midia.ts`
-      passam a ler o idioma ativo (Tarefa 136) e propagar pra `gerarResposta`
-
-### Checkpoint: IA responde no idioma ativo
-- [x] `npm run build`/`lint`/`test` sem erro
-- [x] Teste manual em Homologação: com `/idioma en` ativo, perguntar algo em
-      inglês e em português — resposta da IA sai em inglês nos dois casos;
-      `/idioma pt` restaura o comportamento de hoje
-
-### Strings fixas — área 1 (comando/ajuda)
-- [x] Tarefa 140: traduz `comandos.ts` (descrições) e `ajuda.ts` pra `t()`
-
-### Strings fixas — área 2 (confirmação/erro comuns)
-- [x] Tarefa 141: traduz `callbackConfirmacao.ts`, `feedback.ts`,
-      `naoSuportado.ts`, `modelo.ts`, `modelos.ts`, `pausar.ts`, `retomar.ts`
-      pra `t()`
-
-### Strings fixas — área 3 (entrada de dado)
-- [x] Tarefa 142: traduz `texto.ts`, `midia.ts`, `voz.ts` pra `t()`
-- [x] Tarefa 143: traduz `registrarEmail.ts`, `registrarOpenFinance.ts` pra `t()`
-
-### Checkpoint: Strings fixas do bot 100% traduzidas
-- [x] `npm run build`/`lint`/`test` sem erro
-- [x] Teste manual em Homologação: com `/idioma en`, exercitar `/ajuda`,
-      confirmação de ação de alto impacto, erro comum, registro de e-mail/
-      Open Finance — tudo em inglês
-
-### Alertas proativos
-- [x] Tarefa 144: traduz `monitorarPrecos.ts`/`verificarDespesasFixas.ts` pra
-      `t()`, lendo idioma ativo no início do job. Alerta de limite de cartão
-      (`ai/tools/transacoes.ts`) revisado e descartado — passa pela narração
-      da IA, já coberto pela Tarefa 139, sem string própria pra traduzir
-
-### Relatórios visuais
-- [x] Tarefa 145: `imagemSemanal.ts` lê o idioma direto do `db` que já
-      recebe como parâmetro (sem precisar threading explícito pelos
-      callers), troca textos fixos por `t()`
-- [x] Tarefa 146: `pdfMensal.ts` recebe `idioma`, troca textos fixos por
-      `t()`; `relatorioMensal.ts`/`relatorioMensalCompleto.ts` passam o
-      idioma ativo
-
-### Checkpoint: Rodada fechada (Fase 10 completa)
-- [x] `npm run build`/`lint`/`test` sem erro
-- [x] Teste manual em Homologação: ciclo completo com `/idioma en` ativo —
-      conversa, relatório semanal (imagem) e mensal (PDF) saem em inglês;
-      `/idioma pt` restaura tudo ao comportamento original
-- [x] PROGRESSO.md atualizado com o marco
-- [x] PLANO.md: status da Fase 10 atualizado de "spec" pra "implementada"
-- [x] Milestone "Fase 10 — Regionalização (i18n)" fechado no GitHub
+### Checkpoint: Rodada 1 fechada (mensagens proativas no WhatsApp)
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação: rodar `relatorioSemanal.js --agora`/`relatorioMensal.js --agora` de verdade — mensagem chega nos dois canais (Telegram e WhatsApp)
+- [ ] PROGRESSO.md atualizado com o marco
+- [ ] Revisão com o usuário antes de considerar a Rodada 2 (chat bidirecional)
 
 ## Risks and Mitigations
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Modelo "vaza" português mesmo com a diretiva de idioma (ex: usa termo técnico em pt no meio da resposta em inglês) | Médio — pode exigir reforçar a diretiva ou trocar de modelo no fluxo `conversa_texto` | Validar manualmente em Homologação antes de fechar o checkpoint de IA multilíngue; se persistir, registrar como achado e decidir caso a caso (mesmo padrão já usado pra outros achados de modelo no PROGRESSO.md) |
-| Volume de strings fixas (~60 chaves) maior do que o levantado nesta sessão, achado só durante a tradução (handler esquecido) | Baixo — não bloqueia, só estende uma das tasks de "Strings fixas" | Cada task de área já é uma vertical slice independente; chave faltante aparece como achado real registrado no PROGRESSO.md, não trava o checkpoint seguinte |
-| `setMyCommands` chamado repetidamente (troca de idioma frequente) bate rate limit da API do Telegram | Baixo — troca de idioma não é ação de alta frequência | Sem mitigação dedicada nesta rodada; revisitar só se acontecer na prática |
+| Número WhatsApp conectado ser banido pela Meta (WAHA é automação não-oficial) | Médio-Alto (perde o canal, não o projeto — Telegram continua intacto) | Número secundário dedicado só ao bot (nunca o WhatsApp pessoal do usuário), decisão consciente já tomada; mensagem proativa vai só pra 1 contato conhecido (o próprio usuário), não mensagem em massa — perfil de risco bem menor que o cenário que a doc do WAHA alerta |
+| Sessão WAHA cair/desconectar sozinha (comum em automação de WhatsApp Web) e ninguém perceber | Médio | `notificarTexto`/etc. logam falha de envio (mesmo padrão de `tratarErroCriticoJob`) sem derrubar o job nem o outro canal — falha de envio WhatsApp vira uma linha de log observável, não um silêncio |
+| Volume Docker da sessão corromper ou se perder num redeploy, exigindo reescanear QR | Baixo | Mesmo tratamento de qualquer volume do projeto (backup já cobre bancos, não sessões WAHA — sessão é reconectável manualmente via `parearWhatsapp.ts`, não é dado crítico irrecuperável) |
+| WAHA (protocolo reverso) quebrar com uma atualização do WhatsApp e parar de funcionar até a lib atualizar | Baixo-Médio | Fora do controle do projeto — mesma classe de risco já aceita ao escolher a lib; Telegram continua como canal primário garantido enquanto isso não acontecer |
 
 ## Open Questions
 
-Nenhuma — sessão de `grilling` (3 rounds) fechou a frontier antes da spec ser escrita.
+- Rodada 2 (chat bidirecional pelo WhatsApp — responder pergunta, tool calling, confirmação) fica pra quando a Rodada 1 provar que vale a pena manter o canal ativo na prática — não planejada em detalhe aqui, só citada como próximo passo natural se a Rodada 1 for bem.
+- Vale, na Rodada 2, extrair de fato uma interface `Canal` genérica (a ideia original do PLANO.md) pra evitar duplicar handler por canal, ou é mais simples ter um adapter WhatsApp específico que só reaproveita a lógica de negócio (não a camada de handler em si)? Não decidido — decisão de design pra quando a Rodada 2 for planejada, com o código de verdade da Rodada 1 já em mãos como referência.
