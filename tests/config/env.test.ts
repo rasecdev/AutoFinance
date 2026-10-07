@@ -24,6 +24,7 @@ describe('loadEnv', () => {
       logLevel: 'info',
       googleOAuthClient: null,
       pluggy: null,
+      whatsapp: null,
     });
   });
 
@@ -101,5 +102,33 @@ describe('loadEnv', () => {
     });
 
     expect(env.pluggy).toEqual({ clientId: 'pluggy-id-teste', clientSecret: 'pluggy-secret-teste' });
+  });
+
+  it('sem nenhuma variável WhatsApp, env.whatsapp é null', () => {
+    const env = loadEnv(validEnv);
+    expect(env.whatsapp).toBeNull();
+  });
+
+  it('par WhatsApp incompleto (só WAHA_URL) lança erro explicando o que falta', () => {
+    expect(() =>
+      loadEnv({ ...validEnv, WHATSAPP_WAHA_URL: 'http://whatsapp-homologacao:3000' }),
+    ).toThrowError(/WHATSAPP_WAHA_API_KEY/);
+  });
+
+  it('par WhatsApp completo preenche env.whatsapp', () => {
+    const env = loadEnv({
+      ...validEnv,
+      WHATSAPP_WAHA_URL: 'http://whatsapp-homologacao:3000',
+      WHATSAPP_WAHA_API_KEY: 'waha-key-teste',
+      WHATSAPP_WAHA_SESSION: 'default',
+      WHATSAPP_DESTINATARIOS: '5511999999999',
+    });
+
+    expect(env.whatsapp).toEqual({
+      wahaUrl: 'http://whatsapp-homologacao:3000',
+      wahaApiKey: 'waha-key-teste',
+      wahaSession: 'default',
+      destinatarios: ['5511999999999'],
+    });
   });
 });

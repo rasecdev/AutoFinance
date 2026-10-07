@@ -291,6 +291,44 @@ services:
         max-size: '10m'
         max-file: '3'
 
+  # Fase 9 (WhatsApp via WAHA, Rodada 1) — único par de serviços do projeto
+  # sem `build:` próprio: é imagem publicada pela WAHA, não código deste
+  # repositório. Porta local (não publicada pra fora da VM) só pra permitir
+  # curl/QR code manual durante pareamento (scripts/parearWhatsapp.ts) e
+  # verificação de health — não é o servidor HTTP público que a Rodada 1
+  # dispensa (ver tasks/plan.md).
+  whatsapp-homologacao:
+    image: devlikeapro/waha:latest
+    environment:
+      WHATSAPP_DEFAULT_ENGINE: NOWEB
+    ports:
+      - '127.0.0.1:3000:3000'
+    volumes:
+      - whatsapp-homologacao-sessoes:/app/.sessions
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  whatsapp-producao:
+    image: devlikeapro/waha:latest
+    environment:
+      WHATSAPP_DEFAULT_ENGINE: NOWEB
+    ports:
+      - '127.0.0.1:3001:3000'
+    volumes:
+      - whatsapp-producao-sessoes:/app/.sessions
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
 volumes:
   producao-db:
   homologacao-db:
+  whatsapp-homologacao-sessoes:
+  whatsapp-producao-sessoes:
