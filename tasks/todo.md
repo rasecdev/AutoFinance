@@ -59,14 +59,14 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 1
 **Description:** `enviarTextoWhatsapp(config, destinatario, texto)`, `enviarImagemWhatsapp(config, destinatario, imagem: Buffer, legenda?)`, `enviarDocumentoWhatsapp(config, destinatario, documento: Buffer, nomeArquivo)` — `fetch` direto contra `POST {WAHA_URL}/api/sendText`/`/api/sendImage`/`/api/sendFile`, autenticado via header de API key, mídia em base64 (`file.data`). `config` é `{ url, apiKey, session }` (vem de `env`, mas função pura o suficiente pra testar sem carregar env de verdade). `destinatario` no formato de número que a WAHA espera (`<numero>@c.us`) — validar/normalizar formato antes de montar o payload.
 
 **Acceptance criteria:**
-- [ ] `enviarTextoWhatsapp` monta o payload certo (`session`, `chatId`, `text`) e inclui o header de API key
-- [ ] `enviarImagemWhatsapp`/`enviarDocumentoWhatsapp` codificam o Buffer em base64 no campo `file.data`, com `mimetype`/`filename` corretos
-- [ ] Erro de rede/resposta não-2xx da WAHA propaga como exceção clara (mensagem inclui status HTTP), não falha silenciosa
-- [ ] Número de destinatário sem o sufixo `@c.us` é normalizado antes do envio
+- [x] `enviarTextoWhatsapp` monta o payload certo (`session`, `chatId`, `text`) e inclui o header de API key
+- [x] `enviarImagemWhatsapp`/`enviarDocumentoWhatsapp` codificam o Buffer em base64 no campo `file.data`, com `mimetype`/`filename` corretos
+- [x] Erro de rede/resposta não-2xx da WAHA propaga como exceção clara (mensagem inclui status HTTP), não falha silenciosa
+- [x] Número de destinatário sem o sufixo `@c.us` é normalizado antes do envio
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/canais/whatsapp.test.ts` (mocka `fetch` global)
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/canais/whatsapp.test.ts` (mocka `fetch` global)
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** None (não depende da Tarefa 122/123 pra existir — só pra ser testado de verdade)
 
