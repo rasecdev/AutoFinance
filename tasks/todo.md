@@ -35,14 +35,14 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 1
 **Description:** Script de linha de comando, rodado uma vez (mesmo padrão de `configurarGoogleOAuth.ts`/`gerarConnectTokenPluggy.ts`): cria a sessão via `POST {WAHA_URL}/api/sessions` (nome da sessão de `WHATSAPP_WAHA_SESSION`), busca o QR code via `GET {WAHA_URL}/api/{session}/auth/qr` e salva como arquivo `.png` local (`qr-whatsapp.png` ou similar) — usuário abre o arquivo e escaneia com o WhatsApp do número dedicado. Roda dentro do container (`docker compose run --rm --no-deps whatsapp-homologacao ...` não se aplica — é o *bot* que chama a API da WAHA, não a WAHA em si; rodar como `docker compose run --rm --no-deps homologacao node dist/scripts/parearWhatsapp.js`, mesmo padrão dos outros scripts avulsos).
 
 **Acceptance criteria:**
-- [ ] Cria a sessão se ainda não existir (idempotente — sessão já criada não é erro)
-- [ ] QR code salvo como arquivo de imagem válido, path informado no console
-- [ ] Erro claro se `WHATSAPP_WAHA_URL`/`WHATSAPP_WAHA_API_KEY`/`WHATSAPP_WAHA_SESSION` não estiverem configurados
+- [x] Cria a sessão se ainda não existir (idempotente — sessão já criada não é erro)
+- [x] QR code salvo como arquivo de imagem válido, path informado no console
+- [x] Erro claro se `WHATSAPP_WAHA_URL`/`WHATSAPP_WAHA_API_KEY`/`WHATSAPP_WAHA_SESSION` não estiverem configurados
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/scripts/parearWhatsapp.test.ts` (mocka a API da WAHA — não depende de sessão real)
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: QR gerado de verdade contra a sessão WAHA de Homologação, escaneado com o número dedicado, sessão fica `WORKING`
+- [x] Tests pass: `npx vitest run tests/scripts/parearWhatsapp.test.ts` (mocka a API da WAHA — não depende de sessão real)
+- [x] Build succeeds: `npm run build`
+- [ ] Manual check: QR gerado de verdade contra a sessão WAHA de Homologação, escaneado com o número dedicado, sessão fica `WORKING` — **pendente, precisa do usuário rodar e escanear com o número dedicado**
 
 **Dependencies:** Tarefa 122
 
