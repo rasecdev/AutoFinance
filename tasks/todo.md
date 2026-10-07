@@ -83,14 +83,14 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 1
 **Description:** `notificarTexto(env, bot, chatIds, texto)`, `notificarImagem(env, bot, chatIds, imagem, legenda?)`, `notificarDocumento(env, bot, chatIds, documento, nomeArquivo)` — manda pro Telegram como cada script já faz hoje (`bot.api.sendMessage`/`sendPhoto`/`sendDocument` por `chatId`), e adicionalmente, se `env.whatsappWahaUrl` (e demais variáveis) estiverem presentes, manda a mesma mensagem por WhatsApp via `src/canais/whatsapp.ts` pra cada número de `env.whatsappDestinatarios`. Falha de envio num canal não impede o outro nem lança exceção pro chamador (mesmo princípio já usado em `tratarErroCriticoJob` — loga e segue).
 
 **Acceptance criteria:**
-- [ ] Com WhatsApp configurado: mensagem sai pros dois canais
-- [ ] Sem WhatsApp configurado: mensagem sai só por Telegram, sem erro nem log de "tentou e falhou"
-- [ ] Falha no envio WhatsApp (ex: sessão desconectada) não impede o envio Telegram, e vice-versa
-- [ ] Falha em qualquer canal é logada, não lançada como exceção (chamador não precisa de try/catch pra isso)
+- [x] Com WhatsApp configurado: mensagem sai pros dois canais
+- [x] Sem WhatsApp configurado: mensagem sai só por Telegram, sem erro nem log de "tentou e falhou"
+- [x] Falha no envio WhatsApp (ex: sessão desconectada) não impede o envio Telegram, e vice-versa
+- [x] Falha em qualquer canal é logada, não lançada como exceção (chamador não precisa de try/catch pra isso)
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/canais/notificar.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/canais/notificar.test.ts`
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** Tarefa 124
 
