@@ -1,4 +1,6 @@
 import { readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { parearWhatsapp } from '../../src/scripts/parearWhatsapp.js';
 
@@ -22,7 +24,10 @@ function mockarFetch(
   return fetchFalso;
 }
 
-const CAMINHO_TESTE = './data/qr-whatsapp-teste.png';
+// Diretório temporário do SO, não `./data/` do repositório — esse só existe
+// localmente depois do primeiro `loadEnv`/migration real, e não no checkout
+// limpo do CI.
+const CAMINHO_TESTE = join(tmpdir(), 'qr-whatsapp-teste.png');
 
 afterEach(async () => {
   vi.unstubAllGlobals();
