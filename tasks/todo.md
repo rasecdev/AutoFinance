@@ -12,12 +12,12 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 1
 - [x] `docker compose config` valida sem erro com os dois serviços novos — confirmado no CI do PR #406 (job `docker`: `docker build .` + `docker compose config`, ambos verdes)
 - [x] `env.ts`: as 4 variáveis ausentes juntas não geram erro de validação (integração desligada)
 - [x] `env.ts`: só parte das 4 variáveis presentes gera erro de validação claro (mesmo padrão do par Google)
-- [ ] Serviço `whatsapp-homologacao` sobe localmente (`docker compose up whatsapp-homologacao`) e responde no endpoint de health/QR da WAHA — **achado real: `docker compose up -d` na VM (Oracle Ampere A1, ARM64) falhou com `devlikeapro/waha:latest` ("no matching manifest for linux/arm64/v8") — tag corrigida pra `noweb-arm`; falta reconfirmar na VM depois do deploy com a correção**
+- [x] Serviço `whatsapp-homologacao` sobe localmente (`docker compose up whatsapp-homologacao`) e responde no endpoint de health/QR da WAHA — confirmado na VM: `whatsapp-homologacao`/`whatsapp-producao` `Started`, `curl http://127.0.0.1:3000/api/health` responde `401 Unauthorized` (serviço de pé, exige API key por padrão — tratado na Tarefa 123/124)
 
 **Verification:**
 - [x] Tests pass: `npx vitest run tests/config/env.test.ts`
 - [x] Build succeeds: `npm run build`
-- [ ] Manual check: `docker compose up whatsapp-homologacao` sobe sem erro, `curl` no endpoint da API confirma resposta — **pendente, reconfirmar na VM com a tag `noweb-arm`**
+- [x] Manual check: `sudo docker compose up -d` subiu os 24 serviços na VM (Homologação e Produção, inclusive os dois que o `deploy.sh` vinha deixando de fora), `curl` no endpoint de health da WAHA confirmou resposta
 
 **Dependencies:** None
 
