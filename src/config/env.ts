@@ -1,15 +1,24 @@
 import { z } from 'zod';
 
-const chatIdListSchema = z
-  .string()
-  .min(1, 'TELEGRAM_ALLOWED_CHAT_IDS não pode ser vazio')
-  .transform((value) => value.split(',').map((id) => id.trim()))
-  .pipe(z.array(z.string().min(1)).min(1));
+const listaIdsSchema = (nomeVar: string) =>
+  z
+    .string()
+    .min(1, `${nomeVar} não pode ser vazio`)
+    .transform((value) => value.split(',').map((id) => id.trim()))
+    .pipe(z.array(z.string().min(1)).min(1));
+
+const chatIdListSchema = listaIdsSchema('TELEGRAM_ALLOWED_CHAT_IDS');
 
 const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace'] as const;
 
 const GOOGLE_PAR_CLIENTE = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'] as const;
 const PLUGGY_PAR_CLIENTE = ['PLUGGY_CLIENT_ID', 'PLUGGY_CLIENT_SECRET'] as const;
+const WHATSAPP_PAR_CLIENTE = [
+  'WHATSAPP_WAHA_URL',
+  'WHATSAPP_WAHA_API_KEY',
+  'WHATSAPP_WAHA_SESSION',
+  'WHATSAPP_DESTINATARIOS',
+] as const;
 
 const envSchema = z
   .object({
@@ -28,6 +37,10 @@ const envSchema = z
     GOOGLE_CALENDAR_ID: z.string().min(1).optional(),
     PLUGGY_CLIENT_ID: z.string().min(1).optional(),
     PLUGGY_CLIENT_SECRET: z.string().min(1).optional(),
+    WHATSAPP_WAHA_URL: z.string().min(1).optional(),
+    WHATSAPP_WAHA_API_KEY: z.string().min(1).optional(),
+    WHATSAPP_WAHA_SESSION: z.string().min(1).optional(),
+    WHATSAPP_DESTINATARIOS: listaIdsSchema('WHATSAPP_DESTINATARIOS').optional(),
   })
   .superRefine((data, ctx) => {
     // CLIENT_ID/CLIENT_SECRET sempre juntos ou nenhum dos dois. O
@@ -58,6 +71,19 @@ const envSchema = z
         message: `integração Pluggy incompleta — faltando: ${faltando.join(', ')}`,
       });
     }
+
+    // Fase 9 (WhatsApp via WAHA, Rodada 1) — mesmo padrão dos pares acima:
+    // as 4 juntas ou nenhuma. Ausentes por completo é estado válido
+    // (mensagem proativa continua saindo só por Telegram).
+    const parWhatsappPresente = WHATSAPP_PAR_CLIENTE.filter((nome) => data[nome] !== undefined);
+    if (parWhatsappPresente.length > 0 && parWhatsappPresente.length < WHATSAPP_PAR_CLIENTE.length) {
+      const faltando = WHATSAPP_PAR_CLIENTE.filter((nome) => data[nome] === undefined);
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['WHATSAPP'],
+        message: `integração WhatsApp incompleta — faltando: ${faltando.join(', ')}`,
+      });
+    }
   });
 
 export type Env = {
@@ -85,6 +111,14 @@ export type Env = {
   pluggy: {
     clientId: string;
     clientSecret: string;
+  } | null;
+  // Fase 9 (WhatsApp via WAHA, Rodada 1) — ausente = mensagem proativa
+  // continua saindo só por Telegram; mesmo padrão de pluggy acima.
+  whatsapp: {
+    wahaUrl: string;
+    wahaApiKey: string;
+    wahaSession: string;
+    destinatarios: string[];
   } | null;
 };
 
@@ -114,6 +148,19 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
       ? { clientId: parsed.PLUGGY_CLIENT_ID, clientSecret: parsed.PLUGGY_CLIENT_SECRET }
       : null;
 
+  const whatsapp =
+    parsed.WHATSAPP_WAHA_URL &&
+    parsed.WHATSAPP_WAHA_API_KEY &&
+    parsed.WHATSAPP_WAHA_SESSION &&
+    parsed.WHATSAPP_DESTINATARIOS
+      ? {
+          wahaUrl: parsed.WHATSAPP_WAHA_URL,
+          wahaApiKey: parsed.WHATSAPP_WAHA_API_KEY,
+          wahaSession: parsed.WHATSAPP_WAHA_SESSION,
+          destinatarios: parsed.WHATSAPP_DESTINATARIOS,
+        }
+      : null;
+
   return {
     ambiente: parsed.AMBIENTE,
     telegramBotToken: parsed.TELEGRAM_BOT_TOKEN,
@@ -124,5 +171,6 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     logLevel: parsed.LOG_LEVEL,
     googleOAuthClient,
     pluggy,
+    whatsapp,
   };
 }

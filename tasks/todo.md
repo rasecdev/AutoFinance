@@ -9,15 +9,15 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 1
 **Description:** Dois novos serviços no `docker-compose.yml`, mesmo padrão de todo par existente (imagem oficial `devlikeapro/waha`, sem `build:` próprio — é imagem publicada, diferente do resto do projeto que sempre builda a própria): `whatsapp-homologacao`/`whatsapp-producao`, motor `NOWEB` via env var (`WHATSAPP_DEFAULT_ENGINE=NOWEB`), volume próprio por ambiente pra persistir a sessão (evita reescanear QR a cada restart), variável de API key própria por ambiente. `env.ts` ganha `WHATSAPP_WAHA_URL`, `WHATSAPP_WAHA_API_KEY`, `WHATSAPP_WAHA_SESSION`, `WHATSAPP_DESTINATARIOS` (lista de números, mesmo formato de `TELEGRAM_ALLOWED_CHAT_IDS`) — todas opcionais mas exigidas juntas (`superRefine`, mesma regra do par Google/Pluggy). Ausentes por completo é estado válido.
 
 **Acceptance criteria:**
-- [ ] `docker compose config` valida sem erro com os dois serviços novos
-- [ ] `env.ts`: as 4 variáveis ausentes juntas não geram erro de validação (integração desligada)
-- [ ] `env.ts`: só parte das 4 variáveis presentes gera erro de validação claro (mesmo padrão do par Google)
-- [ ] Serviço `whatsapp-homologacao` sobe localmente (`docker compose up whatsapp-homologacao`) e responde no endpoint de health/QR da WAHA
+- [ ] `docker compose config` valida sem erro com os dois serviços novos — **não verificado nesta sessão: Docker não está disponível na máquina de desenvolvimento usada; revisão manual da sintaxe YAML feita por leitura, mas falta confirmar com `docker compose config` de verdade**
+- [x] `env.ts`: as 4 variáveis ausentes juntas não geram erro de validação (integração desligada)
+- [x] `env.ts`: só parte das 4 variáveis presentes gera erro de validação claro (mesmo padrão do par Google)
+- [ ] Serviço `whatsapp-homologacao` sobe localmente (`docker compose up whatsapp-homologacao`) e responde no endpoint de health/QR da WAHA — **não verificado, mesma limitação de ambiente acima**
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/config/env.test.ts`
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: `docker compose up whatsapp-homologacao` sobe sem erro, `curl` no endpoint da API confirma resposta
+- [x] Tests pass: `npx vitest run tests/config/env.test.ts`
+- [x] Build succeeds: `npm run build`
+- [ ] Manual check: `docker compose up whatsapp-homologacao` sobe sem erro, `curl` no endpoint da API confirma resposta — **pendente, precisa rodar numa máquina/VM com Docker**
 
 **Dependencies:** None
 
