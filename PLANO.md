@@ -679,6 +679,26 @@ Sequenciada depois da Fase 8 (última fase planejada até aqui) — decisão reg
 
 ---
 
+### Fase 12 — Observabilidade de plataforma (Grafana + Loki) — futura
+**Status (2026-10-08): ideia registrada, sem data nem tarefas. Só começa quando houver mais de uma VM e serviços abertos ao público** — decisão do usuário. Hoje, com uma VM e uso pessoal, não compensa: o `/rastrear`, o `docker logs` e as tabelas `interacoes_ia`/`uso_tokens`/`erros_execucao` cobrem a necessidade (ver "Observabilidade e rastreabilidade de IA").
+
+**Por que muda de figura no cenário futuro.** Com várias VMs e projetos abertos a público, passam a existir logs espalhados por host e necessidade de busca central por `trace_id`, retenção além da rotação do Docker (10 MB × 3) e painéis operacionais para mais de um serviço. É o caso de uso real de uma stack compartilhada; o Coursify (CLI de execução única) isso não exige, só um serviço online dele exigiria.
+
+**Direção a validar quando abrir a fase (não é decisão fechada).**
+- **Painéis de IA primeiro:** Grafana lendo os dados que já existem (custo/tokens por fluxo e modelo, taxa de erro e de feedback 👎, erros por contexto), via datasource SQLite ou, se o banco mudar, o novo datasource. É isso que representa observabilidade de IA; Loki sozinho é só log.
+- **Loki depois, como camada de logs:** coletor **Alloy** (o Promtail foi descontinuado), uma stack central com labels `env`, `service` e `host`, não uma por ambiente.
+- **Contrato reaproveitável entre projetos:** log JSON com `trace_id`, `service` e `env` — já é o padrão do Pino aqui; vale documentar como convenção da plataforma.
+- **Alternativa a reavaliar na hora:** Langfuse self-hosted, já eleito como candidato no estudo de ferramentas de LLM; decidir se entra além de, ou no lugar de, Loki.
+
+**Cuidados a tratar antes de expor qualquer coisa.**
+- Grafana com autenticação, atrás de proxy reverso com TLS e regra de rede restrita; hoje o Caddy da VM está inerte e o fail2ban só cobre SSH (ver camadas de segurança da infra).
+- Dashboard público apenas com dados agregados ou sintéticos — nunca conteúdo de conversa nem dado financeiro real. Mascaramento da seção Segurança vale também para o que for enviado ao Loki.
+- Stack de observabilidade fora da VM que ela observa, ou com alerta externo, para não cair junto.
+- Dimensionar contra o limite do tier (2 OCPU/12 GB por conta) ao somar com os demais serviços.
+- Servir usuários externos conflita com o item "Multiusuário" de Fora de escopo: essa decisão precisa ser reaberta por conta própria, não é efeito colateral desta fase.
+
+---
+
 ## Papel do chat depois da automação (e-mail + Open Finance)
 
 Com Fase 7 (e-mail) e Fase 8 (Open Finance) implementadas, boa parte do lançamento manual desaparece — fatura/parcela vem por e-mail, transação de conta conectada sincroniza sozinha. Isso levanta a dúvida: o que sobra de interação de verdade no Telegram? Resposta: o chat não vira resíduo, ele muda de função — de "lançar dado" pra "decidir, revisar, consultar e cobrir o que a automação não alcança".
