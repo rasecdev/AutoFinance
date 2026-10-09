@@ -200,7 +200,7 @@ async function main(): Promise<void> {
 
     await sincronizarCalendario(db, calendar, env.googleOAuthClient.calendarId, logger);
   } catch (erro) {
-    await tratarErroCriticoJob(db, logger, 'sincronizar_calendario', erro, env.telegramBotToken, env.telegramAllowedChatIds);
+    await tratarErroCriticoJob(db, logger, 'sincronizar_calendario', erro, env);
     throw erro;
   }
 }

@@ -38,7 +38,7 @@ async function main(): Promise<void> {
 
     removerBackupsExpirados(DIR_BACKUP, RETENCAO_DIAS, logger);
   } catch (erro) {
-    await tratarErroCriticoJob(db, logger, 'backup', erro, env.telegramBotToken, env.telegramAllowedChatIds);
+    await tratarErroCriticoJob(db, logger, 'backup', erro, env);
     throw erro;
   }
 }

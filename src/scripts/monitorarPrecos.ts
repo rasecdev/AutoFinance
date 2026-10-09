@@ -223,7 +223,7 @@ async function main(): Promise<void> {
       logger.info({ total: oportunidades.length }, 'alerta de preço enviado');
     }
   } catch (erro) {
-    await tratarErroCriticoJob(db, logger, 'monitorar_precos', erro, env.telegramBotToken, env.telegramAllowedChatIds);
+    await tratarErroCriticoJob(db, logger, 'monitorar_precos', erro, env);
     throw erro;
   }
 }

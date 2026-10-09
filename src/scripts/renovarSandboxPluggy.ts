@@ -29,8 +29,15 @@ export async function renovarSandboxPluggy(
       await atualizarItem(apiKey, itemId);
     } catch (erro) {
       // Um item com problema (removido no dashboard, etc.) não deve impedir
-      // renovar os demais.
-      await tratarErroCriticoJob(db, logger, 'renovar_sandbox_pluggy', erro, botToken, chatIds);
+      // renovar os demais. Sem acesso ao Env completo aqui (só botToken/
+      // chatIds) — whatsapp: null é intencional, não falta de wiring; o
+      // alerta de erro deste loop sai só por Telegram (o do catch de main(),
+      // abaixo, já cobre o WhatsApp com o Env completo).
+      await tratarErroCriticoJob(db, logger, 'renovar_sandbox_pluggy', erro, {
+        telegramBotToken: botToken,
+        telegramAllowedChatIds: chatIds,
+        whatsapp: null,
+      });
     }
   }
 }
@@ -63,7 +70,7 @@ async function main(): Promise<void> {
 
     await renovarSandboxPluggy(db, logger, env.telegramBotToken, env.telegramAllowedChatIds, env.pluggy);
   } catch (erro) {
-    await tratarErroCriticoJob(db, logger, 'renovar_sandbox_pluggy', erro, env.telegramBotToken, env.telegramAllowedChatIds);
+    await tratarErroCriticoJob(db, logger, 'renovar_sandbox_pluggy', erro, env);
     throw erro;
   }
 }

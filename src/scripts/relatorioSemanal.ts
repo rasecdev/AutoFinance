@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
-import { Bot, InputFile } from 'grammy';
+import { Bot } from 'grammy';
+import { notificarImagem } from '../canais/notificar.js';
 import { configurarFormatacaoPadrao } from '../bot/formatoMensagens.js';
 import { loadEnv } from '../config/env.js';
 import { getDb } from '../db/client.js';
@@ -48,12 +49,10 @@ async function main(): Promise<void> {
     const ontem = new Date();
     ontem.setDate(ontem.getDate() - 1);
     const imagem = await montarImagemRelatorioSemanal(db, ontem);
-    for (const chatId of env.telegramAllowedChatIds) {
-      await bot.api.sendPhoto(chatId, new InputFile(imagem));
-    }
+    await notificarImagem(env, bot, env.telegramAllowedChatIds, imagem, logger);
     logger.info('relatório semanal (imagem) enviado');
   } catch (erro) {
-    await tratarErroCriticoJob(db, logger, 'relatorio_semanal', erro, env.telegramBotToken, env.telegramAllowedChatIds);
+    await tratarErroCriticoJob(db, logger, 'relatorio_semanal', erro, env);
     throw erro;
   }
 }

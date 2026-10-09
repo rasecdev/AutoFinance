@@ -15,7 +15,9 @@ import {
 // lança pro chamador — mesmo princípio de tratarErroCriticoJob.ts: loga e
 // segue, sem exigir try/catch de quem chama.
 
-function configWhatsapp(env: Env): { config: ConfigWhatsapp; destinatarios: string[] } | null {
+function configWhatsapp(
+  env: Pick<Env, 'whatsapp'>,
+): { config: ConfigWhatsapp; destinatarios: string[] } | null {
   if (!env.whatsapp) {
     return null;
   }
@@ -25,7 +27,7 @@ function configWhatsapp(env: Env): { config: ConfigWhatsapp; destinatarios: stri
 }
 
 export async function notificarTexto(
-  env: Env,
+  env: Pick<Env, 'whatsapp'>,
   bot: Bot,
   chatIds: string[],
   texto: string,
@@ -50,7 +52,7 @@ export async function notificarTexto(
 }
 
 export async function notificarImagem(
-  env: Env,
+  env: Pick<Env, 'whatsapp'>,
   bot: Bot,
   chatIds: string[],
   imagem: Buffer,
@@ -78,7 +80,7 @@ export async function notificarImagem(
 }
 
 export async function notificarDocumento(
-  env: Env,
+  env: Pick<Env, 'whatsapp'>,
   bot: Bot,
   chatIds: string[],
   documento: Buffer,

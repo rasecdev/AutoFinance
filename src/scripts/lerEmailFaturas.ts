@@ -222,7 +222,7 @@ async function main(): Promise<void> {
 
     await verificarEmails(db, gmail, bot, logger, env.telegramAllowedChatIds, clienteIa);
   } catch (erro) {
-    await tratarErroCriticoJob(db, logger, 'ler_email_faturas', erro, env.telegramBotToken, env.telegramAllowedChatIds);
+    await tratarErroCriticoJob(db, logger, 'ler_email_faturas', erro, env);
     throw erro;
   }
 }

@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
-import { Bot, InputFile } from 'grammy';
+import { Bot } from 'grammy';
 import { createOpenRouterClient } from '../ai/openrouter.js';
+import { notificarDocumento } from '../canais/notificar.js';
 import { configurarFormatacaoPadrao } from '../bot/formatoMensagens.js';
 import { loadEnv } from '../config/env.js';
 import { getDb } from '../db/client.js';
@@ -50,12 +51,10 @@ async function main(): Promise<void> {
     const ontem = new Date();
     ontem.setDate(ontem.getDate() - 1);
     const { buffer, nomeArquivo } = await gerarRelatorioMensalCompleto(db, client, ontem);
-    for (const chatId of env.telegramAllowedChatIds) {
-      await bot.api.sendDocument(chatId, new InputFile(buffer, nomeArquivo));
-    }
+    await notificarDocumento(env, bot, env.telegramAllowedChatIds, buffer, nomeArquivo, logger);
     logger.info('relatório mensal (PDF) enviado');
   } catch (erro) {
-    await tratarErroCriticoJob(db, logger, 'relatorio_mensal', erro, env.telegramBotToken, env.telegramAllowedChatIds);
+    await tratarErroCriticoJob(db, logger, 'relatorio_mensal', erro, env);
     throw erro;
   }
 }

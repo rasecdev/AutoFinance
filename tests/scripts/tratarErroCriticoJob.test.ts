@@ -17,6 +17,11 @@ vi.mock('grammy', () => ({
   }),
 }));
 
+const enviarTextoWhatsapp = vi.fn().mockResolvedValue(undefined);
+vi.mock('../../src/canais/whatsapp.js', () => ({
+  enviarTextoWhatsapp,
+}));
+
 const { tratarErroCriticoJob } = await import('../../src/scripts/tratarErroCriticoJob.js');
 
 const CHAVE_TESTE = 'chave-teste-tratar-erro-critico-job';
@@ -34,6 +39,22 @@ function hoje(): { inicio: string; fim: string } {
   return { inicio: iso, fim: iso };
 }
 
+function envFalso(chatIds: string[]) {
+  return { telegramBotToken: 'token-falso', telegramAllowedChatIds: chatIds, whatsapp: null };
+}
+
+function envFalsoComWhatsapp(chatIds: string[]) {
+  return {
+    ...envFalso(chatIds),
+    whatsapp: {
+      wahaUrl: 'http://waha:3000',
+      wahaApiKey: 'waha-key-teste',
+      wahaSession: 'default',
+      destinatarios: ['5511999999999'],
+    },
+  };
+}
+
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'autofinance-tratar-erro-critico-test-'));
   db = new Database(join(dir, 'teste.db'));
@@ -41,6 +62,7 @@ beforeEach(() => {
   db.pragma(`key='${CHAVE_TESTE}'`);
   migrate(db);
   enviarMensagem.mockClear();
+  enviarTextoWhatsapp.mockClear();
 });
 
 afterEach(() => {
@@ -50,7 +72,7 @@ afterEach(() => {
 
 describe('tratarErroCriticoJob', () => {
   it('grava o erro em erros_execucao com o contexto e a mensagem certos', async () => {
-    await tratarErroCriticoJob(db, criarLoggerSilencioso(), 'backup', new Error('disco cheio'), 'token-falso', ['111']);
+    await tratarErroCriticoJob(db, criarLoggerSilencioso(), 'backup', new Error('disco cheio'), envFalso(['111']));
 
     const erros = listarErros(db, hoje());
     expect(erros).toHaveLength(1);
@@ -60,9 +82,13 @@ describe('tratarErroCriticoJob', () => {
   });
 
   it('trata erro que não é instância de Error (mensagem via String(), sem detalhes)', async () => {
-    await tratarErroCriticoJob(db, criarLoggerSilencioso(), 'monitorar_precos', 'string de erro crua', 'token-falso', [
-      '111',
-    ]);
+    await tratarErroCriticoJob(
+      db,
+      criarLoggerSilencioso(),
+      'monitorar_precos',
+      'string de erro crua',
+      envFalso(['111']),
+    );
 
     const erros = listarErros(db, hoje());
     expect(erros[0]?.mensagem).toBe('string de erro crua');
@@ -70,10 +96,7 @@ describe('tratarErroCriticoJob', () => {
   });
 
   it('envia alerta pra cada chat da allowlist', async () => {
-    await tratarErroCriticoJob(db, criarLoggerSilencioso(), 'backup', new Error('falhou'), 'token-falso', [
-      '111',
-      '222',
-    ]);
+    await tratarErroCriticoJob(db, criarLoggerSilencioso(), 'backup', new Error('falhou'), envFalso(['111', '222']));
 
     expect(enviarMensagem).toHaveBeenCalledTimes(2);
     expect(enviarMensagem).toHaveBeenCalledWith('111', expect.stringContaining('backup'));
@@ -84,10 +107,34 @@ describe('tratarErroCriticoJob', () => {
     enviarMensagem.mockRejectedValueOnce(new Error('Telegram fora do ar'));
 
     await expect(
-      tratarErroCriticoJob(db, criarLoggerSilencioso(), 'backup', new Error('falhou'), 'token-falso', ['111', '222']),
+      tratarErroCriticoJob(db, criarLoggerSilencioso(), 'backup', new Error('falhou'), envFalso(['111', '222'])),
     ).resolves.toBeUndefined();
 
     expect(listarErros(db, hoje())).toHaveLength(1);
     expect(enviarMensagem).toHaveBeenCalledTimes(2);
+  });
+
+  it('com WhatsApp configurado, também manda o alerta por lá', async () => {
+    await tratarErroCriticoJob(
+      db,
+      criarLoggerSilencioso(),
+      'backup',
+      new Error('falhou'),
+      envFalsoComWhatsapp(['111']),
+    );
+
+    expect(enviarMensagem).toHaveBeenCalledTimes(1);
+    expect(enviarTextoWhatsapp).toHaveBeenCalledTimes(1);
+    expect(enviarTextoWhatsapp).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'http://waha:3000' }),
+      '5511999999999',
+      expect.stringContaining('backup'),
+    );
+  });
+
+  it('sem WhatsApp configurado, não chama a API do WhatsApp', async () => {
+    await tratarErroCriticoJob(db, criarLoggerSilencioso(), 'backup', new Error('falhou'), envFalso(['111']));
+
+    expect(enviarTextoWhatsapp).not.toHaveBeenCalled();
   });
 });

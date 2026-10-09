@@ -157,7 +157,7 @@ async function main(): Promise<void> {
 
     await sincronizarOpenFinance(db, bot, logger, env.telegramAllowedChatIds, env.pluggy);
   } catch (erro) {
-    await tratarErroCriticoJob(db, logger, 'sincronizar_open_finance', erro, env.telegramBotToken, env.telegramAllowedChatIds);
+    await tratarErroCriticoJob(db, logger, 'sincronizar_open_finance', erro, env);
     throw erro;
   }
 }

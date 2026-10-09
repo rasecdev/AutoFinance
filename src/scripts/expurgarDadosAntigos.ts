@@ -41,7 +41,7 @@ async function main(): Promise<void> {
   try {
     expurgarDadosAntigos(db, RETENCAO_DIAS, logger);
   } catch (erro) {
-    await tratarErroCriticoJob(db, logger, 'expurgarDadosAntigos', erro, env.telegramBotToken, env.telegramAllowedChatIds);
+    await tratarErroCriticoJob(db, logger, 'expurgarDadosAntigos', erro, env);
     throw erro;
   }
 }

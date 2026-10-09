@@ -68,7 +68,7 @@ async function main(): Promise<void> {
       logger.info('nenhuma despesa fixa faltante no período');
     }
   } catch (erro) {
-    await tratarErroCriticoJob(db, logger, 'verificar_despesas_fixas', erro, env.telegramBotToken, env.telegramAllowedChatIds);
+    await tratarErroCriticoJob(db, logger, 'verificar_despesas_fixas', erro, env);
     throw erro;
   }
 }
