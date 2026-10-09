@@ -42,7 +42,7 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 1
 **Verification:**
 - [x] Tests pass: `npx vitest run tests/scripts/parearWhatsapp.test.ts` (mocka a API da WAHA — não depende de sessão real)
 - [x] Build succeeds: `npm run build`
-- [ ] Manual check: QR gerado de verdade contra a sessão WAHA de Homologação, escaneado com o número dedicado, sessão fica `WORKING` — **pendente, precisa do usuário rodar e escanear com o número dedicado**
+- [x] Manual check: QR gerado de verdade contra a sessão WAHA de Homologação, escaneado com o número dedicado, sessão fica `WORKING` — confirmado (2026-10-09), `GET /api/sessions/default` retornou `"status":"WORKING"`
 
 **Dependencies:** Tarefa 122
 
