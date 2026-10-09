@@ -176,7 +176,7 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 1
 
 **Verification:**
 - [x] Revisão do script (sem `shellcheck` configurado no projeto — `bash -n` confirma sintaxe; filtro de serviços simulado à mão contra a lista real do `docker-compose.yml`: 11 serviços pra `homologacao`, 10 pra `producao`, incluindo os que o script antigo deixava de fora)
-- [ ] Manual check: usuário substitui o arquivo na VM e confirma, no próximo push em `development`, que um serviço novo sobe sem `docker compose up -d` manual — **pendente, depende de ação na VM**
+- [x] Manual check: usuário substituiu `/opt/autofinance-deploy/deploy.sh` na VM e confirmou (2026-10-09) — `SSH_ORIGINAL_COMMAND=homologacao sudo -E /opt/autofinance-deploy/deploy.sh` subiu os 11 serviços de Homologação, incluindo `whatsapp-homologacao`/`renovar-sandbox-pluggy-homologacao`/`sincronizar-open-finance-homologacao`/`expurgar-dados-antigos-homologacao` (os que o script antigo deixava de fora)
 
 **Dependencies:** None
 
