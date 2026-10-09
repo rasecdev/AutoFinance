@@ -169,14 +169,14 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 1
 **Description:** Lacuna encontrada na Tarefa 122 (PROGRESSO.md, 2026-10-06): `/opt/autofinance-deploy/deploy.sh` na VM (dono `root`, fora deste repositório, não editável pela automação de deploy) usa uma lista fixa/parcial de nomes de serviço pra decidir o que recriar — serviços novos adicionados ao `docker-compose.yml` (ex: `whatsapp-homologacao`/`whatsapp-producao`) nunca sobem no primeiro deploy automático, exigindo `docker compose up -d` manual na VM pra "ativar" cada serviço novo uma vez. Esta tarefa versiona o script no repositório como fonte de verdade (`infra/deploy.sh`), corrigido pra descobrir os serviços do ambiente dinamicamente (`docker compose config --services`, filtrando por sufixo `-homologacao`/`-producao`) em vez de listar nomes à mão, e documenta o passo manual (fora do alcance da automação, por desenho de segurança do usuário dedicado sem sudo) de substituir o arquivo na VM por este.
 
 **Acceptance criteria:**
-- [ ] `infra/deploy.sh` no repositório é a fonte de verdade — recebe o nome do ambiente (`homologacao`/`producao`) como argumento, igual ao script atual da VM
-- [ ] Lista de serviços derivada de `docker compose config --services`, filtrada pelo sufixo do ambiente — nenhum nome de serviço hardcoded
-- [ ] `docker compose up -d --build` usa essa lista — serviço novo no `docker-compose.yml` passa a subir no deploy automático seguinte, sem intervenção manual
-- [ ] Documentado em comentário no próprio arquivo que a aplicação na VM é manual (substituir `/opt/autofinance-deploy/deploy.sh`, dono `root`) — a automação de CI/deploy não tem permissão de alterar esse arquivo
+- [x] `infra/deploy.sh` no repositório é a fonte de verdade — recebe o nome do ambiente (`homologacao`/`producao`) como argumento, igual ao script atual da VM
+- [x] Lista de serviços derivada de `docker compose config --services`, filtrada pelo sufixo do ambiente — nenhum nome de serviço hardcoded
+- [x] `docker compose up -d --build` usa essa lista — serviço novo no `docker-compose.yml` passa a subir no deploy automático seguinte, sem intervenção manual
+- [x] Documentado em comentário no próprio arquivo que a aplicação na VM é manual (substituir `/opt/autofinance-deploy/deploy.sh`, dono `root`) — a automação de CI/deploy não tem permissão de alterar esse arquivo
 
 **Verification:**
-- [ ] Revisão do script (shellcheck, se configurado no projeto; senão leitura manual) — sem teste automatizado possível (script roda fora do runtime Node do projeto)
-- [ ] Manual check: usuário substitui o arquivo na VM e confirma, no próximo push em `development`, que um serviço fictício/novo sobe sem `docker compose up -d` manual
+- [x] Revisão do script (sem `shellcheck` configurado no projeto — `bash -n` confirma sintaxe; filtro de serviços simulado à mão contra a lista real do `docker-compose.yml`: 11 serviços pra `homologacao`, 10 pra `producao`, incluindo os que o script antigo deixava de fora)
+- [ ] Manual check: usuário substitui o arquivo na VM e confirma, no próximo push em `development`, que um serviço novo sobe sem `docker compose up -d` manual — **pendente, depende de ação na VM**
 
 **Dependencies:** None
 
