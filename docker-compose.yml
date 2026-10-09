@@ -300,10 +300,18 @@ services:
   # (Oracle Ampere A1) é ARM64, e `devlikeapro/waha` só publica manifesto
   # arm64 nas tags com sufixo `-arm` — achado real ao rodar `docker compose
   # up -d` na VM (`latest` deu "no matching manifest for linux/arm64/v8").
+  # A WAHA espera a chave de API na variável `WAHA_API_KEY` (nome dela,
+  # diferente de `WHATSAPP_WAHA_API_KEY` que o app usa pra se autenticar
+  # contra ela) — mesmo valor nos dois lados. Em vez de `env_file` pro mesmo
+  # arquivo do app (exporia TELEGRAM_BOT_TOKEN/DATABASE_ENCRYPTION_KEY/etc.
+  # sem necessidade a um container de terceiro), a interpolação `${...}` lê
+  # de um `.env` próprio na raiz (gitignored, só essas 2 chaves) — só isso
+  # fica visível pro container da WAHA.
   whatsapp-homologacao:
     image: devlikeapro/waha:noweb-arm
     environment:
       WHATSAPP_DEFAULT_ENGINE: NOWEB
+      WAHA_API_KEY: ${WAHA_API_KEY_HOMOLOGACAO}
     ports:
       - '127.0.0.1:3000:3000'
     volumes:
@@ -319,6 +327,7 @@ services:
     image: devlikeapro/waha:noweb-arm
     environment:
       WHATSAPP_DEFAULT_ENGINE: NOWEB
+      WAHA_API_KEY: ${WAHA_API_KEY_PRODUCAO}
     ports:
       - '127.0.0.1:3001:3000'
     volumes:
