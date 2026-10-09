@@ -105,7 +105,7 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 1
 ## Checkpoint: Infraestrutura e envio funcionais (sem wiring nos jobs ainda)
 - [x] `npm run build`/`lint`/`test` sem erro
 - [x] Teste manual: sessão WAHA pareada em Homologação, `notificarTexto`/`notificarImagem`/`notificarDocumento` testados contra a sessão real — mensagem chega no WhatsApp (2026-10-09; achado real: `WHATSAPP_DESTINATARIOS` precisou do número sem o "9" extra — `557192839549`, não `5571992839549` — pra WhatsApp resolver o chatId certo)
-- [ ] Revisão com o usuário antes de prosseguir pro wiring nos jobs
+- [x] Revisão com o usuário antes de prosseguir pro wiring nos jobs (2026-10-09, confirmado: mensagens de teste chegaram no destinatário)
 
 ---
 
@@ -155,6 +155,29 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 1
 - Testes correspondentes
 
 **Estimated scope:** Medium
+
+---
+
+### Tarefa 128: `deploy.sh` (VM) — ler a lista de serviços do `docker-compose.yml` em vez de lista fixa
+
+**Description:** Lacuna encontrada na Tarefa 122 (PROGRESSO.md, 2026-10-06): `/opt/autofinance-deploy/deploy.sh` na VM (dono `root`, fora deste repositório, não editável pela automação de deploy) usa uma lista fixa/parcial de nomes de serviço pra decidir o que recriar — serviços novos adicionados ao `docker-compose.yml` (ex: `whatsapp-homologacao`/`whatsapp-producao`) nunca sobem no primeiro deploy automático, exigindo `docker compose up -d` manual na VM pra "ativar" cada serviço novo uma vez. Esta tarefa versiona o script no repositório como fonte de verdade (`infra/deploy.sh`), corrigido pra descobrir os serviços do ambiente dinamicamente (`docker compose config --services`, filtrando por sufixo `-homologacao`/`-producao`) em vez de listar nomes à mão, e documenta o passo manual (fora do alcance da automação, por desenho de segurança do usuário dedicado sem sudo) de substituir o arquivo na VM por este.
+
+**Acceptance criteria:**
+- [ ] `infra/deploy.sh` no repositório é a fonte de verdade — recebe o nome do ambiente (`homologacao`/`producao`) como argumento, igual ao script atual da VM
+- [ ] Lista de serviços derivada de `docker compose config --services`, filtrada pelo sufixo do ambiente — nenhum nome de serviço hardcoded
+- [ ] `docker compose up -d --build` usa essa lista — serviço novo no `docker-compose.yml` passa a subir no deploy automático seguinte, sem intervenção manual
+- [ ] Documentado em comentário no próprio arquivo que a aplicação na VM é manual (substituir `/opt/autofinance-deploy/deploy.sh`, dono `root`) — a automação de CI/deploy não tem permissão de alterar esse arquivo
+
+**Verification:**
+- [ ] Revisão do script (shellcheck, se configurado no projeto; senão leitura manual) — sem teste automatizado possível (script roda fora do runtime Node do projeto)
+- [ ] Manual check: usuário substitui o arquivo na VM e confirma, no próximo push em `development`, que um serviço fictício/novo sobe sem `docker compose up -d` manual
+
+**Dependencies:** None
+
+**Files likely touched:**
+- `infra/deploy.sh` (novo)
+
+**Estimated scope:** Small
 
 ---
 
