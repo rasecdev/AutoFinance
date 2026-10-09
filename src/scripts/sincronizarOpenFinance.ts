@@ -1,7 +1,8 @@
 import { fileURLToPath } from 'node:url';
 import { Bot } from 'grammy';
+import { notificarTexto } from '../canais/notificar.js';
 import { configurarFormatacaoPadrao } from '../bot/formatoMensagens.js';
-import { loadEnv } from '../config/env.js';
+import { loadEnv, type Env } from '../config/env.js';
 import { getDb, type DbClient } from '../db/client.js';
 import {
   encontrarPagamentoFaturaOuParcelaCorrespondente,
@@ -42,7 +43,7 @@ async function processarTransacao(
   db: DbClient,
   bot: Bot,
   logger: Logger,
-  chatIds: string[],
+  env: Pick<Env, 'telegramAllowedChatIds' | 'whatsapp'>,
   mapeamento: MapeamentoOpenFinance,
   transacao: TransacaoPluggy,
 ): Promise<void> {
@@ -98,19 +99,15 @@ async function processarTransacao(
   });
   marcar('transacao_criada');
 
-  for (const chatId of chatIds) {
-    await bot.api.sendMessage(
-      chatId,
-      `🔄 ${tipo === 'despesa' ? 'Despesa' : 'Receita'} sincronizada automaticamente: R$ ${valor.toFixed(2)} — ${transacao.description} (${transacao.date})`,
-    );
-  }
+  const texto = `🔄 ${tipo === 'despesa' ? 'Despesa' : 'Receita'} sincronizada automaticamente: R$ ${valor.toFixed(2)} — ${transacao.description} (${transacao.date})`;
+  await notificarTexto(env, bot, env.telegramAllowedChatIds, texto, logger);
 }
 
 export async function sincronizarOpenFinance(
   db: DbClient,
   bot: Bot,
   logger: Logger,
-  chatIds: string[],
+  env: Pick<Env, 'telegramAllowedChatIds' | 'whatsapp'>,
   pluggyEnv: { clientId: string; clientSecret: string },
 ): Promise<void> {
   const apiKey = await autenticar(pluggyEnv.clientId, pluggyEnv.clientSecret);
@@ -122,7 +119,7 @@ export async function sincronizarOpenFinance(
 
       for (const transacao of transacoes) {
         if (transacaoJaProcessada(db, transacao.id)) continue;
-        await processarTransacao(db, bot, logger, chatIds, mapeamento, transacao);
+        await processarTransacao(db, bot, logger, env, mapeamento, transacao);
       }
     } catch (erro) {
       // Uma conta com problema (token expirado, item desconectado) não deve
@@ -155,7 +152,7 @@ async function main(): Promise<void> {
       await dormirAte(Date.now() + INTERVALO_SINCRONIZACAO_MS);
     }
 
-    await sincronizarOpenFinance(db, bot, logger, env.telegramAllowedChatIds, env.pluggy);
+    await sincronizarOpenFinance(db, bot, logger, env, env.pluggy);
   } catch (erro) {
     await tratarErroCriticoJob(db, logger, 'sincronizar_open_finance', erro, env);
     throw erro;

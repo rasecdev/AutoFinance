@@ -142,20 +142,22 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 1
 **Description:** `monitorarPrecos.ts`, `verificarDespesasFixas.ts`, `lerEmailFaturas.ts`, `sincronizarOpenFinance.ts` — mesma troca de `bot.api.sendX` por `notificar*` da Tarefa 126, aplicada aos 4 scripts restantes que mandam mensagem proativa.
 
 **Acceptance criteria:**
-- [ ] Os 4 scripts continuam funcionando exatamente igual quando WhatsApp não está configurado (regressão zero)
-- [ ] Com WhatsApp configurado, os 4 passam a mandar a mesma mensagem pros dois canais
+- [x] Os 3 scripts com mensagem proativa simples continuam funcionando exatamente igual quando WhatsApp não está configurado (regressão zero)
+- [x] Com WhatsApp configurado, esses 3 passam a mandar a mesma mensagem pros dois canais
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/scripts/monitorarPrecos.test.ts tests/scripts/verificarDespesasFixas.test.ts tests/scripts/lerEmailFaturas.test.ts tests/scripts/sincronizarOpenFinance.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/scripts/monitorarPrecos.test.ts tests/scripts/verificarDespesasFixas.test.ts tests/scripts/lerEmailFaturas.test.ts tests/scripts/sincronizarOpenFinance.test.ts`
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** Tarefa 125
+
+**Achado real, decisão revisada com o usuário (2026-10-09):** `lerEmailFaturas.ts` **não foi tocado** — as duas únicas mensagens que ele manda são pedidos de confirmação com teclado inline (`reply_markup`, aprovar/rejeitar fatura extraída por e-mail), não notificação simples. Rotear isso por `notificarTexto` perderia os botões — WhatsApp não tem equivalente nesta Rodada 1 (chat bidirecional é Rodada 2, corte já registrado no PLANO.md). Decisão confirmada com o usuário: continua só por Telegram por enquanto; registrado em PLANO.md (Fase 9) como motivação explícita pra Rodada 2 levar o WhatsApp à paridade com o Telegram nesse tipo de interação. `monitorarPrecos.ts` (`enviarAlertas` ganhou `env`/`logger` no lugar de `botToken` cru), `verificarDespesasFixas.ts` e `sincronizarOpenFinance.ts` (`processarTransacao`/`sincronizarOpenFinance` exportadas trocaram `chatIds: string[]` por `env`) wired normalmente.
 
 **Files likely touched:**
 - `src/scripts/monitorarPrecos.ts`
 - `src/scripts/verificarDespesasFixas.ts`
-- `src/scripts/lerEmailFaturas.ts`
 - `src/scripts/sincronizarOpenFinance.ts`
+- ~~`src/scripts/lerEmailFaturas.ts`~~ (não tocado — ver achado real acima)
 - Testes correspondentes
 
 **Estimated scope:** Medium

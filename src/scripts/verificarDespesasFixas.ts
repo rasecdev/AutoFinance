@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { Bot } from 'grammy';
+import { notificarTexto } from '../canais/notificar.js';
 import { configurarFormatacaoPadrao } from '../bot/formatoMensagens.js';
 import { loadEnv } from '../config/env.js';
 import { getDb, type DbClient } from '../db/client.js';
@@ -60,9 +61,7 @@ async function main(): Promise<void> {
 
     const alerta = obterAlertaDespesasFixas(db);
     if (alerta) {
-      for (const chatId of env.telegramAllowedChatIds) {
-        await bot.api.sendMessage(chatId, alerta);
-      }
+      await notificarTexto(env, bot, env.telegramAllowedChatIds, alerta, logger);
       logger.info('alerta de despesas fixas faltantes enviado');
     } else {
       logger.info('nenhuma despesa fixa faltante no período');

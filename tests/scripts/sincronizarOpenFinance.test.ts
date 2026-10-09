@@ -16,11 +16,26 @@ vi.mock('../../src/integracoes/pluggy/cliente.js', () => ({
   listarTransacoes: vi.fn(),
 }));
 
+const enviarTextoWhatsapp = vi.fn().mockResolvedValue(undefined);
+vi.mock('../../src/canais/whatsapp.js', () => ({
+  enviarTextoWhatsapp,
+}));
+
 const { autenticar, listarTransacoes } = await import('../../src/integracoes/pluggy/cliente.js');
 const { sincronizarOpenFinance } = await import('../../src/scripts/sincronizarOpenFinance.js');
 
 const CHAVE_TESTE = 'chave-teste-sincronizar-open-finance';
 const CHAT_IDS = ['111'];
+const ENV_TESTE = { telegramAllowedChatIds: CHAT_IDS, whatsapp: null };
+const ENV_TESTE_COM_WHATSAPP = {
+  telegramAllowedChatIds: CHAT_IDS,
+  whatsapp: {
+    wahaUrl: 'http://waha:3000',
+    wahaApiKey: 'waha-key-teste',
+    wahaSession: 'default',
+    destinatarios: ['5511999999999'],
+  },
+};
 const PLUGGY_ENV = { clientId: 'id-teste', clientSecret: 'secret-teste' };
 
 let dir: string;
@@ -67,7 +82,7 @@ describe('sincronizarOpenFinance', () => {
     ]);
     const { bot, sendMessage } = criarBotFalso();
 
-    await sincronizarOpenFinance(db, bot, logger, CHAT_IDS, PLUGGY_ENV);
+    await sincronizarOpenFinance(db, bot, logger, ENV_TESTE, PLUGGY_ENV);
 
     const transacoes = lerTransacoes();
     expect(transacoes).toHaveLength(1);
@@ -77,6 +92,23 @@ describe('sincronizarOpenFinance', () => {
     expect(processadas[0]).toMatchObject({ pluggy_transaction_id: 'tx-1', resultado: 'transacao_criada' });
 
     expect(sendMessage).toHaveBeenCalledWith('111', expect.stringContaining('Mercado XYZ'));
+  });
+
+  it('com WhatsApp configurado, também avisa por lá', async () => {
+    registrarMapeamentoOpenFinance(db, { pluggyItemId: 'item-1', pluggyAccountId: 'conta-pluggy-1', contaId });
+    vi.mocked(listarTransacoes).mockResolvedValue([
+      { id: 'tx-1', accountId: 'conta-pluggy-1', description: 'Mercado XYZ', amount: -50, date: '2026-09-10' },
+    ]);
+    const { bot } = criarBotFalso();
+
+    await sincronizarOpenFinance(db, bot, logger, ENV_TESTE_COM_WHATSAPP, PLUGGY_ENV);
+
+    expect(enviarTextoWhatsapp).toHaveBeenCalledTimes(1);
+    expect(enviarTextoWhatsapp).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'http://waha:3000' }),
+      '5511999999999',
+      expect.stringContaining('Mercado XYZ'),
+    );
   });
 
   it('transação já batendo com uma manual existente: não cria nova, marca correspondencia_manual', async () => {
@@ -89,7 +121,7 @@ describe('sincronizarOpenFinance', () => {
     ]);
     const { bot, sendMessage } = criarBotFalso();
 
-    await sincronizarOpenFinance(db, bot, logger, CHAT_IDS, PLUGGY_ENV);
+    await sincronizarOpenFinance(db, bot, logger, ENV_TESTE, PLUGGY_ENV);
 
     expect(lerTransacoes()).toHaveLength(1); // só a manual, nenhuma nova criada
     expect(lerProcessadas()[0]).toMatchObject({ resultado: 'correspondencia_manual' });
@@ -107,7 +139,7 @@ describe('sincronizarOpenFinance', () => {
     ]);
     const { bot, sendMessage } = criarBotFalso();
 
-    await sincronizarOpenFinance(db, bot, logger, CHAT_IDS, PLUGGY_ENV);
+    await sincronizarOpenFinance(db, bot, logger, ENV_TESTE, PLUGGY_ENV);
 
     expect(lerTransacoes()).toHaveLength(0);
     expect(lerProcessadas()[0]).toMatchObject({ resultado: 'correspondencia_fatura_parcela' });
@@ -121,7 +153,7 @@ describe('sincronizarOpenFinance', () => {
     ]);
     const { bot, sendMessage } = criarBotFalso();
 
-    await sincronizarOpenFinance(db, bot, logger, CHAT_IDS, PLUGGY_ENV);
+    await sincronizarOpenFinance(db, bot, logger, ENV_TESTE, PLUGGY_ENV);
 
     expect(lerTransacoes()).toHaveLength(0);
     expect(lerProcessadas()[0]).toMatchObject({ resultado: 'saque_ignorado' });
@@ -135,8 +167,8 @@ describe('sincronizarOpenFinance', () => {
     ]);
     const { bot } = criarBotFalso();
 
-    await sincronizarOpenFinance(db, bot, logger, CHAT_IDS, PLUGGY_ENV);
-    await sincronizarOpenFinance(db, bot, logger, CHAT_IDS, PLUGGY_ENV);
+    await sincronizarOpenFinance(db, bot, logger, ENV_TESTE, PLUGGY_ENV);
+    await sincronizarOpenFinance(db, bot, logger, ENV_TESTE, PLUGGY_ENV);
 
     expect(lerTransacoes()).toHaveLength(1);
     expect(lerProcessadas()).toHaveLength(1);
@@ -150,7 +182,7 @@ describe('sincronizarOpenFinance', () => {
     ]);
     const { bot } = criarBotFalso();
 
-    await sincronizarOpenFinance(db, bot, logger, CHAT_IDS, PLUGGY_ENV);
+    await sincronizarOpenFinance(db, bot, logger, ENV_TESTE, PLUGGY_ENV);
 
     const transacoes = lerTransacoes();
     expect(transacoes[0]).toMatchObject({ cartao_id: cartaoId, conta_id: null, tipo: 'despesa' });
@@ -167,7 +199,7 @@ describe('sincronizarOpenFinance', () => {
     });
     const { bot } = criarBotFalso();
 
-    await sincronizarOpenFinance(db, bot, logger, CHAT_IDS, PLUGGY_ENV);
+    await sincronizarOpenFinance(db, bot, logger, ENV_TESTE, PLUGGY_ENV);
 
     expect(lerTransacoes()).toHaveLength(1);
   });
