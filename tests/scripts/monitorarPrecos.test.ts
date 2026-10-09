@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DbClient } from '../../src/db/client.js';
+import { createLogger } from '../../src/logging/logger.js';
 import { migrate } from '../../src/db/migrate.js';
 import { registrarAlertaEnviado } from '../../src/db/repositories/alertasPrecoEnviados.js';
 import { registrarSnapshotModelo } from '../../src/db/repositories/modelosOpenrouterHistorico.js';
@@ -16,6 +17,11 @@ vi.mock('grammy', () => ({
   }) {
     this.api = { sendMessage: enviarMensagem, config: { use: vi.fn() } };
   }),
+}));
+
+const enviarTextoWhatsapp = vi.fn().mockResolvedValue(undefined);
+vi.mock('../../src/canais/whatsapp.js', () => ({
+  enviarTextoWhatsapp,
 }));
 
 const {
@@ -39,6 +45,7 @@ beforeEach(() => {
   db.pragma(`key='${CHAVE_TESTE}'`);
   migrate(db);
   enviarMensagem.mockClear();
+  enviarTextoWhatsapp.mockClear();
 });
 
 afterEach(() => {
@@ -362,10 +369,28 @@ describe('formatarMensagemAlerta', () => {
 
 describe('enviarAlertas', () => {
   it('envia a mensagem pra cada chat permitido', async () => {
-    await enviarAlertas('token-falso', ['111', '222'], 'texto do alerta');
+    const env = { telegramBotToken: 'token-falso', telegramAllowedChatIds: ['111', '222'], whatsapp: null };
+    await enviarAlertas(env, 'texto do alerta', createLogger({ write() {} }));
 
     expect(enviarMensagem).toHaveBeenCalledTimes(2);
     expect(enviarMensagem).toHaveBeenCalledWith('111', 'texto do alerta');
     expect(enviarMensagem).toHaveBeenCalledWith('222', 'texto do alerta');
+  });
+
+  it('com WhatsApp configurado, também manda por lá', async () => {
+    const env = {
+      telegramBotToken: 'token-falso',
+      telegramAllowedChatIds: ['111'],
+      whatsapp: {
+        wahaUrl: 'http://waha:3000',
+        wahaApiKey: 'waha-key-teste',
+        wahaSession: 'default',
+        destinatarios: ['5511999999999'],
+      },
+    };
+    await enviarAlertas(env, 'texto do alerta', createLogger({ write() {} }));
+
+    expect(enviarTextoWhatsapp).toHaveBeenCalledTimes(1);
+    expect(enviarTextoWhatsapp).toHaveBeenCalledWith(expect.objectContaining({ url: 'http://waha:3000' }), '5511999999999', 'texto do alerta');
   });
 });

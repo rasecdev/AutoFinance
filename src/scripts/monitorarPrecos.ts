@@ -1,7 +1,8 @@
 import { fileURLToPath } from 'node:url';
 import { Bot } from 'grammy';
+import { notificarTexto } from '../canais/notificar.js';
 import { configurarFormatacaoPadrao } from '../bot/formatoMensagens.js';
-import { loadEnv } from '../config/env.js';
+import { loadEnv, type Env } from '../config/env.js';
 import { getDb, type DbClient } from '../db/client.js';
 import { jaFoiAlertado, registrarAlertaEnviado } from '../db/repositories/alertasPrecoEnviados.js';
 import { obterIdioma, type Idioma } from '../db/repositories/idiomaBot.js';
@@ -14,7 +15,7 @@ import {
   type SnapshotModelo,
 } from '../db/repositories/modelosOpenrouterHistorico.js';
 import { listarRoteamentos } from '../db/repositories/roteamentoTarefas.js';
-import { createLogger } from '../logging/logger.js';
+import { createLogger, type Logger } from '../logging/logger.js';
 import { tratarErroCriticoJob } from './tratarErroCriticoJob.js';
 
 const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models';
@@ -197,12 +198,14 @@ export function formatarMensagemAlerta(oportunidades: OportunidadePreco[], idiom
   return t('alerta_preco_envelope', idioma, { linhas: linhas.join('\n') });
 }
 
-export async function enviarAlertas(botToken: string, chatIds: string[], texto: string): Promise<void> {
-  const bot = new Bot(botToken);
+export async function enviarAlertas(
+  env: Pick<Env, 'telegramBotToken' | 'telegramAllowedChatIds' | 'whatsapp'>,
+  texto: string,
+  logger: Logger,
+): Promise<void> {
+  const bot = new Bot(env.telegramBotToken);
   configurarFormatacaoPadrao(bot);
-  for (const chatId of chatIds) {
-    await bot.api.sendMessage(chatId, texto);
-  }
+  await notificarTexto(env, bot, env.telegramAllowedChatIds, texto, logger);
 }
 
 async function main(): Promise<void> {
@@ -218,7 +221,7 @@ async function main(): Promise<void> {
     const oportunidades = filtrarNaoAlertadas(db, detectarOportunidades(db));
     if (oportunidades.length > 0) {
       const idioma = obterIdioma(db);
-      await enviarAlertas(env.telegramBotToken, env.telegramAllowedChatIds, formatarMensagemAlerta(oportunidades, idioma));
+      await enviarAlertas(env, formatarMensagemAlerta(oportunidades, idioma), logger);
       registrarAlertasEnviados(db, oportunidades);
       logger.info({ total: oportunidades.length }, 'alerta de preço enviado');
     }
