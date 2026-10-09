@@ -103,8 +103,8 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 1
 ---
 
 ## Checkpoint: Infraestrutura e envio funcionais (sem wiring nos jobs ainda)
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual: sessão WAHA pareada em Homologação, `notificarTexto`/`notificarImagem`/`notificarDocumento` testados contra a sessão real — mensagem chega no WhatsApp
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Teste manual: sessão WAHA pareada em Homologação, `notificarTexto`/`notificarImagem`/`notificarDocumento` testados contra a sessão real — mensagem chega no WhatsApp (2026-10-09; achado real: `WHATSAPP_DESTINATARIOS` precisou do número sem o "9" extra — `557192839549`, não `5571992839549` — pra WhatsApp resolver o chatId certo)
 - [ ] Revisão com o usuário antes de prosseguir pro wiring nos jobs
 
 ---

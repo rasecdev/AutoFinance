@@ -26,8 +26,8 @@ Infraestrutura reaproveitada sem mudança: todos os 7 scripts que hoje mandam me
 4. Tarefa 125: `src/canais/notificar.ts` — função de fan-out (Telegram + WhatsApp quando configurado)
 
 ### Checkpoint: Infraestrutura e envio funcionais (sem wiring nos jobs ainda)
-- [x] `npm run build`/`lint`/`test` sem erro (suíte completa 1037/1039, as 2 falhas são o flake conhecido e não relacionado de `tests/db/migrate.test.ts`)
-- [ ] Teste manual: sessão WAHA pareada em Homologação (QR escaneado com o número dedicado), `notificarTexto`/`notificarImagem`/`notificarDocumento` testados manualmente contra a sessão real (script avulso ou REPL) — mensagem chega no WhatsApp
+- [x] `npm run build`/`lint`/`test` sem erro (reconfirmado em 2026-10-09: suíte completa 1039/1039, sem flake)
+- [x] Teste manual: sessão WAHA pareada em Homologação (QR escaneado com o número dedicado), `notificarTexto`/`notificarImagem`/`notificarDocumento` testados manualmente contra a sessão real (script avulso, descartado depois) — mensagem chegou no WhatsApp (2026-10-09). Achado real: `WHATSAPP_DESTINATARIOS` precisou do número sem o "9" extra (`557192839549`, não `5571992839549`) — WhatsApp resolve esse número especificamente no formato antigo; `curl .../api/contacts/check-exists` confirma o `chatId` certo quando isso acontecer de novo.
 - [ ] Revisão com o usuário antes de prosseguir pro wiring nos jobs
 
 5. Tarefa 126: wiring — `relatorioSemanal.ts`, `relatorioMensal.ts`, `tratarErroCriticoJob.ts` passam a usar `notificar*` em vez de `bot.api.sendX` direto
