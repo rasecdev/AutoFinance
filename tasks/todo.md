@@ -114,19 +114,23 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 1
 **Description:** `relatorioSemanal.ts` (`notificarImagem` em vez de `bot.api.sendPhoto`), `relatorioMensal.ts` (`notificarDocumento` em vez de `bot.api.sendDocument`), `tratarErroCriticoJob.ts` (`notificarTexto` em vez de `bot.api.sendMessage`) — comportamento de negócio idêntico, só troca o mecanismo de envio final. Assinatura de `tratarErroCriticoJob` ganha `env` no lugar de (ou junto de) `botToken`/`chatIds` crus, pra ter acesso às variáveis do WhatsApp.
 
 **Acceptance criteria:**
-- [ ] Os 3 scripts continuam funcionando exatamente igual quando WhatsApp não está configurado (regressão zero)
-- [ ] Com WhatsApp configurado, os 3 passam a mandar a mesma mídia/texto pros dois canais
+- [x] Os 3 scripts continuam funcionando exatamente igual quando WhatsApp não está configurado (regressão zero)
+- [x] Com WhatsApp configurado, os 3 passam a mandar a mesma mídia/texto pros dois canais
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/scripts/relatorioSemanal.test.ts tests/scripts/relatorioMensal.test.ts tests/scripts/tratarErroCriticoJob.test.ts`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run tests/scripts/relatorioSemanal.test.ts tests/scripts/relatorioMensal.test.ts tests/scripts/tratarErroCriticoJob.test.ts`
+- [x] Build succeeds: `npm run build`
 
 **Dependencies:** Tarefa 125
+
+**Achado real:** mudar a assinatura de `tratarErroCriticoJob` pra receber `env` (em vez de `botToken`/`chatIds` crus) cascateou pra todos os 10 chamadores do projeto, não só os 3 listados abaixo — `backup.ts`, `expurgarDadosAntigos.ts`, `lerEmailFaturas.ts`, `monitorarPrecos.ts`, `renovarSandboxPluggy.ts` (2 pontos), `sincronizarCalendario.ts`, `sincronizarOpenFinance.ts`, `verificarDespesasFixas.ts` — todos só trocaram `env.telegramBotToken, env.telegramAllowedChatIds` por `env`, sem mudar a própria assinatura exportada de cada um (mínimo necessário pro build passar). Efeito colateral desejável: erro crítico de qualquer job passa a sair por WhatsApp também, quando configurado — exceto no loop por item de `renovarSandboxPluggy.ts` (sem acesso ao `Env` completo ali), que continua só por Telegram de propósito (comentário no código). `notificarTexto`/`notificarImagem`/`notificarDocumento` (`src/canais/notificar.ts`) tiveram o parâmetro `env: Env` afrouxado pra `Pick<Env, 'whatsapp'>` — só o que usam de fato, permitindo esse reaproveitamento sem precisar do tipo `Env` inteiro.
 
 **Files likely touched:**
 - `src/scripts/relatorioSemanal.ts`
 - `src/scripts/relatorioMensal.ts`
 - `src/scripts/tratarErroCriticoJob.ts`
+- `src/canais/notificar.ts` (tipo do parâmetro `env`, sem mudança de comportamento)
+- `src/scripts/backup.ts`, `expurgarDadosAntigos.ts`, `lerEmailFaturas.ts`, `monitorarPrecos.ts`, `renovarSandboxPluggy.ts`, `sincronizarCalendario.ts`, `sincronizarOpenFinance.ts`, `verificarDespesasFixas.ts` (só a chamada de `tratarErroCriticoJob`, por causa da assinatura nova)
 - Testes correspondentes
 
 **Estimated scope:** Medium
