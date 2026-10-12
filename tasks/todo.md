@@ -243,8 +243,8 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 2
 ---
 
 ## Checkpoint: Fundação (depois das Tarefas 129-131)
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Nenhuma regressão no Telegram (suíte completa passa igual antes)
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Nenhuma regressão no Telegram (suíte completa passa igual antes) — 135/135 arquivos, 1053/1053 testes
 
 ## Checkpoint: Fluxo básico de texto funcional (depois das Tarefas 132-134)
 - [ ] `npm run build`/`lint`/`test` sem erro
