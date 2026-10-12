@@ -1,17 +1,19 @@
 import { InlineKeyboard } from 'grammy';
 import type { PendenciaConfirmacao } from '../ai/openrouter.js';
 
-const pendencias = new Map<number, PendenciaConfirmacao>();
+// chatId: number (Telegram) | string (WhatsApp — Fase 9 Rodada 2), valor
+// opaco nos dois casos.
+const pendencias = new Map<number | string, PendenciaConfirmacao>();
 
-export function definirPendencia(chatId: number, pendencia: PendenciaConfirmacao): void {
+export function definirPendencia(chatId: number | string, pendencia: PendenciaConfirmacao): void {
   pendencias.set(chatId, pendencia);
 }
 
-export function obterPendencia(chatId: number): PendenciaConfirmacao | undefined {
+export function obterPendencia(chatId: number | string): PendenciaConfirmacao | undefined {
   return pendencias.get(chatId);
 }
 
-export function removerPendencia(chatId: number): void {
+export function removerPendencia(chatId: number | string): void {
   pendencias.delete(chatId);
 }
 

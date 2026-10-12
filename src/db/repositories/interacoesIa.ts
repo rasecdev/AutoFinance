@@ -11,7 +11,8 @@ export type NovaInteracaoIa = {
   respostaModelo?: string;
   toolCalls?: Array<{ nome: string; argumentos: unknown }>;
   resultado: ResultadoInteracao;
-  chatId?: number;
+  // number = Telegram, string = WhatsApp (Fase 9 Rodada 2) — valor opaco.
+  chatId?: number | string;
   tokensPrompt?: number;
   tokensCompletion?: number;
 };
@@ -24,7 +25,7 @@ export type InteracaoIa = {
   mensagemUsuario: string | null;
   respostaModelo: string | null;
   resultado: ResultadoInteracao;
-  chatId: number | null;
+  chatId: number | string | null;
   tokensPrompt: number | null;
   tokensCompletion: number | null;
   dataHora: string;
@@ -38,7 +39,7 @@ type LinhaInteracaoIa = {
   mensagem_usuario: string | null;
   resposta_modelo: string | null;
   resultado: ResultadoInteracao;
-  chat_id: number | null;
+  chat_id: number | string | null;
   tokens_prompt: number | null;
   tokens_completion: number | null;
   data_hora: string;
@@ -100,7 +101,7 @@ function obterIdPorTraceId(db: DbClient, traceId: string): number {
 
 export function buscarUltimasInteracoesPorChat(
   db: DbClient,
-  chatId: number,
+  chatId: number | string,
   limite: number,
   desdeTraceId?: string,
 ): InteracaoIa[] {
@@ -118,7 +119,7 @@ export function buscarUltimasInteracoesPorChat(
   return linhas.reverse().map(mapearLinha);
 }
 
-export function somarTokensChat(db: DbClient, chatId: number, desdeTraceId?: string): number {
+export function somarTokensChat(db: DbClient, chatId: number | string, desdeTraceId?: string): number {
   const idMinimo = desdeTraceId !== undefined ? obterIdPorTraceId(db, desdeTraceId) : 0;
 
   const resultado = db
@@ -141,7 +142,7 @@ export type InteracaoCorreta = {
 // Usado pela curadoria de caso de teste do benchmark interno (Fase 6, parte 2):
 // promove a última interação que o usuário marcou como correta (/certo) numa
 // entrada de casos_teste_benchmark, sem precisar de trace_id explícito.
-export function buscarUltimaInteracaoCorreta(db: DbClient, chatId: number): InteracaoCorreta | undefined {
+export function buscarUltimaInteracaoCorreta(db: DbClient, chatId: number | string): InteracaoCorreta | undefined {
   const linha = db
     .prepare(
       `SELECT trace_id, mensagem_usuario, tool_calls FROM interacoes_ia

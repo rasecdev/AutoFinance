@@ -8,7 +8,7 @@ export const LIMITE_TURNOS_JANELA = 12;
 
 export function montarHistorico(
   db: DbClient,
-  chatId: number,
+  chatId: number | string,
 ): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
   const resumo = obterUltimoResumo(db, chatId);
   const interacoes = buscarUltimasInteracoesPorChat(

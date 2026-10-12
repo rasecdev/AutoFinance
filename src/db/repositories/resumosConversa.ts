@@ -1,7 +1,7 @@
 import type { DbClient } from '../client.js';
 
 export type NovoResumoConversa = {
-  chatId: number;
+  chatId: number | string;
   resumoTexto: string;
   cobreAteTraceId: string;
   tokensJanelaNoGatilho: number;
@@ -9,7 +9,7 @@ export type NovoResumoConversa = {
 
 export type ResumoConversa = {
   id: number;
-  chatId: number;
+  chatId: number | string;
   resumoTexto: string;
   cobreAteTraceId: string;
   tokensJanelaNoGatilho: number;
@@ -18,7 +18,7 @@ export type ResumoConversa = {
 
 type LinhaResumoConversa = {
   id: number;
-  chat_id: number;
+  chat_id: number | string;
   resumo_texto: string;
   cobre_ate_trace_id: string;
   tokens_janela_no_gatilho: number;
@@ -49,7 +49,7 @@ export function criarResumoConversa(db: DbClient, resumo: NovoResumoConversa): v
   });
 }
 
-export function obterUltimoResumo(db: DbClient, chatId: number): ResumoConversa | undefined {
+export function obterUltimoResumo(db: DbClient, chatId: number | string): ResumoConversa | undefined {
   const linha = db
     .prepare('SELECT * FROM resumos_conversa WHERE chat_id = ? ORDER BY id DESC LIMIT 1')
     .get(chatId) as LinhaResumoConversa | undefined;

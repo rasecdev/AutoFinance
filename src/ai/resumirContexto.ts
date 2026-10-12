@@ -77,7 +77,11 @@ export async function resumirContexto(
   };
 }
 
-export async function verificarGatilhoResumo(db: DbClient, client: OpenAI, chatId: number): Promise<void> {
+export async function verificarGatilhoResumo(
+  db: DbClient,
+  client: OpenAI,
+  chatId: number | string,
+): Promise<void> {
   const resumoAtual = obterUltimoResumo(db, chatId);
   const tokensJanela = somarTokensChat(db, chatId, resumoAtual?.cobreAteTraceId);
 
