@@ -27,7 +27,7 @@ Spec fechada via sessão de `grilling` e publicada em `PLANO.md` (seção "Fase 
 
 ### Fase B: Webhook + fluxo básico de texto
 - [x] Tarefa 132: endpoint HTTP interno + validação HMAC + idempotência aplicada
-- [ ] Tarefa 133: `WhatsAppContext` (implementação da interface mínima sobre a WAHA)
+- [x] Tarefa 133: `WhatsAppContext` (implementação da interface mínima sobre a WAHA)
 - [ ] Tarefa 134: roteamento de mensagem de texto entrante (allowlist + `processarMensagemTexto`)
 
 ### Checkpoint: Fluxo básico de texto funcional
