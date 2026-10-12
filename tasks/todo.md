@@ -137,19 +137,22 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 2
 **Description:** O webhook (Tarefa 132), ao receber um evento de mensagem de texto, verifica a allowlist (`WHATSAPP_DESTINATARIOS` — mesmo princípio do `createAllowlistMiddleware` do Telegram: fora da lista, ignora e loga, sem responder) e, se permitido, chama `processarMensagemTexto` (núcleo já generalizado nas Tarefas 129/130) passando o `WhatsAppContext` (Tarefa 133).
 
 **Acceptance criteria:**
-- [ ] Mensagem de número fora de `WHATSAPP_DESTINATARIOS` é ignorada (log, sem resposta)
-- [ ] Mensagem de número permitido chega em `processarMensagemTexto` e a resposta da IA sai pelo `WhatsAppContext`
-- [ ] Contexto/histórico de conversa (`interacoes_ia`, resumo) funciona pro `chatId` do WhatsApp igual já funciona pro Telegram
+- [x] Mensagem de número fora de `WHATSAPP_DESTINATARIOS` é ignorada (log, sem resposta) — comparação remove o sufixo `@c.us` dos dois lados antes de comparar (`WHATSAPP_DESTINATARIOS` guarda só dígitos)
+- [x] Mensagem de número permitido chega em `processarMensagemTexto` e a resposta da IA sai pelo `WhatsAppContext`
+- [x] Contexto/histórico de conversa (`interacoes_ia`, resumo) funciona pro `chatId` do WhatsApp igual já funciona pro Telegram — de graça, já generalizado nas Tarefas 129/130, nenhuma mudança extra necessária
+- [x] Achados extras incorporados: mensagem própria do bot (`fromMe: true`) é ignorada mesmo de número permitido (defesa contra loop de eco, não confirmada contra a API real da WAHA); mensagem com mídia (`hasMedia: true`) é ignorada nesta tarefa — resposta de "não suportado" é Tarefa 137, não antecipada aqui
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run` (suíte completa, + testes novos do roteamento)
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: nenhum ainda — checkpoint de Fase B cobre isso depois da Tarefa 138 (wiring)
+- [x] Tests pass: `npx vitest run` (suíte completa, 137/137 arquivos, 1072/1072 testes) + 5 testes novos do roteamento em `tests/canais/webhookWhatsapp.test.ts` (allowlist, `fromMe`, mídia, chamada correta a `processarMensagemTexto`, normalização de sufixo)
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: nenhum ainda — checkpoint de Fase B cobre isso depois da Tarefa 138 (wiring)
 
 **Dependencies:** Tarefas 132, 133
 
 **Files likely touched:**
 - `src/canais/webhookWhatsapp.ts`
+- `src/index.ts` (passa `client`/`tools` novos pro webhook, não previsto originalmente)
+- `tests/canais/webhookWhatsapp.test.ts` (testes novos + ajuste da assinatura de `processarWebhookWhatsapp`/`criarServidorWebhookWhatsapp`, que ganharam o parâmetro `deps`)
 
 **Estimated scope:** Small
 
