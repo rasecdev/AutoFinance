@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { InputFile, type Context } from 'grammy';
+import { type Context } from 'grammy';
 import type OpenAI from 'openai';
 import { montarHistorico } from '../../ai/contexto.js';
 import { extrairResultadoTool, gerarResposta, MODELO_PADRAO } from '../../ai/openrouter.js';
 import { verificarGatilhoResumo } from '../../ai/resumirContexto.js';
 import { montarToolsConversa } from '../../ai/tools/conversaTools.js';
 import type { ToolDefinition } from '../../ai/tools/types.js';
+import { criarContextoTelegram, type CanalContext } from '../../canais/contextoCanal.js';
 import type { DbClient } from '../../db/client.js';
 import {
   obterPendenciaPersistida,
@@ -16,13 +17,7 @@ import { t } from '../../i18n/t.js';
 import { registrarInteracaoIa } from '../../db/repositories/interacoesIa.js';
 import { registrarUsoTokens } from '../../db/repositories/usoTokens.js';
 import type { Logger } from '../../logging/logger.js';
-import {
-  definirPendencia,
-  ehConfirmacaoAfirmativa,
-  montarTecladoConfirmacao,
-  obterPendencia,
-  removerPendencia,
-} from '../confirmacao.js';
+import { definirPendencia, ehConfirmacaoAfirmativa, obterPendencia, removerPendencia } from '../confirmacao.js';
 import { resolverModeloConversa } from '../modeloAtivo.js';
 import { definirRastroResposta } from '../rastroRespostas.js';
 
@@ -42,7 +37,7 @@ function ehErroModeloInvalido(erro: unknown): boolean {
 // está processando até responder de fato.
 const INTERVALO_LOADER_MS = 4000;
 
-async function comIndicadorDigitando<T>(ctx: Context, tarefa: Promise<T>, logger: Logger): Promise<T> {
+async function comIndicadorDigitando<T>(ctx: CanalContext, tarefa: Promise<T>, logger: Logger): Promise<T> {
   const enviarIndicador = () => {
     void ctx.replyWithChatAction('typing').catch((erro: unknown) => {
       logger.warn({ err: erro }, 'falha ao enviar indicador de "digitando..."');
@@ -64,7 +59,7 @@ async function comIndicadorDigitando<T>(ctx: Context, tarefa: Promise<T>, logger
 // do Telegram) e voz.ts (Fase 6 parte 11, texto vindo de transcrição), sem
 // duplicar histórico/registro/resumo/tratamento de erro entre os dois.
 export async function processarMensagemTexto(
-  ctx: Context,
+  ctx: CanalContext,
   db: DbClient,
   client: OpenAI,
   logger: Logger,
@@ -91,8 +86,8 @@ export async function processarMensagemTexto(
       );
       const { texto, imagem, documento } = extrairResultadoTool(resultado);
       await ctx.reply(texto);
-      if (imagem) await ctx.replyWithPhoto(new InputFile(imagem));
-      if (documento) await ctx.replyWithDocument(new InputFile(documento.buffer, documento.nomeArquivo));
+      if (imagem) await ctx.replyWithPhoto(imagem);
+      if (documento) await ctx.replyWithDocument(documento.buffer, documento.nomeArquivo);
     } catch (erro) {
       logger.error({ err: erro }, 'falha ao executar ação confirmada pelo usuário');
       await ctx.reply(t('nao_consegui_concluir_acao', idioma));
@@ -130,8 +125,8 @@ export async function processarMensagemTexto(
       );
       const { texto, imagem, documento } = extrairResultadoTool(resultado);
       await ctx.reply(texto);
-      if (imagem) await ctx.replyWithPhoto(new InputFile(imagem));
-      if (documento) await ctx.replyWithDocument(new InputFile(documento.buffer, documento.nomeArquivo));
+      if (imagem) await ctx.replyWithPhoto(imagem);
+      if (documento) await ctx.replyWithDocument(documento.buffer, documento.nomeArquivo);
     } catch (erro) {
       logger.error({ err: erro }, 'falha ao executar ação confirmada pelo usuário (pendência persistida)');
       await ctx.reply(t('nao_consegui_concluir_acao', idioma));
@@ -203,14 +198,18 @@ export async function processarMensagemTexto(
     );
     const mensagemEnviada = await ctx.reply(
       resposta.trim().length > 0 ? resposta : t('nao_entendi_reformular', idioma),
-      pendenciaConfirmacao ? { reply_markup: montarTecladoConfirmacao() } : undefined,
+      { pedirConfirmacao: pendenciaConfirmacao !== undefined },
     );
-    definirRastroResposta(mensagemEnviada.message_id, traceId);
+    // message_id só existe no Telegram (rastreio de /errado//certo, fora de
+    // escopo pro WhatsApp nesta rodada) — undefined noutro canal, sem rastro.
+    if (mensagemEnviada.message_id !== undefined) {
+      definirRastroResposta(mensagemEnviada.message_id, traceId);
+    }
     for (const imagem of imagens) {
-      await ctx.replyWithPhoto(new InputFile(imagem));
+      await ctx.replyWithPhoto(imagem);
     }
     for (const documento of documentos) {
-      await ctx.replyWithDocument(new InputFile(documento.buffer, documento.nomeArquivo));
+      await ctx.replyWithDocument(documento.buffer, documento.nomeArquivo);
     }
 
     // Roda depois de a resposta já ter sido enviada — não adiciona latência
@@ -246,6 +245,6 @@ export function createHandlerTexto(client: OpenAI, db: DbClient, logger: Logger)
       return;
     }
 
-    await processarMensagemTexto(ctx, db, client, logger, tools, mensagemUsuario, chatId);
+    await processarMensagemTexto(criarContextoTelegram(ctx), db, client, logger, tools, mensagemUsuario, chatId);
   };
 }

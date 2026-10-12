@@ -2,6 +2,7 @@ import type { Context } from 'grammy';
 import type OpenAI from 'openai';
 import { resolverModeloTranscricaoVoz, transcreverAudio, FLUXO_TRANSCRICAO_VOZ } from '../../ai/transcricao.js';
 import { montarToolsConversa } from '../../ai/tools/conversaTools.js';
+import { criarContextoTelegram } from '../../canais/contextoCanal.js';
 import type { DbClient } from '../../db/client.js';
 import { obterIdioma } from '../../db/repositories/idiomaBot.js';
 import { registrarUsoTokens } from '../../db/repositories/usoTokens.js';
@@ -54,6 +55,6 @@ export function createHandlerVoz(client: OpenAI, db: DbClient, logger: Logger, b
       return;
     }
 
-    await processarMensagemTexto(ctx, db, client, logger, tools, textoTranscrito, chatId);
+    await processarMensagemTexto(criarContextoTelegram(ctx), db, client, logger, tools, textoTranscrito, chatId);
   };
 }

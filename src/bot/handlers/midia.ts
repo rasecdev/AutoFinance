@@ -21,6 +21,7 @@ import { registrarInteracaoIa } from '../../db/repositories/interacoesIa.js';
 import { registrarUsoTokens } from '../../db/repositories/usoTokens.js';
 import { t } from '../../i18n/t.js';
 import type { Logger } from '../../logging/logger.js';
+import { criarContextoTelegram } from '../../canais/contextoCanal.js';
 import { definirPendencia, montarTecladoConfirmacao } from '../confirmacao.js';
 import { definirRastroResposta } from '../rastroRespostas.js';
 import { processarMensagemTexto } from './texto.js';
@@ -248,7 +249,7 @@ async function processarComprovante(
 
   const mensagemSintetica = montarMensagemSintetica(resultado);
   const tools = exigirConfirmacaoDeRegistro(montarToolsConversa(db, client));
-  await processarMensagemTexto(ctx, db, client, logger, tools, mensagemSintetica, chatId);
+  await processarMensagemTexto(criarContextoTelegram(ctx), db, client, logger, tools, mensagemSintetica, chatId);
 }
 
 export function createHandlerMidia(client: OpenAI, db: DbClient, logger: Logger, botToken: string) {

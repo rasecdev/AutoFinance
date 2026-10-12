@@ -34,20 +34,22 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 2
 **Description:** Define uma interface estrutural mínima (`reply`/`replyWithPhoto`/`replyWithDocument`/`replyWithChatAction`) e troca o tipo do parâmetro `ctx` nos pontos do núcleo de conversa que hoje recebem `ctx: Context` do grammy largo (`processarMensagemTexto` e o que ele chama) pra essa interface. O `Context` real do grammy já satisfaz a forma de graça (duck typing do TypeScript) — **nenhum handler de `src/bot/handlers/*` muda de comportamento**, só o tipo do parâmetro em alguns pontos.
 
 **Acceptance criteria:**
-- [ ] Interface nova definida (nome a decidir na implementação, ex: `CanalContext`) com só os 4 métodos realmente usados
-- [ ] `processarMensagemTexto` (e qualquer outro ponto do núcleo que precise) aceita essa interface em vez de `Context` do grammy
-- [ ] Telegram continua funcionando sem nenhuma mudança de comportamento (o `Context` real passa a satisfazer a interface nova estruturalmente, sem wrapper)
+- [x] Interface nova definida (`CanalContext`, `src/canais/contextoCanal.ts`) com só os 4 métodos realmente usados (`reply`/`replyWithPhoto`/`replyWithDocument`/`replyWithChatAction`)
+- [x] `processarMensagemTexto` (e `comIndicadorDigitando`, que ele chama) aceita essa interface em vez de `Context` do grammy
+- [x] Telegram continua funcionando sem nenhuma mudança de comportamento observável — **achado real, corrige a premissa original:** o `Context` do grammy NÃO satisfaz a interface de graça pros 4 métodos — `replyWithPhoto`/`replyWithDocument` exigem `InputFile` (não `Buffer` crú) e `InputFile` não expõe o `Buffer` de volta (campo interno privado), então um adapter (`criarContextoTelegram`) precisou ser escrito pro lado Telegram também, não só pro WhatsApp (Tarefa 133). `reply`/`replyWithChatAction` por si só seriam estruturalmente compatíveis, mas o adapter cobre os 4 juntos por simplicidade/consistência. Teclado de confirmação (`montarTecladoConfirmacao`) migrou de `texto.ts` pra dentro do adapter, acionado por um novo parâmetro `pedirConfirmacao` (o núcleo só sinaliza a intenção, nunca a mecânica — mantém a decisão de arquitetura "confirmação por canal")
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run` (suíte completa) + teste novo passando um objeto fake que implementa só a interface mínima
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: nenhum — ainda não há segundo canal consumindo isso
+- [x] Tests pass: `npx vitest run` (suíte completa, 134/134 arquivos, 1049/1049 testes) + teste novo (`tests/canais/contextoCanal.test.ts`) passando objeto fake que implementa só a interface mínima, cobrindo também o adapter Telegram isoladamente
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: nenhum — ainda não há segundo canal consumindo isso
 
 **Dependencies:** Tarefa 129
 
 **Files likely touched:**
 - `src/canais/contextoCanal.ts` (novo)
-- `src/bot/handlers/texto.ts`, `src/bot/handlers/voz.ts`
+- `src/bot/handlers/texto.ts`, `src/bot/handlers/voz.ts`, `src/bot/handlers/midia.ts` (não previsto originalmente — também chama `processarMensagemTexto`)
+- `tests/bot/handlers/texto.test.ts`, `tests/bot/handlers/voz.test.ts` (asserções sobre a forma da chamada a `ctx.reply`/`processarMensagemTexto` ajustadas)
+- `tests/canais/contextoCanal.test.ts` (novo)
 
 **Estimated scope:** Small
 
