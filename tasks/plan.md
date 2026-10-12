@@ -17,7 +17,7 @@ Spec fechada via sessão de `grilling` e publicada em `PLANO.md` (seção "Fase 
 ## Task List
 
 ### Fase A: Fundação (tipos + idempotência + interface mínima)
-- [ ] Tarefa 129: generalizar `chatId` pra `number | string`
+- [x] Tarefa 129: generalizar `chatId` pra `number | string`
 - [ ] Tarefa 130: interface mínima de saída (`CanalContext`) no núcleo de conversa
 - [ ] Tarefa 131: idempotência de evento WAHA (migration + repositório)
 
