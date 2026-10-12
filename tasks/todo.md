@@ -1,194 +1,254 @@
-# Todo: Multi-canal — WhatsApp via WAHA (Rodada 1: mensagens proativas)
+# Todo: Multi-canal — WhatsApp via WAHA (Rodada 2: chat bidirecional)
 
-Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 1 cobre só envio proativo (relatório semanal/mensal, alertas) via WhatsApp, em paralelo ao Telegram — chat bidirecional fica pra uma Rodada 2 futura.
+Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 2 dá ao WhatsApp paridade com o Telegram em chat livre, confirmação de ação, confirmação de fatura por e-mail e dois comandos (`/registrar_open_finance`/`/registrar_email`). Mídia de verdade e demais comandos ficam pra depois.
 
 ---
 
-### Tarefa 122: `docker-compose.yml` (serviços WAHA) + `env.ts` (novas variáveis)
+### Tarefa 129: Generalizar `chatId` pra `number | string`
 
-**Description:** Dois novos serviços no `docker-compose.yml`, mesmo padrão de todo par existente (imagem oficial `devlikeapro/waha`, sem `build:` próprio — é imagem publicada, diferente do resto do projeto que sempre builda a própria): `whatsapp-homologacao`/`whatsapp-producao`, motor `NOWEB` via env var (`WHATSAPP_DEFAULT_ENGINE=NOWEB`), volume próprio por ambiente pra persistir a sessão (evita reescanear QR a cada restart), variável de API key própria por ambiente. `env.ts` ganha `WHATSAPP_WAHA_URL`, `WHATSAPP_WAHA_API_KEY`, `WHATSAPP_WAHA_SESSION`, `WHATSAPP_DESTINATARIOS` (lista de números, mesmo formato de `TELEGRAM_ALLOWED_CHAT_IDS`) — todas opcionais mas exigidas juntas (`superRefine`, mesma regra do par Google/Pluggy). Ausentes por completo é estado válido.
+**Description:** Todo `Map`/parâmetro que hoje assume `chatId: number` (Telegram) passa a aceitar também o formato string do WhatsApp (`"<numero>@c.us"`), sem mudar nenhum comportamento do Telegram. Alcança: `confirmacao.ts` (`pendencias`), `googleOAuthPendencia.ts`, `openFinancePendencia.ts`, `modeloAtivo.ts`, `confirmacoesPendentes.ts`/`botPausado.ts` (repositórios — a coluna SQL não precisa de migration, nenhuma tabela do projeto é `STRICT`), e a cadeia de parâmetros que propaga `chatId` até `processarMensagemTexto`/`createHandlerCallbackConfirmacao`.
 
 **Acceptance criteria:**
-- [x] `docker compose config` valida sem erro com os dois serviços novos — confirmado no CI do PR #406 (job `docker`: `docker build .` + `docker compose config`, ambos verdes)
-- [x] `env.ts`: as 4 variáveis ausentes juntas não geram erro de validação (integração desligada)
-- [x] `env.ts`: só parte das 4 variáveis presentes gera erro de validação claro (mesmo padrão do par Google)
-- [x] Serviço `whatsapp-homologacao` sobe localmente (`docker compose up whatsapp-homologacao`) e responde no endpoint de health/QR da WAHA — confirmado na VM: `whatsapp-homologacao`/`whatsapp-producao` `Started`, `curl http://127.0.0.1:3000/api/health` responde `401 Unauthorized` (serviço de pé, exige API key por padrão — tratado na Tarefa 123/124)
+- [ ] Nenhum desses módulos mais declara `Map<number, ...>`/parâmetro `chatId: number` — todos aceitam `number | string`
+- [ ] `chatId` é tratado como valor opaco em todo esse caminho (nunca convertido pra número, nunca usado em conta aritmética)
+- [ ] Comportamento do Telegram inalterado (regressão zero)
 
 **Verification:**
-- [x] Tests pass: `npx vitest run tests/config/env.test.ts`
-- [x] Build succeeds: `npm run build`
-- [x] Manual check: `sudo docker compose up -d` subiu os 24 serviços na VM (Homologação e Produção, inclusive os dois que o `deploy.sh` vinha deixando de fora), `curl` no endpoint de health da WAHA confirmou resposta
+- [ ] Tests pass: `npx vitest run` (suíte completa)
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: nenhum — mudança de tipo, sem efeito observável ainda nesta tarefa
 
 **Dependencies:** None
 
 **Files likely touched:**
-- `docker-compose.yml`
-- `src/config/env.ts`
-- `tests/config/env.test.ts`
-
-**Estimated scope:** Small
-
----
-
-### Tarefa 123: `scripts/parearWhatsapp.ts` (pareamento inicial via QR code)
-
-**Description:** Script de linha de comando, rodado uma vez (mesmo padrão de `configurarGoogleOAuth.ts`/`gerarConnectTokenPluggy.ts`): cria a sessão via `POST {WAHA_URL}/api/sessions` (nome da sessão de `WHATSAPP_WAHA_SESSION`), busca o QR code via `GET {WAHA_URL}/api/{session}/auth/qr` e salva como arquivo `.png` local (`qr-whatsapp.png` ou similar) — usuário abre o arquivo e escaneia com o WhatsApp do número dedicado. Roda dentro do container (`docker compose run --rm --no-deps whatsapp-homologacao ...` não se aplica — é o *bot* que chama a API da WAHA, não a WAHA em si; rodar como `docker compose run --rm --no-deps homologacao node dist/scripts/parearWhatsapp.js`, mesmo padrão dos outros scripts avulsos).
-
-**Acceptance criteria:**
-- [x] Cria a sessão se ainda não existir (idempotente — sessão já criada não é erro)
-- [x] QR code salvo como arquivo de imagem válido, path informado no console
-- [x] Erro claro se `WHATSAPP_WAHA_URL`/`WHATSAPP_WAHA_API_KEY`/`WHATSAPP_WAHA_SESSION` não estiverem configurados
-
-**Verification:**
-- [x] Tests pass: `npx vitest run tests/scripts/parearWhatsapp.test.ts` (mocka a API da WAHA — não depende de sessão real)
-- [x] Build succeeds: `npm run build`
-- [x] Manual check: QR gerado de verdade contra a sessão WAHA de Homologação, escaneado com o número dedicado, sessão fica `WORKING` — confirmado (2026-10-09), `GET /api/sessions/default` retornou `"status":"WORKING"`
-
-**Dependencies:** Tarefa 122
-
-**Files likely touched:**
-- `src/scripts/parearWhatsapp.ts`
-- `tests/scripts/parearWhatsapp.test.ts`
-
-**Estimated scope:** Small
-
----
-
-### Tarefa 124: `src/canais/whatsapp.ts` (cliente HTTP fino pra WAHA)
-
-**Description:** `enviarTextoWhatsapp(config, destinatario, texto)`, `enviarImagemWhatsapp(config, destinatario, imagem: Buffer, legenda?)`, `enviarDocumentoWhatsapp(config, destinatario, documento: Buffer, nomeArquivo)` — `fetch` direto contra `POST {WAHA_URL}/api/sendText`/`/api/sendImage`/`/api/sendFile`, autenticado via header de API key, mídia em base64 (`file.data`). `config` é `{ url, apiKey, session }` (vem de `env`, mas função pura o suficiente pra testar sem carregar env de verdade). `destinatario` no formato de número que a WAHA espera (`<numero>@c.us`) — validar/normalizar formato antes de montar o payload.
-
-**Acceptance criteria:**
-- [x] `enviarTextoWhatsapp` monta o payload certo (`session`, `chatId`, `text`) e inclui o header de API key
-- [x] `enviarImagemWhatsapp`/`enviarDocumentoWhatsapp` codificam o Buffer em base64 no campo `file.data`, com `mimetype`/`filename` corretos
-- [x] Erro de rede/resposta não-2xx da WAHA propaga como exceção clara (mensagem inclui status HTTP), não falha silenciosa
-- [x] Número de destinatário sem o sufixo `@c.us` é normalizado antes do envio
-
-**Verification:**
-- [x] Tests pass: `npx vitest run tests/canais/whatsapp.test.ts` (mocka `fetch` global)
-- [x] Build succeeds: `npm run build`
-
-**Dependencies:** None (não depende da Tarefa 122/123 pra existir — só pra ser testado de verdade)
-
-**Files likely touched:**
-- `src/canais/whatsapp.ts`
-- `tests/canais/whatsapp.test.ts`
-
-**Estimated scope:** Small
-
----
-
-### Tarefa 125: `src/canais/notificar.ts` (fan-out Telegram + WhatsApp)
-
-**Description:** `notificarTexto(env, bot, chatIds, texto)`, `notificarImagem(env, bot, chatIds, imagem, legenda?)`, `notificarDocumento(env, bot, chatIds, documento, nomeArquivo)` — manda pro Telegram como cada script já faz hoje (`bot.api.sendMessage`/`sendPhoto`/`sendDocument` por `chatId`), e adicionalmente, se `env.whatsappWahaUrl` (e demais variáveis) estiverem presentes, manda a mesma mensagem por WhatsApp via `src/canais/whatsapp.ts` pra cada número de `env.whatsappDestinatarios`. Falha de envio num canal não impede o outro nem lança exceção pro chamador (mesmo princípio já usado em `tratarErroCriticoJob` — loga e segue).
-
-**Acceptance criteria:**
-- [x] Com WhatsApp configurado: mensagem sai pros dois canais
-- [x] Sem WhatsApp configurado: mensagem sai só por Telegram, sem erro nem log de "tentou e falhou"
-- [x] Falha no envio WhatsApp (ex: sessão desconectada) não impede o envio Telegram, e vice-versa
-- [x] Falha em qualquer canal é logada, não lançada como exceção (chamador não precisa de try/catch pra isso)
-
-**Verification:**
-- [x] Tests pass: `npx vitest run tests/canais/notificar.test.ts`
-- [x] Build succeeds: `npm run build`
-
-**Dependencies:** Tarefa 124
-
-**Files likely touched:**
-- `src/canais/notificar.ts`
-- `tests/canais/notificar.test.ts`
+- `src/bot/confirmacao.ts`, `src/bot/googleOAuthPendencia.ts`, `src/bot/openFinancePendencia.ts`, `src/bot/modeloAtivo.ts`
+- `src/db/repositories/confirmacoesPendentes.ts`, `src/db/repositories/botPausado.ts`
+- `src/bot/handlers/texto.ts`, `src/bot/handlers/callbackConfirmacao.ts`
 
 **Estimated scope:** Medium
 
 ---
 
-## Checkpoint: Infraestrutura e envio funcionais (sem wiring nos jobs ainda)
-- [x] `npm run build`/`lint`/`test` sem erro
-- [x] Teste manual: sessão WAHA pareada em Homologação, `notificarTexto`/`notificarImagem`/`notificarDocumento` testados contra a sessão real — mensagem chega no WhatsApp (2026-10-09; achado real: `WHATSAPP_DESTINATARIOS` precisou do número sem o "9" extra — `557192839549`, não `5571992839549` — pra WhatsApp resolver o chatId certo)
-- [x] Revisão com o usuário antes de prosseguir pro wiring nos jobs (2026-10-09, confirmado: mensagens de teste chegaram no destinatário)
+### Tarefa 130: Interface mínima de saída (`CanalContext`) no núcleo de conversa
 
----
-
-### Tarefa 126: wiring — relatórios e erro crítico
-
-**Description:** `relatorioSemanal.ts` (`notificarImagem` em vez de `bot.api.sendPhoto`), `relatorioMensal.ts` (`notificarDocumento` em vez de `bot.api.sendDocument`), `tratarErroCriticoJob.ts` (`notificarTexto` em vez de `bot.api.sendMessage`) — comportamento de negócio idêntico, só troca o mecanismo de envio final. Assinatura de `tratarErroCriticoJob` ganha `env` no lugar de (ou junto de) `botToken`/`chatIds` crus, pra ter acesso às variáveis do WhatsApp.
+**Description:** Define uma interface estrutural mínima (`reply`/`replyWithPhoto`/`replyWithDocument`/`replyWithChatAction`) e troca o tipo do parâmetro `ctx` nos pontos do núcleo de conversa que hoje recebem `ctx: Context` do grammy largo (`processarMensagemTexto` e o que ele chama) pra essa interface. O `Context` real do grammy já satisfaz a forma de graça (duck typing do TypeScript) — **nenhum handler de `src/bot/handlers/*` muda de comportamento**, só o tipo do parâmetro em alguns pontos.
 
 **Acceptance criteria:**
-- [x] Os 3 scripts continuam funcionando exatamente igual quando WhatsApp não está configurado (regressão zero)
-- [x] Com WhatsApp configurado, os 3 passam a mandar a mesma mídia/texto pros dois canais
+- [ ] Interface nova definida (nome a decidir na implementação, ex: `CanalContext`) com só os 4 métodos realmente usados
+- [ ] `processarMensagemTexto` (e qualquer outro ponto do núcleo que precise) aceita essa interface em vez de `Context` do grammy
+- [ ] Telegram continua funcionando sem nenhuma mudança de comportamento (o `Context` real passa a satisfazer a interface nova estruturalmente, sem wrapper)
 
 **Verification:**
-- [x] Tests pass: `npx vitest run tests/scripts/relatorioSemanal.test.ts tests/scripts/relatorioMensal.test.ts tests/scripts/tratarErroCriticoJob.test.ts`
-- [x] Build succeeds: `npm run build`
+- [ ] Tests pass: `npx vitest run` (suíte completa) + teste novo passando um objeto fake que implementa só a interface mínima
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: nenhum — ainda não há segundo canal consumindo isso
 
-**Dependencies:** Tarefa 125
-
-**Achado real:** mudar a assinatura de `tratarErroCriticoJob` pra receber `env` (em vez de `botToken`/`chatIds` crus) cascateou pra todos os 10 chamadores do projeto, não só os 3 listados abaixo — `backup.ts`, `expurgarDadosAntigos.ts`, `lerEmailFaturas.ts`, `monitorarPrecos.ts`, `renovarSandboxPluggy.ts` (2 pontos), `sincronizarCalendario.ts`, `sincronizarOpenFinance.ts`, `verificarDespesasFixas.ts` — todos só trocaram `env.telegramBotToken, env.telegramAllowedChatIds` por `env`, sem mudar a própria assinatura exportada de cada um (mínimo necessário pro build passar). Efeito colateral desejável: erro crítico de qualquer job passa a sair por WhatsApp também, quando configurado — exceto no loop por item de `renovarSandboxPluggy.ts` (sem acesso ao `Env` completo ali), que continua só por Telegram de propósito (comentário no código). `notificarTexto`/`notificarImagem`/`notificarDocumento` (`src/canais/notificar.ts`) tiveram o parâmetro `env: Env` afrouxado pra `Pick<Env, 'whatsapp'>` — só o que usam de fato, permitindo esse reaproveitamento sem precisar do tipo `Env` inteiro.
+**Dependencies:** Tarefa 129
 
 **Files likely touched:**
-- `src/scripts/relatorioSemanal.ts`
-- `src/scripts/relatorioMensal.ts`
-- `src/scripts/tratarErroCriticoJob.ts`
-- `src/canais/notificar.ts` (tipo do parâmetro `env`, sem mudança de comportamento)
-- `src/scripts/backup.ts`, `expurgarDadosAntigos.ts`, `lerEmailFaturas.ts`, `monitorarPrecos.ts`, `renovarSandboxPluggy.ts`, `sincronizarCalendario.ts`, `sincronizarOpenFinance.ts`, `verificarDespesasFixas.ts` (só a chamada de `tratarErroCriticoJob`, por causa da assinatura nova)
-- Testes correspondentes
+- `src/canais/contextoCanal.ts` (novo)
+- `src/bot/handlers/texto.ts`, `src/bot/handlers/voz.ts`
 
-**Estimated scope:** Medium
+**Estimated scope:** Small
 
 ---
 
-### Tarefa 127: wiring — alertas operacionais
+### Tarefa 131: Idempotência de evento WAHA
 
-**Description:** `monitorarPrecos.ts`, `verificarDespesasFixas.ts`, `lerEmailFaturas.ts`, `sincronizarOpenFinance.ts` — mesma troca de `bot.api.sendX` por `notificar*` da Tarefa 126, aplicada aos 4 scripts restantes que mandam mensagem proativa.
-
-**Acceptance criteria:**
-- [x] Os 3 scripts com mensagem proativa simples continuam funcionando exatamente igual quando WhatsApp não está configurado (regressão zero)
-- [x] Com WhatsApp configurado, esses 3 passam a mandar a mesma mensagem pros dois canais
-
-**Verification:**
-- [x] Tests pass: `npx vitest run tests/scripts/monitorarPrecos.test.ts tests/scripts/verificarDespesasFixas.test.ts tests/scripts/lerEmailFaturas.test.ts tests/scripts/sincronizarOpenFinance.test.ts`
-- [x] Build succeeds: `npm run build`
-
-**Dependencies:** Tarefa 125
-
-**Achado real, decisão revisada com o usuário (2026-10-09):** `lerEmailFaturas.ts` **não foi tocado** — as duas únicas mensagens que ele manda são pedidos de confirmação com teclado inline (`reply_markup`, aprovar/rejeitar fatura extraída por e-mail), não notificação simples. Rotear isso por `notificarTexto` perderia os botões — WhatsApp não tem equivalente nesta Rodada 1 (chat bidirecional é Rodada 2, corte já registrado no PLANO.md). Decisão confirmada com o usuário: continua só por Telegram por enquanto; registrado em PLANO.md (Fase 9) como motivação explícita pra Rodada 2 levar o WhatsApp à paridade com o Telegram nesse tipo de interação. `monitorarPrecos.ts` (`enviarAlertas` ganhou `env`/`logger` no lugar de `botToken` cru), `verificarDespesasFixas.ts` e `sincronizarOpenFinance.ts` (`processarTransacao`/`sincronizarOpenFinance` exportadas trocaram `chatIds: string[]` por `env`) wired normalmente.
-
-**Files likely touched:**
-- `src/scripts/monitorarPrecos.ts`
-- `src/scripts/verificarDespesasFixas.ts`
-- `src/scripts/sincronizarOpenFinance.ts`
-- ~~`src/scripts/lerEmailFaturas.ts`~~ (não tocado — ver achado real acima)
-- Testes correspondentes
-
-**Estimated scope:** Medium
-
----
-
-### Tarefa 128: `deploy.sh` (VM) — ler a lista de serviços do `docker-compose.yml` em vez de lista fixa
-
-**Description:** Lacuna encontrada na Tarefa 122 (PROGRESSO.md, 2026-10-06): `/opt/autofinance-deploy/deploy.sh` na VM (dono `root`, fora deste repositório, não editável pela automação de deploy) usa uma lista fixa/parcial de nomes de serviço pra decidir o que recriar — serviços novos adicionados ao `docker-compose.yml` (ex: `whatsapp-homologacao`/`whatsapp-producao`) nunca sobem no primeiro deploy automático, exigindo `docker compose up -d` manual na VM pra "ativar" cada serviço novo uma vez. Esta tarefa versiona o script no repositório como fonte de verdade (`infra/deploy.sh`), corrigido pra descobrir os serviços do ambiente dinamicamente (`docker compose config --services`, filtrando por sufixo `-homologacao`/`-producao`) em vez de listar nomes à mão, e documenta o passo manual (fora do alcance da automação, por desenho de segurança do usuário dedicado sem sudo) de substituir o arquivo na VM por este.
+**Description:** Tabela nova (migration) + repositório pra marcar "evento/mensagem da WAHA já processado", mesmo padrão de `emailsProcessados.ts`/`transacoesOpenFinanceProcessadas.ts`. Usada pelo webhook (Tarefa 132) antes de executar qualquer tool, pra nunca duplicar uma ação financeira por reentrega.
 
 **Acceptance criteria:**
-- [x] `infra/deploy.sh` no repositório é a fonte de verdade — recebe o nome do ambiente (`homologacao`/`producao`) como argumento, igual ao script atual da VM
-- [x] Lista de serviços derivada de `docker compose config --services`, filtrada pelo sufixo do ambiente — nenhum nome de serviço hardcoded
-- [x] `docker compose up -d --build` usa essa lista — serviço novo no `docker-compose.yml` passa a subir no deploy automático seguinte, sem intervenção manual
-- [x] Documentado em comentário no próprio arquivo que a aplicação na VM é manual (substituir `/opt/autofinance-deploy/deploy.sh`, dono `root`) — a automação de CI/deploy não tem permissão de alterar esse arquivo
+- [ ] Migration nova cria a tabela (id do evento WAHA como chave única)
+- [ ] Repositório expõe `jaProcessado`/`marcarProcessado` (nomes a decidir), mesmo formato dos repositórios de idempotência já existentes
+- [ ] Chamar `marcarProcessado` duas vezes pro mesmo id não lança erro (idempotente de verdade)
 
 **Verification:**
-- [x] Revisão do script (sem `shellcheck` configurado no projeto — `bash -n` confirma sintaxe; filtro de serviços simulado à mão contra a lista real do `docker-compose.yml`: 11 serviços pra `homologacao`, 10 pra `producao`, incluindo os que o script antigo deixava de fora)
-- [x] Manual check: usuário substituiu `/opt/autofinance-deploy/deploy.sh` na VM e confirmou (2026-10-09) — `SSH_ORIGINAL_COMMAND=homologacao sudo -E /opt/autofinance-deploy/deploy.sh` subiu os 11 serviços de Homologação, incluindo `whatsapp-homologacao`/`renovar-sandbox-pluggy-homologacao`/`sincronizar-open-finance-homologacao`/`expurgar-dados-antigos-homologacao` (os que o script antigo deixava de fora)
+- [ ] Tests pass: `npx vitest run tests/db/migrate.test.ts tests/db/repositories/` (+ teste novo do repositório)
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: nenhum — infraestrutura, sem consumidor ainda
 
 **Dependencies:** None
 
 **Files likely touched:**
-- `infra/deploy.sh` (novo)
+- `src/db/migrations/0022_eventos_whatsapp_processados.sql` (novo, número exato a confirmar contra a última migration existente)
+- `src/db/repositories/eventosWhatsappProcessados.ts` (novo)
 
 **Estimated scope:** Small
 
 ---
 
-## Checkpoint: Rodada 1 fechada (mensagens proativas no WhatsApp)
-- [x] `npm run build`/`lint`/`test` sem erro — reverificado em 2026-10-12 após recuperação de corrupção do `.git` local e reinstalação de toolchain nativa (Windows): build limpo, lint limpo, 133/133 arquivos / 1043/1043 testes passando
-- [x] Teste manual em Homologação: `relatorioSemanal.js --agora`/`relatorioMensal.js --agora` de verdade — mensagem chega nos dois canais — confirmado pelo usuário em 2026-10-12, apareceu em Telegram e WhatsApp
-- [x] PROGRESSO.md atualizado com o marco
-- [x] Revisão com o usuário antes de considerar a Rodada 2 (chat bidirecional) — Rodada 1 fechada em 2026-10-12; Rodada 2 fica pra quando o usuário decidir planejá-la, não iniciada
+### Tarefa 132: Endpoint HTTP interno + validação HMAC
+
+**Description:** Novo listener HTTP no mesmo processo do bot (ao lado do `bot.start()` do grammy em `index.ts`), só acessível na rede interna do `docker-compose`. Recebe o POST da WAHA, valida a assinatura (`X-Webhook-Hmac`, chave `WHATSAPP_WEBHOOK_HMAC_KEY`) antes de qualquer parsing — requisição sem assinatura válida é rejeitada (4xx) sem processar. Aplica a checagem de idempotência (Tarefa 131) antes de despachar pro handler de evento.
+
+**Acceptance criteria:**
+- [ ] Servidor HTTP novo sobe junto do bot, porta fixa configurável
+- [ ] Requisição sem HMAC válido (ou com `env.whatsapp` ausente) é rejeitada sem processar o corpo
+- [ ] Evento já marcado como processado (Tarefa 131) é ignorado sem executar nada de novo
+- [ ] Evento desconhecido (tipo não mapeado) é ignorado sem lançar erro
+
+**Verification:**
+- [ ] Tests pass: `npx vitest run` + testes novos chamando o handler direto com payload já deserializado (sem subir servidor de verdade): HMAC válido/inválido, idempotência, evento desconhecido
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: nenhum ainda — sem rota real da WAHA configurada (Tarefa 138)
+
+**Dependencies:** Tarefa 131
+
+**Files likely touched:**
+- `src/canais/webhookWhatsapp.ts` (novo)
+- `src/index.ts`
+- `src/config/env.ts` (`WHATSAPP_WEBHOOK_HMAC_KEY`)
+
+**Estimated scope:** Medium
+
+---
+
+### Tarefa 133: `WhatsAppContext` (implementação da interface mínima)
+
+**Description:** Implementa a interface da Tarefa 130 por cima dos clientes WAHA já existentes da Rodada 1 (`enviarTextoWhatsapp`/`enviarImagemWhatsapp`/`enviarDocumentoWhatsapp`) — `replyWithChatAction` pode ser um no-op (WAHA não tem indicador de "digitando" equivalente confirmado; se existir, usar, senão não bloquear a tarefa por isso).
+
+**Acceptance criteria:**
+- [ ] Classe/factory nova implementa `reply`/`replyWithPhoto`/`replyWithDocument`/`replyWithChatAction` chamando os clientes WAHA certos
+- [ ] Erro de envio num desses métodos é logado (mesmo padrão de `notificar.ts`), nunca lança pro chamador
+
+**Verification:**
+- [ ] Tests pass: `npx vitest run` + teste novo mockando o cliente WAHA (`vi.mock('../../src/canais/whatsapp.js', ...)`, mesmo padrão da Rodada 1)
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: nenhum ainda
+
+**Dependencies:** Tarefa 130
+
+**Files likely touched:**
+- `src/canais/contextoWhatsapp.ts` (novo)
+
+**Estimated scope:** Small
+
+---
+
+### Tarefa 134: Roteamento de mensagem de texto entrante
+
+**Description:** O webhook (Tarefa 132), ao receber um evento de mensagem de texto, verifica a allowlist (`WHATSAPP_DESTINATARIOS` — mesmo princípio do `createAllowlistMiddleware` do Telegram: fora da lista, ignora e loga, sem responder) e, se permitido, chama `processarMensagemTexto` (núcleo já generalizado nas Tarefas 129/130) passando o `WhatsAppContext` (Tarefa 133).
+
+**Acceptance criteria:**
+- [ ] Mensagem de número fora de `WHATSAPP_DESTINATARIOS` é ignorada (log, sem resposta)
+- [ ] Mensagem de número permitido chega em `processarMensagemTexto` e a resposta da IA sai pelo `WhatsAppContext`
+- [ ] Contexto/histórico de conversa (`interacoes_ia`, resumo) funciona pro `chatId` do WhatsApp igual já funciona pro Telegram
+
+**Verification:**
+- [ ] Tests pass: `npx vitest run` (suíte completa, + testes novos do roteamento)
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: nenhum ainda — checkpoint de Fase B cobre isso depois da Tarefa 138 (wiring)
+
+**Dependencies:** Tarefas 132, 133
+
+**Files likely touched:**
+- `src/canais/webhookWhatsapp.ts`
+
+**Estimated scope:** Small
+
+---
+
+### Tarefa 135: Confirmação de ação via Poll
+
+**Description:** Função nova no cliente WAHA pra enviar Poll (2 opções, "Confirmar"/"Cancelar"). No caminho de confirmação (`processarMensagemTexto`, e o ponto equivalente usado por `lerEmailFaturas.ts` pra fatura por e-mail), quando o canal é WhatsApp, envia a Poll em vez de montar o teclado do Telegram. O webhook (Tarefa 132) ganha um handler pro evento `poll.vote`, correlaciona com a pendência (mesma pendência generalizada na Tarefa 129) e confirma/cancela a ação.
+
+**Acceptance criteria:**
+- [ ] Ação de alto impacto no WhatsApp dispara uma Poll, não texto puro nem tentativa de botão
+- [ ] Votar "Confirmar" executa a tool pendente e responde o resultado; votar "Cancelar" cancela sem executar
+- [ ] Fatura/boleto extraída por e-mail, com destinatário WhatsApp configurado, também usa esse mesmo caminho de confirmação
+
+**Verification:**
+- [ ] Tests pass: `npx vitest run` + testes novos mockando o envio de Poll e simulando o payload de `poll.vote`
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: votar numa Poll de teste em Homologação, confirmar que a ação executa/cancela certo
+
+**Dependencies:** Tarefas 131, 133, 134
+
+**Files likely touched:**
+- `src/canais/whatsapp.ts` (nova função de envio de Poll)
+- `src/canais/webhookWhatsapp.ts`
+- `src/bot/handlers/texto.ts`, `src/scripts/lerEmailFaturas.ts`
+
+**Estimated scope:** Medium
+
+---
+
+### Tarefa 136: Comandos `/registrar_open_finance` e `/registrar_email` via WhatsApp
+
+**Description:** O webhook (Tarefa 134), antes de cair no roteamento de conversa livre, reconhece esses dois comandos (mesma regex de `comandos.ts`) e chama os handlers já existentes (`createHandlerRegistrarOpenFinance`/`createHandlerRegistrarEmail`), adaptados pra funcionar com o `WhatsAppContext` quando precisarem só dos métodos da interface mínima — qualquer necessidade adicional de `ctx` fica registrada como achado, não resolvida silenciosamente.
+
+**Acceptance criteria:**
+- [ ] `/registrar_open_finance <item_id>` via WhatsApp lista as contas e aceita o mapeamento "número = nome", mesmo fluxo do Telegram
+- [ ] `/registrar_email` via WhatsApp gera o link de consentimento e aceita o código colado de volta
+
+**Verification:**
+- [ ] Tests pass: `npx vitest run` (suíte completa, + testes novos desses dois comandos via WhatsApp)
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: rodar os dois comandos de verdade em Homologação
+
+**Dependencies:** Tarefa 134
+
+**Files likely touched:**
+- `src/canais/webhookWhatsapp.ts`
+- `src/bot/handlers/registrarOpenFinance.ts`, `src/bot/handlers/registrarEmail.ts`
+
+**Estimated scope:** Medium
+
+---
+
+### Tarefa 137: Resposta de "mídia não suportada"
+
+**Description:** Evento de mídia (foto/documento/áudio) recebido pelo webhook responde com uma mensagem clara avisando que esse tipo de conteúdo ainda não é suportado pelo WhatsApp (equivalente ao `handlerNaoSuportado` do Telegram), em vez de ser ignorado em silêncio.
+
+**Acceptance criteria:**
+- [ ] Mensagem de mídia via WhatsApp recebe resposta de "não suportado ainda", nunca trava o fluxo de texto nem é ignorada sem resposta
+
+**Verification:**
+- [ ] Tests pass: `npx vitest run` + teste novo desse caminho
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: mandar uma foto de teste pro número da WAHA em Homologação
+
+**Dependencies:** Tarefa 132
+
+**Files likely touched:**
+- `src/canais/webhookWhatsapp.ts`
+
+**Estimated scope:** Small
+
+---
+
+### Tarefa 138: `docker-compose.yml`/`env.ts` — wiring do webhook na sessão WAHA
+
+**Description:** `env.ts` ganha `WHATSAPP_WEBHOOK_HMAC_KEY` (exigida junto do grupo `whatsapp` já existente). A sessão WAHA (`whatsapp-homologacao`/`whatsapp-producao`) é configurada (via `config.webhooks[]` na criação da sessão, ou variável de ambiente `WHATSAPP_HOOK_URL`/`WHATSAPP_HOOK_EVENTS`/`WHATSAPP_HOOK_HMAC_KEY` do próprio container WAHA) pra chamar o endpoint novo (Tarefa 132) no serviço do bot, pelo nome do serviço no `docker-compose` (DNS interno).
+
+**Acceptance criteria:**
+- [ ] `WHATSAPP_WEBHOOK_HMAC_KEY` ausente quando `env.whatsapp` está configurado é erro de validação claro (mesmo padrão do grupo `whatsapp`)
+- [ ] Sessão WAHA (Homologação) configurada de verdade pra chamar o endpoint novo, confirmado mandando mensagem real e vendo o webhook disparar (log do bot)
+
+**Verification:**
+- [ ] Tests pass: `npx vitest run tests/config/env.test.ts`
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: `docker compose config` valida sem erro; webhook disparando de verdade na VM
+
+**Dependencies:** Tarefa 132
+
+**Files likely touched:**
+- `docker-compose.yml`, `src/config/env.ts`, `tests/config/env.test.ts`
+
+**Estimated scope:** Small
+
+---
+
+## Checkpoint: Fundação (depois das Tarefas 129-131)
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Nenhuma regressão no Telegram (suíte completa passa igual antes)
+
+## Checkpoint: Fluxo básico de texto funcional (depois das Tarefas 132-134)
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação: mandar mensagem de texto pro número da WAHA, receber resposta da IA
+
+## Checkpoint: Rodada 2 fechada (depois das Tarefas 135-138)
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação: conversa livre, confirmação de ação de alto impacto (Poll), `/registrar_open_finance`, `/registrar_email`, mensagem de mídia recebendo aviso de "não suportado"
+- [ ] PROGRESSO.md atualizado com o marco
+- [ ] Revisão com o usuário antes de considerar a Rodada 3 (mídia + demais comandos)
