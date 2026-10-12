@@ -188,7 +188,7 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 1
 ---
 
 ## Checkpoint: Rodada 1 fechada (mensagens proativas no WhatsApp)
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: `relatorioSemanal.js --agora`/`relatorioMensal.js --agora` de verdade — mensagem chega nos dois canais
-- [ ] PROGRESSO.md atualizado com o marco
-- [ ] Revisão com o usuário antes de considerar a Rodada 2 (chat bidirecional)
+- [x] `npm run build`/`lint`/`test` sem erro — reverificado em 2026-10-12 após recuperação de corrupção do `.git` local e reinstalação de toolchain nativa (Windows): build limpo, lint limpo, 133/133 arquivos / 1043/1043 testes passando
+- [x] Teste manual em Homologação: `relatorioSemanal.js --agora`/`relatorioMensal.js --agora` de verdade — mensagem chega nos dois canais — confirmado pelo usuário em 2026-10-12, apareceu em Telegram e WhatsApp
+- [x] PROGRESSO.md atualizado com o marco
+- [x] Revisão com o usuário antes de considerar a Rodada 2 (chat bidirecional) — Rodada 1 fechada em 2026-10-12; Rodada 2 fica pra quando o usuário decidir planejá-la, não iniciada
