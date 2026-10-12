@@ -1,4 +1,5 @@
 import type { Context } from 'grammy';
+import { criarContextoTelegram, type CanalContext } from '../../canais/contextoCanal.js';
 import type { Env } from '../../config/env.js';
 import type { DbClient } from '../../db/client.js';
 import { registrarMapeamentoOpenFinance } from '../../db/repositories/contasOpenFinance.js';
@@ -20,6 +21,60 @@ function descreverConta(conta: ContaPluggy, indice: number): string {
   return `${indice + 1}. ${conta.type} — "${conta.name}"${numero}`;
 }
 
+// Núcleo reaproveitado pelo handler do Telegram e, desde a Tarefa 136, pelo
+// roteamento do webhook do WhatsApp — só depende da interface mínima
+// (CanalContext, Tarefa 130), nunca do Context largo do grammy.
+export async function processarRegistrarOpenFinance(
+  ctx: CanalContext,
+  env: Pick<Env, 'pluggy'>,
+  db: DbClient,
+  logger: Logger,
+  chatId: number | string,
+  texto: string,
+): Promise<void> {
+  const idioma = obterIdioma(db);
+
+  if (!env.pluggy) {
+    await ctx.reply(t('of_sem_env', idioma));
+    return;
+  }
+
+  const match = COMANDO_COM_ITEM_ID.exec(texto);
+  if (!match) {
+    await ctx.reply(t('of_falta_item_id', idioma));
+    return;
+  }
+  const itemId = match[1] as string;
+
+  let apiKey: string;
+  try {
+    apiKey = await autenticar(env.pluggy.clientId, env.pluggy.clientSecret);
+  } catch (erro) {
+    logger.error({ err: erro }, 'falha ao autenticar com a Pluggy');
+    await ctx.reply(t('of_falha_autenticar', idioma));
+    return;
+  }
+
+  try {
+    await obterItem(apiKey, itemId);
+  } catch (erro) {
+    logger.error({ err: erro, itemId }, 'item_id da Pluggy não encontrado');
+    await ctx.reply(t('of_item_nao_encontrado', idioma));
+    return;
+  }
+
+  const contas = await listarContasDoItem(apiKey, itemId);
+  if (contas.length === 0) {
+    await ctx.reply(t('of_sem_contas', idioma));
+    return;
+  }
+
+  definirPendenciaOpenFinance(chatId, { itemId, contas });
+
+  const listaContas = contas.map(descreverConta).join('\n');
+  await ctx.reply(t('of_contas_encontradas', idioma, { quantidade: String(contas.length), lista: listaContas }));
+}
+
 export function createHandlerRegistrarOpenFinance(env: Env, db: DbClient, logger: Logger) {
   return async function handlerRegistrarOpenFinance(ctx: Context): Promise<void> {
     const chatId = ctx.chat?.id;
@@ -28,47 +83,7 @@ export function createHandlerRegistrarOpenFinance(env: Env, db: DbClient, logger
       return;
     }
 
-    const idioma = obterIdioma(db);
-
-    if (!env.pluggy) {
-      await ctx.reply(t('of_sem_env', idioma));
-      return;
-    }
-
-    const match = COMANDO_COM_ITEM_ID.exec(texto);
-    if (!match) {
-      await ctx.reply(t('of_falta_item_id', idioma));
-      return;
-    }
-    const itemId = match[1] as string;
-
-    let apiKey: string;
-    try {
-      apiKey = await autenticar(env.pluggy.clientId, env.pluggy.clientSecret);
-    } catch (erro) {
-      logger.error({ err: erro }, 'falha ao autenticar com a Pluggy');
-      await ctx.reply(t('of_falha_autenticar', idioma));
-      return;
-    }
-
-    try {
-      await obterItem(apiKey, itemId);
-    } catch (erro) {
-      logger.error({ err: erro, itemId }, 'item_id da Pluggy não encontrado');
-      await ctx.reply(t('of_item_nao_encontrado', idioma));
-      return;
-    }
-
-    const contas = await listarContasDoItem(apiKey, itemId);
-    if (contas.length === 0) {
-      await ctx.reply(t('of_sem_contas', idioma));
-      return;
-    }
-
-    definirPendenciaOpenFinance(chatId, { itemId, contas });
-
-    const listaContas = contas.map(descreverConta).join('\n');
-    await ctx.reply(t('of_contas_encontradas', idioma, { quantidade: String(contas.length), lista: listaContas }));
+    await processarRegistrarOpenFinance(criarContextoTelegram(ctx), env, db, logger, chatId, texto);
   };
 }
 
@@ -86,6 +101,82 @@ function interpretarLinhas(texto: string): LinhaMapeamento[] {
     .filter((linha): linha is LinhaMapeamento => linha !== null);
 }
 
+export async function processarMapeamentoOpenFinance(
+  ctx: CanalContext,
+  db: DbClient,
+  logger: Logger,
+  chatId: number | string,
+  texto: string,
+): Promise<void> {
+  const idioma = obterIdioma(db);
+
+  const pendencia = obterPendenciaOpenFinance(chatId);
+  if (!pendencia) {
+    return;
+  }
+
+  const linhas = interpretarLinhas(texto);
+  if (linhas.length !== pendencia.contas.length) {
+    await ctx.reply(t('of_linhas_insuficientes', idioma, { quantidade: String(pendencia.contas.length) }));
+    return;
+  }
+
+  const mapeamentos: Array<{ conta: ContaPluggy; contaId?: number; cartaoId?: number }> = [];
+  for (const { indice, nome } of linhas) {
+    const conta = pendencia.contas[indice - 1];
+    if (!conta) {
+      await ctx.reply(t('of_numero_invalido', idioma, { numero: String(indice), total: String(pendencia.contas.length) }));
+      return;
+    }
+
+    const resolucaoConta = resolverContaId(db, undefined, nome);
+    if (resolucaoConta.ok) {
+      mapeamentos.push({ conta, contaId: resolucaoConta.id });
+      continue;
+    }
+
+    const resolucaoCartao = resolverCartaoId(db, undefined, nome);
+    if (resolucaoCartao.ok) {
+      mapeamentos.push({ conta, cartaoId: resolucaoCartao.id });
+      continue;
+    }
+
+    // Achado real de teste manual (Fase 8): quando existe mais de uma
+    // conta/cartão com o mesmo nome, resolverContaId/resolverCartaoId já
+    // identificam a ambiguidade certinho, mas mostrar sempre a mensagem
+    // genérica de "não encontrei" escondia esse diagnóstico real —
+    // repassa a mensagem específica de ambiguidade quando ela existir.
+    const resolucaoAmbigua = [resolucaoConta, resolucaoCartao].find((resolucao) =>
+      resolucao.mensagem.startsWith('Encontrei mais de'),
+    );
+    if (resolucaoAmbigua) {
+      await ctx.reply(resolucaoAmbigua.mensagem);
+      return;
+    }
+
+    await ctx.reply(t('of_nao_encontrado', idioma, { nome }));
+    return;
+  }
+
+  try {
+    for (const mapeamento of mapeamentos) {
+      registrarMapeamentoOpenFinance(db, {
+        pluggyItemId: pendencia.itemId,
+        pluggyAccountId: mapeamento.conta.id,
+        contaId: mapeamento.contaId,
+        cartaoId: mapeamento.cartaoId,
+      });
+    }
+  } catch (erro) {
+    logger.error({ err: erro, chatId }, 'falha ao gravar mapeamento de conta Open Finance');
+    await ctx.reply(t('of_falha_salvar_mapeamento', idioma));
+    return;
+  }
+
+  removerPendenciaOpenFinance(chatId);
+  await ctx.reply(t('of_mapeamento_concluido', idioma, { quantidade: String(mapeamentos.length) }));
+}
+
 export function createHandlerMapeamentoOpenFinance(db: DbClient, logger: Logger) {
   return async function handlerMapeamentoOpenFinance(ctx: Context): Promise<void> {
     const chatId = ctx.chat?.id;
@@ -94,72 +185,6 @@ export function createHandlerMapeamentoOpenFinance(db: DbClient, logger: Logger)
       return;
     }
 
-    const idioma = obterIdioma(db);
-
-    const pendencia = obterPendenciaOpenFinance(chatId);
-    if (!pendencia) {
-      return;
-    }
-
-    const linhas = interpretarLinhas(texto);
-    if (linhas.length !== pendencia.contas.length) {
-      await ctx.reply(t('of_linhas_insuficientes', idioma, { quantidade: String(pendencia.contas.length) }));
-      return;
-    }
-
-    const mapeamentos: Array<{ conta: ContaPluggy; contaId?: number; cartaoId?: number }> = [];
-    for (const { indice, nome } of linhas) {
-      const conta = pendencia.contas[indice - 1];
-      if (!conta) {
-        await ctx.reply(t('of_numero_invalido', idioma, { numero: String(indice), total: String(pendencia.contas.length) }));
-        return;
-      }
-
-      const resolucaoConta = resolverContaId(db, undefined, nome);
-      if (resolucaoConta.ok) {
-        mapeamentos.push({ conta, contaId: resolucaoConta.id });
-        continue;
-      }
-
-      const resolucaoCartao = resolverCartaoId(db, undefined, nome);
-      if (resolucaoCartao.ok) {
-        mapeamentos.push({ conta, cartaoId: resolucaoCartao.id });
-        continue;
-      }
-
-      // Achado real de teste manual (Fase 8): quando existe mais de uma
-      // conta/cartão com o mesmo nome, resolverContaId/resolverCartaoId já
-      // identificam a ambiguidade certinho, mas mostrar sempre a mensagem
-      // genérica de "não encontrei" escondia esse diagnóstico real —
-      // repassa a mensagem específica de ambiguidade quando ela existir.
-      const resolucaoAmbigua = [resolucaoConta, resolucaoCartao].find((resolucao) =>
-        resolucao.mensagem.startsWith('Encontrei mais de'),
-      );
-      if (resolucaoAmbigua) {
-        await ctx.reply(resolucaoAmbigua.mensagem);
-        return;
-      }
-
-      await ctx.reply(t('of_nao_encontrado', idioma, { nome }));
-      return;
-    }
-
-    try {
-      for (const mapeamento of mapeamentos) {
-        registrarMapeamentoOpenFinance(db, {
-          pluggyItemId: pendencia.itemId,
-          pluggyAccountId: mapeamento.conta.id,
-          contaId: mapeamento.contaId,
-          cartaoId: mapeamento.cartaoId,
-        });
-      }
-    } catch (erro) {
-      logger.error({ err: erro, chatId }, 'falha ao gravar mapeamento de conta Open Finance');
-      await ctx.reply(t('of_falha_salvar_mapeamento', idioma));
-      return;
-    }
-
-    removerPendenciaOpenFinance(chatId);
-    await ctx.reply(t('of_mapeamento_concluido', idioma, { quantidade: String(mapeamentos.length) }));
+    await processarMapeamentoOpenFinance(criarContextoTelegram(ctx), db, logger, chatId, texto);
   };
 }
