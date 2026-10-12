@@ -1,55 +1,61 @@
-# Implementation Plan: Multi-canal — WhatsApp via WAHA (Rodada 1: mensagens proativas)
+# Implementation Plan: Multi-canal — WhatsApp via WAHA (Rodada 2: chat bidirecional)
 
 ## Overview
 
-Fase 9 do PLANO.md (linha 601). Objetivo desta rodada: relatório semanal/mensal e alertas (preço, despesa fixa faltante, erro crítico) — que já saem proativamente por Telegram — também saem por WhatsApp, em paralelo, quando o canal estiver configurado. **Não inclui** chat bidirecional pelo WhatsApp (responder pergunta, tool calling, confirmação) — isso vira a Rodada 2, uma fase própria, maior: os handlers de conversa (`src/bot/handlers/*`, `router.ts`, `confirmacao.ts`, `rastroRespostas.ts`) são profundamente acoplados ao `Context` do `grammy` (`ctx.message`, `ctx.chat.id`, `ctx.reply`, `ctx.callbackQuery`, `ctx.getFile()`, etc., ~20 arquivos) — abstrair tudo isso de uma vez seria uma tarefa XL, e não é necessário pro valor imediato desta rodada (receber relatório/alerta no WhatsApp).
-
-Decisão de arquitetura (pesquisa via WebSearch/WebFetch, 2026-09-22 — ver PROGRESSO.md pro racional completo e fontes): **WAHA** (`waha.devlike.pro`, Apache-2.0, self-hosted), motor `NOWEB` (WebSocket, sem Chromium), não a Cloud API oficial da Meta. Ver PLANO.md (Fase 9) pro resumo da decisão. Risco aceito conscientemente pelo usuário: automação não-oficial, risco real (não zero) de banimento do número conectado — mitigado com número de telefone secundário dedicado ao bot, nunca o WhatsApp pessoal do usuário.
-
-Infraestrutura reaproveitada sem mudança: todos os 7 scripts que hoje mandam mensagem proativa (`relatorioSemanal.ts`, `relatorioMensal.ts`, `monitorarPrecos.ts`, `verificarDespesasFixas.ts`, `lerEmailFaturas.ts`, `sincronizarOpenFinance.ts`, `tratarErroCriticoJob.ts`) constroem seu próprio `new Bot(botToken)` e chamam `bot.api.sendMessage`/`sendPhoto`/`sendDocument` num loop de `chatIds` — nenhuma lógica de negócio muda, só um canal a mais no fan-out de envio.
+Spec fechada via sessão de `grilling` e publicada em `PLANO.md` (seção "Fase 9 — Rodada 2 — Chat bidirecional"). Dá ao WhatsApp paridade com o Telegram nos fluxos essenciais de conversa: chat livre com tool calling, confirmação de ação de alto impacto (via Poll, não teclado), confirmação de fatura/boleto por e-mail, e os comandos `/registrar_open_finance`/`/registrar_email`. Fora de escopo: mídia (foto/PDF/áudio/planilha) de verdade — só uma mensagem de "não suportado ainda" —, demais comandos de barra, interface `Canal` genérica completa.
 
 ## Architecture Decisions
 
-- **WAHA roda como serviço Docker próprio por ambiente** (`whatsapp-homologacao`/`whatsapp-producao` no `docker-compose.yml`, mesmo padrão de todo par de serviços já existente no projeto — volume próprio pra persistir a sessão do WhatsApp Web entre restarts, sem precisar reescanear QR code toda hora). Cada ambiente usa um número de telefone dedicado diferente (uma sessão WAHA = um número só) — mesmo princípio de isolamento total já usado no resto do projeto (banco, bot Telegram, credenciais próprias por ambiente).
-- **Sem servidor HTTP público novo — nem sequer interno nesta rodada.** Como esta rodada é só envio (proativo), não precisa receber nada da WAHA — o webhook de mensagem recebida (que seria container-a-container, nunca público) fica pra Rodada 2, quando existir handler de chat pra processar mensagem recebida. Nesta rodada, a configuração de webhook da sessão WAHA fica simplesmente vazia/não configurada.
-- **Cliente HTTP fino pro WAHA** (`src/canais/whatsapp.ts`), sem SDK novo — só `fetch` contra a REST API da WAHA (`POST /api/sendText`, `/api/sendImage`, `/api/sendFile`), autenticado por API key (header, gerada na configuração da sessão). Mídia (imagem semanal, PDF mensal) enviada via `file.data` em base64 — os Buffers já são gerados em memória pelo projeto, sem precisar hospedar URL pública do arquivo. Mesmo princípio de "cliente mínimo sobre HTTP" já usado pro resto do projeto (ex: `fetch` direto pro catálogo público do OpenRouter em `monitorarPrecos.ts`, sem SDK).
-- **Função de fan-out único** (`src/canais/notificar.ts`): `notificarTexto`/`notificarImagem`/`notificarDocumento(db, env, bot, chatIds, conteudo)` — manda pro Telegram (como já acontece) e, se `WHATSAPP_WAHA_URL`/`WHATSAPP_DESTINATARIOS` estiverem configurados no ambiente, também manda pro WhatsApp via `src/canais/whatsapp.ts`. Falha de envio num canal não derruba o outro (mesmo princípio já usado em `tratarErroCriticoJob`: "falha ao enviar pra um chat não impede os outros"). Os 7 scripts trocam a chamada direta `bot.api.sendX` por essa função — não existe abstração de "canal" genérica com adapter Telegram nesta rodada (seria prematuro sem o caso de uso do chat bidirecional) — é só um fan-out de envio.
-- **Configuração via env, mesmo padrão do par Google/Pluggy (`env.ts`)**: `WHATSAPP_WAHA_URL`, `WHATSAPP_WAHA_API_KEY`, `WHATSAPP_WAHA_SESSION`, `WHATSAPP_DESTINATARIOS` (lista de números, mesmo formato de `TELEGRAM_ALLOWED_CHAT_IDS`) — todos opcionais, mas exigidos juntos (`superRefine`, mesma regra do par `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`). Ausentes por completo é estado válido ("integração desligada") — mensagem proativa continua saindo só por Telegram, nada quebra enquanto o usuário não parear o WhatsApp.
-- **Pareamento inicial via script de linha de comando** (`scripts/parearWhatsapp.ts`), mesmo padrão de `configurarGoogleOAuth.ts`/`gerarConnectTokenPluggy.ts`: cria a sessão via `POST /api/sessions`, busca o QR code (`GET /api/{session}/auth/qr`) e salva como imagem local — usuário escaneia uma vez com o WhatsApp do número dedicado. Sessão persiste no volume Docker depois disso, sem precisar rodar de novo (a menos que desconecte).
-- **Sem confirmação de leitura/histórico de mensagem recebida nesta rodada** — como não há chat bidirecional ainda, não há nada pra rastrear além do envio em si (sucesso/falha, já logado como qualquer outro envio).
+- **Webhook interno, mesmo processo do bot** — a WAHA chama um endpoint HTTP novo que sobe ao lado do `bot.start()` do grammy em `index.ts`, nunca exposto fora da rede do `docker-compose`. Evita reabrir o problema de pendência cross-processo (Fase 7) e não exige serviço novo no compose.
+- **Validação HMAC obrigatória** (`X-Webhook-Hmac`, chave nova `WHATSAPP_WEBHOOK_HMAC_KEY`) antes de qualquer parsing do payload — qualquer coisa na mesma rede Docker pode chamar o endpoint, a assinatura é a defesa.
+- **Idempotência** via tabela "evento WAHA já processado" (mesmo padrão `emails_processados`/`transacoes_open_finance_processadas`), checada antes de executar qualquer tool a partir de um webhook.
+- **Interface mínima de saída** (`reply`/`replyWithPhoto`/`replyWithDocument`/`replyWithChatAction`) extraída só nos pontos do núcleo de conversa (`processarMensagemTexto` e o que ele chama) que hoje recebem `ctx: Context` do grammy largo — o `Context` real já satisfaz essa forma de graça (duck typing), um `WhatsAppContext` novo implementa por cima dos clientes WAHA (Rodada 1). **Nenhuma outra parte de `src/bot/handlers/*` é tocada** — não é uma reescrita de canal completa.
+- **Confirmação fica por canal, não unificada**: Telegram continua teclado+texto (`confirmacao.ts` inalterado); WhatsApp usa Poll (2 opções), resolvida pelo evento `poll.vote` do webhook.
+- **`chatId` alargado pra `number | string`** em todo `Map`/parâmetro que hoje assume `number` (não precisa de migration — nenhuma tabela do projeto usa `STRICT`, SQLite aceita qualquer tipo em qualquer coluna independente da afinidade declarada).
+- **Kill switch desta rodada é a API de sessão da WAHA** (`POST /api/sessions/{sessao}/stop`), não o `/pausar` do Telegram — ver PLANO.md, nota da Rodada 2.
 
 ## Task List
 
-1. Tarefa 122: `docker-compose.yml` — serviços `whatsapp-homologacao`/`whatsapp-producao` (WAHA, motor NOWEB) + `env.ts` (novas variáveis opcionais)
-2. Tarefa 123: `scripts/parearWhatsapp.ts` — pareamento inicial via QR code
-3. Tarefa 124: `src/canais/whatsapp.ts` — cliente HTTP fino (enviarTexto/enviarImagem/enviarDocumento)
-4. Tarefa 125: `src/canais/notificar.ts` — função de fan-out (Telegram + WhatsApp quando configurado)
+### Fase A: Fundação (tipos + idempotência + interface mínima)
+- [ ] Tarefa 129: generalizar `chatId` pra `number | string`
+- [ ] Tarefa 130: interface mínima de saída (`CanalContext`) no núcleo de conversa
+- [ ] Tarefa 131: idempotência de evento WAHA (migration + repositório)
 
-### Checkpoint: Infraestrutura e envio funcionais (sem wiring nos jobs ainda)
-- [x] `npm run build`/`lint`/`test` sem erro (reconfirmado em 2026-10-09: suíte completa 1039/1039, sem flake)
-- [x] Teste manual: sessão WAHA pareada em Homologação (QR escaneado com o número dedicado), `notificarTexto`/`notificarImagem`/`notificarDocumento` testados manualmente contra a sessão real (script avulso, descartado depois) — mensagem chegou no WhatsApp (2026-10-09). Achado real: `WHATSAPP_DESTINATARIOS` precisou do número sem o "9" extra (`557192839549`, não `5571992839549`) — WhatsApp resolve esse número especificamente no formato antigo; `curl .../api/contacts/check-exists` confirma o `chatId` certo quando isso acontecer de novo.
-- [x] Revisão com o usuário antes de prosseguir pro wiring nos jobs (2026-10-09, confirmado)
+### Checkpoint: Fundação
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Nenhuma regressão no Telegram (suíte completa passa igual antes)
 
-5. Tarefa 126: wiring — `relatorioSemanal.ts`, `relatorioMensal.ts`, `tratarErroCriticoJob.ts` passam a usar `notificar*` em vez de `bot.api.sendX` direto
-6. Tarefa 127: wiring — `monitorarPrecos.ts`, `verificarDespesasFixas.ts`, `lerEmailFaturas.ts`, `sincronizarOpenFinance.ts` passam a usar `notificar*`
-7. Tarefa 128: `infra/deploy.sh` — versiona no repositório e corrige a descoberta de serviços da VM, hoje uma lista fixa/parcial (lacuna encontrada na Tarefa 122, PROGRESSO.md 2026-10-06) que deixa serviço novo do `docker-compose.yml` de fora do primeiro deploy automático
+### Fase B: Webhook + fluxo básico de texto
+- [ ] Tarefa 132: endpoint HTTP interno + validação HMAC + idempotência aplicada
+- [ ] Tarefa 133: `WhatsAppContext` (implementação da interface mínima sobre a WAHA)
+- [ ] Tarefa 134: roteamento de mensagem de texto entrante (allowlist + `processarMensagemTexto`)
 
-### Checkpoint: Rodada 1 fechada (mensagens proativas no WhatsApp)
-- [x] `npm run build`/`lint`/`test` sem erro — reverificado em 2026-10-12 após recuperação de corrupção do `.git` local e reinstalação de toolchain nativa (Windows): build limpo, lint limpo, 133/133 arquivos / 1043/1043 testes passando
-- [x] Teste manual em Homologação: rodar `relatorioSemanal.js --agora`/`relatorioMensal.js --agora` de verdade — mensagem chega nos dois canais (Telegram e WhatsApp) — confirmado pelo usuário em 2026-10-12
-- [x] PROGRESSO.md atualizado com o marco
-- [x] Revisão com o usuário antes de considerar a Rodada 2 (chat bidirecional) — Rodada 1 fechada em 2026-10-12; Rodada 2 fica pra quando o usuário decidir planejá-la, não iniciada
+### Checkpoint: Fluxo básico de texto funcional
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação: mandar mensagem de texto pro número da WAHA, receber resposta da IA
+
+### Fase C: Confirmação, comandos e mídia
+- [ ] Tarefa 135: confirmação de ação via Poll (envio + `poll.vote` + fatura por e-mail)
+- [ ] Tarefa 136: comandos `/registrar_open_finance` e `/registrar_email` via WhatsApp
+- [ ] Tarefa 137: resposta de "mídia não suportada" pra foto/PDF/áudio/documento
+- [ ] Tarefa 138: `docker-compose.yml`/`env.ts` — `WHATSAPP_WEBHOOK_HMAC_KEY`, configuração do webhook na sessão WAHA
+
+### Checkpoint: Rodada 2 fechada (chat bidirecional no WhatsApp)
+- [ ] `npm run build`/`lint`/`test` sem erro
+- [ ] Teste manual em Homologação: conversa livre, confirmação de ação de alto impacto (Poll), `/registrar_open_finance`, `/registrar_email`, mensagem de mídia recebendo aviso de "não suportado"
+- [ ] PROGRESSO.md atualizado com o marco
+- [ ] Revisão com o usuário antes de considerar a Rodada 3 (mídia + demais comandos)
 
 ## Risks and Mitigations
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Número WhatsApp conectado ser banido pela Meta (WAHA é automação não-oficial) | Médio-Alto (perde o canal, não o projeto — Telegram continua intacto) | Número secundário dedicado só ao bot (nunca o WhatsApp pessoal do usuário), decisão consciente já tomada; mensagem proativa vai só pra 1 contato conhecido (o próprio usuário), não mensagem em massa — perfil de risco bem menor que o cenário que a doc do WAHA alerta |
-| Sessão WAHA cair/desconectar sozinha (comum em automação de WhatsApp Web) e ninguém perceber | Médio | `notificarTexto`/etc. logam falha de envio (mesmo padrão de `tratarErroCriticoJob`) sem derrubar o job nem o outro canal — falha de envio WhatsApp vira uma linha de log observável, não um silêncio |
-| Volume Docker da sessão corromper ou se perder num redeploy, exigindo reescanear QR | Baixo | Mesmo tratamento de qualquer volume do projeto (backup já cobre bancos, não sessões WAHA — sessão é reconectável manualmente via `parearWhatsapp.ts`, não é dado crítico irrecuperável) |
-| WAHA (protocolo reverso) quebrar com uma atualização do WhatsApp e parar de funcionar até a lib atualizar | Baixo-Médio | Fora do controle do projeto — mesma classe de risco já aceita ao escolher a lib; Telegram continua como canal primário garantido enquanto isso não acontecer |
+| Formato exato do payload `poll.vote` da WAHA não está fechado na documentação pública | Médio — pode exigir redesenho da correlação pendência↔voto | Primeira coisa a validar na Tarefa 135, contra a API real da sessão já pareada, mesmo padrão de descoberta das Tarefas 122/123 (Rodada 1) |
+| Endpoint HTTP novo no mesmo processo do bot pode competir com o long-polling do grammy por recursos/porta | Baixo | Porta fixa nova, só bind em `0.0.0.0`/interno; sem overlap de I/O real (grammy já é assíncrono) |
+| Alargar `chatId` pra `number \| string` sem revisar todos os call sites pode deixar uma comparação `===` quebrada por tipo (`5` !== `"5"`) | Médio | Tarefa 129 isolada e testada antes de qualquer código novo depender dela — checkpoint de Fundação roda a suíte completa antes de prosseguir |
+| Evento de webhook chega mas a sessão WAHA não está `WORKING` (mesmo achado da Rodada 1) | Baixo | Mesmo tratamento já documentado — `POST /api/sessions/{sessao}/restart` |
 
 ## Open Questions
 
-- Rodada 2 (chat bidirecional pelo WhatsApp — responder pergunta, tool calling, confirmação) fica pra quando a Rodada 1 provar que vale a pena manter o canal ativo na prática — não planejada em detalhe aqui, só citada como próximo passo natural se a Rodada 1 for bem.
-- Vale, na Rodada 2, extrair de fato uma interface `Canal` genérica (a ideia original do PLANO.md) pra evitar duplicar handler por canal, ou é mais simples ter um adapter WhatsApp específico que só reaproveita a lógica de negócio (não a camada de handler em si)? Não decidido — decisão de design pra quando a Rodada 2 for planejada, com o código de verdade da Rodada 1 já em mãos como referência.
+- Nome final dos módulos novos (`CanalContext`, `WhatsAppContext`, nome da tabela de idempotência) — decidido na hora da implementação de cada tarefa, não bloqueia o planejamento.
+- Se compensa adiantar só o `/pausar` (kill switch por chat) antes do resto dos comandos de barra — registrado em PLANO.md como nota, não decidido; kill switch desta rodada é a API de sessão da WAHA.
