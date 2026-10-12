@@ -26,7 +26,7 @@ Spec fechada via sessão de `grilling` e publicada em `PLANO.md` (seção "Fase 
 - [x] Nenhuma regressão no Telegram (suíte completa passa igual antes) — 135/135 arquivos, 1053/1053 testes
 
 ### Fase B: Webhook + fluxo básico de texto
-- [ ] Tarefa 132: endpoint HTTP interno + validação HMAC + idempotência aplicada
+- [x] Tarefa 132: endpoint HTTP interno + validação HMAC + idempotência aplicada
 - [ ] Tarefa 133: `WhatsAppContext` (implementação da interface mínima sobre a WAHA)
 - [ ] Tarefa 134: roteamento de mensagem de texto entrante (allowlist + `processarMensagemTexto`)
 
@@ -38,7 +38,7 @@ Spec fechada via sessão de `grilling` e publicada em `PLANO.md` (seção "Fase 
 - [ ] Tarefa 135: confirmação de ação via Poll (envio + `poll.vote` + fatura por e-mail)
 - [ ] Tarefa 136: comandos `/registrar_open_finance` e `/registrar_email` via WhatsApp
 - [ ] Tarefa 137: resposta de "mídia não suportada" pra foto/PDF/áudio/documento
-- [ ] Tarefa 138: `docker-compose.yml`/`env.ts` — `WHATSAPP_WEBHOOK_HMAC_KEY`, configuração do webhook na sessão WAHA
+- [ ] Tarefa 138: `docker-compose.yml` — configuração do webhook na sessão WAHA (`WHATSAPP_WEBHOOK_HMAC_KEY` já existe desde a Tarefa 132)
 
 ### Checkpoint: Rodada 2 fechada (chat bidirecional no WhatsApp)
 - [ ] `npm run build`/`lint`/`test` sem erro
@@ -51,6 +51,7 @@ Spec fechada via sessão de `grilling` e publicada em `PLANO.md` (seção "Fase 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | Formato exato do payload `poll.vote` da WAHA não está fechado na documentação pública | Médio — pode exigir redesenho da correlação pendência↔voto | Primeira coisa a validar na Tarefa 135, contra a API real da sessão já pareada, mesmo padrão de descoberta das Tarefas 122/123 (Rodada 1) |
+| Formato exato da assinatura HMAC do webhook (algoritmo/encoding) também não está fechado na documentação pública (achado na Tarefa 132) | Médio — pode rejeitar webhook real por mismatch de formato | Implementado pela convenção mais comum (SHA-512, hex); validar contra a sessão real fica pra Tarefa 138, mesmo padrão de descoberta |
 | Endpoint HTTP novo no mesmo processo do bot pode competir com o long-polling do grammy por recursos/porta | Baixo | Porta fixa nova, só bind em `0.0.0.0`/interno; sem overlap de I/O real (grammy já é assíncrono) |
 | Alargar `chatId` pra `number \| string` sem revisar todos os call sites pode deixar uma comparação `===` quebrada por tipo (`5` !== `"5"`) | Médio | Tarefa 129 isolada e testada antes de qualquer código novo depender dela — checkpoint de Fundação roda a suíte completa antes de prosseguir |
 | Evento de webhook chega mas a sessão WAHA não está `WORKING` (mesmo achado da Rodada 1) | Baixo | Mesmo tratamento já documentado — `POST /api/sessions/{sessao}/restart` |
