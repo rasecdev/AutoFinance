@@ -6,11 +6,13 @@ import { createLogger } from '../../src/logging/logger.js';
 const enviarTextoWhatsapp = vi.fn(async () => undefined);
 const enviarImagemWhatsapp = vi.fn(async () => undefined);
 const enviarDocumentoWhatsapp = vi.fn(async () => undefined);
+const enviarPollWhatsapp = vi.fn(async () => undefined);
 
 vi.mock('../../src/canais/whatsapp.js', () => ({
   enviarTextoWhatsapp: (...args: unknown[]) => enviarTextoWhatsapp(...args),
   enviarImagemWhatsapp: (...args: unknown[]) => enviarImagemWhatsapp(...args),
   enviarDocumentoWhatsapp: (...args: unknown[]) => enviarDocumentoWhatsapp(...args),
+  enviarPollWhatsapp: (...args: unknown[]) => enviarPollWhatsapp(...args),
 }));
 
 const config: ConfigWhatsapp = { url: 'http://whatsapp-homologacao:3000', apiKey: 'waha-key-teste', session: 'default' };
@@ -21,6 +23,7 @@ beforeEach(() => {
   enviarTextoWhatsapp.mockClear();
   enviarImagemWhatsapp.mockClear();
   enviarDocumentoWhatsapp.mockClear();
+  enviarPollWhatsapp.mockClear();
 });
 
 describe('criarContextoWhatsapp', () => {
@@ -33,12 +36,24 @@ describe('criarContextoWhatsapp', () => {
     expect(resposta).toEqual({});
   });
 
-  it('reply com pedirConfirmacao: true: ainda manda só o texto (Poll é Tarefa 135)', async () => {
+  it('reply com pedirConfirmacao: true: manda o texto e, em seguida, uma Poll de confirmação', async () => {
     const canal = criarContextoWhatsapp(config, destinatario, logger);
 
     await canal.reply('confirma?', { pedirConfirmacao: true });
 
     expect(enviarTextoWhatsapp).toHaveBeenCalledWith(config, destinatario, 'confirma?');
+    expect(enviarPollWhatsapp).toHaveBeenCalledWith(config, destinatario, 'Confirma essa ação?', [
+      'Confirmar',
+      'Cancelar',
+    ]);
+  });
+
+  it('reply sem pedirConfirmacao: nunca manda Poll', async () => {
+    const canal = criarContextoWhatsapp(config, destinatario, logger);
+
+    await canal.reply('oi');
+
+    expect(enviarPollWhatsapp).not.toHaveBeenCalled();
   });
 
   it('reply propaga erro de envio (não engole silenciosamente)', async () => {

@@ -1,10 +1,15 @@
 import { Bot, InputFile } from 'grammy';
+import { montarTecladoConfirmacao, OPCOES_POLL_CONFIRMACAO, PERGUNTA_POLL_CONFIRMACAO } from '../bot/confirmacao.js';
 import type { Env } from '../config/env.js';
+import type { DbClient } from '../db/client.js';
+import { definirPendenciaPersistida, type PendenciaPersistida } from '../db/repositories/confirmacoesPendentes.js';
 import type { Logger } from '../logging/logger.js';
 import {
   enviarDocumentoWhatsapp,
   enviarImagemWhatsapp,
+  enviarPollWhatsapp,
   enviarTextoWhatsapp,
+  normalizarDestinatario,
   type ConfigWhatsapp,
 } from './whatsapp.js';
 
@@ -102,5 +107,50 @@ export async function notificarDocumento(
     await enviarDocumentoWhatsapp(whatsapp.config, destinatario, documento, nomeArquivo).catch((erro: unknown) => {
       logger.error({ err: erro, destinatario }, 'falha ao enviar documento por WhatsApp');
     });
+  }
+}
+
+// Fan-out de pedido de confirmação (Tarefa 135) — usado por processos fora
+// do bot principal que precisam de confirmação do usuário (ex:
+// lerEmailFaturas.ts, fatura/boleto extraída por e-mail). Grava a pendência
+// (tabela confirmacoes_pendentes, mesmo mecanismo entre processos já usado
+// pelo Telegram) pra cada chatId/destinatário antes de mandar a mensagem, nos
+// dois canais: Telegram ganha o teclado inline de sempre, WhatsApp ganha
+// texto + Poll (Tarefa 135). chatId do WhatsApp é gravado já normalizado
+// (com sufixo @c.us) — precisa bater com o que chega de volta no
+// `payload.from`/`voter` do webhook (ver normalizarDestinatario em
+// whatsapp.ts).
+export async function notificarConfirmacao(
+  env: Pick<Env, 'whatsapp'>,
+  bot: Bot,
+  db: DbClient,
+  chatIds: string[],
+  pendencia: PendenciaPersistida,
+  texto: string,
+  logger: Logger,
+): Promise<void> {
+  for (const chatId of chatIds) {
+    definirPendenciaPersistida(db, Number(chatId), pendencia);
+    await bot.api.sendMessage(chatId, texto, { reply_markup: montarTecladoConfirmacao() }).catch((erro: unknown) => {
+      logger.error({ err: erro, chatId }, 'falha ao enviar pedido de confirmação por Telegram');
+    });
+  }
+
+  const whatsapp = configWhatsapp(env);
+  if (!whatsapp) {
+    return;
+  }
+
+  for (const destinatario of whatsapp.destinatarios) {
+    const chatIdWhatsapp = normalizarDestinatario(destinatario);
+    definirPendenciaPersistida(db, chatIdWhatsapp, pendencia);
+    await enviarTextoWhatsapp(whatsapp.config, destinatario, texto).catch((erro: unknown) => {
+      logger.error({ err: erro, destinatario }, 'falha ao enviar pedido de confirmação (texto) por WhatsApp');
+    });
+    await enviarPollWhatsapp(whatsapp.config, destinatario, PERGUNTA_POLL_CONFIRMACAO, OPCOES_POLL_CONFIRMACAO).catch(
+      (erro: unknown) => {
+        logger.error({ err: erro, destinatario }, 'falha ao enviar pedido de confirmação (Poll) por WhatsApp');
+      },
+    );
   }
 }

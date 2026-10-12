@@ -6,12 +6,11 @@ import { FLUXO_LEITURA_COMPROVANTE, extrairComprovante, resolverModeloLeituraCom
 import { criarToolRegistrarFaturaEmail } from '../ai/tools/registrarFaturaEmail.js';
 import { criarToolRegistrarParcelaEmail } from '../ai/tools/registrarParcelaEmail.js';
 import { resolverCartaoId, resolverDividaPorIdentificador } from '../ai/tools/resolucao.js';
-import { montarTecladoConfirmacao } from '../bot/confirmacao.js';
 import { configurarFormatacaoPadrao } from '../bot/formatoMensagens.js';
-import { loadEnv } from '../config/env.js';
+import { notificarConfirmacao } from '../canais/notificar.js';
+import { loadEnv, type Env } from '../config/env.js';
 import { getDb, type DbClient } from '../db/client.js';
 import { criarClientesGoogle } from '../integracoes/google/auth.js';
-import { definirPendenciaPersistida } from '../db/repositories/confirmacoesPendentes.js';
 import { obterRefreshToken } from '../db/repositories/credenciaisGoogle.js';
 import { emailJaProcessado, marcarEmailProcessado } from '../db/repositories/emailsProcessados.js';
 import { registrarUsoTokens } from '../db/repositories/usoTokens.js';
@@ -59,6 +58,7 @@ async function processarEmail(
   chatIds: string[],
   clienteIa: ReturnType<typeof createOpenRouterClient>,
   messageId: string,
+  env: Pick<Env, 'whatsapp'>,
 ): Promise<void> {
   const log = logger.child({ messageId });
 
@@ -124,19 +124,22 @@ async function processarEmail(
     });
 
     const resumo = tool.avisoConfirmacao?.(argumentos) ?? 'fatura de cartão extraída de e-mail';
-    for (const chatId of chatIds) {
-      // Persistido no banco, não em memória: este processo (job em container
-      // separado) termina logo depois de mandar a mensagem — quem vai ler a
-      // resposta "sim" do usuário é o processo do bot principal, então a
-      // pendência precisa estar em algo que os dois processos compartilhem
-      // de verdade (achado real, ver migration 0012).
-      definirPendenciaPersistida(db, Number(chatId), { toolName: tool.name, argumentos });
-      await bot.api.sendMessage(
-        chatId,
-        `📧 ${resumo} Confirma? Toque em um botão abaixo, ou responda "sim" para registrar (qualquer outra coisa cancela).`,
-        { reply_markup: montarTecladoConfirmacao() },
-      );
-    }
+    // Persistido no banco, não em memória: este processo (job em container
+    // separado) termina logo depois de mandar a mensagem — quem vai ler a
+    // resposta do usuário é o processo do bot principal (texto "sim" ou,
+    // desde a Tarefa 135, voto de Poll no WhatsApp), então a pendência
+    // precisa estar em algo que os processos compartilhem de verdade
+    // (achado real, ver migration 0012). notificarConfirmacao faz o fan-out
+    // Telegram+WhatsApp (teclado inline / Poll) e grava a pendência nos dois.
+    await notificarConfirmacao(
+      env,
+      bot,
+      db,
+      chatIds,
+      { toolName: tool.name, argumentos },
+      `📧 ${resumo} Confirma? Toque em um botão abaixo, ou responda "sim" para registrar (qualquer outra coisa cancela).`,
+      logger,
+    );
     marcarEmailProcessado(db, messageId, 'pendente_confirmacao');
     return;
   }
@@ -157,14 +160,15 @@ async function processarEmail(
   });
 
   const resumo = tool.avisoConfirmacao?.(argumentos) ?? 'boleto de parcela extraído de e-mail';
-  for (const chatId of chatIds) {
-    definirPendenciaPersistida(db, Number(chatId), { toolName: tool.name, argumentos });
-    await bot.api.sendMessage(
-      chatId,
-      `📧 ${resumo} Confirma? Toque em um botão abaixo, ou responda "sim" para registrar (qualquer outra coisa cancela).`,
-      { reply_markup: montarTecladoConfirmacao() },
-    );
-  }
+  await notificarConfirmacao(
+    env,
+    bot,
+    db,
+    chatIds,
+    { toolName: tool.name, argumentos },
+    `📧 ${resumo} Confirma? Toque em um botão abaixo, ou responda "sim" para registrar (qualquer outra coisa cancela).`,
+    logger,
+  );
   marcarEmailProcessado(db, messageId, 'pendente_confirmacao');
 }
 
@@ -175,12 +179,13 @@ export async function verificarEmails(
   logger: Logger,
   chatIds: string[],
   clienteIa: ReturnType<typeof createOpenRouterClient>,
+  env: Pick<Env, 'whatsapp'>,
 ): Promise<void> {
   const lista = await gmail.users.messages.list({ userId: 'me', q: QUERY_GMAIL });
 
   for (const item of lista.data.messages ?? []) {
     if (!item.id || emailJaProcessado(db, item.id)) continue;
-    await processarEmail(db, gmail, bot, logger, chatIds, clienteIa, item.id);
+    await processarEmail(db, gmail, bot, logger, chatIds, clienteIa, item.id, env);
   }
 }
 
@@ -220,7 +225,7 @@ async function main(): Promise<void> {
       await dormirAte(Date.now() + INTERVALO_POLLING_MS);
     }
 
-    await verificarEmails(db, gmail, bot, logger, env.telegramAllowedChatIds, clienteIa);
+    await verificarEmails(db, gmail, bot, logger, env.telegramAllowedChatIds, clienteIa, env);
   } catch (erro) {
     await tratarErroCriticoJob(db, logger, 'ler_email_faturas', erro, env);
     throw erro;

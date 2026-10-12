@@ -6,8 +6,8 @@ import type { Bot } from 'grammy';
 import type { gmail_v1 } from 'googleapis';
 import type OpenAI from 'openai';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Env } from '../../src/config/env.js';
 import { createLogger } from '../../src/logging/logger.js';
-import { verificarEmails } from '../../src/scripts/lerEmailFaturas.js';
 import type { DbClient } from '../../src/db/client.js';
 import { criarCartao } from '../../src/db/repositories/cartoes.js';
 import { criarConta } from '../../src/db/repositories/contas.js';
@@ -15,8 +15,29 @@ import { criarDivida } from '../../src/db/repositories/dividas.js';
 import { migrate } from '../../src/db/migrate.js';
 import { obterPendenciaPersistida } from '../../src/db/repositories/confirmacoesPendentes.js';
 
+const enviarTextoWhatsapp = vi.fn(async () => undefined);
+const enviarPollWhatsapp = vi.fn(async () => undefined);
+vi.mock('../../src/canais/whatsapp.js', () => ({
+  enviarTextoWhatsapp: (...args: unknown[]) => enviarTextoWhatsapp(...args),
+  enviarPollWhatsapp: (...args: unknown[]) => enviarPollWhatsapp(...args),
+  normalizarDestinatario: (destinatario: string) =>
+    destinatario.endsWith('@c.us') ? destinatario : `${destinatario}@c.us`,
+}));
+
+const { verificarEmails } = await import('../../src/scripts/lerEmailFaturas.js');
+
 const CHAVE_TESTE = 'chave-teste-ler-email-faturas';
 const CHAT_IDS = ['111'];
+const ENV_SEM_WHATSAPP: Pick<Env, 'whatsapp'> = { whatsapp: null };
+const ENV_COM_WHATSAPP: Pick<Env, 'whatsapp'> = {
+  whatsapp: {
+    wahaUrl: 'http://whatsapp-homologacao:3000',
+    wahaApiKey: 'waha-key-teste',
+    wahaSession: 'default',
+    destinatarios: ['5511999999999'],
+    webhookHmacKey: 'hmac-key-teste',
+  },
+};
 
 let dir: string;
 let db: DbClient;
@@ -42,6 +63,8 @@ beforeEach(() => {
     dataInicio: '2026-09-01',
     descricao: 'Itaú Financiamento Veículo',
   }).divida.id;
+  enviarTextoWhatsapp.mockClear();
+  enviarPollWhatsapp.mockClear();
 });
 
 afterEach(() => {
@@ -91,7 +114,7 @@ describe('verificarEmails', () => {
     const { bot, sendMessage } = criarBotFalso();
     const client = criarClienteIaFalso(JSON.stringify({ eComprovante: false }));
 
-    await verificarEmails(db, gmail, bot, logger, CHAT_IDS, client);
+    await verificarEmails(db, gmail, bot, logger, CHAT_IDS, client, ENV_SEM_WHATSAPP);
 
     expect(sendMessage).not.toHaveBeenCalled();
   });
@@ -109,7 +132,7 @@ describe('verificarEmails', () => {
       }),
     );
 
-    await verificarEmails(db, gmail, bot, logger, CHAT_IDS, client);
+    await verificarEmails(db, gmail, bot, logger, CHAT_IDS, client, ENV_SEM_WHATSAPP);
 
     expect(sendMessage).toHaveBeenCalledTimes(1);
     expect(sendMessage.mock.calls[0]?.[1]).toContain('CRIAR');
@@ -138,7 +161,7 @@ describe('verificarEmails', () => {
       }),
     );
 
-    await verificarEmails(db, gmail, bot, logger, CHAT_IDS, client);
+    await verificarEmails(db, gmail, bot, logger, CHAT_IDS, client, ENV_SEM_WHATSAPP);
 
     expect(sendMessage).toHaveBeenCalledTimes(1);
     const pendencia = obterPendenciaPersistida(db, Number(CHAT_IDS[0]));
@@ -151,7 +174,7 @@ describe('verificarEmails', () => {
     const { bot, sendMessage } = criarBotFalso();
     const client = criarClienteIaFalso(JSON.stringify({ eComprovante: false }));
 
-    await verificarEmails(db, gmail, bot, logger, CHAT_IDS, client);
+    await verificarEmails(db, gmail, bot, logger, CHAT_IDS, client, ENV_SEM_WHATSAPP);
 
     expect(sendMessage).not.toHaveBeenCalled();
     const linha = db.prepare('SELECT resultado FROM emails_processados WHERE gmail_message_id = ?').get('msg-4') as {
@@ -167,7 +190,7 @@ describe('verificarEmails', () => {
       JSON.stringify({ eComprovante: true, tipoDocumento: 'fatura_cartao', valor: 500, data: '2026-09-15' }),
     );
 
-    await verificarEmails(db, gmail, bot, logger, CHAT_IDS, client);
+    await verificarEmails(db, gmail, bot, logger, CHAT_IDS, client, ENV_SEM_WHATSAPP);
 
     expect(sendMessage).not.toHaveBeenCalled();
     const linha = db.prepare('SELECT resultado FROM emails_processados WHERE gmail_message_id = ?').get('msg-5') as {
@@ -181,12 +204,38 @@ describe('verificarEmails', () => {
     const { bot, sendMessage } = criarBotFalso();
     const client = criarClienteIaFalso(JSON.stringify({ eComprovante: false }));
 
-    await verificarEmails(db, gmail, bot, logger, CHAT_IDS, client);
+    await verificarEmails(db, gmail, bot, logger, CHAT_IDS, client, ENV_SEM_WHATSAPP);
 
     expect(sendMessage).not.toHaveBeenCalled();
     const linha = db.prepare('SELECT resultado FROM emails_processados WHERE gmail_message_id = ?').get('msg-6') as {
       resultado: string;
     };
     expect(linha.resultado).toBe('ignorado_nao_e_fatura');
+  });
+
+  it('com WhatsApp configurado (Tarefa 135): fatura extraída também manda confirmação por lá (texto + Poll)', async () => {
+    const gmail = criarGmailFalso([{ id: 'msg-7' }], { 'msg-7': PAYLOAD_COM_PDF });
+    const { bot } = criarBotFalso();
+    const client = criarClienteIaFalso(
+      JSON.stringify({
+        eComprovante: true,
+        tipoDocumento: 'fatura_cartao',
+        valor: 850,
+        data: '2026-09-15',
+        identificador: 'Nubank Cartão',
+      }),
+    );
+
+    await verificarEmails(db, gmail, bot, logger, CHAT_IDS, client, ENV_COM_WHATSAPP);
+
+    expect(enviarTextoWhatsapp).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'http://whatsapp-homologacao:3000' }),
+      '5511999999999',
+      expect.stringContaining('CRIAR'),
+    );
+    expect(enviarPollWhatsapp).toHaveBeenCalledTimes(1);
+
+    const pendenciaWhatsapp = obterPendenciaPersistida(db, '5511999999999@c.us');
+    expect(pendenciaWhatsapp?.toolName).toBe('registrar_fatura_email');
   });
 });

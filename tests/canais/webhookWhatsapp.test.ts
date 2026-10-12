@@ -6,8 +6,14 @@ import Database from 'better-sqlite3-multiple-ciphers';
 import type OpenAI from 'openai';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Env } from '../../src/config/env.js';
+import type { ToolDefinition } from '../../src/ai/tools/types.js';
 import type { DependenciasWebhookWhatsapp } from '../../src/canais/webhookWhatsapp.js';
+import { definirPendencia, obterPendencia, removerPendencia } from '../../src/bot/confirmacao.js';
 import type { DbClient } from '../../src/db/client.js';
+import {
+  definirPendenciaPersistida,
+  obterPendenciaPersistida,
+} from '../../src/db/repositories/confirmacoesPendentes.js';
 import { eventoJaProcessado } from '../../src/db/repositories/eventosWhatsappProcessados.js';
 import { migrate } from '../../src/db/migrate.js';
 import { createLogger } from '../../src/logging/logger.js';
@@ -15,6 +21,16 @@ import { createLogger } from '../../src/logging/logger.js';
 const processarMensagemTextoMock = vi.fn(async () => undefined);
 vi.mock('../../src/bot/handlers/texto.js', () => ({
   processarMensagemTexto: processarMensagemTextoMock,
+}));
+
+const enviarTextoWhatsapp = vi.fn(async () => undefined);
+vi.mock('../../src/canais/whatsapp.js', () => ({
+  enviarTextoWhatsapp: (...args: unknown[]) => enviarTextoWhatsapp(...args),
+  enviarImagemWhatsapp: vi.fn(async () => undefined),
+  enviarDocumentoWhatsapp: vi.fn(async () => undefined),
+  enviarPollWhatsapp: vi.fn(async () => undefined),
+  normalizarDestinatario: (destinatario: string) =>
+    destinatario.endsWith('@c.us') ? destinatario : `${destinatario}@c.us`,
 }));
 
 const { processarWebhookWhatsapp } = await import('../../src/canais/webhookWhatsapp.js');
@@ -50,6 +66,7 @@ beforeEach(() => {
   db.pragma(`key='${CHAVE_TESTE}'`);
   migrate(db);
   processarMensagemTextoMock.mockClear();
+  enviarTextoWhatsapp.mockClear();
 });
 
 afterEach(() => {
@@ -198,5 +215,101 @@ describe('processarWebhookWhatsapp — evento "message" (Tarefa 134)', () => {
     await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
 
     expect(processarMensagemTextoMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('processarWebhookWhatsapp — evento "poll.vote" (Tarefa 135)', () => {
+  const CHAT_ID_WHATSAPP = '5511999999999@c.us';
+
+  // Map em memória de confirmacao.ts é módulo-level, compartilhado entre
+  // todos os testes deste arquivo — limpa antes de cada um pra não herdar
+  // pendência de um teste anterior que não a resolveu (ex: voto fora da
+  // allowlist, ignorado sem nunca remover a pendência).
+  beforeEach(() => {
+    removerPendencia(CHAT_ID_WHATSAPP);
+  });
+
+  function criarToolFalsa(handler: ReturnType<typeof vi.fn>): ToolDefinition {
+    return {
+      name: 'acao_de_teste',
+      description: 'tool de teste',
+      schema: { parse: (v: unknown) => v } as unknown as ToolDefinition['schema'],
+      handler,
+    };
+  }
+
+  it('voto de número fora da allowlist: ignorado, nenhuma tool é executada', async () => {
+    const handler = vi.fn(async () => 'executado');
+    definirPendencia(CHAT_ID_WHATSAPP, { tool: criarToolFalsa(handler), argumentos: {} });
+    const corpo = JSON.stringify({
+      id: 'vote-1',
+      event: 'poll.vote',
+      payload: { voter: '5500000000000@c.us', selectedOptions: [{ name: 'Confirmar' }] },
+    });
+
+    await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
+
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('sem pendência correspondente ao votante: ignorado, sem resposta', async () => {
+    const corpo = JSON.stringify({
+      id: 'vote-2',
+      event: 'poll.vote',
+      payload: { voter: CHAT_ID_WHATSAPP, selectedOptions: [{ name: 'Confirmar' }] },
+    });
+
+    const resultado = await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
+
+    expect(resultado.status).toBe(200);
+    expect(enviarTextoWhatsapp).not.toHaveBeenCalled();
+  });
+
+  it('voto "Confirmar" com pendência em memória: executa a tool e responde o resultado', async () => {
+    const handler = vi.fn(async () => 'ação executada com sucesso');
+    definirPendencia(CHAT_ID_WHATSAPP, { tool: criarToolFalsa(handler), argumentos: { x: 1 } });
+    const corpo = JSON.stringify({
+      id: 'vote-3',
+      event: 'poll.vote',
+      payload: { voter: CHAT_ID_WHATSAPP, selectedOptions: [{ name: 'Confirmar' }] },
+    });
+
+    await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
+
+    expect(handler).toHaveBeenCalledWith({ x: 1 }, { chatId: CHAT_ID_WHATSAPP });
+    expect(enviarTextoWhatsapp).toHaveBeenCalledWith(expect.anything(), CHAT_ID_WHATSAPP, 'ação executada com sucesso');
+    expect(obterPendencia(CHAT_ID_WHATSAPP)).toBeUndefined();
+  });
+
+  it('voto "Cancelar": não executa a tool, responde que a ação foi cancelada', async () => {
+    const handler = vi.fn(async () => 'nunca deveria rodar');
+    definirPendencia(CHAT_ID_WHATSAPP, { tool: criarToolFalsa(handler), argumentos: {} });
+    const corpo = JSON.stringify({
+      id: 'vote-4',
+      event: 'poll.vote',
+      payload: { voter: CHAT_ID_WHATSAPP, selectedOptions: [{ name: 'Cancelar' }] },
+    });
+
+    await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
+
+    expect(handler).not.toHaveBeenCalled();
+    expect(enviarTextoWhatsapp).toHaveBeenCalledTimes(1);
+  });
+
+  it('voto "Confirmar" com pendência persistida (ex: lerEmailFaturas.ts): resolve pela tabela compartilhada', async () => {
+    const handler = vi.fn(async () => 'fatura registrada');
+    deps.tools = [criarToolFalsa(handler)];
+    definirPendenciaPersistida(db, CHAT_ID_WHATSAPP, { toolName: 'acao_de_teste', argumentos: { y: 2 } });
+    const corpo = JSON.stringify({
+      id: 'vote-5',
+      event: 'poll.vote',
+      payload: { voter: CHAT_ID_WHATSAPP, selectedOptions: [{ name: 'Confirmar' }] },
+    });
+
+    await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
+
+    expect(handler).toHaveBeenCalledWith({ y: 2 }, { chatId: CHAT_ID_WHATSAPP });
+    expect(obterPendenciaPersistida(db, CHAT_ID_WHATSAPP)).toBeUndefined();
+    deps.tools = [];
   });
 });

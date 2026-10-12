@@ -11,8 +11,11 @@ export type ConfigWhatsapp = {
 const SUFIXO_CHAT_ID = '@c.us';
 
 // WAHA espera o formato <numero>@c.us — números já configurados (ex: em
-// WHATSAPP_DESTINATARIOS) podem vir só com os dígitos.
-function normalizarDestinatario(destinatario: string): string {
+// WHATSAPP_DESTINATARIOS) podem vir só com os dígitos. Exportada (Tarefa 135):
+// quem grava uma pendência de confirmação pro WhatsApp (notificar.ts) precisa
+// gravá-la com o mesmo chatId (com sufixo) que vai chegar de volta no
+// `payload.from`/`voter` do webhook — outro formato não bateria no Map/tabela.
+export function normalizarDestinatario(destinatario: string): string {
   return destinatario.endsWith(SUFIXO_CHAT_ID) ? destinatario : `${destinatario}${SUFIXO_CHAT_ID}`;
 }
 
@@ -71,6 +74,28 @@ export async function enviarDocumentoWhatsapp(
       mimetype: 'application/pdf',
       filename: nomeArquivo,
       data: documento.toString('base64'),
+    },
+  });
+}
+
+// Substituto de botão nativo pra confirmação de ação (Tarefa 135) — NOWEB
+// (engine não-oficial da WAHA) não suporta botão interativo de forma
+// confiável, Poll é o substituto documentado. Formato do corpo (campo "poll"
+// aninhado) segue a mesma convenção dos demais endpoints desta API — não
+// confirmado contra a sessão real da WAHA ainda (mesmo tipo de achado do HMAC
+// na Tarefa 132); validar fica pra Tarefa 138.
+export async function enviarPollWhatsapp(
+  config: ConfigWhatsapp,
+  destinatario: string,
+  pergunta: string,
+  opcoes: string[],
+): Promise<void> {
+  await requisitar(config, '/api/sendPoll', {
+    chatId: normalizarDestinatario(destinatario),
+    poll: {
+      name: pergunta,
+      options: opcoes,
+      multipleAnswers: false,
     },
   });
 }

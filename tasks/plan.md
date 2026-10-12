@@ -35,7 +35,7 @@ Spec fechada via sessão de `grilling` e publicada em `PLANO.md` (seção "Fase 
 - [ ] Teste manual em Homologação: mandar mensagem de texto pro número da WAHA, receber resposta da IA — depende da Tarefa 138 (wiring do webhook na sessão WAHA de verdade), ainda não feito
 
 ### Fase C: Confirmação, comandos e mídia
-- [ ] Tarefa 135: confirmação de ação via Poll (envio + `poll.vote` + fatura por e-mail)
+- [x] Tarefa 135: confirmação de ação via Poll (envio + `poll.vote` + fatura por e-mail)
 - [ ] Tarefa 136: comandos `/registrar_open_finance` e `/registrar_email` via WhatsApp
 - [ ] Tarefa 137: resposta de "mídia não suportada" pra foto/PDF/áudio/documento
 - [ ] Tarefa 138: `docker-compose.yml` — configuração do webhook na sessão WAHA (`WHATSAPP_WEBHOOK_HMAC_KEY` já existe desde a Tarefa 132)
@@ -50,7 +50,8 @@ Spec fechada via sessão de `grilling` e publicada em `PLANO.md` (seção "Fase 
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Formato exato do payload `poll.vote` da WAHA não está fechado na documentação pública | Médio — pode exigir redesenho da correlação pendência↔voto | Primeira coisa a validar na Tarefa 135, contra a API real da sessão já pareada, mesmo padrão de descoberta das Tarefas 122/123 (Rodada 1) |
+| Formato exato do payload `poll.vote` da WAHA não está fechado na documentação pública | Médio — pode exigir redesenho da correlação pendência↔voto | Implementado (Tarefa 135) assumindo `voter` com sufixo `@c.us` e `selectedOptions[].name` igual ao rótulo da opção; validar contra a sessão real fica pra Tarefa 138, mesmo padrão de descoberta das Tarefas 122/123 (Rodada 1) |
+| `confirmacoes_pendentes.chat_id` era `INTEGER PRIMARY KEY` (alias de rowid — exige inteiro de verdade, ignora a afinidade normal) — gravar pendência com chatId do WhatsApp (string) lançava `SqliteError: datatype mismatch` (achado real, Tarefa 135) | Alto — bloqueava por completo a confirmação de fatura/boleto por e-mail no WhatsApp | Corrigido via migration (`0023`, recria a tabela com `chat_id TEXT PRIMARY KEY`). `bot_pausado` tem a mesma coluna e o mesmo risco, não tocada nesta rodada (kill switch do WhatsApp é a API de sessão da WAHA) — revisar se `/pausar` for estendido ao WhatsApp no futuro |
 | Formato exato da assinatura HMAC do webhook (algoritmo/encoding) também não está fechado na documentação pública (achado na Tarefa 132) | Médio — pode rejeitar webhook real por mismatch de formato | Implementado pela convenção mais comum (SHA-512, hex); validar contra a sessão real fica pra Tarefa 138, mesmo padrão de descoberta |
 | Endpoint HTTP novo no mesmo processo do bot pode competir com o long-polling do grammy por recursos/porta | Baixo | Porta fixa nova, só bind em `0.0.0.0`/interno; sem overlap de I/O real (grammy já é assíncrono) |
 | Alargar `chatId` pra `number \| string` sem revisar todos os call sites pode deixar uma comparação `===` quebrada por tipo (`5` !== `"5"`) | Médio | Tarefa 129 isolada e testada antes de qualquer código novo depender dela — checkpoint de Fundação roda a suíte completa antes de prosseguir |
