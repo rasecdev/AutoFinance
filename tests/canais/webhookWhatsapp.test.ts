@@ -204,7 +204,7 @@ describe('processarWebhookWhatsapp — evento "message" (Tarefa 134)', () => {
     expect(processarMensagemTextoMock).not.toHaveBeenCalled();
   });
 
-  it('mensagem com mídia: ignorada nesta rodada (resposta de "não suportado" é Tarefa 137)', async () => {
+  it('mensagem com mídia (Tarefa 137): responde "não suportado ainda", nunca cai na conversa livre', async () => {
     const corpo = JSON.stringify({
       id: 'msg-3',
       event: 'message',
@@ -214,6 +214,36 @@ describe('processarWebhookWhatsapp — evento "message" (Tarefa 134)', () => {
     await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
 
     expect(processarMensagemTextoMock).not.toHaveBeenCalled();
+    expect(enviarTextoWhatsapp).toHaveBeenCalledWith(
+      expect.anything(),
+      '5511999999999@c.us',
+      expect.stringContaining('ainda'),
+    );
+  });
+
+  it('mensagem com mídia sem legenda (body ausente): mesmo assim responde "não suportado"', async () => {
+    const corpo = JSON.stringify({
+      id: 'msg-3b',
+      event: 'message',
+      payload: { from: '5511999999999@c.us', fromMe: false, hasMedia: true },
+    });
+
+    await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
+
+    expect(processarMensagemTextoMock).not.toHaveBeenCalled();
+    expect(enviarTextoWhatsapp).toHaveBeenCalledTimes(1);
+  });
+
+  it('mensagem com mídia de número fora da allowlist: nunca responde (mesmo princípio de não confirmar que o número existe)', async () => {
+    const corpo = JSON.stringify({
+      id: 'msg-3c',
+      event: 'message',
+      payload: { from: '5500000000000@c.us', body: 'foto', fromMe: false, hasMedia: true },
+    });
+
+    await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
+
+    expect(enviarTextoWhatsapp).not.toHaveBeenCalled();
   });
 
   it('mensagem de texto de número permitido: chama processarMensagemTexto com o chatId do WhatsApp', async () => {
