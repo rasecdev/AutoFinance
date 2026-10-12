@@ -72,7 +72,7 @@ const schemaExcluirTransacao = z.object({
   id: z.number().int().positive().optional(),
 });
 
-function resolverIdTransacao(chatId: number, idInformado?: number): number | undefined {
+function resolverIdTransacao(chatId: number | string, idInformado?: number): number | undefined {
   return idInformado ?? obterUltimaTransacao(chatId);
 }
 

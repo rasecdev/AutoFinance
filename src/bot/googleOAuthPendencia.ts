@@ -5,16 +5,18 @@ import type { Auth } from 'googleapis';
 // mas guarda o OAuth2Client aguardando o código colado de volta no chat, não
 // uma tool pendente. Some se o bot reiniciar (comportamento aceitável: o
 // usuário roda /registrar_email de novo).
-const pendencias = new Map<number, Auth.OAuth2Client>();
+// chatId: number (Telegram) | string (WhatsApp — Fase 9 Rodada 2), valor
+// opaco nos dois casos.
+const pendencias = new Map<number | string, Auth.OAuth2Client>();
 
-export function definirPendenciaOAuthGoogle(chatId: number, client: Auth.OAuth2Client): void {
+export function definirPendenciaOAuthGoogle(chatId: number | string, client: Auth.OAuth2Client): void {
   pendencias.set(chatId, client);
 }
 
-export function obterPendenciaOAuthGoogle(chatId: number): Auth.OAuth2Client | undefined {
+export function obterPendenciaOAuthGoogle(chatId: number | string): Auth.OAuth2Client | undefined {
   return pendencias.get(chatId);
 }
 
-export function removerPendenciaOAuthGoogle(chatId: number): void {
+export function removerPendenciaOAuthGoogle(chatId: number | string): void {
   pendencias.delete(chatId);
 }

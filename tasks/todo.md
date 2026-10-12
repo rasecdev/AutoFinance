@@ -9,14 +9,14 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 2
 **Description:** Todo `Map`/parâmetro que hoje assume `chatId: number` (Telegram) passa a aceitar também o formato string do WhatsApp (`"<numero>@c.us"`), sem mudar nenhum comportamento do Telegram. Alcança: `confirmacao.ts` (`pendencias`), `googleOAuthPendencia.ts`, `openFinancePendencia.ts`, `modeloAtivo.ts`, `confirmacoesPendentes.ts`/`botPausado.ts` (repositórios — a coluna SQL não precisa de migration, nenhuma tabela do projeto é `STRICT`), e a cadeia de parâmetros que propaga `chatId` até `processarMensagemTexto`/`createHandlerCallbackConfirmacao`.
 
 **Acceptance criteria:**
-- [ ] Nenhum desses módulos mais declara `Map<number, ...>`/parâmetro `chatId: number` — todos aceitam `number | string`
-- [ ] `chatId` é tratado como valor opaco em todo esse caminho (nunca convertido pra número, nunca usado em conta aritmética)
-- [ ] Comportamento do Telegram inalterado (regressão zero)
+- [x] Nenhum desses módulos mais declara `Map<number, ...>`/parâmetro `chatId: number` — todos aceitam `number | string` (alcançou também `contextoRecente.ts`, `resumosConversa.ts`, `interacoesIa.ts`, `ai/contexto.ts`, `ai/resumirContexto.ts`, `ai/tools/transacoes.ts` e `ai/tools/types.ts` — não previstos na lista original de "Files likely touched", mas fazem parte da mesma cadeia que `processarMensagemTexto` propaga)
+- [x] `chatId` é tratado como valor opaco em todo esse caminho (nunca convertido pra número, nunca usado em conta aritmética)
+- [x] Comportamento do Telegram inalterado (regressão zero) — `callbackConfirmacao.ts` não precisou de mudança nenhuma (infere o tipo de `ctx.chat?.id`, sem anotação própria); `midia.ts`/`registrarEmail.ts` deixados como `number` de propósito, por serem handlers 100% Telegram até a Tarefa 136 (WhatsApp não chama essas funções ainda — `number` continua válido como argumento de tudo que já aceita `number | string`)
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run` (suíte completa)
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: nenhum — mudança de tipo, sem efeito observável ainda nesta tarefa
+- [x] Tests pass: `npx vitest run` (suíte completa)
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: nenhum — mudança de tipo, sem efeito observável ainda nesta tarefa
 
 **Dependencies:** None
 

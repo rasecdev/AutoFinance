@@ -70,7 +70,7 @@ export async function processarMensagemTexto(
   logger: Logger,
   tools: ToolDefinition[],
   mensagemUsuario: string,
-  chatId: number,
+  chatId: number | string,
 ): Promise<void> {
   const idioma = obterIdioma(db);
 

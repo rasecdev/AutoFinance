@@ -1,7 +1,10 @@
 import type { z } from 'zod';
 
 export type ToolContext = {
-  chatId: number;
+  // number = Telegram (id de chat nativo); string = WhatsApp (formato
+  // "<numero>@c.us" da WAHA, Fase 9 Rodada 2) — valor opaco em qualquer dos
+  // dois casos, nunca usado em conta aritmética.
+  chatId: number | string;
   modelo?: string;
 };
 
