@@ -19,11 +19,11 @@ Spec fechada via sessão de `grilling` e publicada em `PLANO.md` (seção "Fase 
 ### Fase A: Fundação (tipos + idempotência + interface mínima)
 - [x] Tarefa 129: generalizar `chatId` pra `number | string`
 - [x] Tarefa 130: interface mínima de saída (`CanalContext`) no núcleo de conversa
-- [ ] Tarefa 131: idempotência de evento WAHA (migration + repositório)
+- [x] Tarefa 131: idempotência de evento WAHA (migration + repositório)
 
 ### Checkpoint: Fundação
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Nenhuma regressão no Telegram (suíte completa passa igual antes)
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Nenhuma regressão no Telegram (suíte completa passa igual antes) — 135/135 arquivos, 1053/1053 testes
 
 ### Fase B: Webhook + fluxo básico de texto
 - [ ] Tarefa 132: endpoint HTTP interno + validação HMAC + idempotência aplicada
