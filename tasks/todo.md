@@ -85,15 +85,17 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 2
 **Description:** Novo listener HTTP no mesmo processo do bot (ao lado do `bot.start()` do grammy em `index.ts`), só acessível na rede interna do `docker-compose`. Recebe o POST da WAHA, valida a assinatura (`X-Webhook-Hmac`, chave `WHATSAPP_WEBHOOK_HMAC_KEY`) antes de qualquer parsing — requisição sem assinatura válida é rejeitada (4xx) sem processar. Aplica a checagem de idempotência (Tarefa 131) antes de despachar pro handler de evento.
 
 **Acceptance criteria:**
-- [ ] Servidor HTTP novo sobe junto do bot, porta fixa configurável
-- [ ] Requisição sem HMAC válido (ou com `env.whatsapp` ausente) é rejeitada sem processar o corpo
-- [ ] Evento já marcado como processado (Tarefa 131) é ignorado sem executar nada de novo
-- [ ] Evento desconhecido (tipo não mapeado) é ignorado sem lançar erro
+- [x] Servidor HTTP novo sobe junto do bot (`criarServidorWebhookWhatsapp`, chamado em `index.ts` só quando `env.whatsapp` existe), porta fixa (`PORTA_PADRAO_WEBHOOK_WHATSAPP`, revisável na Tarefa 138 se o wiring real pedir outra coisa)
+- [x] Requisição sem HMAC válido (ou com `env.whatsapp` ausente) é rejeitada (401/404 respectivamente) sem processar o corpo
+- [x] Evento já marcado como processado (Tarefa 131) é ignorado sem executar nada de novo (idempotência confirmada em teste: reentrega não duplica linha)
+- [x] Evento desconhecido (tipo não mapeado) é ignorado sem lançar erro (200, marcado como processado, log informativo) — despacho de verdade por tipo entra nas Tarefas 134/135/137
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run` + testes novos chamando o handler direto com payload já deserializado (sem subir servidor de verdade): HMAC válido/inválido, idempotência, evento desconhecido
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: nenhum ainda — sem rota real da WAHA configurada (Tarefa 138)
+- [x] Tests pass: `npx vitest run` (suíte completa, 136/136 arquivos, 1061/1061 testes) + `tests/canais/webhookWhatsapp.test.ts` (novo) chamando `processarWebhookWhatsapp` direto com payload já deserializado, sem subir servidor de verdade
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: nenhum ainda — sem rota real da WAHA configurada (Tarefa 138)
+
+**Achado real, absorve parte do escopo da Tarefa 138:** validar o HMAC exige a chave antes de existir — `WHATSAPP_WEBHOOK_HMAC_KEY` foi adicionada em `env.ts` (mesmo grupo `WHATSAPP_PAR_CLIENTE`, agora 5 variáveis) nesta tarefa, não na 138. A Tarefa 138 fica só com o wiring do lado da WAHA (`docker-compose.yml`/configuração da sessão), a variável de ambiente já existe. **Formato exato do HMAC (SHA-512, hex) não está confirmado contra a documentação pública da WAHA** — implementado pela convenção mais comum; validar contra a sessão real fica pra Tarefa 138, mesmo padrão de descoberta das Tarefas 122/123 (Rodada 1).
 
 **Dependencies:** Tarefa 131
 
@@ -220,23 +222,25 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 2
 
 ---
 
-### Tarefa 138: `docker-compose.yml`/`env.ts` — wiring do webhook na sessão WAHA
+### Tarefa 138: `docker-compose.yml` — wiring do webhook na sessão WAHA
 
-**Description:** `env.ts` ganha `WHATSAPP_WEBHOOK_HMAC_KEY` (exigida junto do grupo `whatsapp` já existente). A sessão WAHA (`whatsapp-homologacao`/`whatsapp-producao`) é configurada (via `config.webhooks[]` na criação da sessão, ou variável de ambiente `WHATSAPP_HOOK_URL`/`WHATSAPP_HOOK_EVENTS`/`WHATSAPP_HOOK_HMAC_KEY` do próprio container WAHA) pra chamar o endpoint novo (Tarefa 132) no serviço do bot, pelo nome do serviço no `docker-compose` (DNS interno).
+**Description:** `WHATSAPP_WEBHOOK_HMAC_KEY` já existe em `env.ts` desde a Tarefa 132 (achado real: validar o HMAC exige a chave antes de existir, absorvido naquela tarefa). Esta tarefa fica só com a configuração real do lado da WAHA: a sessão (`whatsapp-homologacao`/`whatsapp-producao`) precisa chamar o endpoint novo (Tarefa 132) no serviço do bot — via `config.webhooks[]` na criação/atualização da sessão, ou variável de ambiente `WHATSAPP_HOOK_URL`/`WHATSAPP_HOOK_EVENTS`/`WHATSAPP_HOOK_HMAC_KEY` do próprio container WAHA — usando o nome do serviço no `docker-compose` como host (DNS interno), igual ao padrão já usado em `WHATSAPP_WAHA_URL`.
 
 **Acceptance criteria:**
-- [ ] `WHATSAPP_WEBHOOK_HMAC_KEY` ausente quando `env.whatsapp` está configurado é erro de validação claro (mesmo padrão do grupo `whatsapp`)
-- [ ] Sessão WAHA (Homologação) configurada de verdade pra chamar o endpoint novo, confirmado mandando mensagem real e vendo o webhook disparar (log do bot)
+- [ ] Sessão WAHA (Homologação) configurada de verdade pra chamar o endpoint novo
+- [ ] Confirmado mandando mensagem real pro número da WAHA e vendo o webhook disparar (log do bot, status HTTP 200/401 dependendo da assinatura real)
+- [ ] Formato real da assinatura HMAC confirmado contra o que a WAHA de fato envia (ver achado registrado na Tarefa 132 e Risks em `tasks/plan.md`) — ajustar `assinaturaValida` em `webhookWhatsapp.ts` se o algoritmo/encoding real divergir da convenção assumida (SHA-512/hex)
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/config/env.test.ts`
+- [ ] Tests pass: `npx vitest run tests/config/env.test.ts` (sem mudança esperada, só confirmação)
 - [ ] Build succeeds: `npm run build`
 - [ ] Manual check: `docker compose config` valida sem erro; webhook disparando de verdade na VM
 
 **Dependencies:** Tarefa 132
 
 **Files likely touched:**
-- `docker-compose.yml`, `src/config/env.ts`, `tests/config/env.test.ts`
+- `docker-compose.yml`
+- `src/canais/webhookWhatsapp.ts` (só se o formato real do HMAC divergir do assumido)
 
 **Estimated scope:** Small
 

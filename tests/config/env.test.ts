@@ -115,13 +115,26 @@ describe('loadEnv', () => {
     ).toThrowError(/WHATSAPP_WAHA_API_KEY/);
   });
 
-  it('par WhatsApp completo preenche env.whatsapp', () => {
+  it('par WhatsApp completo, mas sem WHATSAPP_WEBHOOK_HMAC_KEY, lança erro explicando o que falta', () => {
+    expect(() =>
+      loadEnv({
+        ...validEnv,
+        WHATSAPP_WAHA_URL: 'http://whatsapp-homologacao:3000',
+        WHATSAPP_WAHA_API_KEY: 'waha-key-teste',
+        WHATSAPP_WAHA_SESSION: 'default',
+        WHATSAPP_DESTINATARIOS: '5511999999999',
+      }),
+    ).toThrowError(/WHATSAPP_WEBHOOK_HMAC_KEY/);
+  });
+
+  it('grupo WhatsApp completo (5 variáveis) preenche env.whatsapp', () => {
     const env = loadEnv({
       ...validEnv,
       WHATSAPP_WAHA_URL: 'http://whatsapp-homologacao:3000',
       WHATSAPP_WAHA_API_KEY: 'waha-key-teste',
       WHATSAPP_WAHA_SESSION: 'default',
       WHATSAPP_DESTINATARIOS: '5511999999999',
+      WHATSAPP_WEBHOOK_HMAC_KEY: 'hmac-key-teste',
     });
 
     expect(env.whatsapp).toEqual({
@@ -129,6 +142,7 @@ describe('loadEnv', () => {
       wahaApiKey: 'waha-key-teste',
       wahaSession: 'default',
       destinatarios: ['5511999999999'],
+      webhookHmacKey: 'hmac-key-teste',
     });
   });
 });

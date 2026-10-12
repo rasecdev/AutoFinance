@@ -18,6 +18,10 @@ const WHATSAPP_PAR_CLIENTE = [
   'WHATSAPP_WAHA_API_KEY',
   'WHATSAPP_WAHA_SESSION',
   'WHATSAPP_DESTINATARIOS',
+  // Fase 9 Rodada 2 (Tarefa 132): valida a assinatura do webhook de entrada
+  // (chat bidirecional) — faz parte do mesmo grupo porque não existe
+  // WhatsApp configurado sem o webhook também poder ser validado.
+  'WHATSAPP_WEBHOOK_HMAC_KEY',
 ] as const;
 
 const envSchema = z
@@ -41,6 +45,7 @@ const envSchema = z
     WHATSAPP_WAHA_API_KEY: z.string().min(1).optional(),
     WHATSAPP_WAHA_SESSION: z.string().min(1).optional(),
     WHATSAPP_DESTINATARIOS: listaIdsSchema('WHATSAPP_DESTINATARIOS').optional(),
+    WHATSAPP_WEBHOOK_HMAC_KEY: z.string().min(1).optional(),
   })
   .superRefine((data, ctx) => {
     // CLIENT_ID/CLIENT_SECRET sempre juntos ou nenhum dos dois. O
@@ -119,6 +124,9 @@ export type Env = {
     wahaApiKey: string;
     wahaSession: string;
     destinatarios: string[];
+    // Fase 9 Rodada 2 — valida a assinatura (X-Webhook-Hmac) do webhook de
+    // mensagem entrante antes de processar qualquer payload.
+    webhookHmacKey: string;
   } | null;
 };
 
@@ -152,12 +160,14 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     parsed.WHATSAPP_WAHA_URL &&
     parsed.WHATSAPP_WAHA_API_KEY &&
     parsed.WHATSAPP_WAHA_SESSION &&
-    parsed.WHATSAPP_DESTINATARIOS
+    parsed.WHATSAPP_DESTINATARIOS &&
+    parsed.WHATSAPP_WEBHOOK_HMAC_KEY
       ? {
           wahaUrl: parsed.WHATSAPP_WAHA_URL,
           wahaApiKey: parsed.WHATSAPP_WAHA_API_KEY,
           wahaSession: parsed.WHATSAPP_WAHA_SESSION,
           destinatarios: parsed.WHATSAPP_DESTINATARIOS,
+          webhookHmacKey: parsed.WHATSAPP_WEBHOOK_HMAC_KEY,
         }
       : null;
 

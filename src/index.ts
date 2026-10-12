@@ -20,6 +20,7 @@ import {
 } from './bot/handlers/registrarOpenFinance.js';
 import { createHandlerTexto } from './bot/handlers/texto.js';
 import { createHandlerVoz } from './bot/handlers/voz.js';
+import { criarServidorWebhookWhatsapp, PORTA_PADRAO_WEBHOOK_WHATSAPP } from './canais/webhookWhatsapp.js';
 import { loadEnv } from './config/env.js';
 import { getDb } from './db/client.js';
 import { migrate } from './db/migrate.js';
@@ -86,6 +87,13 @@ await bot.api.setMyCommands(
 );
 
 iniciarLembreteReautorizacaoGoogle(bot, env, db, logger);
+
+// Fase 9 Rodada 2 — webhook de mensagem entrante do WhatsApp (WAHA), só
+// sobe quando a integração está configurada; endpoint interno, nunca
+// exposto fora da rede do docker-compose (ver PLANO.md).
+if (env.whatsapp) {
+  criarServidorWebhookWhatsapp(env, db, logger, PORTA_PADRAO_WEBHOOK_WHATSAPP);
+}
 
 bot.start({
   onStart: () => {
