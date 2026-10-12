@@ -60,20 +60,21 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 2
 **Description:** Tabela nova (migration) + repositório pra marcar "evento/mensagem da WAHA já processado", mesmo padrão de `emailsProcessados.ts`/`transacoesOpenFinanceProcessadas.ts`. Usada pelo webhook (Tarefa 132) antes de executar qualquer tool, pra nunca duplicar uma ação financeira por reentrega.
 
 **Acceptance criteria:**
-- [ ] Migration nova cria a tabela (id do evento WAHA como chave única)
-- [ ] Repositório expõe `jaProcessado`/`marcarProcessado` (nomes a decidir), mesmo formato dos repositórios de idempotência já existentes
-- [ ] Chamar `marcarProcessado` duas vezes pro mesmo id não lança erro (idempotente de verdade)
+- [x] Migration nova (`0022_eventos_whatsapp_processados.sql`) cria a tabela (`evento_id TEXT NOT NULL UNIQUE`)
+- [x] Repositório (`eventosWhatsappProcessados.ts`) expõe `eventoJaProcessado`/`marcarEventoProcessado`, mesmo formato de `emailsProcessados.ts`
+- [x] Chamar `marcarEventoProcessado` duas vezes pro mesmo id não lança erro (`INSERT OR IGNORE`, idempotente de verdade)
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/db/migrate.test.ts tests/db/repositories/` (+ teste novo do repositório)
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: nenhum — infraestrutura, sem consumidor ainda
+- [x] Tests pass: `npx vitest run` (suíte completa, 135/135 arquivos, 1053/1053 testes) + `tests/db/eventosWhatsappProcessados.test.ts` (novo)
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: nenhum — infraestrutura, sem consumidor ainda
 
 **Dependencies:** None
 
 **Files likely touched:**
-- `src/db/migrations/0022_eventos_whatsapp_processados.sql` (novo, número exato a confirmar contra a última migration existente)
+- `src/db/migrations/0022_eventos_whatsapp_processados.sql` (novo)
 - `src/db/repositories/eventosWhatsappProcessados.ts` (novo)
+- `tests/db/eventosWhatsappProcessados.test.ts` (novo, não listado originalmente)
 
 **Estimated scope:** Small
 
