@@ -2,13 +2,13 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3-multiple-ciphers';
-import type { Context } from 'grammy';
 import type OpenAI from 'openai';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import type { ToolDefinition } from '../../../src/ai/tools/types.js';
 import { definirPendencia } from '../../../src/bot/confirmacao.js';
 import { processarMensagemTexto } from '../../../src/bot/handlers/texto.js';
+import type { CanalContext } from '../../../src/canais/contextoCanal.js';
 import type { DbClient } from '../../../src/db/client.js';
 import {
   definirPendenciaPersistida,
@@ -37,13 +37,22 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-function criarContextoFake(chatId: number) {
+// Objeto fake que implementa só a interface mínima (CanalContext, Tarefa
+// 130) — nenhum mock de Context do grammy aqui, prova que o núcleo de
+// conversa não depende de nada específico do Telegram além do que a
+// interface declara.
+function criarContextoFake(_chatId: number): CanalContext & {
+  reply: ReturnType<typeof vi.fn>;
+  replyWithPhoto: ReturnType<typeof vi.fn>;
+  replyWithDocument: ReturnType<typeof vi.fn>;
+  replyWithChatAction: ReturnType<typeof vi.fn>;
+} {
   return {
-    chat: { id: chatId },
     reply: vi.fn(async () => ({ message_id: 1 })),
     replyWithPhoto: vi.fn(async () => undefined),
+    replyWithDocument: vi.fn(async () => undefined),
     replyWithChatAction: vi.fn(async () => undefined),
-  } as unknown as Context & { reply: ReturnType<typeof vi.fn> };
+  };
 }
 
 // Ver migration 0012 — pendência gravada por um processo separado do bot
@@ -122,8 +131,12 @@ function criarClienteFalsoComToolCall(nomeTool: string, argumentos: unknown) {
 // Achado real de teste manual (Fase 8): usuário achou o "digite sim" confuso
 // — a pergunta de confirmação agora vem com um teclado inline (botões
 // Sim/Cancelar) anexado à mensagem, além de continuar aceitando texto.
-describe('processarMensagemTexto — pergunta de confirmação nova vem com teclado inline', () => {
-  it('tool com requerConfirmacao: envia a pergunta com reply_markup (botões Sim/Cancelar)', async () => {
+// Desde a Tarefa 130 (Fase 9, interface mínima de saída), processarMensagemTexto
+// só sinaliza `pedirConfirmacao` pro canal — quem decide a mecânica real
+// (teclado inline no Telegram, Poll no WhatsApp) é o adapter de cada canal,
+// testado separadamente em tests/canais/contextoCanal.test.ts.
+describe('processarMensagemTexto — sinaliza pedirConfirmacao pro canal, sem decidir a mecânica', () => {
+  it('tool com requerConfirmacao: reply sai com pedirConfirmacao: true', async () => {
     const tool: ToolDefinition = {
       name: 'criar_cartao',
       description: 'x',
@@ -139,11 +152,11 @@ describe('processarMensagemTexto — pergunta de confirmação nova vem com tecl
 
     expect(ctx.reply).toHaveBeenCalledWith(
       expect.stringContaining('Confirma criar o cartão "Nubank"?'),
-      { reply_markup: expect.objectContaining({ inline_keyboard: expect.any(Array) }) },
+      { pedirConfirmacao: true },
     );
   });
 
-  it('resposta de texto normal (sem pendência): não anexa reply_markup nenhum', async () => {
+  it('resposta de texto normal (sem pendência): pedirConfirmacao: false', async () => {
     const client = {
       chat: { completions: { create: vi.fn(async () => ({ choices: [{ message: { content: 'olá!' } }] })) } },
     } as unknown as OpenAI;
@@ -151,7 +164,7 @@ describe('processarMensagemTexto — pergunta de confirmação nova vem com tecl
     const ctx = criarContextoFake(782);
     await processarMensagemTexto(ctx, db, client, logger, [], 'oi', 782);
 
-    expect(ctx.reply).toHaveBeenCalledWith('olá!', undefined);
+    expect(ctx.reply).toHaveBeenCalledWith('olá!', { pedirConfirmacao: false });
   });
 });
 
@@ -201,6 +214,6 @@ describe('processarMensagemTexto — idioma ativo propagado pro SYSTEM_PROMPT', 
     const ctx = criarContextoFake(786);
     await processarMensagemTexto(ctx, db, client, logger, [], 'hi', 786);
 
-    expect(ctx.reply).toHaveBeenCalledWith("I didn't understand, could you rephrase?", undefined);
+    expect(ctx.reply).toHaveBeenCalledWith("I didn't understand, could you rephrase?", { pedirConfirmacao: false });
   });
 });

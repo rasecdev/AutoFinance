@@ -63,8 +63,11 @@ describe('handlerVoz', () => {
 
     await handler(ctx);
 
+    // Desde a Tarefa 130 (interface mínima de saída), o handler passa um
+    // CanalContext (wrapper via criarContextoTelegram), não o ctx crú do
+    // grammy — a tradução em si é testada em tests/canais/contextoCanal.test.ts.
     expect(processarMensagemTextoMock).toHaveBeenCalledWith(
-      ctx,
+      expect.objectContaining({ reply: expect.any(Function), replyWithPhoto: expect.any(Function) }),
       db,
       client,
       expect.anything(),
