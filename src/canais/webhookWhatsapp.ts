@@ -1,9 +1,13 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import http, { type IncomingMessage, type ServerResponse } from 'node:http';
+import type OpenAI from 'openai';
+import type { ToolDefinition } from '../ai/tools/types.js';
+import { processarMensagemTexto } from '../bot/handlers/texto.js';
 import type { Env } from '../config/env.js';
 import type { DbClient } from '../db/client.js';
 import { eventoJaProcessado, marcarEventoProcessado } from '../db/repositories/eventosWhatsappProcessados.js';
 import type { Logger } from '../logging/logger.js';
+import { criarContextoWhatsapp } from './contextoWhatsapp.js';
 
 const HEADER_HMAC = 'x-webhook-hmac';
 
@@ -41,7 +45,68 @@ export type EventoWahaPayload = {
   payload?: unknown;
 };
 
+// Shape do payload específico do evento "message" — a WAHA só dispara esse
+// evento pra mensagem recebida de outra pessoa (mensagem própria do bot sai
+// em "message.any", nunca em "message"); fromMe é checado mesmo assim, de
+// propósito, como defesa extra contra loop de eco (não confirmado contra a
+// API real — mesma ressalva do formato do HMAC, ver Risks em tasks/plan.md).
+type PayloadMensagem = {
+  from?: string;
+  body?: string;
+  fromMe?: boolean;
+  hasMedia?: boolean;
+};
+
+export type DependenciasWebhookWhatsapp = {
+  client: OpenAI;
+  tools: ToolDefinition[];
+};
+
 export type ResultadoProcessamentoWebhook = { status: number };
+
+const SUFIXO_CHAT_ID = '@c.us';
+
+function removerSufixoChatId(chatId: string): string {
+  return chatId.endsWith(SUFIXO_CHAT_ID) ? chatId.slice(0, -SUFIXO_CHAT_ID.length) : chatId;
+}
+
+// Mesmo princípio do createAllowlistMiddleware do Telegram: mensagem de
+// número fora da lista é ignorada, só log, nunca resposta — evita confirmar
+// pra um atacante que o número existe/está ativo.
+async function processarEventoMensagem(
+  payload: PayloadMensagem,
+  env: NonNullable<Env['whatsapp']>,
+  db: DbClient,
+  logger: Logger,
+  deps: DependenciasWebhookWhatsapp,
+): Promise<void> {
+  if (payload.fromMe || !payload.from || !payload.body) {
+    return;
+  }
+
+  // Mídia de verdade é Tarefa 137 (mensagem de "não suportado ainda") —
+  // nesta tarefa, mensagem com mídia é só ignorada, sem resposta nenhuma.
+  if (payload.hasMedia) {
+    logger.info({ remetente: payload.from }, 'mensagem do WhatsApp com mídia ignorada (sem suporte ainda)');
+    return;
+  }
+
+  const permitidos = new Set(env.destinatarios.map(removerSufixoChatId));
+  const remetente = removerSufixoChatId(payload.from);
+
+  if (!permitidos.has(remetente)) {
+    logger.warn({ remetente }, 'mensagem do WhatsApp de número fora da allowlist ignorada');
+    return;
+  }
+
+  const ctx = criarContextoWhatsapp(
+    { url: env.wahaUrl, apiKey: env.wahaApiKey, session: env.wahaSession },
+    payload.from,
+    logger,
+  );
+
+  await processarMensagemTexto(ctx, db, deps.client, logger, deps.tools, payload.body, payload.from);
+}
 
 // Núcleo testável, sem HTTP de verdade: recebe o corpo cru (string, pra
 // validar o HMAC byte a byte) e a assinatura recebida, devolve só o status
@@ -53,6 +118,7 @@ export async function processarWebhookWhatsapp(
   env: Pick<Env, 'whatsapp'>,
   db: DbClient,
   logger: Logger,
+  deps: DependenciasWebhookWhatsapp,
 ): Promise<ResultadoProcessamentoWebhook> {
   if (!env.whatsapp) {
     return { status: 404 };
@@ -83,9 +149,14 @@ export async function processarWebhookWhatsapp(
 
   marcarEventoProcessado(db, evento.id);
 
-  // Despacho por tipo de evento entra nas Tarefas 134 (message)/135
-  // (poll.vote)/137 (mídia) — aqui só reconhece, marca como processado e
-  // ignora o que ainda não tem handler, sem lançar erro.
+  // Despacho por tipo de evento — poll.vote entra na Tarefa 135, o resto do
+  // tratamento de mídia (resposta de "não suportado") na Tarefa 137. Tipo
+  // sem handler ainda é só reconhecido e ignorado, sem lançar erro.
+  if (evento.event === 'message') {
+    await processarEventoMensagem((evento.payload ?? {}) as PayloadMensagem, env.whatsapp, db, logger, deps);
+    return { status: 200 };
+  }
+
   logger.info({ eventoId: evento.id, tipo: evento.event }, 'webhook WhatsApp recebido, sem handler ainda pro tipo');
   return { status: 200 };
 }
@@ -98,6 +169,7 @@ export function criarServidorWebhookWhatsapp(
   db: DbClient,
   logger: Logger,
   porta: number,
+  deps: DependenciasWebhookWhatsapp,
 ): http.Server {
   const servidor = http.createServer((requisicao: IncomingMessage, resposta: ServerResponse) => {
     const partes: Buffer[] = [];
@@ -113,6 +185,7 @@ export function criarServidorWebhookWhatsapp(
           env,
           db,
           logger,
+          deps,
         );
 
         resposta.statusCode = resultado.status;

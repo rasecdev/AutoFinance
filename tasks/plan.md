@@ -28,11 +28,11 @@ Spec fechada via sessão de `grilling` e publicada em `PLANO.md` (seção "Fase 
 ### Fase B: Webhook + fluxo básico de texto
 - [x] Tarefa 132: endpoint HTTP interno + validação HMAC + idempotência aplicada
 - [x] Tarefa 133: `WhatsAppContext` (implementação da interface mínima sobre a WAHA)
-- [ ] Tarefa 134: roteamento de mensagem de texto entrante (allowlist + `processarMensagemTexto`)
+- [x] Tarefa 134: roteamento de mensagem de texto entrante (allowlist + `processarMensagemTexto`)
 
 ### Checkpoint: Fluxo básico de texto funcional
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: mandar mensagem de texto pro número da WAHA, receber resposta da IA
+- [x] `npm run build`/`lint`/`test` sem erro — 137/137 arquivos, 1072/1072 testes
+- [ ] Teste manual em Homologação: mandar mensagem de texto pro número da WAHA, receber resposta da IA — depende da Tarefa 138 (wiring do webhook na sessão WAHA de verdade), ainda não feito
 
 ### Fase C: Confirmação, comandos e mídia
 - [ ] Tarefa 135: confirmação de ação via Poll (envio + `poll.vote` + fatura por e-mail)

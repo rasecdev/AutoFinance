@@ -92,7 +92,10 @@ iniciarLembreteReautorizacaoGoogle(bot, env, db, logger);
 // sobe quando a integração está configurada; endpoint interno, nunca
 // exposto fora da rede do docker-compose (ver PLANO.md).
 if (env.whatsapp) {
-  criarServidorWebhookWhatsapp(env, db, logger, PORTA_PADRAO_WEBHOOK_WHATSAPP);
+  criarServidorWebhookWhatsapp(env, db, logger, PORTA_PADRAO_WEBHOOK_WHATSAPP, {
+    client: openRouterClient,
+    tools: montarToolsConversa(db, openRouterClient),
+  });
 }
 
 bot.start({
