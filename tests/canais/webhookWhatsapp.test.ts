@@ -9,6 +9,14 @@ import type { Env } from '../../src/config/env.js';
 import type { ToolDefinition } from '../../src/ai/tools/types.js';
 import type { DependenciasWebhookWhatsapp } from '../../src/canais/webhookWhatsapp.js';
 import { definirPendencia, obterPendencia, removerPendencia } from '../../src/bot/confirmacao.js';
+import {
+  definirPendenciaOAuthGoogle,
+  removerPendenciaOAuthGoogle,
+} from '../../src/bot/googleOAuthPendencia.js';
+import {
+  definirPendenciaOpenFinance,
+  removerPendenciaOpenFinance,
+} from '../../src/bot/openFinancePendencia.js';
 import type { DbClient } from '../../src/db/client.js';
 import {
   definirPendenciaPersistida,
@@ -21,6 +29,20 @@ import { createLogger } from '../../src/logging/logger.js';
 const processarMensagemTextoMock = vi.fn(async () => undefined);
 vi.mock('../../src/bot/handlers/texto.js', () => ({
   processarMensagemTexto: processarMensagemTextoMock,
+}));
+
+const processarRegistrarEmailMock = vi.fn(async () => undefined);
+const processarCodigoOAuthGoogleMock = vi.fn(async () => undefined);
+vi.mock('../../src/bot/handlers/registrarEmail.js', () => ({
+  processarRegistrarEmail: processarRegistrarEmailMock,
+  processarCodigoOAuthGoogle: processarCodigoOAuthGoogleMock,
+}));
+
+const processarRegistrarOpenFinanceMock = vi.fn(async () => undefined);
+const processarMapeamentoOpenFinanceMock = vi.fn(async () => undefined);
+vi.mock('../../src/bot/handlers/registrarOpenFinance.js', () => ({
+  processarRegistrarOpenFinance: processarRegistrarOpenFinanceMock,
+  processarMapeamentoOpenFinance: processarMapeamentoOpenFinanceMock,
 }));
 
 const enviarTextoWhatsapp = vi.fn(async () => undefined);
@@ -43,7 +65,7 @@ const deps: DependenciasWebhookWhatsapp = { client: {} as OpenAI, tools: [] };
 let dir: string;
 let db: DbClient;
 
-const envComWhatsapp: Pick<Env, 'whatsapp'> = {
+const envComWhatsapp: Pick<Env, 'whatsapp' | 'pluggy' | 'googleOAuthClient'> = {
   whatsapp: {
     wahaUrl: 'http://whatsapp-homologacao:3000',
     wahaApiKey: 'waha-key-teste',
@@ -51,9 +73,15 @@ const envComWhatsapp: Pick<Env, 'whatsapp'> = {
     destinatarios: ['5511999999999'],
     webhookHmacKey: CHAVE_HMAC,
   },
+  pluggy: null,
+  googleOAuthClient: null,
 };
 
-const envSemWhatsapp: Pick<Env, 'whatsapp'> = { whatsapp: null };
+const envSemWhatsapp: Pick<Env, 'whatsapp' | 'pluggy' | 'googleOAuthClient'> = {
+  whatsapp: null,
+  pluggy: null,
+  googleOAuthClient: null,
+};
 
 function assinar(corpo: string, chave: string = CHAVE_HMAC): string {
   return createHmac('sha512', chave).update(corpo).digest('hex');
@@ -66,6 +94,10 @@ beforeEach(() => {
   db.pragma(`key='${CHAVE_TESTE}'`);
   migrate(db);
   processarMensagemTextoMock.mockClear();
+  processarRegistrarEmailMock.mockClear();
+  processarCodigoOAuthGoogleMock.mockClear();
+  processarRegistrarOpenFinanceMock.mockClear();
+  processarMapeamentoOpenFinanceMock.mockClear();
   enviarTextoWhatsapp.mockClear();
 });
 
@@ -311,5 +343,123 @@ describe('processarWebhookWhatsapp — evento "poll.vote" (Tarefa 135)', () => {
     expect(handler).toHaveBeenCalledWith({ y: 2 }, { chatId: CHAT_ID_WHATSAPP });
     expect(obterPendenciaPersistida(db, CHAT_ID_WHATSAPP)).toBeUndefined();
     deps.tools = [];
+  });
+});
+
+describe('processarWebhookWhatsapp — comandos /registrar_open_finance e /registrar_email (Tarefa 136)', () => {
+  const CHAT_ID_WHATSAPP = '5511999999999@c.us';
+
+  afterEach(() => {
+    removerPendenciaOAuthGoogle(CHAT_ID_WHATSAPP);
+    removerPendenciaOpenFinance(CHAT_ID_WHATSAPP);
+  });
+
+  it('/registrar_email: chama processarRegistrarEmail, nunca a conversa livre', async () => {
+    const corpo = JSON.stringify({
+      id: 'cmd-1',
+      event: 'message',
+      payload: { from: CHAT_ID_WHATSAPP, body: '/registrar_email', fromMe: false },
+    });
+
+    await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
+
+    expect(processarRegistrarEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ reply: expect.any(Function) }),
+      envComWhatsapp,
+      db,
+      CHAT_ID_WHATSAPP,
+      '/registrar_email',
+    );
+    expect(processarMensagemTextoMock).not.toHaveBeenCalled();
+  });
+
+  it('/registrar_open_finance <item_id>: chama processarRegistrarOpenFinance, nunca a conversa livre', async () => {
+    const corpo = JSON.stringify({
+      id: 'cmd-2',
+      event: 'message',
+      payload: { from: CHAT_ID_WHATSAPP, body: '/registrar_open_finance abc123', fromMe: false },
+    });
+
+    await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
+
+    expect(processarRegistrarOpenFinanceMock).toHaveBeenCalledWith(
+      expect.objectContaining({ reply: expect.any(Function) }),
+      envComWhatsapp,
+      db,
+      logger,
+      CHAT_ID_WHATSAPP,
+      '/registrar_open_finance abc123',
+    );
+    expect(processarMensagemTextoMock).not.toHaveBeenCalled();
+  });
+
+  it('com pendência de código OAuth Google: resposta de texto é interpretada como código, não como conversa livre', async () => {
+    definirPendenciaOAuthGoogle(CHAT_ID_WHATSAPP, {} as never);
+    const corpo = JSON.stringify({
+      id: 'cmd-3',
+      event: 'message',
+      payload: { from: CHAT_ID_WHATSAPP, body: '4/0A...codigo-colado', fromMe: false },
+    });
+
+    await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
+
+    expect(processarCodigoOAuthGoogleMock).toHaveBeenCalledWith(
+      expect.objectContaining({ reply: expect.any(Function) }),
+      db,
+      logger,
+      CHAT_ID_WHATSAPP,
+      '4/0A...codigo-colado',
+    );
+    expect(processarMensagemTextoMock).not.toHaveBeenCalled();
+  });
+
+  it('com pendência de mapeamento Open Finance: resposta de texto é interpretada como mapeamento, não como conversa livre', async () => {
+    definirPendenciaOpenFinance(CHAT_ID_WHATSAPP, { itemId: 'item-1', contas: [] });
+    const corpo = JSON.stringify({
+      id: 'cmd-4',
+      event: 'message',
+      payload: { from: CHAT_ID_WHATSAPP, body: '1 = Conta Principal', fromMe: false },
+    });
+
+    await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
+
+    expect(processarMapeamentoOpenFinanceMock).toHaveBeenCalledWith(
+      expect.objectContaining({ reply: expect.any(Function) }),
+      db,
+      logger,
+      CHAT_ID_WHATSAPP,
+      '1 = Conta Principal',
+    );
+    expect(processarMensagemTextoMock).not.toHaveBeenCalled();
+  });
+
+  it('sem comando nem pendência: cai no fluxo normal de conversa livre', async () => {
+    const corpo = JSON.stringify({
+      id: 'cmd-5',
+      event: 'message',
+      payload: { from: CHAT_ID_WHATSAPP, body: 'quanto gastei esse mês?', fromMe: false },
+    });
+
+    await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
+
+    expect(processarMensagemTextoMock).toHaveBeenCalledTimes(1);
+    expect(processarRegistrarEmailMock).not.toHaveBeenCalled();
+    expect(processarRegistrarOpenFinanceMock).not.toHaveBeenCalled();
+    expect(processarCodigoOAuthGoogleMock).not.toHaveBeenCalled();
+    expect(processarMapeamentoOpenFinanceMock).not.toHaveBeenCalled();
+  });
+
+  it('"/registrar_email" de novo tem prioridade sobre pendência de código OAuth pendente (reinicia o fluxo)', async () => {
+    definirPendenciaOAuthGoogle(CHAT_ID_WHATSAPP, {} as never);
+    const corpo = JSON.stringify({
+      id: 'cmd-6',
+      event: 'message',
+      payload: { from: CHAT_ID_WHATSAPP, body: '/registrar_email', fromMe: false },
+    });
+
+    await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
+
+    expect(processarRegistrarEmailMock).toHaveBeenCalledTimes(1);
+    expect(processarCodigoOAuthGoogleMock).not.toHaveBeenCalled();
   });
 });

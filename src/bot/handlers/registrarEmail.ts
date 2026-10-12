@@ -1,5 +1,6 @@
 import type { Context } from 'grammy';
 import { google, type Auth } from 'googleapis';
+import { criarContextoTelegram, type CanalContext } from '../../canais/contextoCanal.js';
 import type { Env } from '../../config/env.js';
 import type { DbClient } from '../../db/client.js';
 import { obterRefreshToken, salvarRefreshToken } from '../../db/repositories/credenciaisGoogle.js';
@@ -35,7 +36,7 @@ const PEDE_REAUTORIZACAO = /\bconfirmar\b/i;
 // do mesmo link+pendência sem passar por uma mensagem do Telegram.
 export function montarLinkVinculoGoogle(
   googleOAuthClient: NonNullable<Env['googleOAuthClient']>,
-  chatId: number,
+  chatId: number | string,
 ): string {
   const oauth2Client = new google.auth.OAuth2(
     googleOAuthClient.clientId,
@@ -53,6 +54,33 @@ export function montarMensagemVinculoGoogle(url: string, idioma: Idioma = 'pt'):
   return t('email_vinculo_mensagem', idioma, { url });
 }
 
+// Núcleo reaproveitado pelo handler do Telegram e, desde a Tarefa 136, pelo
+// roteamento do webhook do WhatsApp — só depende da interface mínima
+// (CanalContext, Tarefa 130), nunca do Context largo do grammy.
+export async function processarRegistrarEmail(
+  ctx: CanalContext,
+  env: Pick<Env, 'googleOAuthClient'>,
+  db: DbClient,
+  chatId: number | string,
+  texto: string,
+): Promise<void> {
+  const idioma = obterIdioma(db);
+
+  if (!env.googleOAuthClient) {
+    await ctx.reply(t('email_sem_env', idioma));
+    return;
+  }
+
+  if (obterRefreshToken(db) !== null && !PEDE_REAUTORIZACAO.test(texto)) {
+    await ctx.reply(t('email_ja_vinculado', idioma, { calendarId: env.googleOAuthClient.calendarId }));
+    return;
+  }
+
+  const url = montarLinkVinculoGoogle(env.googleOAuthClient, chatId);
+
+  await ctx.reply(montarMensagemVinculoGoogle(url, idioma));
+}
+
 export function createHandlerRegistrarEmail(env: Env, db: DbClient) {
   return async function handlerRegistrarEmail(ctx: Context): Promise<void> {
     const chatId = ctx.chat?.id;
@@ -61,22 +89,42 @@ export function createHandlerRegistrarEmail(env: Env, db: DbClient) {
       return;
     }
 
-    const idioma = obterIdioma(db);
-
-    if (!env.googleOAuthClient) {
-      await ctx.reply(t('email_sem_env', idioma));
-      return;
-    }
-
-    if (obterRefreshToken(db) !== null && !PEDE_REAUTORIZACAO.test(texto)) {
-      await ctx.reply(t('email_ja_vinculado', idioma, { calendarId: env.googleOAuthClient.calendarId }));
-      return;
-    }
-
-    const url = montarLinkVinculoGoogle(env.googleOAuthClient, chatId);
-
-    await ctx.reply(montarMensagemVinculoGoogle(url, idioma));
+    await processarRegistrarEmail(criarContextoTelegram(ctx), env, db, chatId, texto);
   };
+}
+
+export async function processarCodigoOAuthGoogle(
+  ctx: CanalContext,
+  db: DbClient,
+  logger: Logger,
+  chatId: number | string,
+  codigo: string,
+): Promise<void> {
+  const idioma = obterIdioma(db);
+
+  const oauth2Client = obterPendenciaOAuthGoogle(chatId);
+  if (!oauth2Client) {
+    return;
+  }
+  removerPendenciaOAuthGoogle(chatId);
+
+  let tokens: Auth.Credentials;
+  try {
+    ({ tokens } = await oauth2Client.getToken(codigo));
+  } catch (erro) {
+    logger.error({ err: erro, chatId }, 'falha ao trocar código OAuth do Google por token');
+    await ctx.reply(t('email_codigo_invalido', idioma));
+    return;
+  }
+
+  if (!tokens.refresh_token) {
+    await ctx.reply(t('email_sem_refresh_token', idioma));
+    return;
+  }
+
+  salvarRefreshToken(db, tokens.refresh_token);
+
+  await ctx.reply(t('email_vinculo_concluido', idioma));
 }
 
 export function createHandlerCodigoOAuthGoogle(db: DbClient, logger: Logger) {
@@ -87,30 +135,6 @@ export function createHandlerCodigoOAuthGoogle(db: DbClient, logger: Logger) {
       return;
     }
 
-    const idioma = obterIdioma(db);
-
-    const oauth2Client = obterPendenciaOAuthGoogle(chatId);
-    if (!oauth2Client) {
-      return;
-    }
-    removerPendenciaOAuthGoogle(chatId);
-
-    let tokens: Auth.Credentials;
-    try {
-      ({ tokens } = await oauth2Client.getToken(codigo));
-    } catch (erro) {
-      logger.error({ err: erro, chatId }, 'falha ao trocar código OAuth do Google por token');
-      await ctx.reply(t('email_codigo_invalido', idioma));
-      return;
-    }
-
-    if (!tokens.refresh_token) {
-      await ctx.reply(t('email_sem_refresh_token', idioma));
-      return;
-    }
-
-    salvarRefreshToken(db, tokens.refresh_token);
-
-    await ctx.reply(t('email_vinculo_concluido', idioma));
+    await processarCodigoOAuthGoogle(criarContextoTelegram(ctx), db, logger, chatId, codigo);
   };
 }

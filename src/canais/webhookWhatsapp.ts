@@ -4,7 +4,15 @@ import type OpenAI from 'openai';
 import { extrairResultadoTool } from '../ai/openrouter.js';
 import type { ToolDefinition } from '../ai/tools/types.js';
 import { OPCAO_POLL_CONFIRMAR, obterPendencia, removerPendencia } from '../bot/confirmacao.js';
+import { COMANDOS_BOT } from '../bot/comandos.js';
+import { obterPendenciaOAuthGoogle } from '../bot/googleOAuthPendencia.js';
 import { processarMensagemTexto } from '../bot/handlers/texto.js';
+import { processarCodigoOAuthGoogle, processarRegistrarEmail } from '../bot/handlers/registrarEmail.js';
+import {
+  processarMapeamentoOpenFinance,
+  processarRegistrarOpenFinance,
+} from '../bot/handlers/registrarOpenFinance.js';
+import { obterPendenciaOpenFinance } from '../bot/openFinancePendencia.js';
 import type { Env } from '../config/env.js';
 import type { DbClient } from '../db/client.js';
 import { obterPendenciaPersistida, removerPendenciaPersistida } from '../db/repositories/confirmacoesPendentes.js';
@@ -13,6 +21,19 @@ import { obterIdioma } from '../db/repositories/idiomaBot.js';
 import { t } from '../i18n/t.js';
 import type { Logger } from '../logging/logger.js';
 import { criarContextoWhatsapp } from './contextoWhatsapp.js';
+
+// Mesma regex que router.ts usa pra rotear esses comandos no Telegram
+// (comandos.ts é a fonte única) — evita duplicar o padrão aqui.
+function regexComando(comando: string): RegExp {
+  const encontrado = COMANDOS_BOT.find((c) => c.comando === comando);
+  if (!encontrado) {
+    throw new Error(`comando "${comando}" não encontrado em COMANDOS_BOT`);
+  }
+  return encontrado.regex;
+}
+
+const REGEX_REGISTRAR_EMAIL = regexComando('registrar_email');
+const REGEX_REGISTRAR_OPEN_FINANCE = regexComando('registrar_open_finance');
 
 const HEADER_HMAC = 'x-webhook-hmac';
 
@@ -93,12 +114,13 @@ function removerSufixoChatId(chatId: string): string {
 // pra um atacante que o número existe/está ativo.
 async function processarEventoMensagem(
   payload: PayloadMensagem,
-  env: NonNullable<Env['whatsapp']>,
+  env: Pick<Env, 'whatsapp' | 'pluggy' | 'googleOAuthClient'>,
   db: DbClient,
   logger: Logger,
   deps: DependenciasWebhookWhatsapp,
 ): Promise<void> {
-  if (payload.fromMe || !payload.from || !payload.body) {
+  const envWhatsapp = env.whatsapp;
+  if (!envWhatsapp || payload.fromMe || !payload.from || !payload.body) {
     return;
   }
 
@@ -109,7 +131,7 @@ async function processarEventoMensagem(
     return;
   }
 
-  const permitidos = new Set(env.destinatarios.map(removerSufixoChatId));
+  const permitidos = new Set(envWhatsapp.destinatarios.map(removerSufixoChatId));
   const remetente = removerSufixoChatId(payload.from);
 
   if (!permitidos.has(remetente)) {
@@ -117,13 +139,40 @@ async function processarEventoMensagem(
     return;
   }
 
+  const chatId = payload.from;
+  const texto = payload.body;
   const ctx = criarContextoWhatsapp(
-    { url: env.wahaUrl, apiKey: env.wahaApiKey, session: env.wahaSession },
-    payload.from,
+    { url: envWhatsapp.wahaUrl, apiKey: envWhatsapp.wahaApiKey, session: envWhatsapp.wahaSession },
+    chatId,
     logger,
   );
 
-  await processarMensagemTexto(ctx, db, deps.client, logger, deps.tools, payload.body, payload.from);
+  // Mesma ordem de prioridade de router.ts (Telegram): comando de barra
+  // primeiro, depois pendência de código OAuth Google, depois pendência de
+  // mapeamento Open Finance, só então o fluxo de conversa livre — "/registrar_X"
+  // de novo sempre reinicia o fluxo em vez de ser interpretado como resposta
+  // a uma pendência (Tarefa 136).
+  if (REGEX_REGISTRAR_EMAIL.test(texto)) {
+    await processarRegistrarEmail(ctx, env, db, chatId, texto);
+    return;
+  }
+
+  if (REGEX_REGISTRAR_OPEN_FINANCE.test(texto)) {
+    await processarRegistrarOpenFinance(ctx, env, db, logger, chatId, texto);
+    return;
+  }
+
+  if (obterPendenciaOAuthGoogle(chatId) !== undefined) {
+    await processarCodigoOAuthGoogle(ctx, db, logger, chatId, texto);
+    return;
+  }
+
+  if (obterPendenciaOpenFinance(chatId) !== undefined) {
+    await processarMapeamentoOpenFinance(ctx, db, logger, chatId, texto);
+    return;
+  }
+
+  await processarMensagemTexto(ctx, db, deps.client, logger, deps.tools, texto, chatId);
 }
 
 // Equivalente do createHandlerCallbackConfirmacao (clique de botão do
@@ -199,7 +248,7 @@ async function processarEventoVotoPoll(
 export async function processarWebhookWhatsapp(
   corpoCru: string,
   assinaturaRecebida: string | undefined,
-  env: Pick<Env, 'whatsapp'>,
+  env: Pick<Env, 'whatsapp' | 'pluggy' | 'googleOAuthClient'>,
   db: DbClient,
   logger: Logger,
   deps: DependenciasWebhookWhatsapp,
@@ -237,7 +286,7 @@ export async function processarWebhookWhatsapp(
   // suportado") entra na Tarefa 137. Tipo sem handler ainda é só reconhecido
   // e ignorado, sem lançar erro.
   if (evento.event === 'message') {
-    await processarEventoMensagem((evento.payload ?? {}) as PayloadMensagem, env.whatsapp, db, logger, deps);
+    await processarEventoMensagem((evento.payload ?? {}) as PayloadMensagem, env, db, logger, deps);
     return { status: 200 };
   }
 
@@ -254,7 +303,7 @@ export async function processarWebhookWhatsapp(
 // docker-compose separado — ver PLANO.md, Fase 9 Rodada 2), só acessível na
 // rede interna do compose.
 export function criarServidorWebhookWhatsapp(
-  env: Pick<Env, 'whatsapp'>,
+  env: Pick<Env, 'whatsapp' | 'pluggy' | 'googleOAuthClient'>,
   db: DbClient,
   logger: Logger,
   porta: number,

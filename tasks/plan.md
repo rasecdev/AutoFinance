@@ -36,7 +36,7 @@ Spec fechada via sessão de `grilling` e publicada em `PLANO.md` (seção "Fase 
 
 ### Fase C: Confirmação, comandos e mídia
 - [x] Tarefa 135: confirmação de ação via Poll (envio + `poll.vote` + fatura por e-mail)
-- [ ] Tarefa 136: comandos `/registrar_open_finance` e `/registrar_email` via WhatsApp
+- [x] Tarefa 136: comandos `/registrar_open_finance` e `/registrar_email` via WhatsApp
 - [ ] Tarefa 137: resposta de "mídia não suportada" pra foto/PDF/áudio/documento
 - [ ] Tarefa 138: `docker-compose.yml` — configuração do webhook na sessão WAHA (`WHATSAPP_WEBHOOK_HMAC_KEY` já existe desde a Tarefa 132)
 

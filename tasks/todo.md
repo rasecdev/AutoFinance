@@ -194,19 +194,22 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 2
 **Description:** O webhook (Tarefa 134), antes de cair no roteamento de conversa livre, reconhece esses dois comandos (mesma regex de `comandos.ts`) e chama os handlers já existentes (`createHandlerRegistrarOpenFinance`/`createHandlerRegistrarEmail`), adaptados pra funcionar com o `WhatsAppContext` quando precisarem só dos métodos da interface mínima — qualquer necessidade adicional de `ctx` fica registrada como achado, não resolvida silenciosamente.
 
 **Acceptance criteria:**
-- [ ] `/registrar_open_finance <item_id>` via WhatsApp lista as contas e aceita o mapeamento "número = nome", mesmo fluxo do Telegram
-- [ ] `/registrar_email` via WhatsApp gera o link de consentimento e aceita o código colado de volta
+- [x] `/registrar_open_finance <item_id>` via WhatsApp lista as contas e aceita o mapeamento "número = nome", mesmo fluxo do Telegram
+- [x] `/registrar_email` via WhatsApp gera o link de consentimento e aceita o código colado de volta
+
+**Achado real — abordagem diferente do que a descrição previa:** em vez de "adaptar" `createHandlerRegistrarOpenFinance`/`createHandlerRegistrarEmail` (que são `(ctx: Context) => Promise<void>`, acoplados ao grammy), segui o mesmo padrão já estabelecido na Tarefa 130/134 (`processarMensagemTexto`/`processarEventoMensagem`): **extraí o núcleo de cada handler pra uma função exportada que recebe `CanalContext`** (`processarRegistrarEmail`, `processarCodigoOAuthGoogle`, `processarRegistrarOpenFinance`, `processarMapeamentoOpenFinance`), e os `createHandler*` do Telegram viraram wrappers finos que extraem `chatId`/`texto` do `Context` do grammy e chamam o núcleo com `criarContextoTelegram(ctx)` — zero duplicação de lógica, mesmo princípio "núcleo desacoplado + adapter por canal" do resto da Rodada 2. `montarLinkVinculoGoogle` (`registrarEmail.ts`) teve `chatId` alargado de `number` pra `number | string` (era "100% Telegram" até agora, de propósito, ver achado da Tarefa 129). `processarWebhookWhatsapp`/`criarServidorWebhookWhatsapp` ganharam `pluggy`/`googleOAuthClient` no tipo do `env` recebido (antes só `whatsapp`) — `index.ts` já passava o `Env` completo, nenhuma mudança necessária lá. `webhookWhatsapp.ts`, no evento `message`, replica a mesma ordem de prioridade de `router.ts` (comando de barra → pendência de código OAuth Google → pendência de mapeamento Open Finance → conversa livre), reaproveitando a regex de cada comando direto de `COMANDOS_BOT` (`comandos.ts`) em vez de duplicá-la.
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run` (suíte completa, + testes novos desses dois comandos via WhatsApp)
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: rodar os dois comandos de verdade em Homologação
+- [x] Tests pass: `npx vitest run` (suíte completa) + 7 testes novos em `tests/canais/webhookWhatsapp.test.ts` cobrindo a ordem de prioridade (comando reinicia fluxo mesmo com pendência, cada pendência interceptada antes da conversa livre, fallback pra conversa livre sem nenhum dos dois)
+- [x] Build succeeds: `npm run build`
+- [ ] Manual check: rodar os dois comandos de verdade em Homologação — depende da Tarefa 138 (wiring do webhook na sessão WAHA), ainda não feito
 
 **Dependencies:** Tarefa 134
 
 **Files likely touched:**
 - `src/canais/webhookWhatsapp.ts`
 - `src/bot/handlers/registrarOpenFinance.ts`, `src/bot/handlers/registrarEmail.ts`
+- `tests/canais/webhookWhatsapp.test.ts` (testes novos — não previsto originalmente como arquivo tocado)
 
 **Estimated scope:** Medium
 
