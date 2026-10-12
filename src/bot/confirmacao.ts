@@ -35,3 +35,12 @@ export function montarTecladoConfirmacao(): InlineKeyboard {
     .text('✅ Sim', CALLBACK_DATA_CONFIRMAR)
     .text('❌ Cancelar', CALLBACK_DATA_CANCELAR);
 }
+
+// Equivalente do teclado inline pro WhatsApp (Tarefa 135): Poll de 2 opções,
+// nome do texto da opção é o próprio "voto" (WAHA não tem callback_data
+// próprio) — por isso o rótulo em si (não um id) é o que o webhook compara
+// de volta em poll.vote.
+export const PERGUNTA_POLL_CONFIRMACAO = 'Confirma essa ação?';
+export const OPCAO_POLL_CONFIRMAR = 'Confirmar';
+export const OPCAO_POLL_CANCELAR = 'Cancelar';
+export const OPCOES_POLL_CONFIRMACAO = [OPCAO_POLL_CONFIRMAR, OPCAO_POLL_CANCELAR];

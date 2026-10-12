@@ -1,7 +1,9 @@
+import { OPCOES_POLL_CONFIRMACAO, PERGUNTA_POLL_CONFIRMACAO } from '../bot/confirmacao.js';
 import type { CanalContext, RespostaEnviada } from './contextoCanal.js';
 import {
   enviarDocumentoWhatsapp,
   enviarImagemWhatsapp,
+  enviarPollWhatsapp,
   enviarTextoWhatsapp,
   type ConfigWhatsapp,
 } from './whatsapp.js';
@@ -22,16 +24,16 @@ export function criarContextoWhatsapp(
 ): CanalContext {
   return {
     async reply(texto, opcoes): Promise<RespostaEnviada> {
-      // Poll de confirmação entra na Tarefa 135 — por ora, pedirConfirmacao
-      // ainda não tem mecânica própria no WhatsApp, só manda o texto.
-      if (opcoes?.pedirConfirmacao) {
-        logger.warn('pedirConfirmacao ainda sem Poll no WhatsApp (Tarefa 135) — mandando só o texto');
-      }
-
       try {
         await enviarTextoWhatsapp(config, destinatario, texto);
+        // Poll é mensagem própria, separada do texto — equivalente ao
+        // teclado inline do Telegram (anexado na mesma mensagem lá, mas a
+        // WAHA não tem esse conceito pra texto simples).
+        if (opcoes?.pedirConfirmacao) {
+          await enviarPollWhatsapp(config, destinatario, PERGUNTA_POLL_CONFIRMACAO, OPCOES_POLL_CONFIRMACAO);
+        }
       } catch (erro) {
-        logger.error({ err: erro, destinatario }, 'falha ao enviar texto por WhatsApp');
+        logger.error({ err: erro, destinatario }, 'falha ao enviar texto/Poll por WhatsApp');
         throw erro;
       }
       return {};

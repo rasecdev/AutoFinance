@@ -163,21 +163,27 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 2
 **Description:** Função nova no cliente WAHA pra enviar Poll (2 opções, "Confirmar"/"Cancelar"). No caminho de confirmação (`processarMensagemTexto`, e o ponto equivalente usado por `lerEmailFaturas.ts` pra fatura por e-mail), quando o canal é WhatsApp, envia a Poll em vez de montar o teclado do Telegram. O webhook (Tarefa 132) ganha um handler pro evento `poll.vote`, correlaciona com a pendência (mesma pendência generalizada na Tarefa 129) e confirma/cancela a ação.
 
 **Acceptance criteria:**
-- [ ] Ação de alto impacto no WhatsApp dispara uma Poll, não texto puro nem tentativa de botão
-- [ ] Votar "Confirmar" executa a tool pendente e responde o resultado; votar "Cancelar" cancela sem executar
-- [ ] Fatura/boleto extraída por e-mail, com destinatário WhatsApp configurado, também usa esse mesmo caminho de confirmação
+- [x] Ação de alto impacto no WhatsApp dispara uma Poll, não texto puro nem tentativa de botão (`criarContextoWhatsapp.reply`, quando `opcoes.pedirConfirmacao`, manda o texto e, em seguida, `enviarPollWhatsapp`)
+- [x] Votar "Confirmar" executa a tool pendente e responde o resultado; votar "Cancelar" cancela sem executar (`processarEventoVotoPoll`, equivalente ao `createHandlerCallbackConfirmacao` do Telegram, resolvendo a pendência em memória OU persistida)
+- [x] Fatura/boleto extraída por e-mail, com destinatário WhatsApp configurado, também usa esse mesmo caminho de confirmação — `notificarConfirmacao` (novo, `notificar.ts`) faz o fan-out Telegram+WhatsApp e persiste a pendência nos dois, `lerEmailFaturas.ts` migrado pra usá-la em vez do loop inline só-Telegram que tinha antes
+
+**Achado real, bug de schema descoberto rodando o fluxo de verdade (não só mockado):** `confirmacoes_pendentes.chat_id` era `INTEGER PRIMARY KEY` — alias de rowid no SQLite, que (ao contrário de toda outra coluna do projeto) **exige um inteiro de verdade**, sem a conversão de afinidade normal que a Tarefa 129 contava ("nenhuma tabela usa STRICT"). Gravar uma pendência com chatId do WhatsApp (string `"<numero>@c.us"`) lançava `SqliteError: datatype mismatch`. Corrigido via migration nova (`0023_confirmacoes_pendentes_chat_id_texto.sql`, recria a tabela com `chat_id TEXT PRIMARY KEY`) — aceita os dois formatos pela afinidade normal, sem mudar nada do lado do Telegram. **`bot_pausado` tem a mesma coluna (`chat_id INTEGER PRIMARY KEY`, mesmo risco) mas não é tocada por esta rodada** (kill switch do WhatsApp é a API de sessão da WAHA, não `/pausar`) — registrado aqui como risco latente pra se `/pausar` for estendido ao WhatsApp no futuro.
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run` + testes novos mockando o envio de Poll e simulando o payload de `poll.vote`
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: votar numa Poll de teste em Homologação, confirmar que a ação executa/cancela certo
+- [x] Tests pass: `npx vitest run` (suíte completa) + testes novos mockando o envio de Poll e simulando o payload de `poll.vote` (`tests/canais/webhookWhatsapp.test.ts`, `tests/canais/contextoWhatsapp.test.ts`, `tests/canais/notificar.test.ts` continuam passando, `tests/scripts/lerEmailFaturas.test.ts` com teste novo do fan-out WhatsApp)
+- [x] Build succeeds: `npm run build`
+- [ ] Manual check: votar numa Poll de teste em Homologação, confirmar que a ação executa/cancela certo — depende da Tarefa 138 (wiring do webhook na sessão WAHA de verdade), ainda não feito; formato real do payload `poll.vote` (campo `voter`/`selectedOptions[].name`) também seguem não confirmados contra a API real (mesmo risco já registrado em `tasks/plan.md`)
 
 **Dependencies:** Tarefas 131, 133, 134
 
 **Files likely touched:**
-- `src/canais/whatsapp.ts` (nova função de envio de Poll)
+- `src/canais/whatsapp.ts` (nova função de envio de Poll, `normalizarDestinatario` exportada)
 - `src/canais/webhookWhatsapp.ts`
 - `src/bot/handlers/texto.ts`, `src/scripts/lerEmailFaturas.ts`
+- `src/bot/confirmacao.ts` (constantes da Poll — não previsto originalmente)
+- `src/canais/notificar.ts` (`notificarConfirmacao`, novo — não previsto originalmente; necessário pro fan-out de confirmação alcançar destinatários WhatsApp a partir de `lerEmailFaturas.ts`)
+- `src/db/migrations/0023_confirmacoes_pendentes_chat_id_texto.sql` (novo — não previsto originalmente, achado real de bug de schema)
+- `tests/canais/contextoWhatsapp.test.ts`, `tests/canais/webhookWhatsapp.test.ts`, `tests/scripts/lerEmailFaturas.test.ts` (testes novos/ajustados)
 
 **Estimated scope:** Medium
 

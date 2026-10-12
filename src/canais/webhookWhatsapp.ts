@@ -1,11 +1,16 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import http, { type IncomingMessage, type ServerResponse } from 'node:http';
 import type OpenAI from 'openai';
+import { extrairResultadoTool } from '../ai/openrouter.js';
 import type { ToolDefinition } from '../ai/tools/types.js';
+import { OPCAO_POLL_CONFIRMAR, obterPendencia, removerPendencia } from '../bot/confirmacao.js';
 import { processarMensagemTexto } from '../bot/handlers/texto.js';
 import type { Env } from '../config/env.js';
 import type { DbClient } from '../db/client.js';
+import { obterPendenciaPersistida, removerPendenciaPersistida } from '../db/repositories/confirmacoesPendentes.js';
 import { eventoJaProcessado, marcarEventoProcessado } from '../db/repositories/eventosWhatsappProcessados.js';
+import { obterIdioma } from '../db/repositories/idiomaBot.js';
+import { t } from '../i18n/t.js';
 import type { Logger } from '../logging/logger.js';
 import { criarContextoWhatsapp } from './contextoWhatsapp.js';
 
@@ -55,6 +60,19 @@ type PayloadMensagem = {
   body?: string;
   fromMe?: boolean;
   hasMedia?: boolean;
+};
+
+// Shape do payload específico do evento "poll.vote" — formato exato não está
+// fechado na documentação pública da WAHA (mesma ressalva do evento
+// "message" e do HMAC, ver Risks em tasks/plan.md); `voter` assumido já no
+// formato "<numero>@c.us" (mesmo formato de `payload.from` em "message"),
+// `selectedOptions[].name` assumido igual ao rótulo da opção que foi votada
+// (não um id) — único jeito de saber qual opção foi escolhida sem manter
+// estado próprio de qual Poll corresponde a qual pendência (uma pendência
+// por chat, mesma semântica do Map/tabela já existentes).
+type PayloadVotoPoll = {
+  voter?: string;
+  selectedOptions?: Array<{ name?: string }>;
 };
 
 export type DependenciasWebhookWhatsapp = {
@@ -108,6 +126,72 @@ async function processarEventoMensagem(
   await processarMensagemTexto(ctx, db, deps.client, logger, deps.tools, payload.body, payload.from);
 }
 
+// Equivalente do createHandlerCallbackConfirmacao (clique de botão do
+// Telegram) pro voto de Poll do WhatsApp (Tarefa 135) — mesmas duas fontes de
+// pendência (Map em memória de confirmacao.ts e a tabela
+// confirmacoes_pendentes, pra pendência gravada por um processo separado
+// como lerEmailFaturas.ts), resolvidas pelo chatId do votante.
+async function processarEventoVotoPoll(
+  payload: PayloadVotoPoll,
+  env: NonNullable<Env['whatsapp']>,
+  db: DbClient,
+  logger: Logger,
+  deps: DependenciasWebhookWhatsapp,
+): Promise<void> {
+  if (!payload.voter) {
+    return;
+  }
+
+  const permitidos = new Set(env.destinatarios.map(removerSufixoChatId));
+  const votante = removerSufixoChatId(payload.voter);
+
+  if (!permitidos.has(votante)) {
+    logger.warn({ votante }, 'voto de Poll do WhatsApp de número fora da allowlist ignorado');
+    return;
+  }
+
+  const chatId = payload.voter;
+  const idioma = obterIdioma(db);
+  const ctx = criarContextoWhatsapp({ url: env.wahaUrl, apiKey: env.wahaApiKey, session: env.wahaSession }, chatId, logger);
+
+  const pendencia = obterPendencia(chatId);
+  const pendenciaPersistida = pendencia ? undefined : obterPendenciaPersistida(db, chatId);
+
+  if (!pendencia && !pendenciaPersistida) {
+    logger.info({ chatId }, 'voto de Poll do WhatsApp sem pendência de confirmação correspondente, ignorado');
+    return;
+  }
+
+  if (pendencia) removerPendencia(chatId);
+  if (pendenciaPersistida) removerPendenciaPersistida(db, chatId);
+
+  const confirmou = (payload.selectedOptions ?? []).some((opcao) => opcao.name === OPCAO_POLL_CONFIRMAR);
+  if (!confirmou) {
+    await ctx.reply(t('acao_cancelada', idioma));
+    return;
+  }
+
+  const tool = pendencia?.tool ?? deps.tools.find((tl) => tl.name === pendenciaPersistida?.toolName);
+  const argumentos = pendencia?.argumentos ?? pendenciaPersistida?.argumentos;
+
+  if (!tool) {
+    logger.error({ toolName: pendenciaPersistida?.toolName }, 'voto de Poll referencia tool desconhecida');
+    await ctx.reply(t('nao_consegui_concluir_acao', idioma));
+    return;
+  }
+
+  try {
+    const resultado = await tool.handler(argumentos, { chatId });
+    const { texto, imagem, documento } = extrairResultadoTool(resultado);
+    await ctx.reply(texto);
+    if (imagem) await ctx.replyWithPhoto(imagem);
+    if (documento) await ctx.replyWithDocument(documento.buffer, documento.nomeArquivo);
+  } catch (erro) {
+    logger.error({ err: erro }, 'falha ao executar ação confirmada pelo usuário (voto de Poll)');
+    await ctx.reply(t('nao_consegui_concluir_acao', idioma));
+  }
+}
+
 // Núcleo testável, sem HTTP de verdade: recebe o corpo cru (string, pra
 // validar o HMAC byte a byte) e a assinatura recebida, devolve só o status
 // que a resposta HTTP deveria ter. criarServidorWebhookWhatsapp (abaixo) é a
@@ -149,11 +233,16 @@ export async function processarWebhookWhatsapp(
 
   marcarEventoProcessado(db, evento.id);
 
-  // Despacho por tipo de evento — poll.vote entra na Tarefa 135, o resto do
-  // tratamento de mídia (resposta de "não suportado") na Tarefa 137. Tipo
-  // sem handler ainda é só reconhecido e ignorado, sem lançar erro.
+  // Despacho por tipo de evento — tratamento de mídia (resposta de "não
+  // suportado") entra na Tarefa 137. Tipo sem handler ainda é só reconhecido
+  // e ignorado, sem lançar erro.
   if (evento.event === 'message') {
     await processarEventoMensagem((evento.payload ?? {}) as PayloadMensagem, env.whatsapp, db, logger, deps);
+    return { status: 200 };
+  }
+
+  if (evento.event === 'poll.vote') {
+    await processarEventoVotoPoll((evento.payload ?? {}) as PayloadVotoPoll, env.whatsapp, db, logger, deps);
     return { status: 200 };
   }
 
