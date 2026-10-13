@@ -70,7 +70,7 @@ const envComWhatsapp: Pick<Env, 'whatsapp' | 'pluggy' | 'googleOAuthClient'> = {
     wahaUrl: 'http://whatsapp-homologacao:3000',
     wahaApiKey: 'waha-key-teste',
     wahaSession: 'default',
-    destinatarios: ['5511999999999'],
+    destinatarios: ['5511999999999', '76768463601724'],
     webhookHmacKey: CHAVE_HMAC,
   },
   pluggy: null,
@@ -277,6 +277,27 @@ describe('processarWebhookWhatsapp — evento "message" (Tarefa 134)', () => {
     await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
 
     expect(processarMensagemTextoMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('allowlist também aceita o sufixo "@lid" (achado real, Tarefa 138 — WhatsApp migrando contatos pra LID)', async () => {
+    const corpo = JSON.stringify({
+      id: 'msg-6',
+      event: 'message',
+      payload: { from: '76768463601724@lid', body: 'oi', fromMe: false },
+    });
+
+    await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
+
+    expect(processarMensagemTextoMock).toHaveBeenCalledTimes(1);
+    expect(processarMensagemTextoMock).toHaveBeenCalledWith(
+      expect.objectContaining({ reply: expect.any(Function) }),
+      db,
+      deps.client,
+      logger,
+      deps.tools,
+      'oi',
+      '76768463601724@lid',
+    );
   });
 });
 
