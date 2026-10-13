@@ -103,10 +103,25 @@ export type DependenciasWebhookWhatsapp = {
 
 export type ResultadoProcessamentoWebhook = { status: number };
 
-const SUFIXO_CHAT_ID = '@c.us';
+// Achado real de teste manual em Homologação (Tarefa 138): o WhatsApp vem
+// migrando contatos pra um identificador próprio ("LID", estável por contato,
+// mas diferente do número de telefone) — o `from`/`voter` que chega no
+// webhook pode vir como "<lid>@lid" em vez de "<numero>@c.us", mesmo pra
+// contato já conhecido (confirmado: o envio proativo pro número funciona
+// normalmente, mas a mensagem recebida DESSE MESMO contato chegou com
+// sufixo @lid). Habilitar o NOWEB store da WAHA (`config.noweb.store`) não
+// resolveu isso na prática — sessão que já tinha dado histórico salvo nunca
+// chegou a rodar o full sync de verdade ("skipping history sync wait"), e
+// mesmo que rodasse, o LID é a identidade real da conversa no protocolo, o
+// store só ajudaria a *consultar* o contato por outra rota, não mudaria o
+// que a WAHA manda no corpo do webhook. Solução adotada: tratar o LID como
+// identificador válido direto (como um WHATSAPP_DESTINATARIOS alternativo
+// pro mesmo contato), não como algo a resolver pro número de telefone.
+const SUFIXOS_CHAT_ID = ['@c.us', '@lid'];
 
 function removerSufixoChatId(chatId: string): string {
-  return chatId.endsWith(SUFIXO_CHAT_ID) ? chatId.slice(0, -SUFIXO_CHAT_ID.length) : chatId;
+  const sufixo = SUFIXOS_CHAT_ID.find((s) => chatId.endsWith(s));
+  return sufixo ? chatId.slice(0, -sufixo.length) : chatId;
 }
 
 // Mesmo princípio do createAllowlistMiddleware do Telegram: mensagem de
