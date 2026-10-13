@@ -305,13 +305,30 @@ services:
   # contra ela) — mesmo valor nos dois lados. Em vez de `env_file` pro mesmo
   # arquivo do app (exporia TELEGRAM_BOT_TOKEN/DATABASE_ENCRYPTION_KEY/etc.
   # sem necessidade a um container de terceiro), a interpolação `${...}` lê
-  # de um `.env` próprio na raiz (gitignored, só essas 2 chaves) — só isso
-  # fica visível pro container da WAHA.
+  # de um `.env` próprio na raiz (gitignored) — só essas chaves ficam
+  # visíveis pro container da WAHA.
+  # Tarefa 138 (Fase 9, Rodada 2): `WHATSAPP_HOOK_*` aplica um webhook default
+  # a toda sessão criada neste container — `WHATSAPP_HOOK_URL` aponta pro
+  # endpoint novo (webhookWhatsapp.ts) usando o nome do serviço do bot como
+  # host (DNS interno do compose, nunca IP/porta pública, mesmo princípio de
+  # `WHATSAPP_WAHA_URL`), porta fixa `PORTA_PADRAO_WEBHOOK_WHATSAPP` (3300).
+  # `WHATSAPP_HOOK_HMAC_KEY` precisa ser o MESMO valor configurado em
+  # `WHATSAPP_WEBHOOK_HMAC_KEY` no `.env.homologacao`/`.env.producao` (app) —
+  # mesmo padrão de duplicação de valor entre arquivos `.env` diferentes já
+  # usado pra `WAHA_API_KEY`. **Não confirmado ainda contra a API real da
+  # WAHA** se esse nome de variável existe de fato ou se a configuração de
+  # HMAC só é possível via `config.webhooks[].hmac.key` na criação/atualização
+  # da sessão (`POST /api/sessions/{id}`) — ver achado registrado em
+  # tasks/plan.md (Risks) e tasks/todo.md (Tarefa 138); se a env var não
+  # funcionar, o fallback é reconfigurar a sessão via API.
   whatsapp-homologacao:
     image: devlikeapro/waha:noweb-arm
     environment:
       WHATSAPP_DEFAULT_ENGINE: NOWEB
       WAHA_API_KEY: ${WAHA_API_KEY_HOMOLOGACAO}
+      WHATSAPP_HOOK_URL: 'http://homologacao:3300/'
+      WHATSAPP_HOOK_EVENTS: 'message,poll.vote'
+      WHATSAPP_HOOK_HMAC_KEY: ${WEBHOOK_HMAC_KEY_HOMOLOGACAO}
     ports:
       - '127.0.0.1:3000:3000'
     volumes:
@@ -328,6 +345,9 @@ services:
     environment:
       WHATSAPP_DEFAULT_ENGINE: NOWEB
       WAHA_API_KEY: ${WAHA_API_KEY_PRODUCAO}
+      WHATSAPP_HOOK_URL: 'http://producao:3300/'
+      WHATSAPP_HOOK_EVENTS: 'message,poll.vote'
+      WHATSAPP_HOOK_HMAC_KEY: ${WEBHOOK_HMAC_KEY_PRODUCAO}
     ports:
       - '127.0.0.1:3001:3000'
     volumes:
