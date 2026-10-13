@@ -120,14 +120,9 @@ async function processarEventoMensagem(
   deps: DependenciasWebhookWhatsapp,
 ): Promise<void> {
   const envWhatsapp = env.whatsapp;
-  if (!envWhatsapp || payload.fromMe || !payload.from || !payload.body) {
-    return;
-  }
-
-  // Mídia de verdade é Tarefa 137 (mensagem de "não suportado ainda") —
-  // nesta tarefa, mensagem com mídia é só ignorada, sem resposta nenhuma.
-  if (payload.hasMedia) {
-    logger.info({ remetente: payload.from }, 'mensagem do WhatsApp com mídia ignorada (sem suporte ainda)');
+  // Mídia (Tarefa 137) pode chegar sem legenda — não exigir `body` aqui,
+  // diferente do fluxo de texto (que continua exigindo, mais abaixo).
+  if (!envWhatsapp || payload.fromMe || !payload.from) {
     return;
   }
 
@@ -140,12 +135,25 @@ async function processarEventoMensagem(
   }
 
   const chatId = payload.from;
-  const texto = payload.body;
   const ctx = criarContextoWhatsapp(
     { url: envWhatsapp.wahaUrl, apiKey: envWhatsapp.wahaApiKey, session: envWhatsapp.wahaSession },
     chatId,
     logger,
   );
+
+  // Equivalente ao handlerNaoSuportado do Telegram (mesma chave de i18n) —
+  // antes (Tarefa 134) era ignorada em silêncio; resposta explícita entra na
+  // Tarefa 137, só depois da allowlist (nunca confirmar pra quem não tem
+  // permissão que o número existe/está ativo).
+  if (payload.hasMedia) {
+    await ctx.reply(t('nao_suportado', obterIdioma(db)));
+    return;
+  }
+
+  if (!payload.body) {
+    return;
+  }
+  const texto = payload.body;
 
   // Mesma ordem de prioridade de router.ts (Telegram): comando de barra
   // primeiro, depois pendência de código OAuth Google, depois pendência de

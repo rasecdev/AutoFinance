@@ -220,17 +220,20 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 2
 **Description:** Evento de mídia (foto/documento/áudio) recebido pelo webhook responde com uma mensagem clara avisando que esse tipo de conteúdo ainda não é suportado pelo WhatsApp (equivalente ao `handlerNaoSuportado` do Telegram), em vez de ser ignorado em silêncio.
 
 **Acceptance criteria:**
-- [ ] Mensagem de mídia via WhatsApp recebe resposta de "não suportado ainda", nunca trava o fluxo de texto nem é ignorada sem resposta
+- [x] Mensagem de mídia via WhatsApp recebe resposta de "não suportado ainda" (reaproveita a chave i18n `nao_suportado`, mesma do `handlerNaoSuportado` do Telegram), nunca trava o fluxo de texto nem é ignorada sem resposta
+
+**Achado real, corrige um bug da Tarefa 134:** a checagem `hasMedia` rodava ANTES da checagem de allowlist — mídia de um número fora da allowlist também seria respondida (vazava confirmação de que o número existe/está ativo, quebrando o mesmo princípio de segurança do `createAllowlistMiddleware`). Reordenado: allowlist primeiro, aviso de mídia depois. **Segundo achado:** a condição original (`!payload.body` no mesmo `if` que descartava mensagem sem remetente/corpo) fazia foto/documento **sem legenda** (comum — WAHA manda `body` vazio ou ausente junto de `hasMedia: true`) cair no mesmo descarte silencioso de mensagem vazia, nunca chegando a checar `hasMedia`. Corrigido: a checagem de mídia agora roda antes de exigir `body`, então mídia sem legenda também recebe a resposta.
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run` + teste novo desse caminho
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: mandar uma foto de teste pro número da WAHA em Homologação
+- [x] Tests pass: `npx vitest run` (suíte completa) + 3 testes novos/ajustados em `tests/canais/webhookWhatsapp.test.ts` (resposta enviada, mídia sem legenda ainda responde, mídia de número fora da allowlist nunca responde)
+- [x] Build succeeds: `npm run build`
+- [ ] Manual check: mandar uma foto de teste pro número da WAHA em Homologação — depende da Tarefa 138 (wiring do webhook na sessão WAHA), ainda não feito
 
 **Dependencies:** Tarefa 132
 
 **Files likely touched:**
 - `src/canais/webhookWhatsapp.ts`
+- `tests/canais/webhookWhatsapp.test.ts` (não previsto originalmente)
 
 **Estimated scope:** Small
 
