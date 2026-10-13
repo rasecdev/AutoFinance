@@ -244,20 +244,24 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 2
 **Description:** `WHATSAPP_WEBHOOK_HMAC_KEY` já existe em `env.ts` desde a Tarefa 132 (achado real: validar o HMAC exige a chave antes de existir, absorvido naquela tarefa). Esta tarefa fica só com a configuração real do lado da WAHA: a sessão (`whatsapp-homologacao`/`whatsapp-producao`) precisa chamar o endpoint novo (Tarefa 132) no serviço do bot — via `config.webhooks[]` na criação/atualização da sessão, ou variável de ambiente `WHATSAPP_HOOK_URL`/`WHATSAPP_HOOK_EVENTS`/`WHATSAPP_HOOK_HMAC_KEY` do próprio container WAHA — usando o nome do serviço no `docker-compose` como host (DNS interno), igual ao padrão já usado em `WHATSAPP_WAHA_URL`.
 
 **Acceptance criteria:**
-- [ ] Sessão WAHA (Homologação) configurada de verdade pra chamar o endpoint novo
-- [ ] Confirmado mandando mensagem real pro número da WAHA e vendo o webhook disparar (log do bot, status HTTP 200/401 dependendo da assinatura real)
-- [ ] Formato real da assinatura HMAC confirmado contra o que a WAHA de fato envia (ver achado registrado na Tarefa 132 e Risks em `tasks/plan.md`) — ajustar `assinaturaValida` em `webhookWhatsapp.ts` se o algoritmo/encoding real divergir da convenção assumida (SHA-512/hex)
+- [x] Sessão WAHA (Homologação) configurada de verdade pra chamar o endpoint novo — `docker-compose.yml` ganha `WHATSAPP_HOOK_URL`/`WHATSAPP_HOOK_EVENTS`/`WHATSAPP_HOOK_HMAC_KEY` nos dois serviços (`whatsapp-homologacao`/`whatsapp-producao`), apontando pro serviço do bot (`http://homologacao:3300/`/`http://producao:3300/`, DNS interno do compose) com os eventos `message,poll.vote`. `WHATSAPP_HOOK_HMAC_KEY` lido de `WEBHOOK_HMAC_KEY_HOMOLOGACAO`/`_PRODUCAO` no `.env` da raiz (gitignored) — precisa ser o MESMO valor de `WHATSAPP_WEBHOOK_HMAC_KEY` no `.env.homologacao`/`.env.producao` do app, mesmo padrão já usado pra `WAHA_API_KEY_*`
+- [ ] Confirmado mandando mensagem real pro número da WAHA e vendo o webhook disparar (log do bot, status HTTP 200/401 dependendo da assinatura real) — **pendente, depende do usuário com acesso à VM** (preencher `WEBHOOK_HMAC_KEY_HOMOLOGACAO` no `.env` da raiz e `WHATSAPP_WEBHOOK_HMAC_KEY` no `.env.homologacao` com o mesmo valor, redeploy, mandar mensagem de teste)
+- [ ] Formato real da assinatura HMAC confirmado contra o que a WAHA de fato envia (ver achado registrado na Tarefa 132 e Risks em `tasks/plan.md`) — ajustar `assinaturaValida` em `webhookWhatsapp.ts` se o algoritmo/encoding real divergir da convenção assumida (SHA-512/hex) — **pendente**, só verificável contra a sessão real
+- [ ] Formato real do payload `poll.vote` confirmado contra o que a WAHA de fato envia (ver achado registrado na Tarefa 135) — ajustar `processarEventoVotoPoll` em `webhookWhatsapp.ts` se `voter`/`selectedOptions[].name` divergirem do assumido — **pendente**, só verificável contra a sessão real
+
+**Achado/incerteza registrado, não resolvido ainda (requer validação manual):** `WHATSAPP_HOOK_HMAC_KEY` como variável de ambiente do container da WAHA **não está confirmado contra a documentação pública** — pode não existir de fato, e a configuração de HMAC pode só ser possível via `config.webhooks[].hmac.key` na criação/atualização da sessão (`POST /api/sessions/{id}`). Se a env var não funcionar na prática, o fallback é reconfigurar a sessão via API (exigiria um script novo, não antecipado aqui).
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/config/env.test.ts` (sem mudança esperada, só confirmação)
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: `docker compose config` valida sem erro; webhook disparando de verdade na VM
+- [x] Tests pass: `npx vitest run tests/config/env.test.ts` (sem mudança esperada, só confirmação) — sem mudança de código TS nesta tarefa
+- [x] Build succeeds: `npm run build`
+- [ ] Manual check: `docker compose config` valida sem erro (confirmado pelo job `docker` do CI, Docker indisponível na máquina de desenvolvimento usada — mesmo padrão da Tarefa 122); webhook disparando de verdade na VM — **pendente**, depende do usuário
 
 **Dependencies:** Tarefa 132
 
 **Files likely touched:**
 - `docker-compose.yml`
-- `src/canais/webhookWhatsapp.ts` (só se o formato real do HMAC divergir do assumido)
+- `src/canais/webhookWhatsapp.ts` (só se o formato real do HMAC divergir do assumido) — não tocado nesta tarefa, fica pra quando a validação manual acontecer
+- `.env.example` (comentário atualizado — não previsto originalmente)
 
 **Estimated scope:** Small
 
