@@ -305,6 +305,11 @@ export async function processarWebhookWhatsapp(
 
   marcarEventoProcessado(db, evento.id);
 
+  // DEBUG TEMPORÁRIO (Tarefa 138, investigação de formato real de mídia) —
+  // remover depois de confirmar o shape do payload. Nível info de propósito,
+  // pra aparecer mesmo com LOG_LEVEL=info em produção.
+  logger.info({ evento }, 'DEBUG TEMPORÁRIO: payload bruto do evento WhatsApp recebido');
+
   // Despacho por tipo de evento — tratamento de mídia (resposta de "não
   // suportado") entra na Tarefa 137. Tipo sem handler ainda é só reconhecido
   // e ignorado, sem lançar erro.
