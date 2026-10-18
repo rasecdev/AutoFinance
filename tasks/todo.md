@@ -282,7 +282,7 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 2
 - [ ] Teste manual em Homologação: mandar mensagem de texto pro número da WAHA, receber resposta da IA
 
 ## Checkpoint: Rodada 2 fechada (depois das Tarefas 135-138)
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: conversa livre, confirmação de ação de alto impacto (Poll), `/registrar_open_finance`, `/registrar_email`, mensagem de mídia recebendo aviso de "não suportado"
-- [ ] PROGRESSO.md atualizado com o marco
+- [x] `npm run build`/`lint`/`test` sem erro — suite completa 1089/1089 (2026-10-18)
+- [x] Teste manual em Homologação: conversa livre, confirmação de ação de alto impacto (Poll), `/registrar_open_finance`, `/registrar_email`, mensagem de mídia recebendo aviso de "não suportado" — todos confirmados em 2026-10-18
+- [x] PROGRESSO.md atualizado com o marco
 - [ ] Revisão com o usuário antes de considerar a Rodada 3 (mídia + demais comandos)

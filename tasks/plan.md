@@ -41,9 +41,9 @@ Spec fechada via sessão de `grilling` e publicada em `PLANO.md` (seção "Fase 
 - [ ] Tarefa 138: `docker-compose.yml` — configuração do webhook na sessão WAHA (`WHATSAPP_WEBHOOK_HMAC_KEY` já existe desde a Tarefa 132)
 
 ### Checkpoint: Rodada 2 fechada (chat bidirecional no WhatsApp)
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: conversa livre, confirmação de ação de alto impacto (Poll), `/registrar_open_finance`, `/registrar_email`, mensagem de mídia recebendo aviso de "não suportado"
-- [ ] PROGRESSO.md atualizado com o marco
+- [x] `npm run build`/`lint`/`test` sem erro — suite completa 1089/1089 (2026-10-18)
+- [x] Teste manual em Homologação: conversa livre, confirmação de ação de alto impacto (Poll), `/registrar_open_finance`, `/registrar_email`, mensagem de mídia recebendo aviso de "não suportado" — todos confirmados em 2026-10-18
+- [x] PROGRESSO.md atualizado com o marco
 - [ ] Revisão com o usuário antes de considerar a Rodada 3 (mídia + demais comandos)
 
 ## Risks and Mitigations
