@@ -245,8 +245,8 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 2
 
 **Acceptance criteria:**
 - [x] Sessão WAHA (Homologação) configurada de verdade pra chamar o endpoint novo — `docker-compose.yml` ganha `WHATSAPP_HOOK_URL`/`WHATSAPP_HOOK_EVENTS`/`WHATSAPP_HOOK_HMAC_KEY` nos dois serviços (`whatsapp-homologacao`/`whatsapp-producao`), apontando pro serviço do bot (`http://homologacao:3300/`/`http://producao:3300/`, DNS interno do compose) com os eventos `message,poll.vote`. `WHATSAPP_HOOK_HMAC_KEY` lido de `WEBHOOK_HMAC_KEY_HOMOLOGACAO`/`_PRODUCAO` no `.env` da raiz (gitignored) — precisa ser o MESMO valor de `WHATSAPP_WEBHOOK_HMAC_KEY` no `.env.homologacao`/`.env.producao` do app, mesmo padrão já usado pra `WAHA_API_KEY_*`
-- [ ] Confirmado mandando mensagem real pro número da WAHA e vendo o webhook disparar (log do bot, status HTTP 200/401 dependendo da assinatura real) — **pendente, depende do usuário com acesso à VM** (preencher `WEBHOOK_HMAC_KEY_HOMOLOGACAO` no `.env` da raiz e `WHATSAPP_WEBHOOK_HMAC_KEY` no `.env.homologacao` com o mesmo valor, redeploy, mandar mensagem de teste)
-- [ ] Formato real da assinatura HMAC confirmado contra o que a WAHA de fato envia (ver achado registrado na Tarefa 132 e Risks em `tasks/plan.md`) — ajustar `assinaturaValida` em `webhookWhatsapp.ts` se o algoritmo/encoding real divergir da convenção assumida (SHA-512/hex) — **pendente**, só verificável contra a sessão real
+- [x] Confirmado mandando mensagem real pro número da WAHA e vendo o webhook disparar (log do bot, status HTTP 200/401 dependendo da assinatura real) — **confirmado em 2026-10-18**: mensagem de texto e de mídia chegam, são processadas e a resposta chega de volta no WhatsApp (depois do fix do chatId `@lid`, PR #466)
+- [x] Formato real da assinatura HMAC confirmado contra o que a WAHA de fato envia (ver achado registrado na Tarefa 132 e Risks em `tasks/plan.md`) — **confirmado em 2026-10-13**: SHA-512/hex está correto, nenhum ajuste necessário em `assinaturaValida`
 - [ ] Formato real do payload `poll.vote` confirmado contra o que a WAHA de fato envia (ver achado registrado na Tarefa 135) — ajustar `processarEventoVotoPoll` em `webhookWhatsapp.ts` se `voter`/`selectedOptions[].name` divergirem do assumido — **pendente**, só verificável contra a sessão real
 
 **Achado/incerteza registrado, não resolvido ainda (requer validação manual):** `WHATSAPP_HOOK_HMAC_KEY` como variável de ambiente do container da WAHA **não está confirmado contra a documentação pública** — pode não existir de fato, e a configuração de HMAC pode só ser possível via `config.webhooks[].hmac.key` na criação/atualização da sessão (`POST /api/sessions/{id}`). Se a env var não funcionar na prática, o fallback é reconfigurar a sessão via API (exigiria um script novo, não antecipado aqui).
@@ -258,7 +258,7 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 2
 **Verification:**
 - [x] Tests pass: `npx vitest run tests/config/env.test.ts` (sem mudança esperada, só confirmação) — sem mudança de código TS nesta tarefa
 - [x] Build succeeds: `npm run build`
-- [ ] Manual check: `docker compose config` valida sem erro (confirmado pelo job `docker` do CI, Docker indisponível na máquina de desenvolvimento usada — mesmo padrão da Tarefa 122); webhook disparando de verdade na VM — **pendente**, depende do usuário
+- [x] Manual check: `docker compose config` valida sem erro (confirmado pelo job `docker` do CI, Docker indisponível na máquina de desenvolvimento usada — mesmo padrão da Tarefa 122); webhook disparando de verdade na VM — **confirmado em 2026-10-18**
 
 **Dependencies:** Tarefa 132
 
