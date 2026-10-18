@@ -83,17 +83,18 @@ type PayloadMensagem = {
   hasMedia?: boolean;
 };
 
-// Shape do payload específico do evento "poll.vote" — formato exato não está
-// fechado na documentação pública da WAHA (mesma ressalva do evento
-// "message" e do HMAC, ver Risks em tasks/plan.md); `voter` assumido já no
-// formato "<numero>@c.us" (mesmo formato de `payload.from` em "message"),
-// `selectedOptions[].name` assumido igual ao rótulo da opção que foi votada
-// (não um id) — único jeito de saber qual opção foi escolhida sem manter
-// estado próprio de qual Poll corresponde a qual pendência (uma pendência
-// por chat, mesma semântica do Map/tabela já existentes).
+// Shape do payload específico do evento "poll.vote" — achado real de teste
+// manual em Homologação (Tarefa 138): a suposição original (campo `voter`
+// no topo, `selectedOptions[].name`) estava errada. O payload de verdade
+// aninha tudo em `vote` (`vote.from` é o identificador do votante, mesmo
+// formato "<lid>@lid"/"<numero>@c.us" de `payload.from` em "message") e
+// `vote.selectedOptions` é array de **strings simples** (o rótulo da opção
+// votada), não objetos com `.name`.
 type PayloadVotoPoll = {
-  voter?: string;
-  selectedOptions?: Array<{ name?: string }>;
+  vote?: {
+    from?: string;
+    selectedOptions?: string[];
+  };
 };
 
 export type DependenciasWebhookWhatsapp = {
@@ -210,19 +211,19 @@ async function processarEventoVotoPoll(
   logger: Logger,
   deps: DependenciasWebhookWhatsapp,
 ): Promise<void> {
-  if (!payload.voter) {
+  if (!payload.vote?.from) {
     return;
   }
 
   const permitidos = new Set(env.destinatarios.map(removerSufixoChatId));
-  const votante = removerSufixoChatId(payload.voter);
+  const votante = removerSufixoChatId(payload.vote.from);
 
   if (!permitidos.has(votante)) {
     logger.warn({ votante }, 'voto de Poll do WhatsApp de número fora da allowlist ignorado');
     return;
   }
 
-  const chatId = payload.voter;
+  const chatId = payload.vote.from;
   const idioma = obterIdioma(db);
   const ctx = criarContextoWhatsapp({ url: env.wahaUrl, apiKey: env.wahaApiKey, session: env.wahaSession }, chatId, logger);
 
@@ -237,7 +238,7 @@ async function processarEventoVotoPoll(
   if (pendencia) removerPendencia(chatId);
   if (pendenciaPersistida) removerPendenciaPersistida(db, chatId);
 
-  const confirmou = (payload.selectedOptions ?? []).some((opcao) => opcao.name === OPCAO_POLL_CONFIRMAR);
+  const confirmou = (payload.vote.selectedOptions ?? []).includes(OPCAO_POLL_CONFIRMAR);
   if (!confirmou) {
     await ctx.reply(t('acao_cancelada', idioma));
     return;

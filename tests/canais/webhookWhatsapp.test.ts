@@ -327,7 +327,7 @@ describe('processarWebhookWhatsapp — evento "poll.vote" (Tarefa 135)', () => {
     const corpo = JSON.stringify({
       id: 'vote-1',
       event: 'poll.vote',
-      payload: { voter: '5500000000000@c.us', selectedOptions: [{ name: 'Confirmar' }] },
+      payload: { vote: { from: '5500000000000@c.us', selectedOptions: ['Confirmar'] } },
     });
 
     await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
@@ -339,7 +339,7 @@ describe('processarWebhookWhatsapp — evento "poll.vote" (Tarefa 135)', () => {
     const corpo = JSON.stringify({
       id: 'vote-2',
       event: 'poll.vote',
-      payload: { voter: CHAT_ID_WHATSAPP, selectedOptions: [{ name: 'Confirmar' }] },
+      payload: { vote: { from: CHAT_ID_WHATSAPP, selectedOptions: ['Confirmar'] } },
     });
 
     const resultado = await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
@@ -354,7 +354,7 @@ describe('processarWebhookWhatsapp — evento "poll.vote" (Tarefa 135)', () => {
     const corpo = JSON.stringify({
       id: 'vote-3',
       event: 'poll.vote',
-      payload: { voter: CHAT_ID_WHATSAPP, selectedOptions: [{ name: 'Confirmar' }] },
+      payload: { vote: { from: CHAT_ID_WHATSAPP, selectedOptions: ['Confirmar'] } },
     });
 
     await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
@@ -370,7 +370,7 @@ describe('processarWebhookWhatsapp — evento "poll.vote" (Tarefa 135)', () => {
     const corpo = JSON.stringify({
       id: 'vote-4',
       event: 'poll.vote',
-      payload: { voter: CHAT_ID_WHATSAPP, selectedOptions: [{ name: 'Cancelar' }] },
+      payload: { vote: { from: CHAT_ID_WHATSAPP, selectedOptions: ['Cancelar'] } },
     });
 
     await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
@@ -386,7 +386,7 @@ describe('processarWebhookWhatsapp — evento "poll.vote" (Tarefa 135)', () => {
     const corpo = JSON.stringify({
       id: 'vote-5',
       event: 'poll.vote',
-      payload: { voter: CHAT_ID_WHATSAPP, selectedOptions: [{ name: 'Confirmar' }] },
+      payload: { vote: { from: CHAT_ID_WHATSAPP, selectedOptions: ['Confirmar'] } },
     });
 
     await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
