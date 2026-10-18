@@ -51,6 +51,15 @@ describe('enviarTextoWhatsapp', () => {
     expect(body.chatId).toBe('5511999999999@c.us');
   });
 
+  it('chatId já com @lid não leva @c.us concatenado em cima (achado real, Tarefa 138)', async () => {
+    const fetchFalso = mockarFetch();
+
+    await enviarTextoWhatsapp(CONFIG, '76768463601724@lid', 'Olá');
+
+    const body = JSON.parse(fetchFalso.mock.calls[0]?.[1]?.body as string);
+    expect(body.chatId).toBe('76768463601724@lid');
+  });
+
   it('resposta não-2xx da WAHA propaga como exceção clara', async () => {
     mockarFetch(false, 500);
 

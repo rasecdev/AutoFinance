@@ -10,13 +10,23 @@ export type ConfigWhatsapp = {
 
 const SUFIXO_CHAT_ID = '@c.us';
 
+// Achado real de teste manual em Homologação (Tarefa 138): além de "@c.us",
+// o chatId pode chegar como "<lid>@lid" (ver mesmo achado em
+// webhookWhatsapp.ts/SUFIXOS_CHAT_ID) — um destinatario que já vem com esse
+// sufixo não pode levar "@c.us" concatenado em cima (vira
+// "<lid>@lid@c.us", chatId inválido que a WAHA aceita sem erro mas nunca
+// entrega).
+const SUFIXOS_CHAT_ID_RECONHECIDOS = ['@c.us', '@lid'];
+
 // WAHA espera o formato <numero>@c.us — números já configurados (ex: em
 // WHATSAPP_DESTINATARIOS) podem vir só com os dígitos. Exportada (Tarefa 135):
 // quem grava uma pendência de confirmação pro WhatsApp (notificar.ts) precisa
 // gravá-la com o mesmo chatId (com sufixo) que vai chegar de volta no
 // `payload.from`/`voter` do webhook — outro formato não bateria no Map/tabela.
 export function normalizarDestinatario(destinatario: string): string {
-  return destinatario.endsWith(SUFIXO_CHAT_ID) ? destinatario : `${destinatario}${SUFIXO_CHAT_ID}`;
+  return SUFIXOS_CHAT_ID_RECONHECIDOS.some((sufixo) => destinatario.endsWith(sufixo))
+    ? destinatario
+    : `${destinatario}${SUFIXO_CHAT_ID}`;
 }
 
 async function requisitar(config: ConfigWhatsapp, path: string, body: Record<string, unknown>): Promise<void> {
