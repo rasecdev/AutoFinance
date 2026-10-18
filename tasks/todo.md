@@ -172,7 +172,7 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 2
 **Verification:**
 - [x] Tests pass: `npx vitest run` (suíte completa) + testes novos mockando o envio de Poll e simulando o payload de `poll.vote` (`tests/canais/webhookWhatsapp.test.ts`, `tests/canais/contextoWhatsapp.test.ts`, `tests/canais/notificar.test.ts` continuam passando, `tests/scripts/lerEmailFaturas.test.ts` com teste novo do fan-out WhatsApp)
 - [x] Build succeeds: `npm run build`
-- [ ] Manual check: votar numa Poll de teste em Homologação, confirmar que a ação executa/cancela certo — depende da Tarefa 138 (wiring do webhook na sessão WAHA de verdade), ainda não feito; formato real do payload `poll.vote` (campo `voter`/`selectedOptions[].name`) também seguem não confirmados contra a API real (mesmo risco já registrado em `tasks/plan.md`)
+- [x] Manual check: votar numa Poll de teste em Homologação, confirmar que a ação executa/cancela certo — **confirmado em 2026-10-18**, junto com a correção do formato real do payload (ver achado na Tarefa 138)
 
 **Dependencies:** Tarefas 131, 133, 134
 
@@ -202,7 +202,7 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 2
 **Verification:**
 - [x] Tests pass: `npx vitest run` (suíte completa) + 7 testes novos em `tests/canais/webhookWhatsapp.test.ts` cobrindo a ordem de prioridade (comando reinicia fluxo mesmo com pendência, cada pendência interceptada antes da conversa livre, fallback pra conversa livre sem nenhum dos dois)
 - [x] Build succeeds: `npm run build`
-- [ ] Manual check: rodar os dois comandos de verdade em Homologação — depende da Tarefa 138 (wiring do webhook na sessão WAHA), ainda não feito
+- [x] Manual check: rodar os dois comandos de verdade em Homologação — **confirmado em 2026-10-18**
 
 **Dependencies:** Tarefa 134
 
@@ -227,7 +227,7 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 2
 **Verification:**
 - [x] Tests pass: `npx vitest run` (suíte completa) + 3 testes novos/ajustados em `tests/canais/webhookWhatsapp.test.ts` (resposta enviada, mídia sem legenda ainda responde, mídia de número fora da allowlist nunca responde)
 - [x] Build succeeds: `npm run build`
-- [ ] Manual check: mandar uma foto de teste pro número da WAHA em Homologação — depende da Tarefa 138 (wiring do webhook na sessão WAHA), ainda não feito
+- [x] Manual check: mandar uma foto de teste pro número da WAHA em Homologação — **confirmado em 2026-10-18**
 
 **Dependencies:** Tarefa 132
 
@@ -278,8 +278,8 @@ Ver `tasks/plan.md` pro racional completo das decisões de arquitetura. Rodada 2
 - [x] Nenhuma regressão no Telegram (suíte completa passa igual antes) — 135/135 arquivos, 1053/1053 testes
 
 ## Checkpoint: Fluxo básico de texto funcional (depois das Tarefas 132-134)
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: mandar mensagem de texto pro número da WAHA, receber resposta da IA
+- [x] `npm run build`/`lint`/`test` sem erro — suite completa 1089/1089 (2026-10-18)
+- [x] Teste manual em Homologação: mandar mensagem de texto pro número da WAHA, receber resposta da IA — confirmado em 2026-10-18
 
 ## Checkpoint: Rodada 2 fechada (depois das Tarefas 135-138)
 - [x] `npm run build`/`lint`/`test` sem erro — suite completa 1089/1089 (2026-10-18)
