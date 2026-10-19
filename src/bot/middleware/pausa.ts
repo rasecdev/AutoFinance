@@ -9,7 +9,11 @@ import { estaPausado } from '../../db/repositories/botPausado.js';
 export const REGEX_PAUSAR = /^\/pausar\b/i;
 export const REGEX_RETOMAR = /^\/retomar\b/i;
 
-const MENSAGEM_PAUSADO = 'Bot pausado. Mande /retomar pra voltar a processar mensagens.';
+// Exportado pra webhookWhatsapp.ts reaproveitar o mesmo texto (Fase 9
+// Rodada 3, Tarefa 144) -- o WhatsApp nao tem pipeline de middleware, entao
+// o gate la e checado direto na funcao de roteamento, mas a mensagem de
+// bloqueio e a mesma, fonte unica.
+export const MENSAGEM_PAUSADO = 'Bot pausado. Mande /retomar pra voltar a processar mensagens.';
 
 // Roda logo depois da allowlist, antes de registerRoutes (bot.ts) -- único
 // ponto de checagem do kill switch, em vez de duplicar em cada handler.

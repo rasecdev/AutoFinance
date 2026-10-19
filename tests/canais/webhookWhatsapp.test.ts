@@ -23,6 +23,7 @@ import {
   obterPendenciaPersistida,
 } from '../../src/db/repositories/confirmacoesPendentes.js';
 import { eventoJaProcessado } from '../../src/db/repositories/eventosWhatsappProcessados.js';
+import { pausar, retomar } from '../../src/db/repositories/botPausado.js';
 import { migrate } from '../../src/db/migrate.js';
 import { createLogger } from '../../src/logging/logger.js';
 
@@ -63,6 +64,16 @@ vi.mock('../../src/bot/handlers/idioma.js', () => ({
 const processarAjudaMock = vi.fn(async () => undefined);
 vi.mock('../../src/bot/handlers/ajuda.js', () => ({
   processarAjuda: processarAjudaMock,
+}));
+
+const processarPausarMock = vi.fn(async () => undefined);
+vi.mock('../../src/bot/handlers/pausar.js', () => ({
+  processarPausar: processarPausarMock,
+}));
+
+const processarRetomarMock = vi.fn(async () => undefined);
+vi.mock('../../src/bot/handlers/retomar.js', () => ({
+  processarRetomar: processarRetomarMock,
 }));
 
 const enviarTextoWhatsapp = vi.fn(async () => undefined);
@@ -121,6 +132,9 @@ beforeEach(() => {
   processarModeloMock.mockClear();
   processarModelosMock.mockClear();
   processarIdiomaMock.mockClear();
+  processarAjudaMock.mockClear();
+  processarPausarMock.mockClear();
+  processarRetomarMock.mockClear();
   processarAjudaMock.mockClear();
   enviarTextoWhatsapp.mockClear();
 });
@@ -538,6 +552,40 @@ describe('processarWebhookWhatsapp — comandos /registrar_open_finance e /regis
     expect(processarMensagemTextoMock).not.toHaveBeenCalled();
   });
 
+  it('/pausar: chama processarPausar, nunca a conversa livre (Tarefa 144)', async () => {
+    const corpo = JSON.stringify({
+      id: 'cmd-7',
+      event: 'message',
+      payload: { from: CHAT_ID_WHATSAPP, body: '/pausar', fromMe: false },
+    });
+
+    await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
+
+    expect(processarPausarMock).toHaveBeenCalledWith(
+      expect.objectContaining({ reply: expect.any(Function) }),
+      db,
+      CHAT_ID_WHATSAPP,
+    );
+    expect(processarMensagemTextoMock).not.toHaveBeenCalled();
+  });
+
+  it('/retomar: chama processarRetomar, nunca a conversa livre (Tarefa 144)', async () => {
+    const corpo = JSON.stringify({
+      id: 'cmd-8',
+      event: 'message',
+      payload: { from: CHAT_ID_WHATSAPP, body: '/retomar', fromMe: false },
+    });
+
+    await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
+
+    expect(processarRetomarMock).toHaveBeenCalledWith(
+      expect.objectContaining({ reply: expect.any(Function) }),
+      db,
+      CHAT_ID_WHATSAPP,
+    );
+    expect(processarMensagemTextoMock).not.toHaveBeenCalled();
+  });
+
   it('com pendência de código OAuth Google: resposta de texto é interpretada como código, não como conversa livre', async () => {
     definirPendenciaOAuthGoogle(CHAT_ID_WHATSAPP, {} as never);
     const corpo = JSON.stringify({
@@ -606,5 +654,86 @@ describe('processarWebhookWhatsapp — comandos /registrar_open_finance e /regis
 
     expect(processarRegistrarEmailMock).toHaveBeenCalledTimes(1);
     expect(processarCodigoOAuthGoogleMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('processarWebhookWhatsapp — kill switch por chat (Tarefa 144)', () => {
+  const CHAT_ID_WHATSAPP = '5511999999999@c.us';
+
+  afterEach(() => {
+    retomar(db, CHAT_ID_WHATSAPP);
+  });
+
+  it('chat pausado: mensagem de texto normal recebe o aviso de bloqueio, nunca chega na conversa livre', async () => {
+    pausar(db, CHAT_ID_WHATSAPP);
+    const corpo = JSON.stringify({
+      id: 'pause-1',
+      event: 'message',
+      payload: { from: CHAT_ID_WHATSAPP, body: 'qual meu saldo?', fromMe: false },
+    });
+
+    await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
+
+    expect(enviarTextoWhatsapp).toHaveBeenCalledWith(
+      expect.anything(),
+      CHAT_ID_WHATSAPP,
+      'Bot pausado. Mande /retomar pra voltar a processar mensagens.',
+    );
+    expect(processarMensagemTextoMock).not.toHaveBeenCalled();
+  });
+
+  it('chat pausado: mensagem de mídia também recebe o aviso de bloqueio, não a resposta de "não suportado"', async () => {
+    pausar(db, CHAT_ID_WHATSAPP);
+    const corpo = JSON.stringify({
+      id: 'pause-2',
+      event: 'message',
+      payload: { from: CHAT_ID_WHATSAPP, hasMedia: true, fromMe: false },
+    });
+
+    await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
+
+    expect(enviarTextoWhatsapp).toHaveBeenCalledWith(
+      expect.anything(),
+      CHAT_ID_WHATSAPP,
+      'Bot pausado. Mande /retomar pra voltar a processar mensagens.',
+    );
+  });
+
+  it('chat pausado: /pausar de novo ainda chama processarPausar (comando sempre atravessa)', async () => {
+    pausar(db, CHAT_ID_WHATSAPP);
+    const corpo = JSON.stringify({
+      id: 'pause-3',
+      event: 'message',
+      payload: { from: CHAT_ID_WHATSAPP, body: '/pausar', fromMe: false },
+    });
+
+    await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
+
+    expect(processarPausarMock).toHaveBeenCalled();
+  });
+
+  it('chat pausado: /retomar sempre atravessa o bloqueio', async () => {
+    pausar(db, CHAT_ID_WHATSAPP);
+    const corpo = JSON.stringify({
+      id: 'pause-4',
+      event: 'message',
+      payload: { from: CHAT_ID_WHATSAPP, body: '/retomar', fromMe: false },
+    });
+
+    await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
+
+    expect(processarRetomarMock).toHaveBeenCalled();
+  });
+
+  it('chat não pausado: mensagem de texto normal chega na conversa livre, sem aviso de bloqueio', async () => {
+    const corpo = JSON.stringify({
+      id: 'pause-5',
+      event: 'message',
+      payload: { from: CHAT_ID_WHATSAPP, body: 'qual meu saldo?', fromMe: false },
+    });
+
+    await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
+
+    expect(processarMensagemTextoMock).toHaveBeenCalled();
   });
 });

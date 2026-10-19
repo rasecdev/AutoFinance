@@ -11,6 +11,9 @@ import { processarModelo } from '../bot/handlers/modelo.js';
 import { processarModelos } from '../bot/handlers/modelos.js';
 import { processarIdioma } from '../bot/handlers/idioma.js';
 import { processarAjuda } from '../bot/handlers/ajuda.js';
+import { processarPausar } from '../bot/handlers/pausar.js';
+import { processarRetomar } from '../bot/handlers/retomar.js';
+import { MENSAGEM_PAUSADO } from '../bot/middleware/pausa.js';
 import { processarCodigoOAuthGoogle, processarRegistrarEmail } from '../bot/handlers/registrarEmail.js';
 import {
   processarMapeamentoOpenFinance,
@@ -19,6 +22,7 @@ import {
 import { obterPendenciaOpenFinance } from '../bot/openFinancePendencia.js';
 import type { Env } from '../config/env.js';
 import type { DbClient } from '../db/client.js';
+import { estaPausado } from '../db/repositories/botPausado.js';
 import { obterPendenciaPersistida, removerPendenciaPersistida } from '../db/repositories/confirmacoesPendentes.js';
 import { eventoJaProcessado, marcarEventoProcessado } from '../db/repositories/eventosWhatsappProcessados.js';
 import { obterIdioma } from '../db/repositories/idiomaBot.js';
@@ -55,6 +59,8 @@ const REGEX_MODELO = regexComandoWhatsapp('modelo');
 const REGEX_MODELOS = regexComandoWhatsapp('modelos');
 const REGEX_IDIOMA = regexComandoWhatsapp('idioma');
 const REGEX_AJUDA = regexComandoWhatsapp('ajuda');
+const REGEX_PAUSAR = regexComandoWhatsapp('pausar');
+const REGEX_RETOMAR = regexComandoWhatsapp('retomar');
 
 const HEADER_HMAC = 'x-webhook-hmac';
 
@@ -178,6 +184,22 @@ async function processarEventoMensagem(
     logger,
   );
 
+  // Kill switch por chat (ASI10, Tarefa 144) — equivalente ao
+  // createPausaMiddleware do Telegram, só que checado direto aqui (o
+  // WhatsApp não tem pipeline de middleware). /pausar e /retomar sempre
+  // atravessam, senão pausar seria uma via de mão única; qualquer outra
+  // mensagem (texto ou mídia) recebe só o aviso de bloqueio.
+  if (estaPausado(db, chatId)) {
+    const textoBruto = payload.body?.trim();
+    const ehComandoDeDesbloqueio =
+      textoBruto !== undefined && (REGEX_PAUSAR?.test(textoBruto) || REGEX_RETOMAR?.test(textoBruto));
+
+    if (!ehComandoDeDesbloqueio) {
+      await ctx.reply(MENSAGEM_PAUSADO);
+      return;
+    }
+  }
+
   // Equivalente ao handlerNaoSuportado do Telegram (mesma chave de i18n) —
   // antes (Tarefa 134) era ignorada em silêncio; resposta explícita entra na
   // Tarefa 137, só depois da allowlist (nunca confirmar pra quem não tem
@@ -227,6 +249,16 @@ async function processarEventoMensagem(
 
   if (REGEX_AJUDA?.test(texto)) {
     await processarAjuda(ctx, db, 'whatsapp');
+    return;
+  }
+
+  if (REGEX_PAUSAR?.test(texto)) {
+    await processarPausar(ctx, db, chatId);
+    return;
+  }
+
+  if (REGEX_RETOMAR?.test(texto)) {
+    await processarRetomar(ctx, db, chatId);
     return;
   }
 

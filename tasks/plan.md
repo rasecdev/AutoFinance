@@ -34,7 +34,7 @@ Spec fechada via sessão de `grilling` e publicada em `PLANO.md` (seção "Fase 
 - [ ] Teste manual em Homologação: `/modelo`, `/modelos`, `/idioma`, `/ajuda` via WhatsApp
 
 ### Fase C: Comandos que dependem da migration da Fase A
-- [ ] Tarefa 144: `/pausar` e `/retomar` via WhatsApp
+- [x] Tarefa 144: `/pausar` e `/retomar` via WhatsApp
 
 ### Checkpoint: Rodada 3 fechada
 - [ ] `npm run build`/`lint`/`test` sem erro

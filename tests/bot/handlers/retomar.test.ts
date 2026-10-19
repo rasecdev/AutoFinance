@@ -29,7 +29,7 @@ afterEach(() => {
 });
 
 function criarContextoFake(chatId: number) {
-  return { chat: { id: chatId }, reply: vi.fn() } as unknown as Context & { reply: ReturnType<typeof vi.fn> };
+  return { chat: { id: chatId }, reply: vi.fn(async () => ({ message_id: 4242 })) } as unknown as Context & { reply: ReturnType<typeof vi.fn> };
 }
 
 describe('handlerRetomar', () => {
