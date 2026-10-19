@@ -30,7 +30,7 @@ afterEach(() => {
 function criarContextoFake(texto: string) {
   return {
     message: { text: texto },
-    reply: vi.fn(),
+    reply: vi.fn(async () => ({ message_id: 4242 })),
     api: { setMyCommands: vi.fn() },
   } as unknown as Context & { reply: ReturnType<typeof vi.fn>; api: { setMyCommands: ReturnType<typeof vi.fn> } };
 }
