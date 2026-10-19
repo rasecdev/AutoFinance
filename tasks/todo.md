@@ -146,8 +146,8 @@ Spec completa em `PLANO.md` ("Fase 9 — Rodada 3"). Plano/riscos em `tasks/plan
 ---
 
 ## Checkpoint: Comandos de leitura/config funcionais (depois das Tarefas 141-143)
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: `/modelo`, `/modelos`, `/idioma` e `/ajuda` via WhatsApp — respostas corretas, `/ajuda` com marcação legível (sem tag HTML crua aparecendo)
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Teste manual em Homologação: `/modelo`, `/modelos`, `/idioma` e `/ajuda` via WhatsApp — respostas corretas, `/ajuda` com marcação legível (sem tag HTML crua aparecendo)
 
 ---
 
@@ -182,9 +182,9 @@ Spec completa em `PLANO.md` ("Fase 9 — Rodada 3"). Plano/riscos em `tasks/plan
 ---
 
 ## Checkpoint: Rodada 3 fechada (depois da Tarefa 144)
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: os 6 comandos (`/modelo`, `/modelos`, `/ajuda`, `/idioma`, `/pausar`, `/retomar`) respondendo corretamente via WhatsApp
-- [ ] `/ajuda` via WhatsApp lista exatamente os 8 comandos aplicáveis (os 6 novos + `/registrar_email`/`/registrar_open_finance`), nunca `/errado`/`/certo`
-- [ ] `/pausar` via WhatsApp confirmado sem afetar o chat do Telegram (e vice-versa)
-- [ ] PROGRESSO.md atualizado com o marco
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Teste manual em Homologação: os 6 comandos (`/modelo`, `/modelos`, `/ajuda`, `/idioma`, `/pausar`, `/retomar`) respondendo corretamente via WhatsApp
+- [x] `/ajuda` via WhatsApp lista exatamente os 8 comandos aplicáveis (os 6 novos + `/registrar_email`/`/registrar_open_finance`), nunca `/errado`/`/certo`
+- [x] `/pausar` via WhatsApp confirmado sem afetar o chat do Telegram (e vice-versa)
+- [x] PROGRESSO.md atualizado com o marco
 - [ ] Issues da rodada e milestone fechados no GitHub
