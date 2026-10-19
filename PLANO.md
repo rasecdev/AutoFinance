@@ -659,6 +659,51 @@ Sequenciada depois da Fase 8 (última fase planejada até aqui) — decisão reg
 - **Kill switch do WhatsApp nesta rodada: a própria API de sessão da WAHA, não o `/pausar`/`/retomar` (ASI10) do Telegram.** `/pausar` é comando de barra, fora do escopo desta rodada (ver acima) — mas a WAHA já expõe `POST /api/sessions/{sessao}/stop` (autenticado por `X-Api-Key`, mesma credencial já usada em `parearWhatsapp.ts`), que para a sessão por completo (nenhuma mensagem enviada/recebida nesse ambiente) sem exigir reescanear QR pra voltar (um `restart` reconecta direto) — mais radical que `/pausar` (que é por chat, não desliga o canal), mas cobre o caso de emergência sem precisar de código novo. Documentar esse comando como procedimento operacional (não precisa virar tarefa de código).
 - Formato exato do payload `poll.vote` da WAHA (qual campo identifica o remetente/chat, qual identifica a opção escolhida) não foi confirmado contra documentação fechada — primeira tarefa de implementação desta área deve validar isso contra a API real (mesmo padrão de descoberta já visto nas Tarefas 122/123 da Rodada 1) antes de fixar o desenho da tabela de pendência.
 
+#### Rodada 3 — Comandos restantes + substituto de autocomplete (spec fechada em 2026-10-18 via sessão de `grilling`)
+
+**Problema.** A Rodada 2 deu ao WhatsApp paridade no chat livre (conversa com IA, confirmação de ação, `/registrar_email`, `/registrar_open_finance`), mas 6 dos 8 comandos de barra do Telegram (`/modelo`, `/modelos`, `/ajuda`, `/idioma`, `/pausar`, `/retomar`) continuam inexistentes nesse canal. Além disso, não há nenhum jeito de descobrir que comando existe sem ler código/documentação — o WhatsApp (via WAHA) não tem equivalente ao menu "/" com autocomplete do Telegram (`setMyCommands`).
+
+**Solução.** Portar os 6 comandos restantes pro WhatsApp usando o mesmo padrão de núcleo-com-`CanalContext` já estabelecido na Rodada 2 (`/registrar_email`/`/registrar_open_finance`), e usar `/ajuda` — filtrado por canal — como substituto funcional do autocomplete nativo, já que pesquisa confirmou que não existe nada equivalente a `setMyCommands` disponível via WAHA/WhatsApp Web (só a Cloud API oficial da Meta tem algo parecido, exclusivo de conta Business verificada, arquitetura já descartada nesta fase). `/errado`/`/certo` e mídia de verdade continuam fora, por decisão explícita do usuário.
+
+**Histórias de usuário.**
+1. Como usuário, quero rodar `/modelo` e `/modelos` pelo WhatsApp, igual já faço no Telegram, pra trocar/consultar o modelo de IA ativo sem precisar abrir o Telegram.
+2. Como usuário, quero rodar `/ajuda` pelo WhatsApp e ver só os comandos que realmente funcionam nesse canal, sem me confundir com comandos que só existem no Telegram.
+3. Como usuário, quero que o texto de `/ajuda` no WhatsApp apareça com a ênfase visual (negrito/itálico) que o WhatsApp realmente entende, não tags HTML cruas do Telegram vazando pra tela.
+4. Como usuário, quero rodar `/idioma` pelo WhatsApp e trocar o idioma ativo do bot, sabendo que isso também muda o idioma das respostas no Telegram — é uma preferência só, não por canal, assim como já é hoje mesmo sem o comando portado.
+5. Como usuário, quero que trocar o idioma pelo WhatsApp não tente atualizar nenhum menu "/" nativo (não existe nesse canal), sem erro nem efeito colateral visível.
+6. Como usuário, quero rodar `/pausar` e `/retomar` pelo WhatsApp, do mesmo jeito que já faço no Telegram, como kill switch rápido por chat.
+7. Como usuário, quero que `/pausar` via WhatsApp e o "parar sessão" da WAHA (kill switch oficial da Rodada 2) continuem sendo dois mecanismos independentes — um não substitui nem redesenha o outro.
+8. Como usuário, quero que `/pausar` pelo WhatsApp grave e leia o estado corretamente mesmo meu chatId sendo texto (ex: `"<numero>@c.us"` ou `"<lid>@lid"`), não um número.
+9. Como usuário, quero que `/errado` e `/certo` continuem exclusivos do Telegram, já que dependem de rastrear qual mensagem específica está sendo corrigida (`message_id`) — conceito que não existe no adapter do WhatsApp.
+10. Como desenvolvedor, quero que os 6 handlers portados sigam o mesmo padrão de núcleo-com-`CanalContext` + wrapper Telegram já usado por `/registrar_email`/`/registrar_open_finance`, sem duplicar lógica entre canais.
+11. Como desenvolvedor, quero uma única fonte de verdade dizendo quais comandos valem para cada canal, usada tanto pelo roteamento do webhook do WhatsApp quanto pelo conteúdo filtrado de `/ajuda`, pra nunca dessincronizar as duas listas.
+12. Como desenvolvedor, quero que o schema de `bot_pausado` aceite `chat_id` como texto antes de `/pausar` ser exposto no WhatsApp, pra não herdar o mesmo bug de `datatype mismatch` já corrigido em `confirmacoes_pendentes` na Rodada 2.
+
+**Decisões de implementação.**
+- **Migration nova** recriando `bot_pausado` com `chat_id TEXT PRIMARY KEY` (hoje `INTEGER PRIMARY KEY`, mesmo problema de rowid alias já corrigido em `confirmacoes_pendentes` na Rodada 2) — mesmo padrão de migration, aplicado antes de `/pausar`/`/retomar` ficarem acessíveis via WhatsApp.
+- **Refactor dos 6 handlers** pro padrão já usado por `/registrar_email`/`/registrar_open_finance`: núcleo de lógica recebendo `CanalContext` (+ `chatId: number | string` onde fizer sentido), com um wrapper fino por canal adaptando o `Context` nativo do grammy via `criarContextoTelegram` (Telegram) ou o contexto equivalente do WhatsApp — sem duplicar lógica de negócio entre os dois.
+- **Fonte única de comandos por canal:** a lista central de comandos do bot ganha um campo indicando em quais canais cada comando vale (omitido = ambos; `/errado`/`/certo` marcados como exclusivos do Telegram) — usado tanto pelo roteamento do webhook do WhatsApp (que regex aceitar) quanto por `/ajuda` (que linhas listar), pra nunca dessincronizar as duas listas, mesmo racional que já motivou a lista central existir.
+- **`/ajuda` com formatação dupla:** o conteúdo (lista de comandos + categorias do que dá pra pedir conversando) é o mesmo dado estruturado pros dois canais; só a montagem final do texto varia — tags HTML (`<b>`/`<i>`) pro Telegram, marcação nativa do WhatsApp (`*negrito*`/`_itálico_`) pro WhatsApp — escolhida pelo canal que está respondendo, nunca fixa.
+- **`/idioma`:** o núcleo compartilhado troca o idioma ativo (continua singleton/global, sem `chat_id`, sem mudança de schema — decisão consciente de manter assim por ora, revisitável se Telegram e WhatsApp passarem a ser usados por pessoas diferentes). A chamada que atualiza o menu "/" do Telegram (`setMyCommands`) fica só no wrapper Telegram, nunca no núcleo compartilhado nem chamada quando o canal é WhatsApp.
+- **`/pausar`/`/retomar`:** o núcleo compartilhado lê/escreve `bot_pausado` usando `chatId: number | string`. O kill switch de sessão da WAHA (`POST /api/sessions/{sessao}/stop`, decisão da Rodada 2) continua existindo em paralelo, sem nenhuma mudança na relação entre os dois mecanismos — `/pausar` via WhatsApp é redundante/opcional, não substitui o procedimento de emergência.
+- **Autocomplete nativo descartado:** pesquisa confirmou que não existe, via WAHA/Baileys/WhatsApp Web, nenhum equivalente a `setMyCommands`/menu de comandos nativo. O único recurso parecido ("Commands" da Cloud API oficial da Meta) é exclusivo de conta Business verificada — arquitetura já descartada na introdução da Fase 9. `/ajuda`, filtrado por canal (decisão acima), é o substituto funcional adotado; nenhum trabalho adicional de "menu" é perseguido.
+
+**Decisões de teste.**
+- Mesmo princípio das rodadas anteriores: testar comportamento externo via a interface mínima (`CanalContext`), não um mock completo do `Context` do grammy.
+- Roteamento do webhook do WhatsApp: cobrir que cada um dos 6 comandos novos é roteado corretamente (regex + canal correto), e que `/errado`/`/certo` continuam fora do roteamento.
+- `/ajuda`: cobrir a filtragem por canal (lista diferente para Telegram vs. WhatsApp) e a formatação dupla (tags HTML vs. marcação WhatsApp) a partir do mesmo dado estruturado.
+- Migration/repositório de `bot_pausado`: teste de repositório aceitando `chat_id` texto, mesmo padrão já usado em `tests/db/repositories/confirmacoesPendentes.test.ts` (Rodada 2).
+
+**Fora de escopo (desta rodada, não descartado pra sempre).**
+- `/errado`/`/certo` — continuam exclusivos do Telegram, por dependerem de `message_id`.
+- Mídia de verdade (foto/PDF/áudio/planilha) pelo WhatsApp — herdado da Rodada 2, segue fora.
+- Idioma por canal ou por chat — continua global por instância; revisitar só se Telegram e WhatsApp passarem a ser usados por pessoas diferentes de fato.
+- Qualquer forma de emular um menu/autocomplete client-side (ex: lista de sugestões customizada) — sem solução nativa viável, não perseguido.
+
+**Notas adicionais.**
+- `/pausar` via WhatsApp não muda o procedimento operacional já documentado na Rodada 2 (parar a sessão da WAHA continua sendo o kill switch de emergência); os dois mecanismos convivem.
+
+
 ### Fase 10 — Regionalização (i18n: português/inglês/espanhol)
 **Status (2026-10-03): implementada (11/11 tarefas, milestone #36), teste manual em Homologação confirmado pelo usuário.** Spec sintetizada via skill `to-spec` a partir de sessão de `grilling` (2026-09-24/2026-10-02). Publicada aqui, não no GitHub Issues, seguindo a mesma decisão já registrada em "Skills de suporte à implementação" (linha ~966): `to-spec` não publica no tracker neste projeto, o lugar de spec é o `PLANO.md`. Milestone/issues de tarefa continuam nascendo só na etapa de `planning-and-task-breakdown`, como em toda fase anterior. Detalhe de implementação por tarefa em PROGRESSO.md.
 
