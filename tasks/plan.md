@@ -27,7 +27,7 @@ Spec fechada via sessão de `grilling` e publicada em `PLANO.md` (seção "Fase 
 ### Fase B: Comandos sem dependência de schema
 - [x] Tarefa 141: `/modelo` e `/modelos` via WhatsApp
 - [x] Tarefa 142: `/idioma` via WhatsApp
-- [ ] Tarefa 143: `/ajuda` via WhatsApp (filtragem por canal + formatação dupla)
+- [x] Tarefa 143: `/ajuda` via WhatsApp (filtragem por canal + formatação dupla)
 
 ### Checkpoint: Comandos de leitura/config funcionais
 - [ ] `npm run build`/`lint`/`test` sem erro
