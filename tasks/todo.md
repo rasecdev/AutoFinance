@@ -122,16 +122,16 @@ Spec completa em `PLANO.md` ("Fase 9 — Rodada 3"). Plano/riscos em `tasks/plan
 **Description:** Extrai o núcleo de `handlerAjuda` (`src/bot/handlers/ajuda.ts`) pra uma função que recebe `CanalContext`, filtra `COMANDOS_BOT` pelo canal atual (usando o helper da Tarefa 140) e monta o texto com formatação dupla — tags HTML (`<b>`/`<i>`) pro Telegram, marcação nativa do WhatsApp (`*negrito*`/`_itálico_`) pro WhatsApp — a partir do mesmo dado estruturado (`TEXTOS[idioma].categorias`). Roteia `/ajuda` em `webhookWhatsapp.ts`.
 
 **Acceptance criteria:**
-- [ ] `processarAjuda(ctx: CanalContext, db, canal: 'telegram' | 'whatsapp')` extraído (ou mecanismo equivalente pra decidir formatação — decisão de implementação)
-- [ ] Lista de comandos de `/ajuda` no WhatsApp inclui só os comandos cujo `canais` (Tarefa 140) inclui `'whatsapp'` (nesta tarefa, isso ainda é só `/registrar_email`/`/registrar_open_finance` + os comandos das Tarefas 141-142 se já mergeadas antes — `/pausar`/`/retomar` só aparecem depois da Tarefa 144, ver risco registrado em `tasks/plan.md`)
-- [ ] Texto de `/ajuda` no Telegram continua com as tags HTML de hoje (sem regressão visual)
-- [ ] Texto de `/ajuda` no WhatsApp usa `*negrito*`/`_itálico_` em vez de `<b>`/`<i>` cru
-- [ ] `webhookWhatsapp.ts` roteia `/ajuda` pro núcleo compartilhado
+- [x] `processarAjuda(ctx: CanalContext, db, canal: Canal)` extraído
+- [x] Lista de comandos de `/ajuda` no WhatsApp inclui só os comandos cujo `canais` (Tarefa 140) inclui `'whatsapp'` (filtragem via `comandoValidoNoCanal`; `/pausar`/`/retomar` só aparecem depois da Tarefa 144, ver risco registrado em `tasks/plan.md`)
+- [x] Texto de `/ajuda` no Telegram continua com as tags HTML de hoje (sem regressão visual)
+- [x] Texto de `/ajuda` no WhatsApp usa `*negrito*` em vez de `<b>` cru (só negrito é usado no conteúdo real, itálico não chegou a ser necessário)
+- [x] `webhookWhatsapp.ts` roteia `/ajuda` pro núcleo compartilhado
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/bot/handlers/ajuda.test.ts tests/canais/webhookWhatsapp.test.ts`
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: nenhum ainda — fica pro checkpoint da Fase B
+- [x] Tests pass: `npx vitest run tests/bot/handlers/ajuda.test.ts tests/canais/webhookWhatsapp.test.ts` — 36/36
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: nenhum ainda — fica pro checkpoint da Fase B
 
 **Dependencies:** Tarefa 140
 

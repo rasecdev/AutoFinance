@@ -60,6 +60,11 @@ vi.mock('../../src/bot/handlers/idioma.js', () => ({
   processarIdioma: processarIdiomaMock,
 }));
 
+const processarAjudaMock = vi.fn(async () => undefined);
+vi.mock('../../src/bot/handlers/ajuda.js', () => ({
+  processarAjuda: processarAjudaMock,
+}));
+
 const enviarTextoWhatsapp = vi.fn(async () => undefined);
 vi.mock('../../src/canais/whatsapp.js', () => ({
   enviarTextoWhatsapp: (...args: unknown[]) => enviarTextoWhatsapp(...args),
@@ -116,6 +121,7 @@ beforeEach(() => {
   processarModeloMock.mockClear();
   processarModelosMock.mockClear();
   processarIdiomaMock.mockClear();
+  processarAjudaMock.mockClear();
   enviarTextoWhatsapp.mockClear();
 });
 
@@ -511,6 +517,23 @@ describe('processarWebhookWhatsapp — comandos /registrar_open_finance e /regis
       expect.objectContaining({ reply: expect.any(Function) }),
       db,
       '/idioma en',
+    );
+    expect(processarMensagemTextoMock).not.toHaveBeenCalled();
+  });
+
+  it('/ajuda: chama processarAjuda com canal whatsapp, nunca a conversa livre (Tarefa 143)', async () => {
+    const corpo = JSON.stringify({
+      id: 'cmd-6',
+      event: 'message',
+      payload: { from: CHAT_ID_WHATSAPP, body: '/ajuda', fromMe: false },
+    });
+
+    await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
+
+    expect(processarAjudaMock).toHaveBeenCalledWith(
+      expect.objectContaining({ reply: expect.any(Function) }),
+      db,
+      'whatsapp',
     );
     expect(processarMensagemTextoMock).not.toHaveBeenCalled();
   });

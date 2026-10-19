@@ -1,7 +1,8 @@
 import type { Context } from 'grammy';
-import { COMANDOS_BOT, descricaoComando } from '../comandos.js';
+import { criarContextoTelegram, type CanalContext } from '../../canais/contextoCanal.js';
 import type { DbClient } from '../../db/client.js';
 import { obterIdioma, type Idioma } from '../../db/repositories/idiomaBot.js';
+import { comandoValidoNoCanal, COMANDOS_BOT, descricaoComando, type Canal } from '../comandos.js';
 
 // Achado real discutido em conversa (2026-09-19): a maior parte do que o bot
 // sabe fazer é tool de IA chamada por linguagem natural, não comando de
@@ -180,23 +181,39 @@ const TEXTOS: Record<Idioma, { cabecalhoComandos: string; introConversa: string;
   },
 };
 
+// Tags HTML (Telegram) ou marcação nativa do WhatsApp (*negrito*) — mesmo
+// dado estruturado (TEXTOS) pros dois canais, só a montagem final do texto
+// varia (Fase 9 Rodada 3, Tarefa 143).
+function negrito(texto: string, canal: Canal): string {
+  return canal === 'telegram' ? `<b>${texto}</b>` : `*${texto}*`;
+}
+
+// Núcleo reaproveitado pelo handler do Telegram e pelo roteamento do webhook
+// do WhatsApp — só depende da interface mínima (CanalContext, Tarefa 130).
+// A lista de comandos é filtrada por canal (campo `canais`, Tarefa 140) —
+// nunca lista `/errado`/`/certo` pro WhatsApp, por exemplo.
+export async function processarAjuda(ctx: CanalContext, db: DbClient, canal: Canal): Promise<void> {
+  const idioma = obterIdioma(db);
+  const { cabecalhoComandos, introConversa, categorias } = TEXTOS[idioma];
+
+  const comandosDoCanal = COMANDOS_BOT.filter((cmd) => comandoValidoNoCanal(cmd, canal));
+  const linhasComandos = comandosDoCanal.map(
+    (cmd) => `/${cmd.comando} — ${descricaoComando(cmd, idioma)}`,
+  );
+
+  const blocosConversa = categorias.map(
+    ({ titulo, itens }) => `${negrito(titulo, canal)}\n${itens.map((item) => `• ${item}`).join('\n')}`,
+  );
+
+  await ctx.reply(
+    `${negrito(cabecalhoComandos, canal)}\n${linhasComandos.join('\n')}\n\n` +
+      `${introConversa}\n\n` +
+      `${blocosConversa.join('\n\n')}`,
+  );
+}
+
 export function createHandlerAjuda(db: DbClient) {
   return async function handlerAjuda(ctx: Context): Promise<void> {
-    const idioma = obterIdioma(db);
-    const { cabecalhoComandos, introConversa, categorias } = TEXTOS[idioma];
-
-    const linhasComandos = COMANDOS_BOT.map(
-      (cmd) => `/${cmd.comando} — ${descricaoComando(cmd, idioma)}`,
-    );
-
-    const blocosConversa = categorias.map(
-      ({ titulo, itens }) => `<b>${titulo}</b>\n${itens.map((item) => `• ${item}`).join('\n')}`,
-    );
-
-    await ctx.reply(
-      `<b>${cabecalhoComandos}</b>\n${linhasComandos.join('\n')}\n\n` +
-        `${introConversa}\n\n` +
-        `${blocosConversa.join('\n\n')}`,
-    );
+    await processarAjuda(criarContextoTelegram(ctx), db, 'telegram');
   };
 }
