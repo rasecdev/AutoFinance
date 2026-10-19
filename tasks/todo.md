@@ -156,16 +156,16 @@ Spec completa em `PLANO.md` ("Fase 9 — Rodada 3"). Plano/riscos em `tasks/plan
 **Description:** Extrai o núcleo de `handlerPausar`/`handlerRetomar` (`src/bot/handlers/pausar.ts`/`retomar.ts`) pra funções que recebem `CanalContext` + `chatId: number | string`, com os `createHandler*` do Telegram virando wrappers finos. Roteia os dois comandos em `webhookWhatsapp.ts`. Depende da Tarefa 139 (migration) já estar mergeada — gravar `chatId` string em `bot_pausado` sem ela reproduziria o `datatype mismatch` já conhecido.
 
 **Acceptance criteria:**
-- [ ] `processarPausar(ctx: CanalContext, db, chatId)` e `processarRetomar(ctx: CanalContext, db, chatId)` extraídos, com os wrappers Telegram adaptando via `criarContextoTelegram`
-- [ ] `webhookWhatsapp.ts` roteia `/pausar` e `/retomar` pro núcleo compartilhado, usando o `chatId` do WhatsApp (string)
-- [ ] `/pausar` via WhatsApp grava em `bot_pausado` sem lançar `SqliteError` (migration 0024 já aplicada)
-- [ ] `/pausar` num chat (Telegram ou WhatsApp) não afeta o outro canal — kill switch é por `chat_id`, não global
-- [ ] Nenhuma mudança na API de sessão da WAHA como kill switch de emergência — os dois mecanismos continuam independentes
+- [x] `processarPausar(ctx: CanalContext, db, chatId)` e `processarRetomar(ctx: CanalContext, db, chatId)` extraídos, com os wrappers Telegram adaptando via `criarContextoTelegram`
+- [x] `webhookWhatsapp.ts` roteia `/pausar` e `/retomar` pro núcleo compartilhado, usando o `chatId` do WhatsApp (string)
+- [x] `/pausar` via WhatsApp grava em `bot_pausado` sem lançar `SqliteError` (migration 0024 já aplicada)
+- [x] `/pausar` num chat (Telegram ou WhatsApp) não afeta o outro canal — kill switch é por `chat_id`, não global
+- [x] Nenhuma mudança na API de sessão da WAHA como kill switch de emergência — os dois mecanismos continuam independentes
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/bot/handlers/pausar.test.ts tests/bot/handlers/retomar.test.ts tests/canais/webhookWhatsapp.test.ts`
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: nenhum ainda — fica pro checkpoint final (teste completo dos 6 comandos)
+- [x] Tests pass: `npx vitest run tests/bot/handlers/pausar.test.ts tests/bot/handlers/retomar.test.ts tests/canais/webhookWhatsapp.test.ts` — 68/68
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: nenhum ainda — fica pro checkpoint final (teste completo dos 6 comandos)
 
 **Dependencies:** Tarefa 139, Tarefa 140
 
