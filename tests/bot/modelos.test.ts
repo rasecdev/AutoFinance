@@ -32,7 +32,7 @@ afterEach(() => {
 function criarContextoFake(chatId: number) {
   return {
     chat: { id: chatId },
-    reply: vi.fn(),
+    reply: vi.fn(async () => ({ message_id: 4242 })),
   } as unknown as Context & { reply: ReturnType<typeof vi.fn> };
 }
 
@@ -71,7 +71,7 @@ describe('handlerModelos (/modelos)', () => {
     await handlerModelo({
       message: { text: '/modelo openai/gpt-4o' },
       chat: { id: 6003 },
-      reply: vi.fn(),
+      reply: vi.fn(async () => ({ message_id: 4242 })),
     } as unknown as Context);
 
     const handler = createHandlerModelos(db);
