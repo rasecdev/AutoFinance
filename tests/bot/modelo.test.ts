@@ -33,7 +33,7 @@ function criarContextoFake(texto: string, chatId: number) {
   return {
     message: { text: texto },
     chat: { id: chatId },
-    reply: vi.fn(),
+    reply: vi.fn(async () => ({ message_id: 4242 })),
   } as unknown as Context & { reply: ReturnType<typeof vi.fn> };
 }
 
