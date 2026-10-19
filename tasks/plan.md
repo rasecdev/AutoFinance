@@ -18,7 +18,7 @@ Spec fechada via sessão de `grilling` e publicada em `PLANO.md` (seção "Fase 
 
 ### Fase A: Fundação (schema + fonte única de comandos por canal)
 - [x] Tarefa 139: migration `bot_pausado.chat_id` pra `TEXT PRIMARY KEY`
-- [ ] Tarefa 140: `ComandoBot` ganha campo `canais` (fonte única por canal)
+- [x] Tarefa 140: `ComandoBot` ganha campo `canais` (fonte única por canal)
 
 ### Checkpoint: Fundação
 - [x] `npm run build`/`lint`/`test` sem erro
@@ -30,17 +30,17 @@ Spec fechada via sessão de `grilling` e publicada em `PLANO.md` (seção "Fase 
 - [x] Tarefa 143: `/ajuda` via WhatsApp (filtragem por canal + formatação dupla)
 
 ### Checkpoint: Comandos de leitura/config funcionais
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: `/modelo`, `/modelos`, `/idioma`, `/ajuda` via WhatsApp
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Teste manual em Homologação: `/modelo`, `/modelos`, `/idioma`, `/ajuda` via WhatsApp
 
 ### Fase C: Comandos que dependem da migration da Fase A
 - [x] Tarefa 144: `/pausar` e `/retomar` via WhatsApp
 
 ### Checkpoint: Rodada 3 fechada
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Teste manual em Homologação: os 6 comandos respondendo corretamente via WhatsApp, `/ajuda` listando só o que existe em cada canal, `/pausar` via WhatsApp não afetando o Telegram (chat diferente) e vice-versa
-- [ ] PROGRESSO.md atualizado com o marco
-- [ ] Issue #441-equivalente (milestone da rodada) e milestone fechados
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Teste manual em Homologação: os 6 comandos respondendo corretamente via WhatsApp, `/ajuda` listando só o que existe em cada canal, `/pausar` via WhatsApp não afetando o Telegram (chat diferente) e vice-versa
+- [x] PROGRESSO.md atualizado com o marco
+- [x] Issue #441-equivalente (milestone da rodada) e milestone fechados
 
 ## Risks and Mitigations
 
