@@ -66,15 +66,15 @@ Spec completa em `PLANO.md` ("Fase 9 — Rodada 3"). Plano/riscos em `tasks/plan
 **Description:** Extrai o núcleo de `handlerModelo`/`handlerModelos` (`src/bot/handlers/modelo.ts`/`modelos.ts`) pra funções que recebem `CanalContext` + `chatId: number | string` + texto, com os `createHandler*` do Telegram virando wrappers finos (mesmo padrão de `processarRegistrarEmail`). Roteia os dois comandos em `webhookWhatsapp.ts` via `regexComando`, reaproveitando a ordem de prioridade já usada (comando de barra antes de pendência/conversa livre). Nenhuma mudança de lógica de negócio — `modeloAtivo.ts` já aceita `chatId: number | string` desde a Rodada 2.
 
 **Acceptance criteria:**
-- [ ] `processarModelo(ctx: CanalContext, db, chatId, texto)` e `processarModelos(ctx: CanalContext, db, chatId)` extraídos, com `createHandlerModelo`/`createHandlerModelos` adaptando via `criarContextoTelegram`
-- [ ] `webhookWhatsapp.ts` roteia `/modelo` e `/modelos` pro núcleo compartilhado, usando o `chatId` do WhatsApp
-- [ ] Comportamento no Telegram idêntico ao atual (mensagens, troca de modelo, consulta sem argumento)
-- [ ] Mensagem de WhatsApp de número fora de `WHATSAPP_DESTINATARIOS` continua ignorada silenciosamente (allowlist checada antes do roteamento de comando, mesma ordem já usada pelos comandos da Rodada 2)
+- [x] `processarModelo(ctx: CanalContext, db, chatId, texto)` e `processarModelos(ctx: CanalContext, db, chatId)` extraídos, com `createHandlerModelo`/`createHandlerModelos` adaptando via `criarContextoTelegram`
+- [x] `webhookWhatsapp.ts` roteia `/modelo` e `/modelos` pro núcleo compartilhado, usando o `chatId` do WhatsApp
+- [x] Comportamento no Telegram idêntico ao atual (mensagens, troca de modelo, consulta sem argumento)
+- [x] Mensagem de WhatsApp de número fora de `WHATSAPP_DESTINATARIOS` continua ignorada silenciosamente (allowlist checada antes do roteamento de comando, mesma ordem já usada pelos comandos da Rodada 2) — ordem inalterada, allowlist já roda antes de qualquer comando ser checado
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/bot/handlers/modelo.test.ts tests/bot/handlers/modelos.test.ts tests/canais/webhookWhatsapp.test.ts`
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: nenhum ainda — fica pro checkpoint da Fase B (teste conjunto dos 3 comandos de leitura/config)
+- [x] Tests pass: `npx vitest run tests/bot/handlers/modelo.test.ts tests/bot/handlers/modelos.test.ts tests/canais/webhookWhatsapp.test.ts` — 60/60
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: nenhum ainda — fica pro checkpoint da Fase B (teste conjunto dos 3 comandos de leitura/config)
 
 **Dependencies:** Tarefa 140
 

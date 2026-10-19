@@ -45,6 +45,16 @@ vi.mock('../../src/bot/handlers/registrarOpenFinance.js', () => ({
   processarMapeamentoOpenFinance: processarMapeamentoOpenFinanceMock,
 }));
 
+const processarModeloMock = vi.fn(async () => undefined);
+vi.mock('../../src/bot/handlers/modelo.js', () => ({
+  processarModelo: processarModeloMock,
+}));
+
+const processarModelosMock = vi.fn(async () => undefined);
+vi.mock('../../src/bot/handlers/modelos.js', () => ({
+  processarModelos: processarModelosMock,
+}));
+
 const enviarTextoWhatsapp = vi.fn(async () => undefined);
 vi.mock('../../src/canais/whatsapp.js', () => ({
   enviarTextoWhatsapp: (...args: unknown[]) => enviarTextoWhatsapp(...args),
@@ -98,6 +108,8 @@ beforeEach(() => {
   processarCodigoOAuthGoogleMock.mockClear();
   processarRegistrarOpenFinanceMock.mockClear();
   processarMapeamentoOpenFinanceMock.mockClear();
+  processarModeloMock.mockClear();
+  processarModelosMock.mockClear();
   enviarTextoWhatsapp.mockClear();
 });
 
@@ -441,6 +453,42 @@ describe('processarWebhookWhatsapp — comandos /registrar_open_finance e /regis
       CHAT_ID_WHATSAPP,
       '/registrar_open_finance abc123',
     );
+    expect(processarMensagemTextoMock).not.toHaveBeenCalled();
+  });
+
+  it('/modelo: chama processarModelo, nunca a conversa livre (Tarefa 141)', async () => {
+    const corpo = JSON.stringify({
+      id: 'cmd-3',
+      event: 'message',
+      payload: { from: CHAT_ID_WHATSAPP, body: '/modelo', fromMe: false },
+    });
+
+    await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
+
+    expect(processarModeloMock).toHaveBeenCalledWith(
+      expect.objectContaining({ reply: expect.any(Function) }),
+      db,
+      CHAT_ID_WHATSAPP,
+      '/modelo',
+    );
+    expect(processarMensagemTextoMock).not.toHaveBeenCalled();
+  });
+
+  it('/modelos: chama processarModelos, nunca a conversa livre (Tarefa 141)', async () => {
+    const corpo = JSON.stringify({
+      id: 'cmd-4',
+      event: 'message',
+      payload: { from: CHAT_ID_WHATSAPP, body: '/modelos', fromMe: false },
+    });
+
+    await processarWebhookWhatsapp(corpo, assinar(corpo), envComWhatsapp, db, logger, deps);
+
+    expect(processarModelosMock).toHaveBeenCalledWith(
+      expect.objectContaining({ reply: expect.any(Function) }),
+      db,
+      CHAT_ID_WHATSAPP,
+    );
+    expect(processarModeloMock).not.toHaveBeenCalled();
     expect(processarMensagemTextoMock).not.toHaveBeenCalled();
   });
 

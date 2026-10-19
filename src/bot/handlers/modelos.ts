@@ -6,6 +6,7 @@ import { MODELO_PADRAO } from '../../ai/openrouter.js';
 import { FLUXO_RELATORIO_MENSAL, MODELO_RELATORIO_MENSAL } from '../../ai/relatorioMensal.js';
 import { FLUXO_RESUMIR_CONTEXTO, MODELO_RESUMO } from '../../ai/resumirContexto.js';
 import { FLUXO_TRANSCRICAO_VOZ, MODELO_TRANSCRICAO_VOZ } from '../../ai/transcricao.js';
+import { criarContextoTelegram, type CanalContext } from '../../canais/contextoCanal.js';
 import type { DbClient } from '../../db/client.js';
 import { obterIdioma } from '../../db/repositories/idiomaBot.js';
 import { obterModeloRoteamento } from '../../db/repositories/roteamentoTarefas.js';
@@ -27,6 +28,24 @@ const FLUXOS_ROTEADOS: Array<{ fluxo: string; padrao: string }> = [
   { fluxo: FLUXO_INTERPRETAR_PLANILHA, padrao: MODELO_INTERPRETAR_PLANILHA },
 ];
 
+// Núcleo reaproveitado pelo handler do Telegram e pelo roteamento do webhook
+// do WhatsApp (Fase 9 Rodada 3, Tarefa 141) — só depende da interface mínima
+// (CanalContext, Tarefa 130), nunca do Context largo do grammy.
+export async function processarModelos(ctx: CanalContext, db: DbClient, chatId: number | string): Promise<void> {
+  const idioma = obterIdioma(db);
+  const linhas = FLUXOS_ROTEADOS.map(({ fluxo, padrao }) => {
+    const modelo = obterModeloRoteamento(db, fluxo) ?? padrao;
+    return `- ${fluxo}: ${modelo}`;
+  });
+
+  const overrideChat = obterOverrideModelo(chatId);
+  const avisoOverride = overrideChat
+    ? t('modelos_override_aviso', idioma, { override: overrideChat, fluxo: FLUXO_CONVERSA_TEXTO })
+    : '';
+
+  await ctx.reply(`${t('modelos_por_fluxo_cabecalho', idioma)}\n${linhas.join('\n')}${avisoOverride}`);
+}
+
 export function createHandlerModelos(db: DbClient) {
   return async function handlerModelos(ctx: Context): Promise<void> {
     const chatId = ctx.chat?.id;
@@ -35,17 +54,6 @@ export function createHandlerModelos(db: DbClient) {
       return;
     }
 
-    const idioma = obterIdioma(db);
-    const linhas = FLUXOS_ROTEADOS.map(({ fluxo, padrao }) => {
-      const modelo = obterModeloRoteamento(db, fluxo) ?? padrao;
-      return `- ${fluxo}: ${modelo}`;
-    });
-
-    const overrideChat = obterOverrideModelo(chatId);
-    const avisoOverride = overrideChat
-      ? t('modelos_override_aviso', idioma, { override: overrideChat, fluxo: FLUXO_CONVERSA_TEXTO })
-      : '';
-
-    await ctx.reply(`${t('modelos_por_fluxo_cabecalho', idioma)}\n${linhas.join('\n')}${avisoOverride}`);
+    await processarModelos(criarContextoTelegram(ctx), db, chatId);
   };
 }

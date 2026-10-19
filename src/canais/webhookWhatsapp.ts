@@ -4,9 +4,11 @@ import type OpenAI from 'openai';
 import { extrairResultadoTool } from '../ai/openrouter.js';
 import type { ToolDefinition } from '../ai/tools/types.js';
 import { OPCAO_POLL_CONFIRMAR, obterPendencia, removerPendencia } from '../bot/confirmacao.js';
-import { COMANDOS_BOT } from '../bot/comandos.js';
+import { comandoValidoNoCanal, COMANDOS_BOT } from '../bot/comandos.js';
 import { obterPendenciaOAuthGoogle } from '../bot/googleOAuthPendencia.js';
 import { processarMensagemTexto } from '../bot/handlers/texto.js';
+import { processarModelo } from '../bot/handlers/modelo.js';
+import { processarModelos } from '../bot/handlers/modelos.js';
 import { processarCodigoOAuthGoogle, processarRegistrarEmail } from '../bot/handlers/registrarEmail.js';
 import {
   processarMapeamentoOpenFinance,
@@ -24,16 +26,31 @@ import { criarContextoWhatsapp } from './contextoWhatsapp.js';
 
 // Mesma regex que router.ts usa pra rotear esses comandos no Telegram
 // (comandos.ts é a fonte única) — evita duplicar o padrão aqui.
-function regexComando(comando: string): RegExp {
+function buscarComando(comando: string) {
   const encontrado = COMANDOS_BOT.find((c) => c.comando === comando);
   if (!encontrado) {
     throw new Error(`comando "${comando}" não encontrado em COMANDOS_BOT`);
   }
-  return encontrado.regex;
+  return encontrado;
+}
+
+// Comandos roteados nesta tarefa já existiam antes do campo `canais`
+// (Rodada 2), então rotear sem checar o canal continua correto pra eles;
+// os novos (Tarefa 141 em diante) são checados contra `comandoValidoNoCanal`
+// antes de montar a regex, pra nunca rotear um comando marcado só ['telegram'].
+function regexComando(comando: string): RegExp {
+  return buscarComando(comando).regex;
+}
+
+function regexComandoWhatsapp(comando: string): RegExp | undefined {
+  const encontrado = buscarComando(comando);
+  return comandoValidoNoCanal(encontrado, 'whatsapp') ? encontrado.regex : undefined;
 }
 
 const REGEX_REGISTRAR_EMAIL = regexComando('registrar_email');
 const REGEX_REGISTRAR_OPEN_FINANCE = regexComando('registrar_open_finance');
+const REGEX_MODELO = regexComandoWhatsapp('modelo');
+const REGEX_MODELOS = regexComandoWhatsapp('modelos');
 
 const HEADER_HMAC = 'x-webhook-hmac';
 
@@ -183,6 +200,16 @@ async function processarEventoMensagem(
 
   if (REGEX_REGISTRAR_OPEN_FINANCE.test(texto)) {
     await processarRegistrarOpenFinance(ctx, env, db, logger, chatId, texto);
+    return;
+  }
+
+  if (REGEX_MODELO?.test(texto)) {
+    await processarModelo(ctx, db, chatId, texto);
+    return;
+  }
+
+  if (REGEX_MODELOS?.test(texto)) {
+    await processarModelos(ctx, db, chatId);
     return;
   }
 

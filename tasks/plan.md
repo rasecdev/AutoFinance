@@ -25,7 +25,7 @@ Spec fechada via sessão de `grilling` e publicada em `PLANO.md` (seção "Fase 
 - [x] Nenhuma regressão no Telegram nem no WhatsApp já existente (Rodada 2) — suíte completa passa igual antes — 1092/1092 testes
 
 ### Fase B: Comandos sem dependência de schema
-- [ ] Tarefa 141: `/modelo` e `/modelos` via WhatsApp
+- [x] Tarefa 141: `/modelo` e `/modelos` via WhatsApp
 - [ ] Tarefa 142: `/idioma` via WhatsApp
 - [ ] Tarefa 143: `/ajuda` via WhatsApp (filtragem por canal + formatação dupla)
 
