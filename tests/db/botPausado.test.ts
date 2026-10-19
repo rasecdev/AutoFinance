@@ -62,4 +62,14 @@ describe('pausar / retomar / estaPausado', () => {
 
     expect(estaPausado(db, 200)).toBe(false);
   });
+
+  it('aceita chatId em texto (WhatsApp, formato <numero>@c.us/<lid>@lid) sem datatype mismatch (achado real, Tarefa 139)', () => {
+    const chatIdWhatsapp = '5511999999999@c.us';
+
+    expect(() => pausar(db, chatIdWhatsapp)).not.toThrow();
+    expect(estaPausado(db, chatIdWhatsapp)).toBe(true);
+
+    retomar(db, chatIdWhatsapp);
+    expect(estaPausado(db, chatIdWhatsapp)).toBe(false);
+  });
 });
