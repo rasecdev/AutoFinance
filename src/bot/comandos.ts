@@ -3,6 +3,8 @@ import { CATALOGO } from '../i18n/catalogo.js';
 import { t } from '../i18n/t.js';
 import { REGEX_PAUSAR, REGEX_RETOMAR } from './middleware/pausa.js';
 
+export type Canal = 'telegram' | 'whatsapp';
+
 export type ComandoBot = {
   /** Sem a barra, minúsculo — mesmo texto que o Telegram exige em `setMyCommands`. */
   comando: string;
@@ -10,7 +12,21 @@ export type ComandoBot = {
   descricao: keyof typeof CATALOGO;
   /** Usado por `router.ts` pra decidir se uma mensagem de texto é esse comando. */
   regex: RegExp;
+  /**
+   * Em quais canais o comando existe de fato (Fase 9 Rodada 3). Omitido =
+   * vale pros dois — `setMyCommands` (só Telegram) sempre lista TODOS os
+   * comandos independente deste campo, que é consumido só pelo roteamento
+   * do webhook do WhatsApp e pela filtragem de /ajuda por canal.
+   */
+  canais?: Canal[];
 };
+
+// Fonte única pra saber se um comando vale num canal — evita repetir a
+// lógica de "omitido = ambos" em cada chamador (webhookWhatsapp.ts,
+// handlerAjuda).
+export function comandoValidoNoCanal(comando: ComandoBot, canal: Canal): boolean {
+  return comando.canais === undefined || comando.canais.includes(canal);
+}
 
 // Fonte única dos comandos do bot: router.ts usa `regex` pra rotear, e
 // index.ts usa `comando`+`descricaoComando(descricao, idioma)` em
@@ -24,11 +40,13 @@ export const COMANDOS_BOT: ComandoBot[] = [
     comando: 'errado',
     descricao: 'comando_errado',
     regex: /^\/errado\b/i,
+    canais: ['telegram'],
   },
   {
     comando: 'certo',
     descricao: 'comando_certo',
     regex: /^\/certo\b/i,
+    canais: ['telegram'],
   },
   {
     comando: 'modelos',

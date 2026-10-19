@@ -21,8 +21,8 @@ Spec fechada via sessão de `grilling` e publicada em `PLANO.md` (seção "Fase 
 - [ ] Tarefa 140: `ComandoBot` ganha campo `canais` (fonte única por canal)
 
 ### Checkpoint: Fundação
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Nenhuma regressão no Telegram nem no WhatsApp já existente (Rodada 2) — suíte completa passa igual antes
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Nenhuma regressão no Telegram nem no WhatsApp já existente (Rodada 2) — suíte completa passa igual antes — 1092/1092 testes
 
 ### Fase B: Comandos sem dependência de schema
 - [ ] Tarefa 141: `/modelo` e `/modelos` via WhatsApp
