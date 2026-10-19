@@ -9,14 +9,14 @@ Spec completa em `PLANO.md` ("Fase 9 — Rodada 3"). Plano/riscos em `tasks/plan
 **Description:** `bot_pausado.chat_id` hoje é `INTEGER PRIMARY KEY` (migration `0017`) — alias de rowid no SQLite, que exige um inteiro de verdade e ignora a conversão de afinidade normal (mesmo bug já corrigido em `confirmacoes_pendentes` na Tarefa 135 da Rodada 2, migration `0023`). Corrigir o schema ANTES de `/pausar`/`/retomar` ficarem acessíveis via WhatsApp (Tarefa 144), senão o bug (`SqliteError: datatype mismatch` ao gravar um `chatId` string) seria conhecido e evitável sendo lançado de propósito.
 
 **Acceptance criteria:**
-- [ ] Nova migration recria `bot_pausado` com `chat_id TEXT PRIMARY KEY`, preservando dados existentes (mesmo padrão de `0023_confirmacoes_pendentes_chat_id_texto.sql`: tabela nova, copia, drop, rename)
-- [ ] Comentário em `src/db/repositories/botPausado.ts` que hoje afirma "a coluna chat_id não precisa de migration" é corrigido (afirmação estava errada por analogia, mesmo achado documentado em `confirmacoes_pendentes`)
-- [ ] `pausar`/`retomar`/`estaPausado` continuam funcionando sem mudança de assinatura (já aceitam `number | string`)
+- [x] Nova migration recria `bot_pausado` com `chat_id TEXT PRIMARY KEY`, preservando dados existentes (mesmo padrão de `0023_confirmacoes_pendentes_chat_id_texto.sql`: tabela nova, copia, drop, rename)
+- [x] Comentário em `src/db/repositories/botPausado.ts` que hoje afirma "a coluna chat_id não precisa de migration" é corrigido (afirmação estava errada por analogia, mesmo achado documentado em `confirmacoes_pendentes`)
+- [x] `pausar`/`retomar`/`estaPausado` continuam funcionando sem mudança de assinatura (já aceitam `number | string`)
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/db/botPausado.test.ts tests/db/migrate.test.ts`
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: nenhum — comportamento observável do Telegram não muda; cobertura via teste automatizado (inserir um `chatId` string de teste e confirmar que não lança `datatype mismatch`)
+- [x] Tests pass: `npx vitest run tests/db/botPausado.test.ts tests/db/migrate.test.ts` -- 15/15
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: nenhum — comportamento observável do Telegram não muda; cobertura via teste automatizado (inserir um `chatId` string de teste e confirmar que não lança `datatype mismatch`) — teste novo em `tests/db/botPausado.test.ts`
 
 **Dependencies:** None
 
