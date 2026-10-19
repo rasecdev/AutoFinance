@@ -95,15 +95,15 @@ Spec completa em `PLANO.md` ("Fase 9 — Rodada 3"). Plano/riscos em `tasks/plan
 **Description:** Extrai o núcleo de `handlerIdioma` (`src/bot/handlers/idioma.ts`) pra uma função que recebe `CanalContext` (idioma continua singleton/global, sem `chatId`), com `createHandlerIdioma` virando wrapper fino. A chamada `ctx.api.setMyCommands(...)` (atualiza o menu "/" do Telegram) **fica só no wrapper Telegram**, nunca no núcleo compartilhado — não existe equivalente no WhatsApp, e `CanalContext` não declara esse método (chamada indevida vira erro de compilação, não bug silencioso). Roteia `/idioma` em `webhookWhatsapp.ts`.
 
 **Acceptance criteria:**
-- [ ] `processarIdioma(ctx: CanalContext, db, texto)` extraído; `createHandlerIdioma` chama o núcleo e, só depois, `ctx.api.setMyCommands(...)` (fora do núcleo)
-- [ ] `webhookWhatsapp.ts` roteia `/idioma` pro núcleo compartilhado
-- [ ] Trocar o idioma via WhatsApp muda `idioma_bot` (afeta também as respostas do Telegram, comportamento já existente desde a Fase 10 — não é regressão, é consequência esperada do singleton)
-- [ ] Trocar o idioma via WhatsApp não tenta chamar `setMyCommands` nem lança erro
+- [x] `processarIdioma(ctx: CanalContext, db, texto)` extraído; `createHandlerIdioma` chama o núcleo e, só depois, `ctx.api.setMyCommands(...)` (fora do núcleo)
+- [x] `webhookWhatsapp.ts` roteia `/idioma` pro núcleo compartilhado
+- [x] Trocar o idioma via WhatsApp muda `idioma_bot` (afeta também as respostas do Telegram, comportamento já existente desde a Fase 10 — não é regressão, é consequência esperada do singleton)
+- [x] Trocar o idioma via WhatsApp não tenta chamar `setMyCommands` nem lança erro — `CanalContext` não declara o método, erro de compilação se alguém tentasse
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/bot/handlers/idioma.test.ts tests/canais/webhookWhatsapp.test.ts`
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: nenhum ainda — fica pro checkpoint da Fase B
+- [x] Tests pass: `npx vitest run tests/bot/handlers/idioma.test.ts tests/canais/webhookWhatsapp.test.ts` — 61/61
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: nenhum ainda — fica pro checkpoint da Fase B
 
 **Dependencies:** Tarefa 140
 

@@ -9,6 +9,7 @@ import { obterPendenciaOAuthGoogle } from '../bot/googleOAuthPendencia.js';
 import { processarMensagemTexto } from '../bot/handlers/texto.js';
 import { processarModelo } from '../bot/handlers/modelo.js';
 import { processarModelos } from '../bot/handlers/modelos.js';
+import { processarIdioma } from '../bot/handlers/idioma.js';
 import { processarCodigoOAuthGoogle, processarRegistrarEmail } from '../bot/handlers/registrarEmail.js';
 import {
   processarMapeamentoOpenFinance,
@@ -51,6 +52,7 @@ const REGEX_REGISTRAR_EMAIL = regexComando('registrar_email');
 const REGEX_REGISTRAR_OPEN_FINANCE = regexComando('registrar_open_finance');
 const REGEX_MODELO = regexComandoWhatsapp('modelo');
 const REGEX_MODELOS = regexComandoWhatsapp('modelos');
+const REGEX_IDIOMA = regexComandoWhatsapp('idioma');
 
 const HEADER_HMAC = 'x-webhook-hmac';
 
@@ -210,6 +212,14 @@ async function processarEventoMensagem(
 
   if (REGEX_MODELOS?.test(texto)) {
     await processarModelos(ctx, db, chatId);
+    return;
+  }
+
+  if (REGEX_IDIOMA?.test(texto)) {
+    // setMyCommands (menu "/" do Telegram) nunca é chamado aqui — não existe
+    // equivalente no WhatsApp; processarIdioma devolve o idioma novo só pra
+    // quem precisa reagir a isso (o wrapper Telegram), ignorado de propósito.
+    await processarIdioma(ctx, db, texto);
     return;
   }
 
