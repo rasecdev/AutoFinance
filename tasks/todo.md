@@ -35,15 +35,15 @@ Spec completa em `PLANO.md` ("Fase 9 — Rodada 3"). Plano/riscos em `tasks/plan
 **Description:** `src/bot/comandos.ts` (`COMANDOS_BOT`) ganha campo opcional `canais?: ('telegram' | 'whatsapp')[]` em `ComandoBot` — omitido = comando vale pros dois canais; `/errado` e `/certo` marcados explicitamente `['telegram']` (dependem de `message_id`, fora de escopo pro WhatsApp). Essa é a fonte única que o roteamento do webhook do WhatsApp (Tarefas 141-144) e `/ajuda` (Tarefa 143) vão consultar, pra nunca dessincronizar as duas listas — mesmo racional que já motivou `COMANDOS_BOT` existir como array único (comentário do próprio arquivo).
 
 **Acceptance criteria:**
-- [ ] `ComandoBot.canais?: ('telegram' | 'whatsapp')[]` adicionado ao type
-- [ ] `errado` e `certo` em `COMANDOS_BOT` marcados `canais: ['telegram']`; os demais 8 comandos (incluindo `registrar_email`/`registrar_open_finance`, já ativos no WhatsApp desde a Rodada 2) ficam sem o campo (omitido = ambos)
-- [ ] Função helper nova (ex: `comandoValidoNoCanal(comando, canal)`) pra checar se um `ComandoBot` vale num canal — evita repetir a lógica de "omitido = ambos" em cada chamador
-- [ ] `index.ts`/`idioma.ts` (`setMyCommands`, só Telegram) continuam listando TODOS os comandos — `setMyCommands` é só do menu do Telegram, não filtra por canal (o campo novo não muda esse comportamento)
+- [x] `ComandoBot.canais?: ('telegram' | 'whatsapp')[]` adicionado ao type
+- [x] `errado` e `certo` em `COMANDOS_BOT` marcados `canais: ['telegram']`; os demais 8 comandos (incluindo `registrar_email`/`registrar_open_finance`, já ativos no WhatsApp desde a Rodada 2) ficam sem o campo (omitido = ambos)
+- [x] Função helper nova (`comandoValidoNoCanal(comando, canal)`) pra checar se um `ComandoBot` vale num canal — evita repetir a lógica de "omitido = ambos" em cada chamador
+- [x] `index.ts`/`idioma.ts` (`setMyCommands`, só Telegram) continuam listando TODOS os comandos — `setMyCommands` é só do menu do Telegram, não filtra por canal (o campo novo não muda esse comportamento)
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run tests/bot/comandos.test.ts` (criar se não existir)
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: nenhum — campo novo não é consumido por nenhum roteamento real ainda nesta tarefa
+- [x] Tests pass: `npx vitest run tests/bot/comandos.test.ts` — 5/5
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: nenhum — campo novo não é consumido por nenhum roteamento real ainda nesta tarefa
 
 **Dependencies:** None
 
@@ -56,8 +56,8 @@ Spec completa em `PLANO.md` ("Fase 9 — Rodada 3"). Plano/riscos em `tasks/plan
 ---
 
 ## Checkpoint: Fundação (depois das Tarefas 139-140)
-- [ ] `npm run build`/`lint`/`test` sem erro
-- [ ] Nenhuma regressão no Telegram nem no WhatsApp já existente (Rodada 2) — suíte completa passa igual antes
+- [x] `npm run build`/`lint`/`test` sem erro
+- [x] Nenhuma regressão no Telegram nem no WhatsApp já existente (Rodada 2) — suíte completa passa igual antes — 1092/1092 testes
 
 ---
 
