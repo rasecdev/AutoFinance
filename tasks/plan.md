@@ -17,7 +17,7 @@ Spec fechada via sessão de `grilling` e publicada em `PLANO.md` (seção "Fase 
 ## Task List
 
 ### Fase A: Fundação (schema + fonte única de comandos por canal)
-- [ ] Tarefa 139: migration `bot_pausado.chat_id` pra `TEXT PRIMARY KEY`
+- [x] Tarefa 139: migration `bot_pausado.chat_id` pra `TEXT PRIMARY KEY`
 - [ ] Tarefa 140: `ComandoBot` ganha campo `canais` (fonte única por canal)
 
 ### Checkpoint: Fundação
