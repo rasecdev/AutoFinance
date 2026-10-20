@@ -94,7 +94,7 @@ Two independent layers, each solving a different problem:
 | 7 | Email integration (invoices/installments) and Google Calendar | 🚧 In progress |
 | 8 | Bank aggregation via Open Finance (Pluggy) | ⬜ Not started |
 
-> **Note on Phase 5:** the flow-based routing mechanism (`roteamento_tarefas` table) is implemented and tested, but today no flow has a different model configured — everything falls back to the same default (`openai/gpt-4o-mini`). In practice, a single model handles everything until the table is actually populated.
+> **Note on Phase 5:** the flow-based routing mechanism (`roteamento_tarefas` table) is implemented and tested, but today no flow has a different model configured — everything falls back to the same default (`openai/gpt-6-luna`). In practice, a single model handles everything until the table is actually populated.
 
 Full log, with the reasoning behind every decision, in [PROGRESSO.md](PROGRESSO.md) (in Portuguese).
 

@@ -5,7 +5,7 @@ import { SYSTEM_PROMPT } from './systemPrompt.js';
 import { paraDefinicaoOpenAI } from './tools/registry.js';
 import type { ResultadoTool, ToolContext, ToolDefinition } from './tools/types.js';
 
-export const MODELO_PADRAO = 'openai/gpt-4o-mini';
+export const MODELO_PADRAO = 'openai/gpt-6-luna';
 
 const MAX_ITERACOES_TOOL_CALLING = 5;
 const MAX_RETENTATIVAS_FALHA_MODELO = 1;

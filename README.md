@@ -94,7 +94,7 @@ Duas camadas independentes, cada uma resolvendo um problema diferente:
 | 7 | Integração com e-mail (fatura/boleto) e Google Calendar | 🚧 Em andamento |
 | 8 | Agregação bancária via Open Finance (Pluggy) | ⬜ Não iniciada |
 
-> **Nota sobre a Fase 5:** o mecanismo de roteamento por fluxo (tabela `roteamento_tarefas`) está implementado e testado, mas hoje nenhum fluxo tem modelo diferente configurado — todos caem no mesmo fallback (`openai/gpt-4o-mini`). Na prática, um único modelo atende tudo até a tabela ser populada de verdade.
+> **Nota sobre a Fase 5:** o mecanismo de roteamento por fluxo (tabela `roteamento_tarefas`) está implementado e testado, mas hoje nenhum fluxo tem modelo diferente configurado — todos caem no mesmo fallback (`openai/gpt-6-luna`). Na prática, um único modelo atende tudo até a tabela ser populada de verdade.
 
 Log completo, com o porquê de cada decisão, em [PROGRESSO.md](PROGRESSO.md).
 

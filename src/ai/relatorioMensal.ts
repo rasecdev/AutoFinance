@@ -10,7 +10,7 @@ import type { UsageComCusto } from './openrouter.js';
 // Modelo próprio pro fluxo de relatório mensal, isolado de MODELO_PADRAO —
 // usado como fallback quando roteamento_tarefas não tem linha pro fluxo
 // ainda (mesmo padrão de MODELO_RESUMO em resumirContexto.ts).
-export const MODELO_RELATORIO_MENSAL = 'openai/gpt-4o-mini';
+export const MODELO_RELATORIO_MENSAL = 'openai/gpt-6-luna';
 
 export const FLUXO_RELATORIO_MENSAL = 'relatorio_mensal';
 

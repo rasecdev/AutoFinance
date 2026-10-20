@@ -45,9 +45,9 @@ describe('handlerModelos (/modelos)', () => {
 
     const texto = ctx.reply.mock.calls[0]?.[0] as string;
     expect(texto).toContain(`conversa_texto: ${MODELO_PADRAO}`);
-    expect(texto).toContain('resumir_contexto: openai/gpt-4o-mini');
-    expect(texto).toContain('relatorio_mensal: openai/gpt-4o-mini');
-    expect(texto).toContain('analisar_qualidade: openai/gpt-4o-mini');
+    expect(texto).toContain('resumir_contexto: openai/gpt-6-luna');
+    expect(texto).toContain('relatorio_mensal: openai/gpt-6-luna');
+    expect(texto).toContain('analisar_qualidade: openai/gpt-6-luna');
     expect(texto).toContain('transcricao_voz: openai/whisper-large-v3-turbo');
     expect(texto).toContain('leitura_comprovante: openai/gpt-6-luna');
     expect(texto).toContain('interpretar_planilha: openai/gpt-6-luna');

@@ -15,7 +15,7 @@ import type { UsageComCusto } from './openrouter.js';
 // Modelo próprio e mais barato pro fluxo de resumo, isolado de MODELO_PADRAO —
 // usado como fallback quando roteamento_tarefas não tem linha pro fluxo ainda
 // (Fase 5, Tarefa 22, mesmo padrão de fallback já usado em resolverModeloConversa).
-export const MODELO_RESUMO = 'openai/gpt-4o-mini';
+export const MODELO_RESUMO = 'openai/gpt-6-luna';
 
 // PLANO.md sugeria ~6-8k tokens como ponto de partida ("a validar na
 // prática") — validado e ajustado pra cima na Tarefa 20: uma única chamada
