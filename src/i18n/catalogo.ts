@@ -96,9 +96,9 @@ export const CATALOGO: Record<string, Record<Idioma, string>> = {
     es: 'Modelo activo en este chat: {modelo}',
   },
   modelo_trocado: {
-    pt: 'Modelo trocado para "{nome}" neste chat. Use o slug do OpenRouter (ex: "openai/gpt-4o-mini", "qwen/qwen3-32b"), não o nome de exibição — se a próxima mensagem falhar, o nome pode estar errado.',
-    en: 'Model switched to "{nome}" in this chat. Use the OpenRouter slug (e.g. "openai/gpt-4o-mini", "qwen/qwen3-32b"), not the display name — if the next message fails, the name might be wrong.',
-    es: 'Modelo cambiado a "{nome}" en este chat. Usa el slug de OpenRouter (ej: "openai/gpt-4o-mini", "qwen/qwen3-32b"), no el nombre de visualización — si el próximo mensaje falla, el nombre puede estar mal.',
+    pt: 'Modelo trocado para "{nome}" neste chat. Use o slug do OpenRouter (ex: "openai/gpt-6-luna", "qwen/qwen3-32b"), não o nome de exibição — se a próxima mensagem falhar, o nome pode estar errado.',
+    en: 'Model switched to "{nome}" in this chat. Use the OpenRouter slug (e.g. "openai/gpt-6-luna", "qwen/qwen3-32b"), not the display name — if the next message fails, the name might be wrong.',
+    es: 'Modelo cambiado a "{nome}" en este chat. Usa el slug de OpenRouter (ej: "openai/gpt-6-luna", "qwen/qwen3-32b"), no el nombre de visualización — si el próximo mensaje falla, el nombre puede estar mal.',
   },
   modelos_por_fluxo_cabecalho: {
     pt: 'Modelos por fluxo:',
@@ -161,9 +161,9 @@ export const CATALOGO: Record<string, Record<Idioma, string>> = {
     es: 'No entendí, ¿puedes reformular?',
   },
   erro_modelo_invalido: {
-    pt: 'Não consegui usar o modelo configurado nesse chat — o OpenRouter recusou, provavelmente porque o nome não é um slug válido. Confira com /modelo, ou troque de novo usando o slug do OpenRouter (ex: "openai/gpt-4o-mini", "qwen/qwen3-32b"), não o nome de exibição.',
-    en: 'I couldn\'t use the model configured for this chat — OpenRouter rejected it, probably because the name isn\'t a valid slug. Check with /modelo, or switch again using the OpenRouter slug (e.g. "openai/gpt-4o-mini", "qwen/qwen3-32b"), not the display name.',
-    es: 'No pude usar el modelo configurado en este chat — OpenRouter lo rechazó, probablemente porque el nombre no es un slug válido. Revisa con /modelo, o cambia de nuevo usando el slug de OpenRouter (ej: "openai/gpt-4o-mini", "qwen/qwen3-32b"), no el nombre de visualización.',
+    pt: 'Não consegui usar o modelo configurado nesse chat — o OpenRouter recusou, provavelmente porque o nome não é um slug válido. Confira com /modelo, ou troque de novo usando o slug do OpenRouter (ex: "openai/gpt-6-luna", "qwen/qwen3-32b"), não o nome de exibição.',
+    en: 'I couldn\'t use the model configured for this chat — OpenRouter rejected it, probably because the name isn\'t a valid slug. Check with /modelo, or switch again using the OpenRouter slug (e.g. "openai/gpt-6-luna", "qwen/qwen3-32b"), not the display name.',
+    es: 'No pude usar el modelo configurado en este chat — OpenRouter lo rechazó, probablemente porque el nombre no es un slug válido. Revisa con /modelo, o cambia de nuevo usando el slug de OpenRouter (ej: "openai/gpt-6-luna", "qwen/qwen3-32b"), no el nombre de visualización.',
   },
   erro_processar_mensagem: {
     pt: 'Não consegui processar sua mensagem agora, tente de novo em instantes.',

@@ -7,7 +7,7 @@ import type { UsageComCusto } from './openrouter.js';
 // Modelo próprio pro fluxo de análise de qualidade, isolado de MODELO_PADRAO
 // — usado como fallback quando roteamento_tarefas não tem linha pro fluxo
 // ainda (mesmo padrão de MODELO_RESUMO/MODELO_RELATORIO_MENSAL).
-export const MODELO_ANALISAR_QUALIDADE = 'openai/gpt-4o-mini';
+export const MODELO_ANALISAR_QUALIDADE = 'openai/gpt-6-luna';
 
 export const FLUXO_ANALISAR_QUALIDADE = 'analisar_qualidade';
 

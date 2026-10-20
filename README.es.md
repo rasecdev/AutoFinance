@@ -94,7 +94,7 @@ Dos capas independientes, cada una resolviendo un problema distinto:
 | 7 | Integración con correo (factura/cuota) y Google Calendar | 🚧 En curso |
 | 8 | Agregación bancaria vía Open Finance (Pluggy) | ⬜ No iniciada |
 
-> **Nota sobre la Fase 5:** el mecanismo de enrutamiento por flujo (tabla `roteamento_tarefas`) está implementado y probado, pero hoy ningún flujo tiene un modelo distinto configurado — todos caen en el mismo modelo por defecto (`openai/gpt-4o-mini`). En la práctica, un único modelo atiende todo hasta que la tabla se pueble de verdad.
+> **Nota sobre la Fase 5:** el mecanismo de enrutamiento por flujo (tabla `roteamento_tarefas`) está implementado y probado, pero hoy ningún flujo tiene un modelo distinto configurado — todos caen en el mismo modelo por defecto (`openai/gpt-6-luna`). En la práctica, un único modelo atiende todo hasta que la tabla se pueble de verdad.
 
 Log completo, con el porqué de cada decisión, en [PROGRESSO.md](PROGRESSO.md) (en portugués).
 
