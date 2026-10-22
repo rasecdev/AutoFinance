@@ -187,4 +187,4 @@ Spec completa em `PLANO.md` ("Fase 9 — Rodada 3"). Plano/riscos em `tasks/plan
 - [x] `/ajuda` via WhatsApp lista exatamente os 8 comandos aplicáveis (os 6 novos + `/registrar_email`/`/registrar_open_finance`), nunca `/errado`/`/certo`
 - [x] `/pausar` via WhatsApp confirmado sem afetar o chat do Telegram (e vice-versa)
 - [x] PROGRESSO.md atualizado com o marco
-- [ ] Issues da rodada e milestone fechados no GitHub
+- [x] Issues da rodada e milestone fechados no GitHub — milestone #38 fechado (6/6 issues)
