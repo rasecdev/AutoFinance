@@ -5,6 +5,15 @@ on:
     workflows: ["CI"]
     types: [completed]
 
+# Uma única VM roda os dois ambientes: dois deploys ao mesmo tempo (ex: dois merges seguidos)
+# faziam dois builds concorrentes, estourando disco e derrubando o SSH (achado real,
+# 2026-10-22). Fila única pra qualquer ambiente; não cancela um deploy em andamento (cancelar
+# no meio de um `docker compose up` deixaria containers pela metade) — o GitHub só mantém o
+# mais recente na espera, o que basta, já que o deploy.sh sempre faz reset pro HEAD da branch.
+concurrency:
+  group: deploy-vm
+  cancel-in-progress: false
+
 jobs:
   deploy:
     # Homologação sobe sozinha a cada push em development que passou no CI. Produção nunca é
