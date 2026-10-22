@@ -55,4 +55,13 @@ if [ "${#SERVICOS[@]}" -eq 0 ]; then
 fi
 
 docker compose up -d --build "${SERVICOS[@]}"
-docker image prune -f
+
+# Limpeza no fim do deploy, depois do `up` (que já deixou os containers novos em
+# execução, então o `-a` só apaga imagem que nenhum container usa, nem parado).
+# Achado real (2026-10-22): disco da VM encheu durante builds e travou o deploy;
+# o `image prune -f` sozinho só tira imagem órfã, não imagem antiga sem uso nem o
+# cache de build (chegou a 4,67 GB). Nunca `--volumes`/`volume prune`: é onde
+# ficam os bancos. Cache recente (72h) fica, pra não perder o ganho de cache de
+# camadas do próximo build. Falha de limpeza não derruba um deploy que já subiu.
+docker image prune -a -f || echo "aviso: image prune falhou (deploy já aplicado)" >&2
+docker builder prune -f --filter "until=72h" || echo "aviso: builder prune falhou (deploy já aplicado)" >&2
