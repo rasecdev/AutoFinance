@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/tests-vitest-6E9F18?logo=vitest&logoColor=white" alt="Vitest" />
 </p>
 
-Bot financeiro pessoal. Você descreve o que aconteceu em linguagem natural — texto, foto, PDF, e-mail — e a IA interpreta e decide qual ação tomar; todo cálculo financeiro é sempre código determinístico, nunca a IA "achando" um número. O backend é a fonte de verdade: histórico e dado financeiro moram no seu próprio banco, nunca no provedor de IA.
+Bot financeiro pessoal, no Telegram e no WhatsApp. Você descreve o que aconteceu em linguagem natural — texto, voz, foto, PDF, planilha, e-mail — e a IA interpreta e decide qual ação tomar; todo cálculo financeiro é sempre código determinístico, nunca a IA "achando" um número. O backend é a fonte de verdade: histórico e dado financeiro moram no seu próprio banco, nunca no provedor de IA.
 
 <p align="center">
   <img src="docs/assets/demo-hero.svg" alt="Demo: usuário registra um gasto em linguagem natural e o bot responde confirmando conta, cartão e categoria" width="480" />
@@ -49,7 +49,8 @@ Duas camadas independentes, cada uma resolvendo um problema diferente:
 ## Funcionalidades
 
 **Registro do dia a dia**
-- Registrar gasto/receita por texto, foto ou PDF, sem formulário.
+- Registrar gasto/receita por texto, voz, foto ou PDF, sem formulário.
+- Importar extrato em planilha (`.xlsx`), com confirmação antes de gravar.
 - Transferência entre contas, com taxa quando o banco cobrar.
 - Editar ou excluir lançamento errado (exclusão sempre lógica).
 
@@ -58,13 +59,21 @@ Duas camadas independentes, cada uma resolvendo um problema diferente:
 - Simulação e amortização real (cálculo Price/SAC determinístico).
 - Renegociação sem perder o histórico da dívida original.
 
+**Integrações**
+- Leitura de e-mail (fatura de cartão e boleto de parcela) com confirmação antes de gravar, e vencimentos criados no Google Calendar sem duplicar.
+- Agregação bancária via Open Finance (Pluggy): extrato e saldo sincronizados sem lançar em duplicidade o que já foi registrado por conversa.
+
+**Canais e idiomas**
+- Telegram e WhatsApp ativos ao mesmo tempo: mensagens proativas (relatórios, alertas), chat com IA e comandos nos dois canais. Mídia (foto/PDF/áudio/planilha) por enquanto só no Telegram.
+- Português, inglês e espanhol, trocável com `/idioma`.
+
 **Consulta e visão geral**
 - Consulta dinâmica e gráfico pra qualquer pergunta fora das tools fixas.
 - Patrimônio líquido consolidado e projeção de fluxo de caixa.
 - Relatório diário sob demanda + semanal/mensal automático.
 
 **Confiança no uso de IA**
-- Mecanismo de roteamento de modelo por tipo de tarefa, já implementado e testado (ver ressalva em "Status do projeto").
+- Roteamento de modelo por tipo de tarefa, implementado e em uso (ver "Status do projeto").
 - Observabilidade: toda interação de IA fica registrada e rastreável.
 - Relatório de custo de tokens, com comparação contra modelos de referência.
 
@@ -73,7 +82,7 @@ Duas camadas independentes, cada uma resolvendo um problema diferente:
 | Camada | Tecnologia |
 |---|---|
 | Runtime | [Node.js](https://nodejs.org/) 22+ / [TypeScript](https://www.typescriptlang.org/) |
-| Bot | [grammY](https://grammy.dev/) (Telegram) |
+| Bot | [grammY](https://grammy.dev/) (Telegram) e [WAHA](https://waha.devlike.pro/) (WhatsApp, self-hosted) |
 | IA | [OpenRouter](https://openrouter.ai/), roteado por fluxo (SDK [`openai`](https://www.npmjs.com/package/openai)) |
 | Banco | SQLite cifrado ([`better-sqlite3-multiple-ciphers`](https://www.npmjs.com/package/better-sqlite3-multiple-ciphers)), migrações em SQL puro |
 | Validação | [Zod](https://zod.dev/) |
@@ -89,12 +98,18 @@ Duas camadas independentes, cada uma resolvendo um problema diferente:
 | 2 | Estudo de caso público (documentação/divulgação do projeto) | ⏸ Adiada |
 | 3 | Tool calling: registrar/consultar/editar, dívidas, confirmação de alto impacto | ✅ Concluída |
 | 4 | Contexto e memória de conversa | ✅ Concluída |
-| 5 | Roteamento de IA por fluxo + monitoramento de preço | 🚧 Parcial |
-| 6 | Relatórios automáticos, benchmark interno, categorização assistida | 🚧 Em andamento |
-| 7 | Integração com e-mail (fatura/boleto) e Google Calendar | 🚧 Em andamento |
-| 8 | Agregação bancária via Open Finance (Pluggy) | ⬜ Não iniciada |
+| 5 | Roteamento de IA por fluxo + monitoramento de preço | ✅ Concluída |
+| 6 | Relatórios automáticos, benchmark interno, categorização assistida, entrada por voz/foto/planilha | ✅ Concluída |
+| 7 | Integração com e-mail (fatura/boleto) e Google Calendar | ✅ Concluída |
+| 8 | Agregação bancária via Open Finance (Pluggy) | ✅ Concluída |
+| 9 | Multi-canal: WhatsApp (via WAHA) em paralelo ao Telegram — mensagens proativas, chat bidirecional e comandos | ✅ Concluída |
+| 10 | Regionalização (português/inglês/espanhol) | ✅ Concluída |
+| 11 | Pré-produção: publicar o app OAuth do Google (fim da expiração de 7 dias do token) | 📝 Planejada |
+| 12 | Observabilidade de plataforma (Grafana + Loki) | 💡 Ideia futura |
 
-> **Nota sobre a Fase 5:** o mecanismo de roteamento por fluxo (tabela `roteamento_tarefas`) está implementado e testado, mas hoje nenhum fluxo tem modelo diferente configurado — todos caem no mesmo fallback (`openai/gpt-6-luna`). Na prática, um único modelo atende tudo até a tabela ser populada de verdade.
+> **Estado atual:** as Fases 1 a 10 estão concluídas e testadas em **Homologação** (branch `development`). **Nada foi promovido para Produção ainda** — a promoção é sempre decisão explícita, depois de teste manual real.
+
+> **Nota sobre a Fase 5:** o mecanismo de roteamento por fluxo (tabela `roteamento_tarefas`) está implementado e em uso — fluxos mais simples (resumo de contexto, relatório mensal) e de mídia (leitura de comprovante) usam modelos próprios; o resto cai no modelo padrão (`openai/gpt-6-luna`). Mudar o modelo de um fluxo não exige código, só gravar na tabela.
 
 Log completo, com o porquê de cada decisão, em [PROGRESSO.md](PROGRESSO.md).
 
@@ -107,7 +122,7 @@ Log completo, com o porquê de cada decisão, em [PROGRESSO.md](PROGRESSO.md).
   </picture>
 </p>
 
-A VM é a única ponte entre o Telegram e o modelo — Telegram e OpenRouter nunca conversam diretamente entre si, tudo passa pelo bot rodando nela.
+A VM é a única ponte entre os canais de mensagem (Telegram e WhatsApp) e o modelo — nenhum canal conversa diretamente com o OpenRouter, tudo passa pelo bot rodando nela. O diagrama mostra o fluxo pelo Telegram; o WhatsApp entra pelo mesmo bot, via um container WAHA no mesmo `docker-compose.yml`.
 
 Uma única VM roda os dois ambientes lado a lado, cada um como um serviço separado do mesmo `docker-compose.yml`. A branch mapeia o ambiente: `development` sobe o serviço de Homologação, `master` sobe o de Produção — e a promoção de um pro outro nunca é automática, só acontece por decisão explícita depois de teste manual real.
 
@@ -127,7 +142,8 @@ Ambientes são isolados por branch e por serviço do `docker-compose.yml` — `d
 
 ## Segurança e privacidade
 
-- Allowlist de usuário do Telegram — só chat IDs autorizados interagem com o bot.
+- Allowlist de usuários (Telegram e WhatsApp) — só chat IDs e números autorizados interagem com o bot.
+- Webhook do WhatsApp com validação de assinatura (HMAC) e idempotência por evento.
 - Banco cifrado em repouso (SQLCipher via `better-sqlite3-multiple-ciphers`).
 - Segredos nunca commitados — hook de pre-commit com Gitleaks, também rodado no CI.
 - Uso pessoal, single-user por desenho — não há fluxo multiusuário.
