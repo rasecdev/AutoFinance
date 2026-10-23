@@ -57,7 +57,7 @@ Fase 15:  checkpoint 14 + P1 + P2 ──► 171 ──► 172, 173, 174 ──�
 - [x] Tarefa 154: mover avaliação para `ai/avaliacao/`
 
 #### Fase D: Artefatos e documentação
-- [ ] Tarefa 155: gerar o Grafo de dependências em `docs/arquitetura/` com checagem no CI
+- [x] Tarefa 155: gerar o Grafo de dependências em `docs/arquitetura/` com checagem no CI
 - [ ] Tarefa 156: atualizar `CLAUDE.md` (estrutura), PLANO e PROGRESSO; registrar a matriz de Fronteiras das pastas novas
 
 ### Checkpoint: Fase 13 fechada

@@ -1,0 +1,1235 @@
+{
+  "modulos": [
+    {
+      "origem": "crypto",
+      "dependeDe": []
+    },
+    {
+      "origem": "fs",
+      "dependeDe": []
+    },
+    {
+      "origem": "fs/promises",
+      "dependeDe": []
+    },
+    {
+      "origem": "http",
+      "dependeDe": []
+    },
+    {
+      "origem": "node_modules/@types/pdfkit/index.d.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "node_modules/better-sqlite3-multiple-ciphers/lib/index.js",
+      "dependeDe": []
+    },
+    {
+      "origem": "node_modules/canvas/index.js",
+      "dependeDe": []
+    },
+    {
+      "origem": "node_modules/chartjs-node-canvas/dist/index.js",
+      "dependeDe": []
+    },
+    {
+      "origem": "node_modules/googleapis/build/src/index.js",
+      "dependeDe": []
+    },
+    {
+      "origem": "node_modules/grammy/out/mod.js",
+      "dependeDe": []
+    },
+    {
+      "origem": "node_modules/openai/index.js",
+      "dependeDe": []
+    },
+    {
+      "origem": "node_modules/pino/pino.js",
+      "dependeDe": []
+    },
+    {
+      "origem": "node_modules/read-excel-file/node/index.cjs",
+      "dependeDe": []
+    },
+    {
+      "origem": "node_modules/write-excel-file/node/index.cjs",
+      "dependeDe": []
+    },
+    {
+      "origem": "node_modules/zod/index.cjs",
+      "dependeDe": []
+    },
+    {
+      "origem": "path",
+      "dependeDe": []
+    },
+    {
+      "origem": "process",
+      "dependeDe": []
+    },
+    {
+      "origem": "readline/promises",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/ai/agente/executarToolCall.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/ai/agente/gerarResposta.ts",
+      "dependeDe": [
+        "src/ai/agente/executarToolCall.ts",
+        "src/ai/confirmacao/pergunta.ts",
+        "src/ai/openrouter.ts",
+        "src/ai/tools/registry.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/agente/tipos.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/ai/avaliacao/analisarQualidade.ts",
+      "dependeDe": [
+        "src/db/repositories/roteamentoTarefas.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/avaliacao/benchmark.ts",
+      "dependeDe": [
+        "src/ai/agente/executarToolCall.ts",
+        "src/ai/avaliacao/analisarQualidade.ts",
+        "src/ai/extracaoComprovante.ts",
+        "src/ai/interpretacaoPlanilha.ts",
+        "src/ai/relatorioMensal.ts",
+        "src/ai/systemPrompt.ts",
+        "src/ai/tools/registry.ts",
+        "src/ai/transcricao.ts",
+        "src/db/repositories/casosTesteBenchmark.ts",
+        "src/db/repositories/usoTokens.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/avaliacao/tools/benchmark.ts",
+      "dependeDe": [
+        "src/ai/avaliacao/benchmark.ts",
+        "src/db/repositories/benchmarksModelos.ts",
+        "src/db/repositories/casosTesteBenchmark.ts",
+        "src/db/repositories/interacoesIa.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/avaliacao/tools/qualidade.ts",
+      "dependeDe": [
+        "src/ai/avaliacao/analisarQualidade.ts",
+        "src/db/repositories/analisesQualidade.ts",
+        "src/db/repositories/interacoesIa.ts",
+        "src/db/repositories/usoTokens.ts",
+        "src/relatorios/janela.ts",
+        "src/relatorios/qualidade.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/confirmacao/pendencias.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/ai/confirmacao/pergunta.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/ai/contexto.ts",
+      "dependeDe": [
+        "src/db/repositories/interacoesIa.ts",
+        "src/db/repositories/resumosConversa.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/contextoRecente.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/ai/extracaoComprovante.ts",
+      "dependeDe": [
+        "src/db/repositories/roteamentoTarefas.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/interpretacaoPlanilha.ts",
+      "dependeDe": [
+        "src/db/repositories/roteamentoTarefas.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/openrouter.ts",
+      "dependeDe": [
+        "src/ai/systemPrompt.ts",
+        "src/i18n/diretivaIdioma.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/relatorioMensal.ts",
+      "dependeDe": [
+        "src/db/repositories/roteamentoTarefas.ts",
+        "src/i18n/diretivaIdioma.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/resumirContexto.ts",
+      "dependeDe": [
+        "src/db/repositories/interacoesIa.ts",
+        "src/db/repositories/resumosConversa.ts",
+        "src/db/repositories/roteamentoTarefas.ts",
+        "src/db/repositories/usoTokens.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/roteamento/modeloAtivo.ts",
+      "dependeDe": [
+        "src/ai/openrouter.ts",
+        "src/db/repositories/roteamentoTarefas.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/systemPrompt.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/ai/tools/comum/errosExecucao.ts",
+      "dependeDe": [
+        "src/db/repositories/errosExecucao.ts",
+        "src/relatorios/janela.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/tools/comum/mesReferencia.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/ai/tools/comum/normalizarDescricao.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/ai/tools/comum/resolucao.ts",
+      "dependeDe": [
+        "src/ai/tools/comum/similaridade.ts",
+        "src/db/repositories/cartoes.ts",
+        "src/db/repositories/contas.ts",
+        "src/db/repositories/despesasFixas.ts",
+        "src/db/repositories/dividas.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/tools/comum/similaridade.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/ai/tools/consulta/consultaDinamica.ts",
+      "dependeDe": [
+        "src/ai/tools/comum/resolucao.ts",
+        "src/ai/tools/consulta/consultas.ts",
+        "src/relatorios/consultaDinamica.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/tools/consulta/consultaEGraficar.ts",
+      "dependeDe": [
+        "src/ai/tools/consulta/consultaDinamica.ts",
+        "src/relatorios/grafico.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/tools/consulta/consultas.ts",
+      "dependeDe": [
+        "src/ai/tools/comum/resolucao.ts",
+        "src/db/repositories/contas.ts",
+        "src/db/repositories/transacoes.ts",
+        "src/db/repositories/transferencias.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/tools/consulta/grafico.ts",
+      "dependeDe": [
+        "src/relatorios/grafico.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/tools/consulta/projecaoFinanceira.ts",
+      "dependeDe": [
+        "src/ai/tools/comum/resolucao.ts",
+        "src/ai/tools/dividas/dividas.ts",
+        "src/db/repositories/contas.ts",
+        "src/db/repositories/dividas.ts",
+        "src/db/repositories/parcelas.ts",
+        "src/relatorios/fluxoCaixa.ts",
+        "src/relatorios/patrimonio.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/tools/contas/contas.ts",
+      "dependeDe": [
+        "src/ai/tools/comum/resolucao.ts",
+        "src/db/repositories/cartoes.ts",
+        "src/db/repositories/contas.ts",
+        "src/db/repositories/transacoes.ts",
+        "src/db/repositories/transferencias.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/tools/conversaTools.ts",
+      "dependeDe": [
+        "src/ai/avaliacao/tools/benchmark.ts",
+        "src/ai/avaliacao/tools/qualidade.ts",
+        "src/ai/tools/comum/errosExecucao.ts",
+        "src/ai/tools/consulta/consultaDinamica.ts",
+        "src/ai/tools/consulta/consultaEGraficar.ts",
+        "src/ai/tools/consulta/consultas.ts",
+        "src/ai/tools/consulta/grafico.ts",
+        "src/ai/tools/consulta/projecaoFinanceira.ts",
+        "src/ai/tools/contas/contas.ts",
+        "src/ai/tools/dividas/consultasDividas.ts",
+        "src/ai/tools/dividas/dividas.ts",
+        "src/ai/tools/dividas/pagamentos.ts",
+        "src/ai/tools/email/registrarFaturaEmail.ts",
+        "src/ai/tools/email/registrarParcelaEmail.ts",
+        "src/ai/tools/relatorios/relatorios.ts",
+        "src/ai/tools/transacoes/despesasFixas.ts",
+        "src/ai/tools/transacoes/transacoes.ts",
+        "src/ai/tools/transacoes/transacoesEmLote.ts",
+        "src/ai/tools/transacoes/transferencias.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/tools/dividas/consultasDividas.ts",
+      "dependeDe": [
+        "src/ai/tools/comum/mesReferencia.ts",
+        "src/ai/tools/comum/resolucao.ts",
+        "src/db/repositories/contas.ts",
+        "src/db/repositories/dividas.ts",
+        "src/db/repositories/faturas.ts",
+        "src/db/repositories/parcelas.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/tools/dividas/dividas.ts",
+      "dependeDe": [
+        "src/ai/tools/comum/mesReferencia.ts",
+        "src/ai/tools/comum/resolucao.ts",
+        "src/db/repositories/contas.ts",
+        "src/db/repositories/dividas.ts",
+        "src/db/repositories/faturas.ts",
+        "src/db/repositories/parcelas.ts",
+        "src/db/repositories/renegociacoes.ts",
+        "src/finance/amortizacao.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/tools/dividas/pagamentos.ts",
+      "dependeDe": [
+        "src/ai/tools/comum/mesReferencia.ts",
+        "src/ai/tools/comum/resolucao.ts",
+        "src/db/repositories/dividas.ts",
+        "src/db/repositories/faturas.ts",
+        "src/db/repositories/parcelas.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/tools/email/registrarFaturaEmail.ts",
+      "dependeDe": [
+        "src/db/repositories/cartoes.ts",
+        "src/db/repositories/correspondenciaFaturaParcela.ts",
+        "src/db/repositories/faturas.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/tools/email/registrarParcelaEmail.ts",
+      "dependeDe": [
+        "src/db/repositories/correspondenciaFaturaParcela.ts",
+        "src/db/repositories/dividas.ts",
+        "src/db/repositories/parcelas.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/tools/registry.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/ai/tools/relatorios/relatorios.ts",
+      "dependeDe": [
+        "src/db/repositories/errosExecucao.ts",
+        "src/relatorios/financeiro.ts",
+        "src/relatorios/formatar.ts",
+        "src/relatorios/imagemSemanal.ts",
+        "src/relatorios/janela.ts",
+        "src/relatorios/relatorioMensalCompleto.ts",
+        "src/relatorios/usoIa.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/tools/transacoes/despesasFixas.ts",
+      "dependeDe": [
+        "src/ai/tools/comum/resolucao.ts",
+        "src/db/repositories/contas.ts",
+        "src/db/repositories/despesasFixas.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/tools/transacoes/transacoes.ts",
+      "dependeDe": [
+        "src/ai/contextoRecente.ts",
+        "src/ai/tools/comum/normalizarDescricao.ts",
+        "src/ai/tools/comum/resolucao.ts",
+        "src/db/repositories/cacheCategorizacao.ts",
+        "src/db/repositories/cartoes.ts",
+        "src/db/repositories/transacoes.ts",
+        "src/relatorios/limiteCartao.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/tools/transacoes/transacoesEmLote.ts",
+      "dependeDe": [
+        "src/ai/tools/comum/resolucao.ts",
+        "src/db/repositories/transacoes.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/tools/transacoes/transferencias.ts",
+      "dependeDe": [
+        "src/ai/tools/comum/resolucao.ts",
+        "src/db/repositories/transferencias.ts"
+      ]
+    },
+    {
+      "origem": "src/ai/tools/types.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/ai/transcricao.ts",
+      "dependeDe": [
+        "src/db/repositories/roteamentoTarefas.ts"
+      ]
+    },
+    {
+      "origem": "src/bot/bot.ts",
+      "dependeDe": [
+        "src/bot/formatoMensagens.ts",
+        "src/bot/middleware/allowlist.ts",
+        "src/bot/middleware/pausa.ts",
+        "src/bot/router.ts"
+      ]
+    },
+    {
+      "origem": "src/bot/comandos.ts",
+      "dependeDe": [
+        "src/bot/middleware/pausa.ts",
+        "src/i18n/t.ts"
+      ]
+    },
+    {
+      "origem": "src/bot/formatoMensagens.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/bot/googleOAuthPendencia.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/bot/handlers/ajuda.ts",
+      "dependeDe": [
+        "src/bot/comandos.ts",
+        "src/canais/contextoCanal.ts",
+        "src/db/repositories/idiomaBot.ts"
+      ]
+    },
+    {
+      "origem": "src/bot/handlers/callbackConfirmacao.ts",
+      "dependeDe": [
+        "src/ai/agente/executarToolCall.ts",
+        "src/ai/confirmacao/pendencias.ts",
+        "src/bot/tecladoConfirmacao.ts",
+        "src/db/repositories/confirmacoesPendentes.ts",
+        "src/db/repositories/idiomaBot.ts",
+        "src/i18n/t.ts"
+      ]
+    },
+    {
+      "origem": "src/bot/handlers/feedback.ts",
+      "dependeDe": [
+        "src/bot/rastroRespostas.ts",
+        "src/db/repositories/idiomaBot.ts",
+        "src/db/repositories/interacoesIa.ts",
+        "src/i18n/t.ts"
+      ]
+    },
+    {
+      "origem": "src/bot/handlers/idioma.ts",
+      "dependeDe": [
+        "src/bot/comandos.ts",
+        "src/canais/contextoCanal.ts",
+        "src/db/repositories/idiomaBot.ts",
+        "src/i18n/t.ts"
+      ]
+    },
+    {
+      "origem": "src/bot/handlers/midia.ts",
+      "dependeDe": [
+        "src/ai/confirmacao/pendencias.ts",
+        "src/ai/extracaoComprovante.ts",
+        "src/ai/interpretacaoPlanilha.ts",
+        "src/ai/tools/comum/resolucao.ts",
+        "src/ai/tools/conversaTools.ts",
+        "src/ai/tools/transacoes/transacoesEmLote.ts",
+        "src/bot/handlers/texto.ts",
+        "src/bot/rastroRespostas.ts",
+        "src/bot/tecladoConfirmacao.ts",
+        "src/canais/contextoCanal.ts",
+        "src/db/repositories/idiomaBot.ts",
+        "src/db/repositories/interacoesIa.ts",
+        "src/db/repositories/usoTokens.ts",
+        "src/i18n/t.ts"
+      ]
+    },
+    {
+      "origem": "src/bot/handlers/modelo.ts",
+      "dependeDe": [
+        "src/ai/roteamento/modeloAtivo.ts",
+        "src/canais/contextoCanal.ts",
+        "src/db/repositories/idiomaBot.ts",
+        "src/i18n/t.ts"
+      ]
+    },
+    {
+      "origem": "src/bot/handlers/modelos.ts",
+      "dependeDe": [
+        "src/ai/avaliacao/analisarQualidade.ts",
+        "src/ai/extracaoComprovante.ts",
+        "src/ai/interpretacaoPlanilha.ts",
+        "src/ai/openrouter.ts",
+        "src/ai/relatorioMensal.ts",
+        "src/ai/resumirContexto.ts",
+        "src/ai/roteamento/modeloAtivo.ts",
+        "src/ai/transcricao.ts",
+        "src/canais/contextoCanal.ts",
+        "src/db/repositories/idiomaBot.ts",
+        "src/db/repositories/roteamentoTarefas.ts",
+        "src/i18n/t.ts"
+      ]
+    },
+    {
+      "origem": "src/bot/handlers/naoSuportado.ts",
+      "dependeDe": [
+        "src/db/repositories/idiomaBot.ts",
+        "src/i18n/t.ts"
+      ]
+    },
+    {
+      "origem": "src/bot/handlers/pausar.ts",
+      "dependeDe": [
+        "src/canais/contextoCanal.ts",
+        "src/db/repositories/botPausado.ts",
+        "src/db/repositories/idiomaBot.ts",
+        "src/i18n/t.ts"
+      ]
+    },
+    {
+      "origem": "src/bot/handlers/registrarEmail.ts",
+      "dependeDe": [
+        "src/bot/googleOAuthPendencia.ts",
+        "src/canais/contextoCanal.ts",
+        "src/db/repositories/credenciaisGoogle.ts",
+        "src/db/repositories/idiomaBot.ts",
+        "src/i18n/t.ts"
+      ]
+    },
+    {
+      "origem": "src/bot/handlers/registrarOpenFinance.ts",
+      "dependeDe": [
+        "src/ai/tools/comum/resolucao.ts",
+        "src/bot/openFinancePendencia.ts",
+        "src/canais/contextoCanal.ts",
+        "src/db/repositories/contasOpenFinance.ts",
+        "src/db/repositories/idiomaBot.ts",
+        "src/i18n/t.ts",
+        "src/integracoes/pluggy/cliente.ts"
+      ]
+    },
+    {
+      "origem": "src/bot/handlers/retomar.ts",
+      "dependeDe": [
+        "src/canais/contextoCanal.ts",
+        "src/db/repositories/botPausado.ts",
+        "src/db/repositories/idiomaBot.ts",
+        "src/i18n/t.ts"
+      ]
+    },
+    {
+      "origem": "src/bot/handlers/texto.ts",
+      "dependeDe": [
+        "src/ai/agente/executarToolCall.ts",
+        "src/ai/agente/gerarResposta.ts",
+        "src/ai/confirmacao/pendencias.ts",
+        "src/ai/contexto.ts",
+        "src/ai/openrouter.ts",
+        "src/ai/resumirContexto.ts",
+        "src/ai/roteamento/modeloAtivo.ts",
+        "src/ai/tools/conversaTools.ts",
+        "src/bot/rastroRespostas.ts",
+        "src/canais/contextoCanal.ts",
+        "src/db/repositories/confirmacoesPendentes.ts",
+        "src/db/repositories/idiomaBot.ts",
+        "src/db/repositories/interacoesIa.ts",
+        "src/db/repositories/usoTokens.ts",
+        "src/i18n/t.ts"
+      ]
+    },
+    {
+      "origem": "src/bot/handlers/voz.ts",
+      "dependeDe": [
+        "src/ai/tools/conversaTools.ts",
+        "src/ai/transcricao.ts",
+        "src/bot/handlers/texto.ts",
+        "src/canais/contextoCanal.ts",
+        "src/db/repositories/idiomaBot.ts",
+        "src/db/repositories/usoTokens.ts",
+        "src/i18n/t.ts"
+      ]
+    },
+    {
+      "origem": "src/bot/lembreteReautorizacaoGoogle.ts",
+      "dependeDe": [
+        "src/bot/handlers/registrarEmail.ts",
+        "src/db/repositories/idiomaBot.ts",
+        "src/db/repositories/lembreteReautorizacaoGoogle.ts",
+        "src/i18n/t.ts"
+      ]
+    },
+    {
+      "origem": "src/bot/middleware/allowlist.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/bot/middleware/pausa.ts",
+      "dependeDe": [
+        "src/db/repositories/botPausado.ts"
+      ]
+    },
+    {
+      "origem": "src/bot/openFinancePendencia.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/bot/rastroRespostas.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/bot/router.ts",
+      "dependeDe": [
+        "src/bot/comandos.ts",
+        "src/bot/googleOAuthPendencia.ts",
+        "src/bot/openFinancePendencia.ts"
+      ]
+    },
+    {
+      "origem": "src/bot/tecladoConfirmacao.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/canais/contextoCanal.ts",
+      "dependeDe": [
+        "src/bot/tecladoConfirmacao.ts"
+      ]
+    },
+    {
+      "origem": "src/canais/contextoWhatsapp.ts",
+      "dependeDe": [
+        "src/bot/tecladoConfirmacao.ts",
+        "src/canais/whatsapp.ts"
+      ]
+    },
+    {
+      "origem": "src/canais/notificar.ts",
+      "dependeDe": [
+        "src/bot/tecladoConfirmacao.ts",
+        "src/canais/whatsapp.ts",
+        "src/db/repositories/confirmacoesPendentes.ts"
+      ]
+    },
+    {
+      "origem": "src/canais/webhookWhatsapp.ts",
+      "dependeDe": [
+        "src/ai/agente/executarToolCall.ts",
+        "src/ai/confirmacao/pendencias.ts",
+        "src/bot/comandos.ts",
+        "src/bot/googleOAuthPendencia.ts",
+        "src/bot/handlers/ajuda.ts",
+        "src/bot/handlers/idioma.ts",
+        "src/bot/handlers/modelo.ts",
+        "src/bot/handlers/modelos.ts",
+        "src/bot/handlers/pausar.ts",
+        "src/bot/handlers/registrarEmail.ts",
+        "src/bot/handlers/registrarOpenFinance.ts",
+        "src/bot/handlers/retomar.ts",
+        "src/bot/handlers/texto.ts",
+        "src/bot/middleware/pausa.ts",
+        "src/bot/openFinancePendencia.ts",
+        "src/bot/tecladoConfirmacao.ts",
+        "src/canais/contextoWhatsapp.ts",
+        "src/db/repositories/botPausado.ts",
+        "src/db/repositories/confirmacoesPendentes.ts",
+        "src/db/repositories/eventosWhatsappProcessados.ts",
+        "src/db/repositories/idiomaBot.ts",
+        "src/i18n/t.ts"
+      ]
+    },
+    {
+      "origem": "src/canais/whatsapp.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/config/env.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/client.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/migrate.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/alertasPrecoEnviados.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/analisesQualidade.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/benchmarksModelos.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/botPausado.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/cacheCategorizacao.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/cartoes.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/casosTesteBenchmark.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/confirmacoesPendentes.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/contas.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/contasOpenFinance.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/correspondenciaFaturaParcela.ts",
+      "dependeDe": [
+        "src/db/repositories/faturas.ts",
+        "src/db/repositories/parcelas.ts"
+      ]
+    },
+    {
+      "origem": "src/db/repositories/correspondenciaOpenFinance.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/credenciaisGoogle.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/despesasFixas.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/dividas.ts",
+      "dependeDe": [
+        "src/db/repositories/parcelas.ts"
+      ]
+    },
+    {
+      "origem": "src/db/repositories/emailsProcessados.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/errosExecucao.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/eventosWhatsappProcessados.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/faturas.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/idiomaBot.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/interacoesIa.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/lembreteReautorizacaoGoogle.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/modelosOpenrouterHistorico.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/modelosReferenciaComparacao.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/parcelas.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/renegociacoes.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/resumosConversa.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/roteamentoTarefas.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/transacoes.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/transacoesOpenFinanceProcessadas.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/transferencias.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/db/repositories/usoTokens.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/finance/amortizacao.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/i18n/catalogo.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/i18n/diretivaIdioma.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/i18n/t.ts",
+      "dependeDe": [
+        "src/i18n/catalogo.ts"
+      ]
+    },
+    {
+      "origem": "src/index.ts",
+      "dependeDe": [
+        "src/ai/openrouter.ts",
+        "src/ai/tools/conversaTools.ts",
+        "src/bot/bot.ts",
+        "src/bot/comandos.ts",
+        "src/bot/handlers/ajuda.ts",
+        "src/bot/handlers/callbackConfirmacao.ts",
+        "src/bot/handlers/feedback.ts",
+        "src/bot/handlers/idioma.ts",
+        "src/bot/handlers/midia.ts",
+        "src/bot/handlers/modelo.ts",
+        "src/bot/handlers/modelos.ts",
+        "src/bot/handlers/naoSuportado.ts",
+        "src/bot/handlers/pausar.ts",
+        "src/bot/handlers/registrarEmail.ts",
+        "src/bot/handlers/registrarOpenFinance.ts",
+        "src/bot/handlers/retomar.ts",
+        "src/bot/handlers/texto.ts",
+        "src/bot/handlers/voz.ts",
+        "src/bot/lembreteReautorizacaoGoogle.ts",
+        "src/canais/webhookWhatsapp.ts",
+        "src/config/env.ts",
+        "src/db/client.ts",
+        "src/db/migrate.ts",
+        "src/db/repositories/idiomaBot.ts",
+        "src/logging/errorHandler.ts",
+        "src/logging/logger.ts"
+      ]
+    },
+    {
+      "origem": "src/integracoes/google/auth.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/integracoes/pluggy/cliente.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/logging/errorHandler.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/logging/logger.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/relatorios/consultaDinamica.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/relatorios/dadosGrafico.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/relatorios/despesasFixas.ts",
+      "dependeDe": [
+        "src/db/repositories/despesasFixas.ts",
+        "src/db/repositories/transacoes.ts",
+        "src/i18n/t.ts"
+      ]
+    },
+    {
+      "origem": "src/relatorios/financeiro.ts",
+      "dependeDe": [
+        "src/db/repositories/contas.ts",
+        "src/db/repositories/transacoes.ts",
+        "src/db/repositories/transferencias.ts"
+      ]
+    },
+    {
+      "origem": "src/relatorios/fluxoCaixa.ts",
+      "dependeDe": [
+        "src/db/repositories/contas.ts",
+        "src/db/repositories/despesasFixas.ts",
+        "src/db/repositories/dividas.ts",
+        "src/db/repositories/faturas.ts"
+      ]
+    },
+    {
+      "origem": "src/relatorios/formatar.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/relatorios/formatarDelta.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/relatorios/grafico.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/relatorios/imagemSemanal.ts",
+      "dependeDe": [
+        "src/db/repositories/idiomaBot.ts",
+        "src/i18n/t.ts",
+        "src/relatorios/dadosGrafico.ts",
+        "src/relatorios/financeiro.ts",
+        "src/relatorios/formatarDelta.ts",
+        "src/relatorios/grafico.ts",
+        "src/relatorios/janela.ts",
+        "src/relatorios/usoIa.ts"
+      ]
+    },
+    {
+      "origem": "src/relatorios/janela.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/relatorios/limiteCartao.ts",
+      "dependeDe": [
+        "src/db/repositories/transacoes.ts"
+      ]
+    },
+    {
+      "origem": "src/relatorios/patrimonio.ts",
+      "dependeDe": [
+        "src/db/repositories/contas.ts",
+        "src/db/repositories/dividas.ts",
+        "src/db/repositories/faturas.ts"
+      ]
+    },
+    {
+      "origem": "src/relatorios/pdfMensal.ts",
+      "dependeDe": [
+        "src/i18n/t.ts"
+      ]
+    },
+    {
+      "origem": "src/relatorios/qualidade.ts",
+      "dependeDe": [
+        "src/db/repositories/errosExecucao.ts",
+        "src/db/repositories/interacoesIa.ts"
+      ]
+    },
+    {
+      "origem": "src/relatorios/relatorioMensalCompleto.ts",
+      "dependeDe": [
+        "src/ai/relatorioMensal.ts",
+        "src/db/repositories/errosExecucao.ts",
+        "src/db/repositories/idiomaBot.ts",
+        "src/db/repositories/interacoesIa.ts",
+        "src/db/repositories/usoTokens.ts",
+        "src/relatorios/dadosGrafico.ts",
+        "src/relatorios/financeiro.ts",
+        "src/relatorios/grafico.ts",
+        "src/relatorios/janela.ts",
+        "src/relatorios/pdfMensal.ts",
+        "src/relatorios/usoIa.ts"
+      ]
+    },
+    {
+      "origem": "src/relatorios/usoIa.ts",
+      "dependeDe": [
+        "src/db/repositories/benchmarksModelos.ts",
+        "src/db/repositories/interacoesIa.ts",
+        "src/db/repositories/modelosOpenrouterHistorico.ts",
+        "src/db/repositories/modelosReferenciaComparacao.ts",
+        "src/db/repositories/usoTokens.ts"
+      ]
+    },
+    {
+      "origem": "src/scripts/backup.ts",
+      "dependeDe": [
+        "src/config/env.ts",
+        "src/db/client.ts",
+        "src/logging/logger.ts",
+        "src/scripts/tratarErroCriticoJob.ts"
+      ]
+    },
+    {
+      "origem": "src/scripts/configurarGoogleOAuth.ts",
+      "dependeDe": [
+        "src/db/client.ts",
+        "src/db/repositories/credenciaisGoogle.ts"
+      ]
+    },
+    {
+      "origem": "src/scripts/definirRoteamento.ts",
+      "dependeDe": [
+        "src/config/env.ts",
+        "src/db/client.ts",
+        "src/db/repositories/roteamentoTarefas.ts"
+      ]
+    },
+    {
+      "origem": "src/scripts/dormirAte.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/scripts/expurgarDadosAntigos.ts",
+      "dependeDe": [
+        "src/config/env.ts",
+        "src/db/client.ts",
+        "src/logging/logger.ts",
+        "src/scripts/tratarErroCriticoJob.ts"
+      ]
+    },
+    {
+      "origem": "src/scripts/gerarConnectTokenPluggy.ts",
+      "dependeDe": [
+        "src/integracoes/pluggy/cliente.ts"
+      ]
+    },
+    {
+      "origem": "src/scripts/gerarPdfTeste.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/scripts/lerEmailFaturas.ts",
+      "dependeDe": [
+        "src/ai/extracaoComprovante.ts",
+        "src/ai/openrouter.ts",
+        "src/ai/tools/comum/resolucao.ts",
+        "src/ai/tools/email/registrarFaturaEmail.ts",
+        "src/ai/tools/email/registrarParcelaEmail.ts",
+        "src/bot/formatoMensagens.ts",
+        "src/canais/notificar.ts",
+        "src/config/env.ts",
+        "src/db/client.ts",
+        "src/db/repositories/credenciaisGoogle.ts",
+        "src/db/repositories/emailsProcessados.ts",
+        "src/db/repositories/usoTokens.ts",
+        "src/integracoes/google/auth.ts",
+        "src/logging/logger.ts",
+        "src/scripts/dormirAte.ts",
+        "src/scripts/tratarErroCriticoJob.ts"
+      ]
+    },
+    {
+      "origem": "src/scripts/monitorarPrecos.ts",
+      "dependeDe": [
+        "src/bot/formatoMensagens.ts",
+        "src/canais/notificar.ts",
+        "src/config/env.ts",
+        "src/db/client.ts",
+        "src/db/repositories/alertasPrecoEnviados.ts",
+        "src/db/repositories/idiomaBot.ts",
+        "src/db/repositories/modelosOpenrouterHistorico.ts",
+        "src/db/repositories/roteamentoTarefas.ts",
+        "src/i18n/t.ts",
+        "src/logging/logger.ts",
+        "src/scripts/tratarErroCriticoJob.ts"
+      ]
+    },
+    {
+      "origem": "src/scripts/parearWhatsapp.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "src/scripts/relatorioMensal.ts",
+      "dependeDe": [
+        "src/ai/openrouter.ts",
+        "src/bot/formatoMensagens.ts",
+        "src/canais/notificar.ts",
+        "src/config/env.ts",
+        "src/db/client.ts",
+        "src/logging/logger.ts",
+        "src/relatorios/relatorioMensalCompleto.ts",
+        "src/scripts/dormirAte.ts",
+        "src/scripts/tratarErroCriticoJob.ts"
+      ]
+    },
+    {
+      "origem": "src/scripts/relatorioSemanal.ts",
+      "dependeDe": [
+        "src/bot/formatoMensagens.ts",
+        "src/canais/notificar.ts",
+        "src/config/env.ts",
+        "src/db/client.ts",
+        "src/logging/logger.ts",
+        "src/relatorios/imagemSemanal.ts",
+        "src/scripts/dormirAte.ts",
+        "src/scripts/tratarErroCriticoJob.ts"
+      ]
+    },
+    {
+      "origem": "src/scripts/renovarSandboxPluggy.ts",
+      "dependeDe": [
+        "src/config/env.ts",
+        "src/db/client.ts",
+        "src/db/repositories/contasOpenFinance.ts",
+        "src/integracoes/pluggy/cliente.ts",
+        "src/logging/logger.ts",
+        "src/scripts/dormirAte.ts",
+        "src/scripts/tratarErroCriticoJob.ts"
+      ]
+    },
+    {
+      "origem": "src/scripts/seedCasosTesteBenchmarkAnaliseCurados.ts",
+      "dependeDe": [
+        "src/config/env.ts",
+        "src/db/client.ts",
+        "src/db/repositories/casosTesteBenchmark.ts",
+        "src/logging/logger.ts"
+      ]
+    },
+    {
+      "origem": "src/scripts/seedCasosTesteBenchmarkCurados.ts",
+      "dependeDe": [
+        "src/config/env.ts",
+        "src/db/client.ts",
+        "src/db/repositories/casosTesteBenchmark.ts",
+        "src/logging/logger.ts"
+      ]
+    },
+    {
+      "origem": "src/scripts/seedCasosTesteBenchmarkMidiaCurados.ts",
+      "dependeDe": [
+        "src/config/env.ts",
+        "src/db/client.ts",
+        "src/db/repositories/casosTesteBenchmark.ts",
+        "src/logging/logger.ts",
+        "src/scripts/gerarPdfTeste.ts"
+      ]
+    },
+    {
+      "origem": "src/scripts/sincronizarCalendario.ts",
+      "dependeDe": [
+        "src/config/env.ts",
+        "src/db/client.ts",
+        "src/db/repositories/cartoes.ts",
+        "src/db/repositories/credenciaisGoogle.ts",
+        "src/db/repositories/dividas.ts",
+        "src/db/repositories/faturas.ts",
+        "src/db/repositories/parcelas.ts",
+        "src/integracoes/google/auth.ts",
+        "src/logging/logger.ts",
+        "src/relatorios/fluxoCaixa.ts",
+        "src/scripts/dormirAte.ts",
+        "src/scripts/tratarErroCriticoJob.ts"
+      ]
+    },
+    {
+      "origem": "src/scripts/sincronizarOpenFinance.ts",
+      "dependeDe": [
+        "src/bot/formatoMensagens.ts",
+        "src/canais/notificar.ts",
+        "src/config/env.ts",
+        "src/db/client.ts",
+        "src/db/repositories/contasOpenFinance.ts",
+        "src/db/repositories/correspondenciaOpenFinance.ts",
+        "src/db/repositories/transacoes.ts",
+        "src/db/repositories/transacoesOpenFinanceProcessadas.ts",
+        "src/integracoes/pluggy/cliente.ts",
+        "src/logging/logger.ts",
+        "src/scripts/dormirAte.ts",
+        "src/scripts/tratarErroCriticoJob.ts"
+      ]
+    },
+    {
+      "origem": "src/scripts/tratarErroCriticoJob.ts",
+      "dependeDe": [
+        "src/bot/formatoMensagens.ts",
+        "src/canais/notificar.ts",
+        "src/db/repositories/errosExecucao.ts"
+      ]
+    },
+    {
+      "origem": "src/scripts/verificarDespesasFixas.ts",
+      "dependeDe": [
+        "src/bot/formatoMensagens.ts",
+        "src/canais/notificar.ts",
+        "src/config/env.ts",
+        "src/db/client.ts",
+        "src/db/repositories/idiomaBot.ts",
+        "src/logging/logger.ts",
+        "src/relatorios/despesasFixas.ts",
+        "src/relatorios/janela.ts",
+        "src/scripts/dormirAte.ts",
+        "src/scripts/tratarErroCriticoJob.ts"
+      ]
+    },
+    {
+      "origem": "src/types/better-sqlite3-multiple-ciphers.d.ts",
+      "dependeDe": []
+    },
+    {
+      "origem": "url",
+      "dependeDe": []
+    }
+  ]
+}

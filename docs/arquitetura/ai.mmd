@@ -1,0 +1,451 @@
+flowchart LR
+
+subgraph 0["src"]
+subgraph 1["ai"]
+subgraph 2["agente"]
+3["executarToolCall.ts"]
+4["gerarResposta.ts"]
+I["tipos.ts"]
+end
+subgraph 5["confirmacao"]
+6["pergunta.ts"]
+19["pendencias.ts"]
+end
+7["openrouter.ts"]
+D["systemPrompt.ts"]
+subgraph E["tools"]
+F["registry.ts"]
+subgraph 1G["comum"]
+1H["errosExecucao.ts"]
+1I["mesReferencia.ts"]
+1J["normalizarDescricao.ts"]
+1K["resolucao.ts"]
+1Q["similaridade.ts"]
+end
+subgraph 1R["consulta"]
+1S["consultaDinamica.ts"]
+1U["consultas.ts"]
+1X["consultaEGraficar.ts"]
+1Z["grafico.ts"]
+20["projecaoFinanceira.ts"]
+end
+subgraph 24["dividas"]
+25["dividas.ts"]
+2C["consultasDividas.ts"]
+2D["pagamentos.ts"]
+end
+subgraph 29["contas"]
+2A["contas.ts"]
+end
+2B["conversaTools.ts"]
+subgraph 2E["email"]
+2F["registrarFaturaEmail.ts"]
+2H["registrarParcelaEmail.ts"]
+end
+subgraph 2I["relatorios"]
+2J["relatorios.ts"]
+end
+subgraph 2P["transacoes"]
+2Q["despesasFixas.ts"]
+2R["transacoes.ts"]
+2U["transacoesEmLote.ts"]
+2V["transferencias.ts"]
+end
+2W["types.ts"]
+end
+subgraph J["avaliacao"]
+K["analisarQualidade.ts"]
+O["benchmark.ts"]
+subgraph Y["tools"]
+Z["benchmark.ts"]
+12["qualidade.ts"]
+end
+end
+R["extracaoComprovante.ts"]
+S["interpretacaoPlanilha.ts"]
+W["relatorioMensal.ts"]
+X["transcricao.ts"]
+1A["contexto.ts"]
+1C["contextoRecente.ts"]
+1D["resumirContexto.ts"]
+subgraph 1E["roteamento"]
+1F["modeloAtivo.ts"]
+end
+end
+subgraph B["i18n"]
+C["diretivaIdioma.ts"]
+end
+subgraph L["db"]
+subgraph M["repositories"]
+N["roteamentoTarefas.ts"]
+P["casosTesteBenchmark.ts"]
+Q["usoTokens.ts"]
+10["benchmarksModelos.ts"]
+11["interacoesIa.ts"]
+14["analisesQualidade.ts"]
+18["errosExecucao.ts"]
+1B["resumosConversa.ts"]
+1L["cartoes.ts"]
+1M["contas.ts"]
+1N["despesasFixas.ts"]
+1O["dividas.ts"]
+1P["parcelas.ts"]
+1V["transacoes.ts"]
+1W["transferencias.ts"]
+22["faturas.ts"]
+26["renegociacoes.ts"]
+2G["correspondenciaFaturaParcela.ts"]
+2S["cacheCategorizacao.ts"]
+end
+end
+subgraph 15["relatorios"]
+16["janela.ts"]
+17["qualidade.ts"]
+1T["consultaDinamica.ts"]
+1Y["grafico.ts"]
+21["fluxoCaixa.ts"]
+23["patrimonio.ts"]
+2K["financeiro.ts"]
+2L["formatar.ts"]
+2M["imagemSemanal.ts"]
+2N["usoIa.ts"]
+2O["relatorioMensalCompleto.ts"]
+2T["limiteCartao.ts"]
+end
+subgraph 27["finance"]
+28["amortizacao.ts"]
+end
+subgraph 2X["bot"]
+subgraph 2Y["handlers"]
+2Z["callbackConfirmacao.ts"]
+30["midia.ts"]
+31["texto.ts"]
+32["modelo.ts"]
+33["modelos.ts"]
+34["registrarOpenFinance.ts"]
+35["voz.ts"]
+end
+end
+subgraph 36["canais"]
+37["webhookWhatsapp.ts"]
+end
+38["index.ts"]
+subgraph 39["scripts"]
+3A["lerEmailFaturas.ts"]
+3B["relatorioMensal.ts"]
+end
+end
+subgraph 8["node_modules"]
+subgraph 9["openai"]
+A["index.js"]
+end
+subgraph G["zod"]
+H["index.cjs"]
+end
+subgraph T["read-excel-file"]
+subgraph U["node"]
+V["index.cjs"]
+end
+end
+end
+13["crypto"]
+4-->6
+4-->7
+4-->F
+4-->3
+7-->C
+7-->D
+7-->A
+F-->H
+K-->N
+O-->P
+O-->Q
+O-->3
+O-->R
+O-->S
+O-->W
+O-->D
+O-->F
+O-->X
+O-->K
+R-->N
+R-->H
+S-->N
+S-->V
+S-->H
+W-->N
+W-->C
+X-->N
+X-->A
+Z-->10
+Z-->P
+Z-->11
+Z-->O
+Z-->H
+12-->14
+12-->11
+12-->Q
+12-->16
+12-->17
+12-->K
+12-->13
+12-->H
+17-->18
+17-->11
+1A-->11
+1A-->1B
+1D-->11
+1D-->1B
+1D-->N
+1D-->Q
+1D-->13
+1F-->N
+1F-->7
+1H-->18
+1H-->16
+1H-->H
+1K-->1L
+1K-->1M
+1K-->1N
+1K-->1O
+1K-->1Q
+1O-->1P
+1S-->1T
+1S-->1K
+1S-->1U
+1S-->H
+1U-->1M
+1U-->1V
+1U-->1W
+1U-->1K
+1U-->H
+1X-->1Y
+1X-->1S
+1X-->H
+1Z-->1Y
+1Z-->H
+20-->1M
+20-->1O
+20-->1P
+20-->21
+20-->23
+20-->1K
+20-->25
+20-->H
+21-->1M
+21-->1N
+21-->1O
+21-->22
+23-->1M
+23-->1O
+23-->22
+25-->1M
+25-->1O
+25-->22
+25-->1P
+25-->26
+25-->28
+25-->1I
+25-->1K
+25-->H
+2A-->1L
+2A-->1M
+2A-->1V
+2A-->1W
+2A-->1K
+2A-->H
+2B-->Z
+2B-->12
+2B-->1H
+2B-->1S
+2B-->1X
+2B-->1U
+2B-->1Z
+2B-->20
+2B-->2A
+2B-->2C
+2B-->25
+2B-->2D
+2B-->2F
+2B-->2H
+2B-->2J
+2B-->2Q
+2B-->2R
+2B-->2U
+2B-->2V
+2C-->1M
+2C-->1O
+2C-->22
+2C-->1P
+2C-->1I
+2C-->1K
+2C-->H
+2D-->1O
+2D-->22
+2D-->1P
+2D-->1I
+2D-->1K
+2D-->H
+2F-->1L
+2F-->2G
+2F-->22
+2F-->H
+2G-->22
+2G-->1P
+2H-->2G
+2H-->1O
+2H-->1P
+2H-->H
+2J-->18
+2J-->2K
+2J-->2L
+2J-->2M
+2J-->16
+2J-->2O
+2J-->2N
+2J-->H
+2K-->1M
+2K-->1V
+2K-->1W
+2M-->2K
+2M-->1Y
+2M-->16
+2M-->2N
+2N-->10
+2N-->11
+2N-->Q
+2O-->W
+2O-->18
+2O-->11
+2O-->Q
+2O-->2K
+2O-->1Y
+2O-->16
+2O-->2N
+2O-->13
+2Q-->1M
+2Q-->1N
+2Q-->1K
+2Q-->H
+2R-->2S
+2R-->1L
+2R-->1V
+2R-->2T
+2R-->1C
+2R-->1J
+2R-->1K
+2R-->H
+2T-->1V
+2U-->1V
+2U-->1K
+2U-->H
+2V-->1W
+2V-->1K
+2V-->H
+2Z-->3
+2Z-->19
+30-->19
+30-->R
+30-->S
+30-->1K
+30-->2B
+30-->2U
+30-->11
+30-->Q
+30-->31
+30-->13
+31-->3
+31-->4
+31-->19
+31-->1A
+31-->7
+31-->1D
+31-->1F
+31-->2B
+31-->11
+31-->Q
+31-->13
+32-->1F
+33-->K
+33-->R
+33-->S
+33-->7
+33-->W
+33-->1D
+33-->1F
+33-->X
+33-->N
+34-->1K
+35-->2B
+35-->X
+35-->Q
+35-->31
+37-->3
+37-->19
+37-->32
+37-->33
+37-->34
+37-->31
+37-->13
+38-->7
+38-->2B
+38-->2Z
+38-->30
+38-->32
+38-->33
+38-->34
+38-->31
+38-->35
+38-->37
+3A-->R
+3A-->7
+3A-->1K
+3A-->2F
+3A-->2H
+3A-->Q
+3B-->7
+3B-->2O
+
+style 3 fill:lime,color:black
+style 4 fill:lime,color:black
+style 6 fill:lime,color:black
+style 7 fill:lime,color:black
+style D fill:lime,color:black
+style F fill:lime,color:black
+style I fill:lime,color:black
+style K fill:lime,color:black
+style O fill:lime,color:black
+style R fill:lime,color:black
+style S fill:lime,color:black
+style W fill:lime,color:black
+style X fill:lime,color:black
+style Z fill:lime,color:black
+style 12 fill:lime,color:black
+style 19 fill:lime,color:black
+style 1A fill:lime,color:black
+style 1C fill:lime,color:black
+style 1D fill:lime,color:black
+style 1F fill:lime,color:black
+style 1H fill:lime,color:black
+style 1I fill:lime,color:black
+style 1J fill:lime,color:black
+style 1K fill:lime,color:black
+style 1Q fill:lime,color:black
+style 1S fill:lime,color:black
+style 1U fill:lime,color:black
+style 1X fill:lime,color:black
+style 1Z fill:lime,color:black
+style 20 fill:lime,color:black
+style 25 fill:lime,color:black
+style 2A fill:lime,color:black
+style 2B fill:lime,color:black
+style 2C fill:lime,color:black
+style 2D fill:lime,color:black
+style 2F fill:lime,color:black
+style 2H fill:lime,color:black
+style 2J fill:lime,color:black
+style 2Q fill:lime,color:black
+style 2R fill:lime,color:black
+style 2U fill:lime,color:black
+style 2V fill:lime,color:black
+style 2W fill:lime,color:black

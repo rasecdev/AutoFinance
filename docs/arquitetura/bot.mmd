@@ -1,0 +1,360 @@
+flowchart LR
+
+subgraph 0["src"]
+subgraph 1["ai"]
+subgraph 2["agente"]
+3["executarToolCall.ts"]
+4["gerarResposta.ts"]
+end
+5["openrouter.ts"]
+subgraph 6["avaliacao"]
+7["analisarQualidade.ts"]
+end
+C["extracaoComprovante.ts"]
+D["interpretacaoPlanilha.ts"]
+E["relatorioMensal.ts"]
+F["transcricao.ts"]
+subgraph I["confirmacao"]
+J["pendencias.ts"]
+end
+K["contexto.ts"]
+L["resumirContexto.ts"]
+subgraph M["roteamento"]
+N["modeloAtivo.ts"]
+end
+subgraph O["tools"]
+subgraph P["comum"]
+Q["resolucao.ts"]
+end
+R["conversaTools.ts"]
+subgraph V["transacoes"]
+W["transacoesEmLote.ts"]
+end
+end
+end
+subgraph 8["db"]
+subgraph 9["repositories"]
+A["roteamentoTarefas.ts"]
+B["usoTokens.ts"]
+G["interacoesIa.ts"]
+S["idiomaBot.ts"]
+17["botPausado.ts"]
+1I["confirmacoesPendentes.ts"]
+1X["credenciaisGoogle.ts"]
+1Z["contasOpenFinance.ts"]
+26["lembreteReautorizacaoGoogle.ts"]
+end
+end
+subgraph T["i18n"]
+U["t.ts"]
+end
+subgraph X["bot"]
+Y["bot.ts"]
+13["formatoMensagens.ts"]
+subgraph 14["middleware"]
+15["allowlist.ts"]
+16["pausa.ts"]
+end
+18["router.ts"]
+19["comandos.ts"]
+1A["googleOAuthPendencia.ts"]
+1B["openFinancePendencia.ts"]
+subgraph 1C["handlers"]
+1D["ajuda.ts"]
+1H["callbackConfirmacao.ts"]
+1J["feedback.ts"]
+1L["idioma.ts"]
+1M["midia.ts"]
+1N["texto.ts"]
+1O["modelo.ts"]
+1P["modelos.ts"]
+1Q["naoSuportado.ts"]
+1R["pausar.ts"]
+1S["registrarEmail.ts"]
+1Y["registrarOpenFinance.ts"]
+23["retomar.ts"]
+24["voz.ts"]
+end
+1G["tecladoConfirmacao.ts"]
+1K["rastroRespostas.ts"]
+25["lembreteReautorizacaoGoogle.ts"]
+end
+subgraph 1E["canais"]
+1F["contextoCanal.ts"]
+27["contextoWhatsapp.ts"]
+28["notificar.ts"]
+29["webhookWhatsapp.ts"]
+end
+subgraph 20["integracoes"]
+subgraph 21["pluggy"]
+22["cliente.ts"]
+end
+end
+2A["index.ts"]
+subgraph 2B["scripts"]
+2C["tratarErroCriticoJob.ts"]
+2D["lerEmailFaturas.ts"]
+2E["monitorarPrecos.ts"]
+2F["relatorioMensal.ts"]
+2G["relatorioSemanal.ts"]
+2H["sincronizarOpenFinance.ts"]
+2I["verificarDespesasFixas.ts"]
+end
+end
+H["crypto"]
+subgraph Z["node_modules"]
+subgraph 10["grammy"]
+subgraph 11["out"]
+12["mod.js"]
+end
+end
+subgraph 1T["googleapis"]
+subgraph 1U["build"]
+subgraph 1V["src"]
+1W["index.js"]
+end
+end
+end
+end
+4-->5
+4-->3
+7-->A
+C-->A
+D-->A
+E-->A
+F-->A
+K-->G
+L-->G
+L-->A
+L-->B
+L-->H
+N-->A
+N-->5
+R-->W
+W-->Q
+Y-->13
+Y-->15
+Y-->16
+Y-->18
+Y-->12
+16-->17
+18-->19
+18-->1A
+18-->1B
+19-->U
+19-->16
+1D-->1F
+1D-->S
+1D-->19
+1F-->1G
+1F-->12
+1G-->12
+1H-->3
+1H-->J
+1H-->1I
+1H-->S
+1H-->U
+1H-->1G
+1H-->12
+1J-->S
+1J-->G
+1J-->U
+1J-->1K
+1L-->1F
+1L-->S
+1L-->U
+1L-->19
+1M-->J
+1M-->C
+1M-->D
+1M-->Q
+1M-->R
+1M-->W
+1M-->1F
+1M-->S
+1M-->G
+1M-->B
+1M-->U
+1M-->1K
+1M-->1G
+1M-->1N
+1M-->H
+1N-->3
+1N-->4
+1N-->J
+1N-->K
+1N-->5
+1N-->L
+1N-->N
+1N-->R
+1N-->1F
+1N-->1I
+1N-->S
+1N-->G
+1N-->B
+1N-->U
+1N-->1K
+1N-->H
+1O-->N
+1O-->1F
+1O-->S
+1O-->U
+1P-->7
+1P-->C
+1P-->D
+1P-->5
+1P-->E
+1P-->L
+1P-->N
+1P-->F
+1P-->1F
+1P-->S
+1P-->A
+1P-->U
+1Q-->S
+1Q-->U
+1Q-->H
+1R-->1F
+1R-->17
+1R-->S
+1R-->U
+1S-->1F
+1S-->1X
+1S-->S
+1S-->U
+1S-->1A
+1S-->1W
+1Y-->Q
+1Y-->1F
+1Y-->1Z
+1Y-->S
+1Y-->U
+1Y-->22
+1Y-->1B
+23-->1F
+23-->17
+23-->S
+23-->U
+24-->R
+24-->F
+24-->1F
+24-->S
+24-->B
+24-->U
+24-->1N
+25-->S
+25-->26
+25-->U
+25-->1S
+27-->1G
+28-->1G
+28-->1I
+28-->12
+29-->3
+29-->J
+29-->19
+29-->1A
+29-->1D
+29-->1L
+29-->1O
+29-->1P
+29-->1R
+29-->1S
+29-->1Y
+29-->23
+29-->1N
+29-->16
+29-->1B
+29-->1G
+29-->17
+29-->1I
+29-->S
+29-->U
+29-->27
+29-->H
+2A-->5
+2A-->R
+2A-->Y
+2A-->19
+2A-->1D
+2A-->1H
+2A-->1J
+2A-->1L
+2A-->1M
+2A-->1O
+2A-->1P
+2A-->1Q
+2A-->1R
+2A-->1S
+2A-->1Y
+2A-->23
+2A-->1N
+2A-->24
+2A-->25
+2A-->29
+2A-->S
+2C-->13
+2C-->28
+2C-->12
+2D-->C
+2D-->5
+2D-->Q
+2D-->13
+2D-->28
+2D-->1X
+2D-->B
+2D-->2C
+2D-->12
+2E-->13
+2E-->28
+2E-->S
+2E-->A
+2E-->U
+2E-->2C
+2E-->12
+2F-->5
+2F-->13
+2F-->28
+2F-->2C
+2F-->12
+2G-->13
+2G-->28
+2G-->2C
+2G-->12
+2H-->13
+2H-->28
+2H-->1Z
+2H-->22
+2H-->2C
+2H-->12
+2I-->13
+2I-->28
+2I-->S
+2I-->2C
+2I-->12
+
+style Y fill:lime,color:black
+style 13 fill:lime,color:black
+style 15 fill:lime,color:black
+style 16 fill:lime,color:black
+style 18 fill:lime,color:black
+style 19 fill:lime,color:black
+style 1A fill:lime,color:black
+style 1B fill:lime,color:black
+style 1D fill:lime,color:black
+style 1G fill:lime,color:black
+style 1H fill:lime,color:black
+style 1J fill:lime,color:black
+style 1K fill:lime,color:black
+style 1L fill:lime,color:black
+style 1M fill:lime,color:black
+style 1N fill:lime,color:black
+style 1O fill:lime,color:black
+style 1P fill:lime,color:black
+style 1Q fill:lime,color:black
+style 1R fill:lime,color:black
+style 1S fill:lime,color:black
+style 1Y fill:lime,color:black
+style 23 fill:lime,color:black
+style 24 fill:lime,color:black
+style 25 fill:lime,color:black

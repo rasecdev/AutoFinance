@@ -1,0 +1,43 @@
+flowchart LR
+
+subgraph 0["node_modules"]
+subgraph 1["googleapis"]
+subgraph 2["build"]
+subgraph 3["src"]
+4["index.js"]
+end
+end
+end
+end
+subgraph 5["src"]
+subgraph 6["bot"]
+subgraph 7["handlers"]
+8["registrarOpenFinance.ts"]
+end
+end
+subgraph 9["integracoes"]
+subgraph A["pluggy"]
+B["cliente.ts"]
+end
+subgraph C["google"]
+D["auth.ts"]
+end
+end
+subgraph E["scripts"]
+F["gerarConnectTokenPluggy.ts"]
+G["lerEmailFaturas.ts"]
+H["renovarSandboxPluggy.ts"]
+I["sincronizarCalendario.ts"]
+J["sincronizarOpenFinance.ts"]
+end
+end
+8-->B
+D-->4
+F-->B
+G-->D
+H-->B
+I-->D
+J-->B
+
+style B fill:lime,color:black
+style D fill:lime,color:black
