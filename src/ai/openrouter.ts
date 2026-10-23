@@ -1,6 +1,8 @@
 import OpenAI from 'openai';
 import type { Idioma } from '../db/repositories/idiomaBot.js';
 import { montarDiretivaIdioma } from '../i18n/diretivaIdioma.js';
+import type { PendenciaConfirmacao } from './confirmacao/pendencias.js';
+import { gerarPerguntaConfirmacao } from './confirmacao/pergunta.js';
 import { SYSTEM_PROMPT } from './systemPrompt.js';
 import { paraDefinicaoOpenAI } from './tools/registry.js';
 import type { ResultadoTool, ToolContext, ToolDefinition } from './tools/types.js';
@@ -19,11 +21,6 @@ export function createOpenRouterClient(apiKey: string): OpenAI {
 
 export type ToolCallRegistrada = {
   nome: string;
-  argumentos: unknown;
-};
-
-export type PendenciaConfirmacao = {
-  tool: ToolDefinition;
   argumentos: unknown;
 };
 
@@ -53,15 +50,6 @@ type ResultadoToolCall =
 // um retorno de tool.
 export function extrairResultadoTool(resultado: ResultadoTool): { texto: string; imagem?: Buffer; documento?: DocumentoTool } {
   return typeof resultado === 'string' ? { texto: resultado } : resultado;
-}
-
-function gerarPerguntaConfirmacao(tool: ToolDefinition, argumentos: unknown): string {
-  const resumo = tool.resumoConfirmacao?.(argumentos);
-  const base = resumo
-    ? `Confirma ${resumo}? Toque em um botão abaixo, ou responda "sim" para confirmar (qualquer outra coisa cancela).`
-    : `Confirma a ação "${tool.name}" com os parâmetros ${JSON.stringify(argumentos)}? Toque em um botão abaixo, ou responda "sim" para confirmar (qualquer outra coisa cancela).`;
-  const aviso = tool.avisoConfirmacao?.(argumentos);
-  return aviso ? `${aviso}\n\n${base}` : base;
 }
 
 // Prompt caching nativo (Fase 5, Tarefa 25): Anthropic, via OpenRouter, só

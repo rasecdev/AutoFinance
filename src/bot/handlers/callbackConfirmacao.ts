@@ -6,7 +6,8 @@ import { obterPendenciaPersistida, removerPendenciaPersistida } from '../../db/r
 import { obterIdioma } from '../../db/repositories/idiomaBot.js';
 import { t } from '../../i18n/t.js';
 import type { Logger } from '../../logging/logger.js';
-import { CALLBACK_DATA_CONFIRMAR, obterPendencia, removerPendencia } from '../confirmacao.js';
+import { obterPendencia, removerPendencia } from '../../ai/confirmacao/pendencias.js';
+import { CALLBACK_DATA_CONFIRMAR } from '../tecladoConfirmacao.js';
 
 // Segunda forma de responder à pergunta de confirmação, além de digitar
 // "sim"/qualquer coisa em texto.ts — mesmas duas fontes de pendência (Map em

@@ -77,7 +77,7 @@ Convenção de verificação comum a toda tarefa de código: `npm run build`, `n
 ---
 
 ## Checkpoint: Gate ligado (depois das Tarefas 147-149)
-- [ ] `npm run build`/`lint`/`test` sem erro; `npm run arquitetura` sem violação; CI verde com o passo novo
+- [x] `npm run build`/`lint`/`test` sem erro; `npm run arquitetura` sem violação; CI verde com o passo novo
 
 ---
 
@@ -86,12 +86,12 @@ Convenção de verificação comum a toda tarefa de código: `npm run build`, `n
 **Description:** reunir a política de confirmação: `src/bot/confirmacao.ts` (pendências em memória, resposta afirmativa, `callback_data`), `gerarPerguntaConfirmacao` e o tipo `PendenciaConfirmacao` (hoje em `src/ai/openrouter.ts`), e o repositório de pendências persistidas continua em `db/repositories`. Movimentação pura.
 
 **Acceptance criteria:**
-- [ ] `src/ai/confirmacao/` contém o que for lógica de confirmação; `openrouter.ts` e os handlers importam de lá
-- [ ] Comportamento idêntico (Telegram e WhatsApp, botões e enquete)
+- [x] `src/ai/confirmacao/` contém o que for lógica de confirmação; `openrouter.ts` e os handlers importam de lá
+- [x] Comportamento idêntico (Telegram e WhatsApp, botões e enquete)
 
 **Verification:**
-- [ ] `npm test` (testes de `confirmacao`, `callbackConfirmacao`, `texto` e `openrouter` passam sem mudar asserção), `npm run arquitetura`
-- [ ] Teste manual em Homologação: ação de alto impacto pede confirmação e executa com "sim"
+- [x] `npm test` (testes de `confirmacao`, `callbackConfirmacao`, `texto` e `openrouter` passam sem mudar asserção), `npm run arquitetura`
+- [x] Teste manual em Homologação: ação de alto impacto pede confirmação e executa com "sim"
 
 **Dependencies:** Tarefa 149
 

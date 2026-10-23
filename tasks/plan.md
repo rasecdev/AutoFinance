@@ -47,10 +47,10 @@ Fase 15:  checkpoint 14 + P1 + P2 ──► 171 ──► 172, 173, 174 ──�
 - [x] Tarefa 149: gate `dependency-cruiser` no CI (`npm run arquitetura`), baseline zero
 
 ### Checkpoint: Gate ligado
-- [ ] `npm run build`/`lint`/`test` sem erro; `npm run arquitetura` sem violação; CI verde com o novo job
+- [x] `npm run build`/`lint`/`test` sem erro; `npm run arquitetura` sem violação; CI verde com o novo job
 
 #### Fase C: Movimentação por conceito (um PR de movimentação pura por tarefa)
-- [ ] Tarefa 150: extrair `ai/confirmacao/`
+- [x] Tarefa 150: extrair `ai/confirmacao/`
 - [ ] Tarefa 151: extrair `ai/roteamento/`
 - [ ] Tarefa 152: extrair `ai/agente/` (laço de tool calling fora de `openrouter.ts`)
 - [ ] Tarefa 153: agrupar `ai/tools/` por domínio
