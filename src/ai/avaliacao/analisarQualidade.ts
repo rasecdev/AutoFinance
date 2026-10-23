@@ -1,8 +1,8 @@
 import type OpenAI from 'openai';
-import type { DbClient } from '../db/client.js';
-import { obterModeloRoteamento } from '../db/repositories/roteamentoTarefas.js';
-import type { AgregacaoQualidade } from '../relatorios/qualidade.js';
-import type { UsageComCusto } from './openrouter.js';
+import type { DbClient } from '../../db/client.js';
+import { obterModeloRoteamento } from '../../db/repositories/roteamentoTarefas.js';
+import type { AgregacaoQualidade } from '../../relatorios/qualidade.js';
+import type { UsageComCusto } from '../openrouter.js';
 
 // Modelo próprio pro fluxo de análise de qualidade, isolado de MODELO_PADRAO
 // — usado como fallback quando roteamento_tarefas não tem linha pro fluxo

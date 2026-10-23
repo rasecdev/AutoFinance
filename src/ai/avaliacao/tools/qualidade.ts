@@ -1,14 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type OpenAI from 'openai';
-import { FLUXO_ANALISAR_QUALIDADE, gerarAnaliseQualidade, resolverModeloAnalisarQualidade } from '../../analisarQualidade.js';
+import { FLUXO_ANALISAR_QUALIDADE, gerarAnaliseQualidade, resolverModeloAnalisarQualidade } from '../analisarQualidade.js';
 import type { DbClient } from '../../../db/client.js';
 import { registrarAnaliseQualidade } from '../../../db/repositories/analisesQualidade.js';
 import { registrarInteracaoIa } from '../../../db/repositories/interacoesIa.js';
 import { registrarUsoTokens } from '../../../db/repositories/usoTokens.js';
 import { calcularJanelaAnterior, calcularJanelaPeriodo } from '../../../relatorios/janela.js';
 import { agregarQualidadePeriodo } from '../../../relatorios/qualidade.js';
-import type { ToolDefinition } from '../types.js';
+import type { ToolDefinition } from '../../tools/types.js';
 
 const schemaAnalisarQualidade = z.object({
   periodo: z.enum(['dia', 'semana', 'mes']),

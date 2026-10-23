@@ -1,11 +1,11 @@
 import { z } from 'zod';
 import type OpenAI from 'openai';
-import { METRICA_ACURACIA_TOOL_CALLING, executarBenchmarkFluxo } from '../../benchmark.js';
+import { METRICA_ACURACIA_TOOL_CALLING, executarBenchmarkFluxo } from '../benchmark.js';
 import { criarCasoTeste, listarCasosTeste } from '../../../db/repositories/casosTesteBenchmark.js';
 import { registrarBenchmark } from '../../../db/repositories/benchmarksModelos.js';
 import type { DbClient } from '../../../db/client.js';
 import { buscarUltimaInteracaoCorreta } from '../../../db/repositories/interacoesIa.js';
-import type { ToolDefinition } from '../types.js';
+import type { ToolDefinition } from '../../tools/types.js';
 
 const FLUXO_CONVERSA_TEXTO = 'conversa_texto';
 

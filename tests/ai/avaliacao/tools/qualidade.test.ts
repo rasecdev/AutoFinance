@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import Database from 'better-sqlite3-multiple-ciphers';
 import type OpenAI from 'openai';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { criarToolAnalisarQualidade } from '../../../../src/ai/tools/avaliacao/qualidade.js';
+import { criarToolAnalisarQualidade } from '../../../../src/ai/avaliacao/tools/qualidade.js';
 import type { DbClient } from '../../../../src/db/client.js';
 import { migrate } from '../../../../src/db/migrate.js';
 import { atualizarAvaliacaoInteracao, registrarInteracaoIa } from '../../../../src/db/repositories/interacoesIa.js';
