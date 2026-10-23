@@ -41,7 +41,7 @@ import type { ToolDefinition } from './types.js';
 // de ferramentas que a produção usa de verdade, nunca uma cópia que pode
 // divergir com o tempo.
 export function montarToolsConversa(db: DbClient, client: OpenAI): ToolDefinition[] {
-  return [
+  const ferramentas: ToolDefinition[] = [
     criarToolCriarConta(db),
     criarToolEditarConta(db),
     criarToolListarContas(db),
@@ -72,7 +72,7 @@ export function montarToolsConversa(db: DbClient, client: OpenAI): ToolDefinitio
     criarToolAnalisarQualidade(client, db),
     criarToolListarErros(db),
     criarToolCriarCasoTesteBenchmark(db),
-    criarToolRodarBenchmarkInterno(client, db),
+    criarToolRodarBenchmarkInterno(client, db, () => ferramentas),
     criarToolConsultarDadosDinamico(db),
     criarToolGerarGrafico(),
     criarToolConsultarEGraficar(db),
@@ -80,6 +80,8 @@ export function montarToolsConversa(db: DbClient, client: OpenAI): ToolDefinitio
     criarToolRegistrarFaturaEmail(db),
     criarToolRegistrarParcelaEmail(db),
   ];
+
+  return ferramentas;
 }
 
 // Leitura de comprovante (Fase 6, parte 12): a mensagem sintética montada a
