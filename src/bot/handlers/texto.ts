@@ -23,7 +23,7 @@ import {
   obterPendencia,
   removerPendencia,
 } from '../../ai/confirmacao/pendencias.js';
-import { resolverModeloConversa } from '../modeloAtivo.js';
+import { resolverModeloConversa } from '../../ai/roteamento/modeloAtivo.js';
 import { definirRastroResposta } from '../rastroRespostas.js';
 
 const FLUXO = 'conversa_texto';

@@ -3,7 +3,7 @@ import { criarContextoTelegram, type CanalContext } from '../../canais/contextoC
 import type { DbClient } from '../../db/client.js';
 import { obterIdioma } from '../../db/repositories/idiomaBot.js';
 import { t } from '../../i18n/t.js';
-import { definirModeloAtivo, resolverModeloConversa } from '../modeloAtivo.js';
+import { definirModeloAtivo, resolverModeloConversa } from '../../ai/roteamento/modeloAtivo.js';
 
 // Núcleo reaproveitado pelo handler do Telegram e pelo roteamento do webhook
 // do WhatsApp (Fase 9 Rodada 3, Tarefa 141) — só depende da interface mínima

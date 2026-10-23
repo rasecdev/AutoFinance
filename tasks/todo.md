@@ -107,11 +107,11 @@ Convenção de verificação comum a toda tarefa de código: `npm run build`, `n
 **Description:** reunir o roteamento de modelo por fluxo: `src/bot/modeloAtivo.ts` e a lógica que resolve o modelo de cada fluxo. O repositório `roteamentoTarefas` continua em `db/repositories`. Movimentação pura.
 
 **Acceptance criteria:**
-- [ ] `src/ai/roteamento/` contém `modeloAtivo` e os resolvedores de modelo por fluxo; imports ajustados
-- [ ] `/modelo` e `/modelos` seguem funcionando nos dois canais
+- [x] `src/ai/roteamento/` contém `modeloAtivo` e os resolvedores de modelo por fluxo; imports ajustados
+- [x] `/modelo` e `/modelos` seguem funcionando nos dois canais
 
 **Verification:**
-- [ ] `npm test` (`modeloAtivo`, `modelo`, `modelos` e testes de roteamento passam), `npm run arquitetura`
+- [x] `npm test` (`modeloAtivo`, `modelo`, `modelos` e testes de roteamento passam), `npm run arquitetura`
 
 **Dependencies:** Tarefa 149
 

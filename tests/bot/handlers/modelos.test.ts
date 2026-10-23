@@ -5,7 +5,7 @@ import Database from 'better-sqlite3-multiple-ciphers';
 import type { Context } from 'grammy';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHandlerModelos } from '../../../src/bot/handlers/modelos.js';
-import { definirModeloAtivo } from '../../../src/bot/modeloAtivo.js';
+import { definirModeloAtivo } from '../../../src/ai/roteamento/modeloAtivo.js';
 import type { DbClient } from '../../../src/db/client.js';
 import { migrate } from '../../../src/db/migrate.js';
 import { definirIdioma } from '../../../src/db/repositories/idiomaBot.js';

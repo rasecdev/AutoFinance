@@ -1,6 +1,6 @@
-import { MODELO_PADRAO } from '../ai/openrouter.js';
-import type { DbClient } from '../db/client.js';
-import { obterModeloRoteamento } from '../db/repositories/roteamentoTarefas.js';
+import { MODELO_PADRAO } from '../openrouter.js';
+import type { DbClient } from '../../db/client.js';
+import { obterModeloRoteamento } from '../../db/repositories/roteamentoTarefas.js';
 
 const FLUXO_CONVERSA_TEXTO = 'conversa_texto';
 

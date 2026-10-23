@@ -11,7 +11,7 @@ import type { DbClient } from '../../db/client.js';
 import { obterIdioma } from '../../db/repositories/idiomaBot.js';
 import { obterModeloRoteamento } from '../../db/repositories/roteamentoTarefas.js';
 import { t } from '../../i18n/t.js';
-import { obterOverrideModelo } from '../modeloAtivo.js';
+import { obterOverrideModelo } from '../../ai/roteamento/modeloAtivo.js';
 
 const FLUXO_CONVERSA_TEXTO = 'conversa_texto';
 
