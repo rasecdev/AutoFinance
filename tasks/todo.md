@@ -127,9 +127,9 @@ Convenção de verificação comum a toda tarefa de código: `npm run build`, `n
 **Description:** `src/ai/openrouter.ts` (293 linhas) junta cliente, laço de tool calling, execução de tool, normalização de argumentos (`removerChavesNulas`), prompt caching e pergunta de confirmação. Separar: cliente e `montarMensagemSystem` ficam; o laço (`gerarResposta`), `executarToolCall`, `resolverTool` e `removerChavesNulas` vão para `src/ai/agente/`. **Antes de mover**, escrever os testes que faltarem para a retentativa por `finish_reason: error`, a pendência de confirmação no meio do laço e o teto de 5 iterações. Nenhuma mudança de lógica.
 
 **Acceptance criteria:**
-- [ ] `src/ai/agente/` com o laço e a execução de tool; `openrouter.ts` encolhe para cliente e montagem do system
-- [ ] Exports públicos usados por handlers, benchmark e scripts continuam disponíveis (ou imports ajustados)
-- [ ] Testes novos cobrem retentativa, pendência no meio do laço e teto de iterações, escritos **antes** da movimentação e verdes antes e depois
+- [x] `src/ai/agente/` com o laço e a execução de tool; `openrouter.ts` encolhe para cliente e montagem do system
+- [x] Exports públicos usados por handlers, benchmark e scripts continuam disponíveis (ou imports ajustados)
+- [x] Testes novos cobrem retentativa, pendência no meio do laço e teto de iterações, escritos **antes** da movimentação e verdes antes e depois
 
 **Verification:**
 - [ ] `npm test`, `npm run arquitetura`
