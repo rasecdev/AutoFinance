@@ -58,6 +58,9 @@ Agrupadas pelo mesmo recorte do "Resumo financeiro" no PLANO.md. Cada uma mapeia
 **Confiança no uso de IA**
 - Como usuário, quero que o bot pergunte antes de agir sempre que houver dúvida real (conta ambígua, valor incerto), para nunca ter um lançamento errado gravado por suposição.
 - Como usuário, quero saber quanto estou gastando em tokens de IA e se o modelo em uso ainda vale o preço, para o custo de operação nunca virar surpresa.
+- Como usuário, quero marcar uma resposta como errada com um toque e deixar o sistema descobrir sozinho o motivo (guardrail, erro de tool ou correção seguinte), para o feedback não depender de eu digitar nada.
+- Como usuário, quero que o bot só leia e-mails de remetentes que eu confiei, para ninguém conseguir injetar instruções por um anexo forjado.
+- Como usuário, quero que o que sai do meu banco para ferramentas de observabilidade e agentes seja só metadado (códigos, durações, custos), para saber o que deu errado sem expor conteúdo financeiro.
 
 ## Não-metas (escopo definido por decisão, não por omissão)
 
@@ -88,6 +91,12 @@ Não há meta de crescimento/aquisição (produto single-user) — sucesso é me
 | 7 | Integração com e-mail (fatura/boleto) e Google Calendar |
 | 8 | Agregação bancária via Open Finance ("Meu Pluggy") |
 | 9 | Multi-canal: relatórios e alertas também via WhatsApp (WAHA), em paralelo ao Telegram |
+| 10 | Regionalização: português, inglês e espanhol |
+| 11 | Pré-produção: publicar o app OAuth do Google (fim da expiração de 7 dias do token) |
+| 12 | Observabilidade de plataforma (Grafana + Loki), futura |
+| 13 | Reorganização por conceito e arquitetura verificável (gate de fronteiras no CI) |
+| 14 | Fundação observável legível por máquina: prompts versionados, mascaramento, contrato de dados, passos por interação |
+| 15 | Guardrails de entrada e saída, grafo de execução (LangGraph.js) e instrumentação do Langfuse |
 
 ## Princípios de produto (aplicam-se a toda decisão de escopo)
 
