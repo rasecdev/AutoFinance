@@ -406,6 +406,46 @@ describe('gerarResposta — loop de tool calling', () => {
     expect(resultado.resposta).not.toContain('criar_cartao"');
   });
 
+  it('pendência no meio do laço: executa a primeira tool, para na segunda (requerConfirmacao) e preserva toolCalls e tokens acumulados', async () => {
+    const handlerAlto = vi.fn();
+    const toolAltoImpacto: ToolDefinition = {
+      ...ecoar,
+      name: 'excluir_transacao',
+      requerConfirmacao: true,
+      handler: handlerAlto,
+    };
+    const client = criarClienteFalso(
+      respostaToolCall('ecoar', { texto: 'primeiro' }, 'call-1', { prompt_tokens: 10, completion_tokens: 5 }),
+      respostaToolCall('excluir_transacao', { texto: 'x' }, 'call-2', { prompt_tokens: 20, completion_tokens: 8 }),
+    );
+
+    const resultado = await gerarResposta(client, 'msg', [ecoar, toolAltoImpacto]);
+
+    expect(handlerAlto).not.toHaveBeenCalled();
+    expect(resultado.pendenciaConfirmacao).toEqual({ tool: toolAltoImpacto, argumentos: { texto: 'x' } });
+    expect(resultado.toolCalls).toEqual([
+      { nome: 'ecoar', argumentos: { texto: 'primeiro' } },
+      { nome: 'excluir_transacao', argumentos: { texto: 'x' } },
+    ]);
+    expect(resultado.tokensPrompt).toBe(30);
+    expect(resultado.tokensCompletion).toBe(13);
+  });
+
+  it('retentativa por finish_reason "error" depois de uma tool já executada: continua o laço e acumula os tokens', async () => {
+    const client = criarClienteFalso(
+      respostaToolCall('ecoar', { texto: 'oi' }, 'call-1', { prompt_tokens: 10, completion_tokens: 5 }),
+      respostaErroModelo(),
+      respostaTexto('concluído', { prompt_tokens: 20, completion_tokens: 8 }),
+    );
+
+    const resultado = await gerarResposta(client, 'msg', [ecoar]);
+
+    expect(resultado.resposta).toBe('concluído');
+    expect(resultado.toolCalls).toEqual([{ nome: 'ecoar', argumentos: { texto: 'oi' } }]);
+    expect(resultado.tokensPrompt).toBe(30);
+    expect(resultado.tokensCompletion).toBe(13);
+  });
+
   it('retenta uma vez quando o modelo devolve finish_reason "error" (achado real: falha intermitente do Gemini)', async () => {
     const client = criarClienteFalso(respostaErroModelo(), respostaTexto('funcionou na segunda tentativa'));
 
