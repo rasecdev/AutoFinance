@@ -795,6 +795,68 @@ Sequenciada depois da Fase 8 (última fase planejada até aqui) — decisão reg
 
 ---
 
+### Fase 13 — Reorganização por conceito e arquitetura verificável
+**Status (2026-10-22): planejada, não iniciada. Primeira das três fases da iniciativa de engenharia de IA** (13 reorganização, 14 fundação observável, 15 guardrails e grafo), nascida da comparação com o projeto Suporte Ampère e fechada em sessão de `grilling`. Decisões formais: ADRs [0003](docs/adr/0003-organizacao-por-conceito-e-fronteiras-verificadas.md) a [0006](docs/adr/0006-limites-de-autonomia-de-agentes-e-conteudo-externo.md); vocabulário no `CONTEXT.md`. A reorganização vem **antes** das funcionalidades novas, para que o código novo já nasça na pasta certa.
+
+**Problema.** `src/ai/openrouter.ts` junta cliente, laço de tool calling, execução de tool, prompt caching e pergunta de confirmação; `src/ai/tools/` mistura 26 arquivos de tools e auxiliares; `src/bot/` tem 18 arquivos soltos. O `dependency-cruiser` (rodado fora do repositório em 2026-10-22) cruzou 168 módulos e achou só **2 violações**: um ciclo (`ai/benchmark.ts` → `ai/tools/conversaTools.ts` → `ai/tools/benchmark.ts`) e um `import` de `ai/tools/transacoes.ts` para `bot/contextoRecente.ts`. O código já está quase limpo, então o gate liga com baseline zero.
+
+**Escopo.**
+1. Corrigir as duas violações (um PR cada).
+2. Gate `dependency-cruiser` no CI (`npm run arquitetura`), fonte única de regras de Fronteira e de ciclos.
+3. Extrair por conceito, **um PR de movimentação pura por pasta**, sem mudar comportamento: `ai/confirmacao`, `ai/roteamento`, `ai/agente`, `ai/tools/<domínio>`, `ai/avaliacao`.
+4. Gerar o Grafo de dependências em `docs/arquitetura/` (JSON completo e recortes em Mermaid por pasta), com checagem de CI para não ficar desatualizado.
+5. Atualizar `CLAUDE.md` (estrutura), PLANO e PROGRESSO a cada movimentação.
+
+**Fora de escopo.** `eslint-plugin-boundaries` (opcional futuro, derivado da mesma matriz); mover `bot/` além do necessário para cumprir as Fronteiras.
+
+---
+
+### Fase 14 — Fundação observável legível por máquina
+**Status (2026-10-22): planejada, não iniciada. Depende da Fase 13.**
+
+**Objetivo.** Deixar o que o bot faz inspecionável por pessoas e por agentes, sem expor conteúdo (ADR 0005): só Metadado de observabilidade sai do banco local.
+
+**Escopo.**
+1. **Prompts versionados** (arquivos `.md` em `src/ai/prompts/`, `nome` e `versao` no frontmatter, placeholders `{{var}}`, teste com hash que falha se o texto mudar sem a versão subir, cópia para o `dist` no Dockerfile). Primeiro o `SYSTEM_PROMPT`, depois um PR por prompt dos demais fluxos de IA. A versão `nome@versao` entra em toda Interação.
+2. **Mascaramento** de cartão (Luhn), CVV, senha e CPF antes de gravar em `interacoes_ia` e `resumos_conversa` e antes de enviar ao provedor. Imagem e PDF não são mascarados (limitação documentada). O bot nunca armazena número de cartão; a tabela `cartoes` só guarda nome, limite e dias.
+3. **Contrato de dados e catálogo de Códigos:** `ambiente`, `versao_app`, `prompt_versao`, `trace_id`, `canal` e `no` em toda Interação, Passo e erro; `codigo`, `severidade` e `fingerprint` em `erros_execucao`. O catálogo é uma constante TypeScript versionada, com documento gerado em `docs/` e checado no CI. Mensagens de erro em modelo fixo, sem valores.
+4. **Colunas de Interação** em `interacoes_ia`: `prompt_versao`, `duracao_ms`, `custo_usd`, `tokens_cached`, `tokens_cache_write`, `n_iteracoes`.
+5. **`passos_ia`** (um registro por Passo: `trace_id`, `ordem`, `tipo`, `nome`, `no`, duração, tokens, custo, resultado), entrando no expurgo de 90 dias, e uma **camada única de instrumentação** usada por todos os fluxos de IA (texto, mídia, voz, e-mail, relatórios, benchmark).
+6. **Feedback durável:** tabela neutra de canal (`canal`, `chat_id`, `message_id` como texto, `trace_id`) no lugar do `Map` em memória de `rastroRespostas.ts` (que zera a cada restart), com expurgo; `/errado` ganha motivo classificado por Código (guardrail, erro de tool, diferença da correção seguinte) e botões de um toque só quando não classificado, sem argumento digitado. `/errado` e `/certo` no WhatsApp ficam condicionados à pesquisa P4.
+7. **Leitura de e-mail desligada por padrão:** só ativa com lista de remetentes confiáveis (começa como variável de ambiente; lista vazia = não ler nenhum) e verificação de autenticação do remetente; o filtro atual (`has:attachment newer_than:30d`) lê qualquer remetente. O desenho original do PLANO (tabela `remetentes_confiaveis`) sai de "Fora de escopo".
+
+**Fora de escopo.** Langfuse em execução (Fase 15 instrumenta, desligado por padrão); Grafana (Fase 12); RAG de categoria (primeiro medir a taxa de correção manual).
+
+---
+
+### Fase 15 — Guardrails, grafo de execução e Langfuse
+**Status (2026-10-22): planejada, não iniciada. Depende das Fases 13 e 14 e das pesquisas P1 e P2.**
+
+**Escopo.**
+1. **Guardrail de saída** determinístico, cada regra com Código estável: formatação proibida (corrigida por código, sem nova chamada), valor monetário que não aparece em nenhum resultado de tool, simulação narrada como fato, campo confirmado omitido, vazamento do prompt do sistema, dado sensível, identificador interno, **ação alucinada** ("registrei" sem tool de gravação), confirmação alucinada e URL ou imagem externa. Ao reprovar: uma nova tentativa com a crítica; se falhar, o texto literal da tool. Cada reprovação vira evento no Passo.
+2. **Guardrail de entrada** só em conteúdo externo (e-mail, PDF, foto): regex e heurísticas, delimitadores de dado não confiável no prompt, aviso discreto ao usuário junto da confirmação, nunca bloqueio em silêncio, detalhe e Código `GE_SUSPEITO` só nos registros internos.
+3. **Checagem de plausibilidade antes de executar a tool** (valor muito acima da média, data distante, conta inexistente), exigindo confirmação quando suspeita.
+4. **Fidelidade numérica nas narrações** (relatório mensal, `analisar_qualidade`): todo número do texto precisa existir no JSON de entrada.
+5. **Proteção dos resumos de conversa:** mascaramento e checagem de injection antes de gravar.
+6. **Grafo de execução** em LangGraph.js só no turno de texto (ADR 0004), com Nós de nome estável; comandos continuam no roteador do bot.
+7. **Instrumentação do Langfuse** desligada por padrão (sem chaves vira no-op); tags com o contrato de dados; `/errado` como nota de feedback no traço (a confirmar na P1).
+8. **Relatório de guardrails:** reprovações e `/errado` contados no `analisar_qualidade`, para medir quantos erros reais o guardrail pega (recall). Falsos positivos só aparecem por contagem de reprovações e amostragem, porque quase não há `/certo`.
+
+**Critério para o Langfuse rodar na VM atual** (decidido só depois da P1): até 5 GB de memória (limite no contêiner), até 40% de CPU média e imagem ARM64 de todos os componentes; se não passar, espera o servidor escalado. Só então o `MIN_MEMORY_MB` do `keepalive` pode ser reduzido.
+
+**Fora de escopo.** O Hermes Agent (ler, catalogar, abrir issues e PRs): o que esta iniciativa entrega é o contrato e a leitura sem conteúdo bruto, com os limites da ADR 0006.
+
+**Pontos cegos conhecidos do guardrail** (defesa em camadas; o guardrail reduz risco, não elimina): erro plausível (conta ou categoria errada coerente com a tool); ação de baixo impacto já executada antes da checagem de saída; injection parafraseada ou em imagem; injection de segunda ordem via campos guardados; resultado de tool como vetor (teto de 5 iterações); fluxos de narração fora do turno de texto; efeitos fora do chat (Calendar); pedidos fora de escopo (aceito); abuso de custo (aceito); logs fora do guardrail; falso negativo e falso positivo do próprio guardrail; erro de lógica determinística (coberto por testes).
+
+**Pesquisas (issues soltas, antes da Fase 15).**
+- **P1:** prova de conceito do LangGraph.js com Langfuse na máquina local, dados de teste: nós viram spans? existe visualização de grafo? dá para desligar a captura de entrada e saída? como entra a nota de `/errado`? Mede também o consumo na VM de Homologação.
+- **P2:** checkpointer e interrupt/resume do LangGraph.js contra o nosso SQLite criptografado.
+- **P3 (Fase 12):** Grafana lendo o banco; a verificação em 2026-10-22 não achou suporte a SQLCipher no plugin SQLite (ausência de evidência, não prova), e a decisão de banco na nuvem muda o quadro.
+- **P4:** a WAHA devolve o id da mensagem enviada e informa a mensagem citada em um reply?
+- **P5:** as `bills` do Pluggy cobrem faturas de cartão no plano contratado? Decide se a leitura de e-mail pode ser removida.
+
+---
+
 ## Papel do chat depois da automação (e-mail + Open Finance)
 
 Com Fase 7 (e-mail) e Fase 8 (Open Finance) implementadas, boa parte do lançamento manual desaparece — fatura/parcela vem por e-mail, transação de conta conectada sincroniza sozinha. Isso levanta a dúvida: o que sobra de interação de verdade no Telegram? Resposta: o chat não vira resíduo, ele muda de função — de "lançar dado" pra "decidir, revisar, consultar e cobrir o que a automação não alcança".
@@ -1182,4 +1244,4 @@ Diferente da seção acima (perguntas ainda em aberto), estes itens já foram av
 - **Multiusuário** — todo o design assume um único titular/controlador dos dados (ver nota de LGPD na seção de Segurança); mudar isso reabriria decisões de modelo de dados, permissão e privacidade que não têm necessidade real hoje. Não é mudança incremental: toca modelo de dados (titular/dono em cada tabela, isolamento de consulta), identidade (`chat_id` hoje mapeia 1:1 pra "você"; passaria a precisar de privilégio por usuário — ver ASI03 na seção de Segurança), billing (custo de tokens de IA hoje é agregado, passaria a ser por usuário) e LGPD (deixa de ser N/A e passa a valer de verdade, ver nota na seção de Segurança). Também muda o cálculo do cache semântico de categorização via RAG (outro item desta lista): compartilhar embeddings entre titulares diferentes pra casar variações de descrição levanta risco de vazar padrão de gasto/categorização entre pessoas, o que reforça cautela em vez de justificar a adoção.
 - **Export CSV** dos relatórios/consultas — citado como ideia solta ao lado de `gerar_grafico`, nunca desenhado de fato (menos prioritário que o gráfico, que já saiu com mecanismo completo).
 - **Blog com hospedagem própria e plataformas de terceiro (dev.to, Hashnode) pro estudo de caso público** — pesquisado e descartado (ver [docs/progresso/01-planejamento.md](docs/progresso/01-planejamento.md)): README curado do próprio repositório cobre o papel de vitrine sem depender de audiência de terceiro em declínio.
-- **Cadastro de remetentes de e-mail confiáveis (`remetentes_confiaveis`)** — desenhado como plano futuro desde o início (Fase 7), não faz parte do MVP dessa fase.
+- ~~**Cadastro de remetentes de e-mail confiáveis (`remetentes_confiaveis`)**~~ — desenhado como plano futuro desde a Fase 7; passou a fazer parte da Fase 14 (2026-10-22), começando como variável de ambiente.
