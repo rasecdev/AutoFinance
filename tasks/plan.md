@@ -52,7 +52,7 @@ Fase 15:  checkpoint 14 + P1 + P2 ──► 171 ──► 172, 173, 174 ──�
 #### Fase C: Movimentação por conceito (um PR de movimentação pura por tarefa)
 - [x] Tarefa 150: extrair `ai/confirmacao/`
 - [x] Tarefa 151: extrair `ai/roteamento/`
-- [ ] Tarefa 152: extrair `ai/agente/` (laço de tool calling fora de `openrouter.ts`)
+- [x] Tarefa 152: extrair `ai/agente/` (laço de tool calling fora de `openrouter.ts`)
 - [ ] Tarefa 153: agrupar `ai/tools/` por domínio
 - [ ] Tarefa 154: mover avaliação para `ai/avaliacao/`
 

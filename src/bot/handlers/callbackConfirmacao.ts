@@ -1,5 +1,5 @@
 import { InputFile, type Context } from 'grammy';
-import { extrairResultadoTool } from '../../ai/openrouter.js';
+import { extrairResultadoTool } from '../../ai/agente/executarToolCall.js';
 import type { ToolDefinition } from '../../ai/tools/types.js';
 import type { DbClient } from '../../db/client.js';
 import { obterPendenciaPersistida, removerPendenciaPersistida } from '../../db/repositories/confirmacoesPendentes.js';

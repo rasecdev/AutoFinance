@@ -1,8 +1,9 @@
 import type OpenAI from 'openai';
 import { z } from 'zod';
 import { describe, expect, it, vi } from 'vitest';
-import { MODELO_PADRAO, gerarResposta, removerChavesNulas } from '../../src/ai/openrouter.js';
-import type { ToolDefinition } from '../../src/ai/tools/types.js';
+import { gerarResposta } from '../../../src/ai/agente/gerarResposta.js';
+import { MODELO_PADRAO } from '../../../src/ai/openrouter.js';
+import type { ToolDefinition } from '../../../src/ai/tools/types.js';
 
 function criarClienteFalso(...respostas: unknown[]): OpenAI {
   const create = vi.fn();
@@ -48,35 +49,6 @@ function respostaToolCall(
     usage,
   };
 }
-
-describe('removerChavesNulas', () => {
-  it('remove chaves com valor null de um objeto', () => {
-    expect(removerChavesNulas({ a: 1, b: null, c: 'x' })).toEqual({ a: 1, c: 'x' });
-  });
-
-  it('mantém undefined, zero, string vazia e false (só remove null)', () => {
-    expect(removerChavesNulas({ a: undefined, b: 0, c: '', d: false })).toEqual({
-      a: undefined,
-      b: 0,
-      c: '',
-      d: false,
-    });
-  });
-
-  it('remove recursivamente em objeto aninhado', () => {
-    expect(removerChavesNulas({ a: { b: null, c: 1 } })).toEqual({ a: { c: 1 } });
-  });
-
-  it('mapeia elementos de array recursivamente, sem remover null do array em si', () => {
-    expect(removerChavesNulas([{ a: null, b: 1 }, 'x', null])).toEqual([{ b: 1 }, 'x', null]);
-  });
-
-  it('devolve valor primitivo/null como está', () => {
-    expect(removerChavesNulas(null)).toBeNull();
-    expect(removerChavesNulas(5)).toBe(5);
-    expect(removerChavesNulas('x')).toBe('x');
-  });
-});
 
 describe('gerarResposta — sem ferramentas (compatibilidade)', () => {
   it('retorna a resposta em texto sem chamar tool_calls', async () => {
@@ -404,6 +376,46 @@ describe('gerarResposta — loop de tool calling', () => {
     );
     expect(resultado.resposta).not.toContain('{');
     expect(resultado.resposta).not.toContain('criar_cartao"');
+  });
+
+  it('pendência no meio do laço: executa a primeira tool, para na segunda (requerConfirmacao) e preserva toolCalls e tokens acumulados', async () => {
+    const handlerAlto = vi.fn();
+    const toolAltoImpacto: ToolDefinition = {
+      ...ecoar,
+      name: 'excluir_transacao',
+      requerConfirmacao: true,
+      handler: handlerAlto,
+    };
+    const client = criarClienteFalso(
+      respostaToolCall('ecoar', { texto: 'primeiro' }, 'call-1', { prompt_tokens: 10, completion_tokens: 5 }),
+      respostaToolCall('excluir_transacao', { texto: 'x' }, 'call-2', { prompt_tokens: 20, completion_tokens: 8 }),
+    );
+
+    const resultado = await gerarResposta(client, 'msg', [ecoar, toolAltoImpacto]);
+
+    expect(handlerAlto).not.toHaveBeenCalled();
+    expect(resultado.pendenciaConfirmacao).toEqual({ tool: toolAltoImpacto, argumentos: { texto: 'x' } });
+    expect(resultado.toolCalls).toEqual([
+      { nome: 'ecoar', argumentos: { texto: 'primeiro' } },
+      { nome: 'excluir_transacao', argumentos: { texto: 'x' } },
+    ]);
+    expect(resultado.tokensPrompt).toBe(30);
+    expect(resultado.tokensCompletion).toBe(13);
+  });
+
+  it('retentativa por finish_reason "error" depois de uma tool já executada: continua o laço e acumula os tokens', async () => {
+    const client = criarClienteFalso(
+      respostaToolCall('ecoar', { texto: 'oi' }, 'call-1', { prompt_tokens: 10, completion_tokens: 5 }),
+      respostaErroModelo(),
+      respostaTexto('concluído', { prompt_tokens: 20, completion_tokens: 8 }),
+    );
+
+    const resultado = await gerarResposta(client, 'msg', [ecoar]);
+
+    expect(resultado.resposta).toBe('concluído');
+    expect(resultado.toolCalls).toEqual([{ nome: 'ecoar', argumentos: { texto: 'oi' } }]);
+    expect(resultado.tokensPrompt).toBe(30);
+    expect(resultado.tokensCompletion).toBe(13);
   });
 
   it('retenta uma vez quando o modelo devolve finish_reason "error" (achado real: falha intermitente do Gemini)', async () => {
