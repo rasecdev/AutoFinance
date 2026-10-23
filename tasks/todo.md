@@ -58,14 +58,14 @@ Convenção de verificação comum a toda tarefa de código: `npm run build`, `n
 **Description:** adicionar `dependency-cruiser` como devDependency e um arquivo de configuração único com a matriz de Fronteiras: sem ciclos; `db` não importa de `ai`, `bot`, `canais`, `relatorios`, `integracoes` nem `scripts`; `finance` não importa de nenhuma outra pasta do projeto; `relatorios` não importa de `bot`, `canais` nem `scripts`; `ai` não importa de `bot`, `canais` nem `scripts`; `integracoes` não importa de `bot`, `ai`, `canais` nem `scripts`; `bot` e `canais` não importam de `scripts`. Script `npm run arquitetura` e um passo no job `node` do CI. Baseline zero.
 
 **Acceptance criteria:**
-- [ ] `npm run arquitetura` falha com uma importação proibida de teste e passa no código atual
-- [ ] Usa o TypeScript do projeto (a versão instalada, 6.x) para resolver os imports
-- [ ] O CI roda o comando em todo PR
-- [ ] ADR 0003 referenciada na configuração (comentário curto)
+- [x] `npm run arquitetura` falha com uma importação proibida de teste e passa no código atual
+- [x] Usa o TypeScript do projeto (a versão instalada, 6.x) para resolver os imports
+- [x] O CI roda o comando em todo PR
+- [x] ADR 0003 referenciada na configuração (comentário curto)
 
 **Verification:**
-- [ ] Adicionar temporariamente um `import` proibido, confirmar falha, remover
-- [ ] CI verde no PR com o novo passo
+- [x] Adicionar temporariamente um `import` proibido, confirmar falha, remover
+- [x] CI verde no PR com o novo passo
 
 **Dependencies:** Tarefas 147 e 148
 

@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "seed": "tsx scripts/seed.ts",
-    "rotear": "tsx src/scripts/definirRoteamento.ts"
+    "rotear": "tsx src/scripts/definirRoteamento.ts",
+    "arquitetura": "depcruise src --config .dependency-cruiser.cjs"
   },
   "repository": {
     "type": "git",
@@ -44,6 +45,7 @@
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.4.0",
     "@types/pdfkit": "^0.17.6",
+    "dependency-cruiser": "^18.7.0",
     "eslint": "^10.9.1",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.9.6",
