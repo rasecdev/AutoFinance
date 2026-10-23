@@ -90,6 +90,10 @@ Two independent layers, each solving a different problem:
 | Tests | [Vitest](https://vitest.dev/) |
 | Deploy | [Docker Compose](https://docs.docker.com/compose/), isolated environments (Staging / Production) |
 
+### Code architecture
+
+The code is organized by concept, and the dependencies between folders are verified in CI (no cycles, no forbidden `import`). The full map lives in [`docs/arquitetura/`](docs/arquitetura/README.md) (in Portuguese): start with the [overview](docs/arquitetura/visao-geral.mmd) (Mermaid diagram).
+
 ## Project status
 
 | Phase | Delivery | Status |

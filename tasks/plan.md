@@ -58,7 +58,7 @@ Fase 15:  checkpoint 14 + P1 + P2 ──► 171 ──► 172, 173, 174 ──�
 
 #### Fase D: Artefatos e documentação
 - [x] Tarefa 155: gerar o Grafo de dependências em `docs/arquitetura/` com checagem no CI
-- [ ] Tarefa 156: atualizar `CLAUDE.md` (estrutura), PLANO e PROGRESSO; registrar a matriz de Fronteiras das pastas novas
+- [x] Tarefa 156: atualizar `CLAUDE.md` (estrutura), PLANO e PROGRESSO; registrar a matriz de Fronteiras das pastas novas
 
 ### Checkpoint: Fase 13 fechada
 - [ ] `npm run build`/`lint`/`test`/`arquitetura` sem erro, 1092 testes ou mais

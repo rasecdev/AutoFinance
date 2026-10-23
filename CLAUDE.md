@@ -40,7 +40,8 @@ Nunca gravar segredo real (token, refresh_token, chave de API, client secret, IP
 
 ## Convenções de código (Fase 1)
 
-- Estrutura: `src/config`, `src/db`, `src/logging`, `src/bot`, `src/ai`, `scripts/`, `tests/` (espelha `src/`).
+- Estrutura: `src/config`, `src/db`, `src/logging`, `src/bot`, `src/canais`, `src/ai`, `src/finance`, `src/relatorios`, `src/integracoes`, `src/i18n`, `scripts/`, `tests/` (espelha `src/`). Dentro de `src/ai/`, cada conceito tem a sua pasta: `agente/` (laço de tool calling), `confirmacao/`, `roteamento/` (modelo ativo), `avaliacao/` (benchmark e qualidade) e `tools/<domínio>/` (`transacoes`, `dividas`, `contas`, `consulta`, `relatorios`, `email`, `comum`). Código novo nasce na pasta do seu conceito (ADR 0003).
+- **Fronteiras entre pastas:** `npm run arquitetura` (`dependency-cruiser`, regras em `.dependency-cruiser.cjs`) falha em ciclo ou em `import` proibido e roda no CI. Pasta nova ganha a sua regra no mesmo PR que a cria. O Grafo de dependências fica em `docs/arquitetura/` (`npm run arquitetura:gerar` regrava, `arquitetura:verificar` roda no CI): mudou `import` ou moveu arquivo, regere e comite junto.
 - Test runner: **Vitest**.
 - Migração de schema: SQL puro em `src/db/migrations/`, sem ORM.
 - Novo serviço no `docker-compose.yml`: usar `build: .` + `image: autofinance:latest` (mesma tag em todos os serviços). O `build:` precisa estar em todo serviço — sem ele, `docker compose up` tenta dar *pull* da imagem em vez de buildar localmente, e falha (a imagem nunca é publicada em registry). Com a tag compartilhada, o cache de camadas do Docker deixa os builds seguintes ao primeiro quase instantâneos.
