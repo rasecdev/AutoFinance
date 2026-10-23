@@ -8,11 +8,11 @@ import {
   MODELO_ANALISAR_QUALIDADE,
   gerarAnaliseQualidade,
   resolverModeloAnalisarQualidade,
-} from '../../src/ai/analisarQualidade.js';
-import type { DbClient } from '../../src/db/client.js';
-import { migrate } from '../../src/db/migrate.js';
-import { definirRoteamento } from '../../src/db/repositories/roteamentoTarefas.js';
-import type { AgregacaoQualidade } from '../../src/relatorios/qualidade.js';
+} from '../../../src/ai/avaliacao/analisarQualidade.js';
+import type { DbClient } from '../../../src/db/client.js';
+import { migrate } from '../../../src/db/migrate.js';
+import { definirRoteamento } from '../../../src/db/repositories/roteamentoTarefas.js';
+import type { AgregacaoQualidade } from '../../../src/relatorios/qualidade.js';
 
 const CHAVE_TESTE = 'chave-teste-analisar-qualidade';
 

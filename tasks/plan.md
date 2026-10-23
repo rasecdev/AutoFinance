@@ -54,7 +54,7 @@ Fase 15:  checkpoint 14 + P1 + P2 ──► 171 ──► 172, 173, 174 ──�
 - [x] Tarefa 151: extrair `ai/roteamento/`
 - [x] Tarefa 152: extrair `ai/agente/` (laço de tool calling fora de `openrouter.ts`)
 - [x] Tarefa 153: agrupar `ai/tools/` por domínio
-- [ ] Tarefa 154: mover avaliação para `ai/avaliacao/`
+- [x] Tarefa 154: mover avaliação para `ai/avaliacao/`
 
 #### Fase D: Artefatos e documentação
 - [ ] Tarefa 155: gerar o Grafo de dependências em `docs/arquitetura/` com checagem no CI

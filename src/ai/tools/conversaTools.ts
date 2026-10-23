@@ -1,6 +1,6 @@
 import type OpenAI from 'openai';
 import type { DbClient } from '../../db/client.js';
-import { criarToolCriarCasoTesteBenchmark, criarToolRodarBenchmarkInterno } from './avaliacao/benchmark.js';
+import { criarToolCriarCasoTesteBenchmark, criarToolRodarBenchmarkInterno } from '../avaliacao/tools/benchmark.js';
 import {
   criarToolCriarCartao,
   criarToolCriarConta,
@@ -26,7 +26,7 @@ import {
   criarToolProjetarFluxoCaixa,
   criarToolSimularAmortizacao,
 } from './consulta/projecaoFinanceira.js';
-import { criarToolAnalisarQualidade } from './avaliacao/qualidade.js';
+import { criarToolAnalisarQualidade } from '../avaliacao/tools/qualidade.js';
 import { criarToolRegistrarFaturaEmail } from './email/registrarFaturaEmail.js';
 import { criarToolRegistrarParcelaEmail } from './email/registrarParcelaEmail.js';
 import { criarToolRelatorio } from './relatorios/relatorios.js';

@@ -1,5 +1,5 @@
 import type { Context } from 'grammy';
-import { FLUXO_ANALISAR_QUALIDADE, MODELO_ANALISAR_QUALIDADE } from '../../ai/analisarQualidade.js';
+import { FLUXO_ANALISAR_QUALIDADE, MODELO_ANALISAR_QUALIDADE } from '../../ai/avaliacao/analisarQualidade.js';
 import { FLUXO_LEITURA_COMPROVANTE, MODELO_LEITURA_COMPROVANTE } from '../../ai/extracaoComprovante.js';
 import { FLUXO_INTERPRETAR_PLANILHA, MODELO_INTERPRETAR_PLANILHA } from '../../ai/interpretacaoPlanilha.js';
 import { MODELO_PADRAO } from '../../ai/openrouter.js';

@@ -171,11 +171,11 @@ Convenção de verificação comum a toda tarefa de código: `npm run build`, `n
 **Description:** reunir `src/ai/benchmark.ts`, `src/ai/analisarQualidade.ts` e as tools de benchmark e qualidade na pasta de avaliação. Movimentação pura.
 
 **Acceptance criteria:**
-- [ ] `src/ai/avaliacao/` com benchmark e análise de qualidade; imports ajustados
-- [ ] `src/scripts/seedCasosTesteBenchmark*.ts` e `src/relatorios/qualidade.ts` continuam compilando
+- [x] `src/ai/avaliacao/` com benchmark e análise de qualidade; imports ajustados
+- [x] `src/scripts/seedCasosTesteBenchmark*.ts` e `src/relatorios/qualidade.ts` continuam compilando
 
 **Verification:**
-- [ ] `npm test` (`benchmark`, `analisarQualidade` e testes de tools), `npm run arquitetura`
+- [x] `npm test` (`benchmark`, `analisarQualidade` e testes de tools), `npm run arquitetura`
 
 **Dependencies:** Tarefa 153
 

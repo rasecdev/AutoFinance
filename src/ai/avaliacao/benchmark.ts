@@ -1,21 +1,21 @@
 import type OpenAI from 'openai';
-import type { DbClient } from '../db/client.js';
+import type { DbClient } from '../../db/client.js';
 import {
   listarCasosTeste,
   type CasoTesteBenchmark,
   type ToolCallEsperada,
-} from '../db/repositories/casosTesteBenchmark.js';
-import { registrarUsoTokens } from '../db/repositories/usoTokens.js';
+} from '../../db/repositories/casosTesteBenchmark.js';
+import { registrarUsoTokens } from '../../db/repositories/usoTokens.js';
 import { gerarAnaliseQualidade, type DadosParaAnaliseQualidade } from './analisarQualidade.js';
-import { extrairComprovante, type ResultadoExtracaoComprovante } from './extracaoComprovante.js';
-import { interpretarPlanilha, type TransacaoPlanilha } from './interpretacaoPlanilha.js';
-import { removerChavesNulas } from './agente/executarToolCall.js';
-import type { UsageComCusto } from './openrouter.js';
-import { gerarResumoMensal, type DadosParaResumoMensal } from './relatorioMensal.js';
-import { SYSTEM_PROMPT } from './systemPrompt.js';
-import { paraDefinicaoOpenAI } from './tools/registry.js';
-import type { ToolDefinition } from './tools/types.js';
-import { transcreverAudio } from './transcricao.js';
+import { extrairComprovante, type ResultadoExtracaoComprovante } from '../extracaoComprovante.js';
+import { interpretarPlanilha, type TransacaoPlanilha } from '../interpretacaoPlanilha.js';
+import { removerChavesNulas } from '../agente/executarToolCall.js';
+import type { UsageComCusto } from '../openrouter.js';
+import { gerarResumoMensal, type DadosParaResumoMensal } from '../relatorioMensal.js';
+import { SYSTEM_PROMPT } from '../systemPrompt.js';
+import { paraDefinicaoOpenAI } from '../tools/registry.js';
+import type { ToolDefinition } from '../tools/types.js';
+import { transcreverAudio } from '../transcricao.js';
 
 export const METRICA_ACURACIA_TOOL_CALLING = 'acuracia_tool_calling';
 

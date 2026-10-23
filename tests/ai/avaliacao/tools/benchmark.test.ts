@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import Database from 'better-sqlite3-multiple-ciphers';
 import type OpenAI from 'openai';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { criarToolCriarCasoTesteBenchmark, criarToolRodarBenchmarkInterno } from '../../../../src/ai/tools/avaliacao/benchmark.js';
+import { criarToolCriarCasoTesteBenchmark, criarToolRodarBenchmarkInterno } from '../../../../src/ai/avaliacao/tools/benchmark.js';
 import type { DbClient } from '../../../../src/db/client.js';
 import { migrate } from '../../../../src/db/migrate.js';
 import { listarBenchmarks } from '../../../../src/db/repositories/benchmarksModelos.js';

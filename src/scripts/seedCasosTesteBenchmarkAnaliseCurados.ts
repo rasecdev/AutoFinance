@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { loadEnv } from '../config/env.js';
-import type { DadosParaAnaliseQualidade } from '../ai/analisarQualidade.js';
-import type { FatosEsperadosAnaliseQualidade, FatosEsperadosRelatorioMensal } from '../ai/benchmark.js';
+import type { DadosParaAnaliseQualidade } from '../ai/avaliacao/analisarQualidade.js';
+import type { FatosEsperadosAnaliseQualidade, FatosEsperadosRelatorioMensal } from '../ai/avaliacao/benchmark.js';
 import type { DadosParaResumoMensal } from '../ai/relatorioMensal.js';
 import { getDb, type DbClient } from '../db/client.js';
 import { criarCasoTeste, listarCasosTeste } from '../db/repositories/casosTesteBenchmark.js';
