@@ -13,8 +13,8 @@ import {
   resolverModeloInterpretarPlanilha,
 } from '../../ai/interpretacaoPlanilha.js';
 import { exigirConfirmacaoDeRegistro, montarToolsConversa } from '../../ai/tools/conversaTools.js';
-import { resolverCartaoId, resolverContaId } from '../../ai/tools/resolucao.js';
-import { criarToolRegistrarTransacoesEmLote } from '../../ai/tools/transacoesEmLote.js';
+import { resolverCartaoId, resolverContaId } from '../../ai/tools/comum/resolucao.js';
+import { criarToolRegistrarTransacoesEmLote } from '../../ai/tools/transacoes/transacoesEmLote.js';
 import type { DbClient } from '../../db/client.js';
 import { obterIdioma } from '../../db/repositories/idiomaBot.js';
 import { registrarInteracaoIa } from '../../db/repositories/interacoesIa.js';

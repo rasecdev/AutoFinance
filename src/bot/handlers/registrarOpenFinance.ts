@@ -4,7 +4,7 @@ import type { Env } from '../../config/env.js';
 import type { DbClient } from '../../db/client.js';
 import { registrarMapeamentoOpenFinance } from '../../db/repositories/contasOpenFinance.js';
 import { obterIdioma } from '../../db/repositories/idiomaBot.js';
-import { resolverCartaoId, resolverContaId } from '../../ai/tools/resolucao.js';
+import { resolverCartaoId, resolverContaId } from '../../ai/tools/comum/resolucao.js';
 import { t } from '../../i18n/t.js';
 import { autenticar, listarContasDoItem, obterItem, type ContaPluggy } from '../../integracoes/pluggy/cliente.js';
 import type { Logger } from '../../logging/logger.js';

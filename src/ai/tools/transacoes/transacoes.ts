@@ -1,0 +1,265 @@
+import { z } from 'zod';
+import { definirUltimaTransacao, obterUltimaTransacao } from '../../contextoRecente.js';
+import type { DbClient } from '../../../db/client.js';
+import { buscarCategoriaCache, upsertCategoriaCache } from '../../../db/repositories/cacheCategorizacao.js';
+import {
+  atualizarTransacao,
+  criarTransacao,
+  excluirTransacao,
+  obterTransacao,
+} from '../../../db/repositories/transacoes.js';
+import { obterCartao } from '../../../db/repositories/cartoes.js';
+import { calcularGastoCicloAtualCartao } from '../../../relatorios/limiteCartao.js';
+import { normalizarDescricao } from '../comum/normalizarDescricao.js';
+import { resolverCartaoId, resolverContaId } from '../comum/resolucao.js';
+import type { ToolContext, ToolDefinition } from '../types.js';
+
+// Sem meta configurável no projeto ainda (ver PLANO.md, "Metas") — limiar
+// fixo no código, mesma simplificação de LIMITE_DIVERGENCIA em dividas.ts.
+const LIMIAR_ALERTA_LIMITE_CARTAO = 0.8;
+
+function avisoLimiteCartao(db: DbClient, cartaoId: number): string {
+  const cartao = obterCartao(db, cartaoId);
+  if (!cartao) return '';
+
+  const gasto = calcularGastoCicloAtualCartao(db, cartaoId, cartao.diaFechamento, new Date());
+  if (gasto < LIMIAR_ALERTA_LIMITE_CARTAO * cartao.limite) return '';
+
+  return ` ⚠️ Atenção: gasto do ciclo atual do cartão "${cartao.nome}" já é R$ ${gasto.toFixed(2)} de R$ ${cartao.limite.toFixed(2)} de limite (${((gasto / cartao.limite) * 100).toFixed(0)}%).`;
+}
+
+const schemaRegistrarTransacao = z
+  .object({
+    conta_id: z.number().int().positive().optional(),
+    conta_apelido: z.string().min(1).optional(),
+    cartao_id: z.number().int().positive().optional(),
+    cartao_nome: z.string().min(1).optional(),
+    tipo: z.enum(['receita', 'despesa']),
+    valor: z.number().positive(),
+    categoria: z.string().min(1).optional(),
+    descricao: z.string().optional(),
+    data: z.string().min(1).optional(),
+  })
+  .refine(
+    (valor) =>
+      valor.conta_id !== undefined ||
+      valor.conta_apelido !== undefined ||
+      valor.cartao_id !== undefined ||
+      valor.cartao_nome !== undefined,
+    { message: 'Informe conta (id ou apelido) ou cartão (id ou nome).' },
+  );
+
+const schemaEditarTransacao = z
+  .object({
+    id: z.number().int().positive().optional(),
+    tipo: z.enum(['receita', 'despesa']).optional(),
+    valor: z.number().positive().optional(),
+    categoria: z.string().min(1).optional(),
+    descricao: z.string().optional(),
+    data: z.string().min(1).optional(),
+  })
+  .refine(
+    (valor) =>
+      valor.tipo !== undefined ||
+      valor.valor !== undefined ||
+      valor.categoria !== undefined ||
+      valor.descricao !== undefined ||
+      valor.data !== undefined,
+    { message: 'Informe pelo menos um campo para alterar.' },
+  );
+
+const schemaExcluirTransacao = z.object({
+  id: z.number().int().positive().optional(),
+});
+
+function resolverIdTransacao(chatId: number | string, idInformado?: number): number | undefined {
+  return idInformado ?? obterUltimaTransacao(chatId);
+}
+
+type ResolucaoCategoria = { ok: true; categoria: string } | { ok: false; mensagem: string };
+
+// Cache é autoritativo: quando a descrição já tem categoria cacheada, ela vale
+// mesmo que a IA mande uma categoria diferente nesta chamada — é o mecanismo
+// que garante "a IA nunca mais re-adivinha" (ver tasks/plan.md, Fase 6 parte 6).
+function resolverCategoria(
+  db: DbClient,
+  descricao: string | undefined,
+  categoriaInformada: string | undefined,
+  ctx: ToolContext,
+): ResolucaoCategoria {
+  if (descricao === undefined) {
+    if (categoriaInformada === undefined) {
+      return { ok: false, mensagem: 'Informe a categoria dessa transação.' };
+    }
+    return { ok: true, categoria: categoriaInformada };
+  }
+
+  const descricaoNormalizada = normalizarDescricao(descricao);
+  const cache = buscarCategoriaCache(db, descricaoNormalizada);
+  if (cache) {
+    return { ok: true, categoria: cache.categoria };
+  }
+
+  if (categoriaInformada === undefined) {
+    return { ok: false, mensagem: 'Informe a categoria dessa transação — ainda não tenho uma categoria salva para essa descrição.' };
+  }
+
+  upsertCategoriaCache(db, {
+    descricaoNormalizada,
+    categoria: categoriaInformada,
+    origem: 'ia',
+    modeloSugeriu: ctx.modelo,
+  });
+  return { ok: true, categoria: categoriaInformada };
+}
+
+function hojeISO(): string {
+  const agora = new Date();
+  const ano = agora.getFullYear();
+  const mes = String(agora.getMonth() + 1).padStart(2, '0');
+  const dia = String(agora.getDate()).padStart(2, '0');
+  return `${ano}-${mes}-${dia}`;
+}
+
+export function criarToolRegistrarTransacao(db: DbClient): ToolDefinition {
+  return {
+    name: 'registrar_transacao',
+    description:
+      'Registra uma nova transação de receita ou despesa, vinculada a uma conta ou a um cartão (por id ou pelo nome/apelido). O campo "data" é opcional — só informe quando o usuário mencionar uma data específica; quando omitido, usa a data de hoje automaticamente. O campo "categoria" é opcional quando a descrição já foi categorizada antes nesta conversa (o sistema reaproveita automaticamente a categoria salva, mesmo que você mande uma diferente) — informe categoria sempre que a descrição for nova.',
+    schema: schemaRegistrarTransacao,
+    resumoConfirmacao: (args) => {
+      const {
+        conta_apelido: contaApelido,
+        conta_id: contaId,
+        cartao_nome: cartaoNome,
+        cartao_id: cartaoId,
+        tipo,
+        valor,
+        categoria,
+        descricao,
+        data,
+      } = args as z.infer<typeof schemaRegistrarTransacao>;
+      const destino =
+        cartaoNome !== undefined || cartaoId !== undefined
+          ? `no cartão "${cartaoNome ?? `id ${cartaoId}`}"`
+          : `na conta "${contaApelido ?? `id ${contaId}`}"`;
+      const parteCategoria = categoria ? `, categoria "${categoria}"` : '';
+      const parteDescricao = descricao ? ` ("${descricao}")` : '';
+      const parteData = data ? `, data ${data}` : '';
+      return `registrar uma ${tipo === 'receita' ? 'receita' : 'despesa'} de R$ ${valor.toFixed(2)}${parteDescricao} ${destino}${parteCategoria}${parteData}`;
+    },
+    handler: async (args, ctx) => {
+      const {
+        conta_id: contaIdInformado,
+        conta_apelido: contaApelido,
+        cartao_id: cartaoIdInformado,
+        cartao_nome: cartaoNome,
+        tipo,
+        valor,
+        categoria: categoriaInformada,
+        descricao,
+        data: dataInformada,
+      } = args as z.infer<typeof schemaRegistrarTransacao>;
+
+      const resolucaoCategoria = resolverCategoria(db, descricao, categoriaInformada, ctx);
+      if (!resolucaoCategoria.ok) return resolucaoCategoria.mensagem;
+      const categoria = resolucaoCategoria.categoria;
+
+      const data = dataInformada ?? hojeISO();
+
+      let contaId: number | undefined;
+      if (contaIdInformado !== undefined || contaApelido !== undefined) {
+        const resolucao = resolverContaId(db, contaIdInformado, contaApelido);
+        if (!resolucao.ok) return resolucao.mensagem;
+        contaId = resolucao.id;
+      }
+
+      let cartaoId: number | undefined;
+      if (cartaoIdInformado !== undefined || cartaoNome !== undefined) {
+        const resolucao = resolverCartaoId(db, cartaoIdInformado, cartaoNome);
+        if (!resolucao.ok) return resolucao.mensagem;
+        cartaoId = resolucao.id;
+      }
+
+      const transacao = criarTransacao(db, { contaId, cartaoId, tipo, valor, categoria, descricao, data });
+      definirUltimaTransacao(ctx.chatId, transacao.id);
+
+      const avisoLimite = cartaoId !== undefined && tipo === 'despesa' ? avisoLimiteCartao(db, cartaoId) : '';
+
+      return `${tipo === 'receita' ? 'Receita' : 'Despesa'} registrada: R$ ${valor.toFixed(2)}, categoria "${categoria}", data ${data}.${avisoLimite}`;
+    },
+  };
+}
+
+export function criarToolEditarTransacao(db: DbClient): ToolDefinition {
+  return {
+    name: 'editar_transacao',
+    description:
+      'Atualiza campos de uma transação existente. Aceita o id; quando omitido (ex: "edita a transação que acabei de registrar", "muda o valor dessa transação"), usa a última transação registrada nesta conversa — NUNCA pergunte pelo id ou peça "qual transação" antes de chamar, chame direto sem id.',
+    schema: schemaEditarTransacao,
+    handler: async (args, ctx) => {
+      const { id: idInformado, ...mudancas } = args as z.infer<typeof schemaEditarTransacao>;
+
+      const id = resolverIdTransacao(ctx.chatId, idInformado);
+      if (id === undefined) {
+        return 'Não sei qual transação você quer editar — informe o id ou registre uma transação primeiro nesta conversa.';
+      }
+
+      const transacao = atualizarTransacao(db, id, mudancas);
+      if (!transacao) {
+        return 'Não encontrei essa transação. Confirme antes de tentar novamente.';
+      }
+
+      if (mudancas.categoria !== undefined && transacao.descricao !== null) {
+        upsertCategoriaCache(db, {
+          descricaoNormalizada: normalizarDescricao(transacao.descricao),
+          categoria: transacao.categoria,
+          origem: 'usuario',
+          modeloSugeriu: null,
+        });
+      }
+
+      const camposAlterados = Object.keys(mudancas).join(', ');
+      return `Transação atualizada (${camposAlterados}). Estado atual: R$ ${transacao.valor.toFixed(2)}, categoria "${transacao.categoria}", data ${transacao.data}.`;
+    },
+  };
+}
+
+export function criarToolExcluirTransacao(db: DbClient): ToolDefinition {
+  return {
+    name: 'excluir_transacao',
+    description:
+      'Exclui uma transação (exclusão lógica, nunca remove o registro do banco). Aceita o id; quando omitido (ex: "exclui essa transação"), usa a última transação registrada nesta conversa — NUNCA pergunte pelo id antes de chamar, chame direto sem id.',
+    schema: schemaExcluirTransacao,
+    requerConfirmacao: true,
+    resumoConfirmacao: (args) => {
+      const { id } = args as z.infer<typeof schemaExcluirTransacao>;
+      if (id === undefined) {
+        return 'excluir a última transação registrada nesta conversa';
+      }
+      const transacao = obterTransacao(db, id);
+      return transacao
+        ? `excluir a transação "${transacao.categoria}" de R$ ${transacao.valor.toFixed(2)} (${transacao.data})`
+        : `excluir a transação #${id}`;
+    },
+    handler: async (args, ctx) => {
+      const { id: idInformado } = args as z.infer<typeof schemaExcluirTransacao>;
+
+      const id = resolverIdTransacao(ctx.chatId, idInformado);
+      if (id === undefined) {
+        return 'Não sei qual transação você quer excluir — informe o id ou registre uma transação primeiro nesta conversa.';
+      }
+
+      const transacao = obterTransacao(db, id);
+      const excluida = excluirTransacao(db, id);
+      if (!excluida) {
+        return 'Não encontrei nenhuma transação ativa com esse id. Confirme antes de tentar novamente.';
+      }
+
+      if (!transacao) {
+        return 'Transação excluída.';
+      }
+      return `Transação excluída: R$ ${transacao.valor.toFixed(2)}, categoria "${transacao.categoria}", data ${transacao.data}.`;
+    },
+  };
+}
