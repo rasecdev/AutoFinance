@@ -1,0 +1,48 @@
+flowchart LR
+
+subgraph 0["src"]
+1["index.ts"]
+subgraph 2["logging"]
+3["errorHandler.ts"]
+4["logger.ts"]
+end
+subgraph 8["scripts"]
+9["backup.ts"]
+A["expurgarDadosAntigos.ts"]
+B["lerEmailFaturas.ts"]
+C["monitorarPrecos.ts"]
+D["relatorioMensal.ts"]
+E["relatorioSemanal.ts"]
+F["renovarSandboxPluggy.ts"]
+G["seedCasosTesteBenchmarkAnaliseCurados.ts"]
+H["seedCasosTesteBenchmarkCurados.ts"]
+I["seedCasosTesteBenchmarkMidiaCurados.ts"]
+J["sincronizarCalendario.ts"]
+K["sincronizarOpenFinance.ts"]
+L["verificarDespesasFixas.ts"]
+end
+end
+subgraph 5["node_modules"]
+subgraph 6["pino"]
+7["pino.js"]
+end
+end
+1-->3
+1-->4
+4-->7
+9-->4
+A-->4
+B-->4
+C-->4
+D-->4
+E-->4
+F-->4
+G-->4
+H-->4
+I-->4
+J-->4
+K-->4
+L-->4
+
+style 3 fill:lime,color:black
+style 4 fill:lime,color:black

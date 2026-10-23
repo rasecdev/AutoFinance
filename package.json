@@ -10,7 +10,9 @@
     "test": "vitest run",
     "seed": "tsx scripts/seed.ts",
     "rotear": "tsx src/scripts/definirRoteamento.ts",
-    "arquitetura": "depcruise src --config .dependency-cruiser.cjs"
+    "arquitetura": "depcruise src --config .dependency-cruiser.cjs",
+    "arquitetura:gerar": "node scripts/gerarArquitetura.mjs",
+    "arquitetura:verificar": "node scripts/gerarArquitetura.mjs --verificar"
   },
   "repository": {
     "type": "git",

@@ -1,0 +1,306 @@
+flowchart LR
+
+subgraph 0["src"]
+subgraph 1["ai"]
+2["openrouter.ts"]
+8["extracaoComprovante.ts"]
+subgraph C["tools"]
+subgraph D["comum"]
+E["resolucao.ts"]
+end
+subgraph L["email"]
+M["registrarFaturaEmail.ts"]
+N["registrarParcelaEmail.ts"]
+end
+end
+end
+subgraph 3["db"]
+subgraph 4["repositories"]
+5["roteamentoTarefas.ts"]
+6["casosTesteBenchmark.ts"]
+7["usoTokens.ts"]
+B["errosExecucao.ts"]
+F["cartoes.ts"]
+G["dividas.ts"]
+H["parcelas.ts"]
+I["transacoes.ts"]
+K["faturas.ts"]
+P["idiomaBot.ts"]
+S["modelosOpenrouterHistorico.ts"]
+14["credenciaisGoogle.ts"]
+15["contasOpenFinance.ts"]
+1H["alertasPrecoEnviados.ts"]
+1I["correspondenciaOpenFinance.ts"]
+1J["emailsProcessados.ts"]
+1K["transacoesOpenFinanceProcessadas.ts"]
+end
+1D["client.ts"]
+end
+subgraph 9["relatorios"]
+A["janela.ts"]
+J["fluxoCaixa.ts"]
+O["imagemSemanal.ts"]
+T["relatorioMensalCompleto.ts"]
+1P["despesasFixas.ts"]
+end
+subgraph Q["i18n"]
+R["t.ts"]
+end
+subgraph Y["bot"]
+Z["formatoMensagens.ts"]
+end
+subgraph 16["integracoes"]
+subgraph 17["pluggy"]
+18["cliente.ts"]
+end
+subgraph 1N["google"]
+1O["auth.ts"]
+end
+end
+subgraph 19["canais"]
+1A["notificar.ts"]
+end
+subgraph 1B["config"]
+1C["env.ts"]
+end
+subgraph 1L["logging"]
+1M["logger.ts"]
+end
+subgraph 1Q["scripts"]
+1R["backup.ts"]
+1S["tratarErroCriticoJob.ts"]
+1T["configurarGoogleOAuth.ts"]
+1X["definirRoteamento.ts"]
+1Y["dormirAte.ts"]
+1Z["expurgarDadosAntigos.ts"]
+20["gerarConnectTokenPluggy.ts"]
+21["gerarPdfTeste.ts"]
+22["lerEmailFaturas.ts"]
+23["monitorarPrecos.ts"]
+24["parearWhatsapp.ts"]
+26["relatorioMensal.ts"]
+27["relatorioSemanal.ts"]
+28["renovarSandboxPluggy.ts"]
+29["seedCasosTesteBenchmarkAnaliseCurados.ts"]
+2A["seedCasosTesteBenchmarkCurados.ts"]
+2B["seedCasosTesteBenchmarkMidiaCurados.ts"]
+2F["sincronizarCalendario.ts"]
+2G["sincronizarOpenFinance.ts"]
+2H["verificarDespesasFixas.ts"]
+end
+end
+subgraph U["node_modules"]
+subgraph V["grammy"]
+subgraph W["out"]
+X["mod.js"]
+end
+end
+subgraph 10["googleapis"]
+subgraph 11["build"]
+subgraph 12["src"]
+13["index.js"]
+end
+end
+end
+subgraph 2C["write-excel-file"]
+subgraph 2D["node"]
+2E["index.cjs"]
+end
+end
+end
+subgraph 1E["fs"]
+25["promises"]
+end
+1F["path"]
+1G["url"]
+1U["process"]
+subgraph 1V["readline"]
+1W["promises"]
+end
+8-->5
+E-->F
+E-->G
+G-->H
+J-->G
+J-->K
+M-->F
+M-->K
+N-->G
+N-->H
+O-->P
+O-->R
+O-->A
+T-->B
+T-->P
+T-->7
+T-->A
+1A-->X
+1O-->13
+1P-->I
+1P-->R
+1R-->1C
+1R-->1D
+1R-->1M
+1R-->1S
+1R-->1E
+1R-->1F
+1S-->Z
+1S-->1A
+1S-->B
+1S-->X
+1T-->1D
+1T-->14
+1T-->13
+1T-->1U
+1T-->1W
+1X-->1C
+1X-->1D
+1X-->5
+1Z-->1C
+1Z-->1D
+1Z-->1M
+1Z-->1S
+1Z-->1G
+20-->18
+20-->1G
+22-->8
+22-->2
+22-->E
+22-->M
+22-->N
+22-->Z
+22-->1A
+22-->1C
+22-->1D
+22-->14
+22-->1J
+22-->7
+22-->1O
+22-->1M
+22-->1Y
+22-->1S
+22-->X
+22-->1G
+23-->Z
+23-->1A
+23-->1C
+23-->1D
+23-->1H
+23-->P
+23-->S
+23-->5
+23-->R
+23-->1M
+23-->1S
+23-->X
+23-->1G
+24-->25
+24-->1G
+26-->2
+26-->Z
+26-->1A
+26-->1C
+26-->1D
+26-->1M
+26-->T
+26-->1Y
+26-->1S
+26-->X
+26-->1G
+27-->Z
+27-->1A
+27-->1C
+27-->1D
+27-->1M
+27-->O
+27-->1Y
+27-->1S
+27-->X
+27-->1G
+28-->1C
+28-->1D
+28-->15
+28-->18
+28-->1M
+28-->1Y
+28-->1S
+28-->1G
+29-->1C
+29-->1D
+29-->6
+29-->1M
+29-->1G
+2A-->1C
+2A-->1D
+2A-->6
+2A-->1M
+2A-->1G
+2B-->1C
+2B-->1D
+2B-->6
+2B-->1M
+2B-->21
+2B-->1E
+2B-->1F
+2B-->1G
+2B-->2E
+2F-->1C
+2F-->1D
+2F-->F
+2F-->14
+2F-->G
+2F-->K
+2F-->H
+2F-->1O
+2F-->1M
+2F-->J
+2F-->1Y
+2F-->1S
+2F-->1G
+2G-->Z
+2G-->1A
+2G-->1C
+2G-->1D
+2G-->15
+2G-->1I
+2G-->I
+2G-->1K
+2G-->18
+2G-->1M
+2G-->1Y
+2G-->1S
+2G-->X
+2G-->1G
+2H-->Z
+2H-->1A
+2H-->1C
+2H-->1D
+2H-->P
+2H-->1M
+2H-->1P
+2H-->A
+2H-->1Y
+2H-->1S
+2H-->X
+2H-->1G
+
+style 1R fill:lime,color:black
+style 1S fill:lime,color:black
+style 1T fill:lime,color:black
+style 1X fill:lime,color:black
+style 1Y fill:lime,color:black
+style 1Z fill:lime,color:black
+style 20 fill:lime,color:black
+style 21 fill:lime,color:black
+style 22 fill:lime,color:black
+style 23 fill:lime,color:black
+style 24 fill:lime,color:black
+style 26 fill:lime,color:black
+style 27 fill:lime,color:black
+style 28 fill:lime,color:black
+style 29 fill:lime,color:black
+style 2A fill:lime,color:black
+style 2B fill:lime,color:black
+style 2F fill:lime,color:black
+style 2G fill:lime,color:black
+style 2H fill:lime,color:black

@@ -191,13 +191,13 @@ Convenção de verificação comum a toda tarefa de código: `npm run build`, `n
 **Description:** gerar, com o `dependency-cruiser`, o Grafo de dependências em JSON completo (`docs/arquitetura/dependencias.json`) e recortes em Mermaid por pasta de conceito (`docs/arquitetura/<pasta>.mmd`, usando `--focus`), por um script `npm run arquitetura:gerar`. O CI falha se os arquivos versionados estiverem desatualizados em relação ao código.
 
 **Acceptance criteria:**
-- [ ] Arquivos gerados e versionados, legíveis por pessoas (Mermaid) e por agentes (JSON)
-- [ ] `npm run arquitetura:verificar` (usado no CI) falha quando o código mudou sem regerar
-- [ ] README curto em `docs/arquitetura/` explicando como regerar
+- [x] Arquivos gerados e versionados, legíveis por pessoas (Mermaid) e por agentes (JSON)
+- [x] `npm run arquitetura:verificar` (usado no CI) falha quando o código mudou sem regerar
+- [x] README curto em `docs/arquitetura/` explicando como regerar
 
 **Verification:**
-- [ ] Mudar um import, confirmar que a verificação falha; regerar e confirmar que passa
-- [ ] CI verde
+- [x] Mudar um import, confirmar que a verificação falha; regerar e confirmar que passa
+- [x] CI verde
 
 **Dependencies:** Tarefa 154
 
