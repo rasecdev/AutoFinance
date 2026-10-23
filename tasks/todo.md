@@ -13,13 +13,13 @@ Convenção de verificação comum a toda tarefa de código: `npm run build`, `n
 **Description:** o `dependency-cruiser` achou o ciclo `src/ai/benchmark.ts` → `src/ai/tools/conversaTools.ts` → `src/ai/tools/benchmark.ts` → `src/ai/benchmark.ts`. Quebrar na origem (extrair o que é compartilhado para um módulo que os dois importam, ou inverter a dependência), sem mudar comportamento.
 
 **Acceptance criteria:**
-- [ ] Nenhum ciclo entre esses três módulos
-- [ ] Nenhuma mudança de comportamento observável; testes existentes passam sem alteração de asserção
+- [x] Nenhum ciclo entre esses três módulos
+- [x] Nenhuma mudança de comportamento observável; testes existentes passam sem alteração de asserção
 
 **Verification:**
-- [ ] `npm test` sem erro; `npx vitest run tests/ai/benchmark.test.ts tests/ai/tools`
-- [ ] `npm run build` e `npm run lint`
-- [ ] Rodar o `dependency-cruiser` com a regra de ciclos (ainda fora do CI) e confirmar 0 ciclos
+- [x] `npm test` sem erro; `npx vitest run tests/ai/benchmark.test.ts tests/ai/tools`
+- [x] `npm run build` e `npm run lint`
+- [x] Rodar o `dependency-cruiser` com a regra de ciclos (ainda fora do CI) e confirmar 0 ciclos
 
 **Dependencies:** None
 

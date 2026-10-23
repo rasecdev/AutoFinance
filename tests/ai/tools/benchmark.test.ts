@@ -134,7 +134,7 @@ describe('tool rodar_benchmark_interno', () => {
       origem: 'curado',
     });
     const client = criarClienteFalso([]);
-    const tool = criarToolRodarBenchmarkInterno(client, db);
+    const tool = criarToolRodarBenchmarkInterno(client, db, () => []);
 
     expect(tool.requerConfirmacao).toBe(true);
     const aviso = tool.avisoConfirmacao?.({
@@ -157,7 +157,7 @@ describe('tool rodar_benchmark_interno', () => {
   });
 
   it('sem informar fluxo, o schema aplica o default conversa_texto (compatibilidade com uso anterior a esta tarefa)', () => {
-    const tool = criarToolRodarBenchmarkInterno(criarClienteFalso([]), db);
+    const tool = criarToolRodarBenchmarkInterno(criarClienteFalso([]), db, () => []);
 
     const args = tool.schema.parse({ modelos_candidatos: ['openai/gpt-4o-mini'] });
 
@@ -166,7 +166,7 @@ describe('tool rodar_benchmark_interno', () => {
 
   it('avisa quando não há nenhum caso de teste do fluxo pedido', () => {
     const client = criarClienteFalso([]);
-    const tool = criarToolRodarBenchmarkInterno(client, db);
+    const tool = criarToolRodarBenchmarkInterno(client, db, () => []);
 
     const aviso = tool.avisoConfirmacao?.({ modelos_candidatos: ['openai/gpt-4o-mini'], fluxo: 'conversa_texto' });
 
@@ -176,7 +176,7 @@ describe('tool rodar_benchmark_interno', () => {
 
   it('recusa rodar (e não grava nada) mesmo se confirmado sem nenhum caso de teste', async () => {
     const client = criarClienteFalso([]);
-    const tool = criarToolRodarBenchmarkInterno(client, db);
+    const tool = criarToolRodarBenchmarkInterno(client, db, () => []);
 
     const resposta = await tool.handler(
       { modelos_candidatos: ['openai/gpt-4o-mini'], fluxo: 'conversa_texto' },
@@ -195,7 +195,7 @@ describe('tool rodar_benchmark_interno', () => {
       origem: 'curado',
     });
     const client = criarClienteFalso([{ nome: 'registrar_transacao', argumentos: { valor: 30 } }]);
-    const tool = criarToolRodarBenchmarkInterno(client, db);
+    const tool = criarToolRodarBenchmarkInterno(client, db, () => []);
 
     const resposta = await tool.handler(
       { modelos_candidatos: ['openai/gpt-4o-mini'], fluxo: 'conversa_texto' },
@@ -226,7 +226,7 @@ describe('tool rodar_benchmark_interno', () => {
       origem: 'curado',
     });
     const client = criarClienteFalso([{ nome: 'ferramenta_a', argumentos: {} }]);
-    const tool = criarToolRodarBenchmarkInterno(client, db);
+    const tool = criarToolRodarBenchmarkInterno(client, db, () => []);
 
     await tool.handler({ modelos_candidatos: ['modelo-a', 'modelo-b'], fluxo: 'conversa_texto' }, { chatId: 1 });
 
@@ -247,7 +247,7 @@ describe('tool rodar_benchmark_interno', () => {
       usage: { prompt_tokens: 100, completion_tokens: 20, cost: 0.0002 },
     });
     const client = { chat: { completions: { create } } } as unknown as OpenAI;
-    const tool = criarToolRodarBenchmarkInterno(client, db);
+    const tool = criarToolRodarBenchmarkInterno(client, db, () => []);
 
     const resposta = await tool.handler(
       { modelos_candidatos: ['google/gemini-2.5-flash-lite'], fluxo: 'leitura_comprovante' },

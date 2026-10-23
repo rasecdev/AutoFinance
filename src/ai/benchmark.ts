@@ -12,8 +12,8 @@ import { interpretarPlanilha, type TransacaoPlanilha } from './interpretacaoPlan
 import { removerChavesNulas, type UsageComCusto } from './openrouter.js';
 import { gerarResumoMensal, type DadosParaResumoMensal } from './relatorioMensal.js';
 import { SYSTEM_PROMPT } from './systemPrompt.js';
-import { montarToolsConversa } from './tools/conversaTools.js';
 import { paraDefinicaoOpenAI } from './tools/registry.js';
+import type { ToolDefinition } from './tools/types.js';
 import { transcreverAudio } from './transcricao.js';
 
 export const METRICA_ACURACIA_TOOL_CALLING = 'acuracia_tool_calling';
@@ -108,13 +108,20 @@ type ResultadoAvaliacaoCaso = {
 // entrada do caso como única mensagem, e só inspeciona tool_calls da
 // resposta — nunca chama tool.handler. Reaproveitar gerarResposta rodaria a
 // ferramenta de verdade (ex: criar_transacao) a cada rodada de teste.
+// As ferramentas chegam por parâmetro (quem chama é quem monta o conjunto de
+// produção): importar montarToolsConversa aqui fecharia um ciclo, porque
+// conversaTools registra a tool que roda este benchmark (ADR 0003).
 async function avaliarConversaTexto(
   client: OpenAI,
-  db: DbClient,
+  _db: DbClient,
   modelo: string,
   caso: CasoTesteBenchmark,
+  ferramentasConversa?: ToolDefinition[],
 ): Promise<ResultadoAvaliacaoCaso> {
-  const ferramentas = montarToolsConversa(db, client).map(paraDefinicaoOpenAI);
+  if (!ferramentasConversa) {
+    throw new Error('o fluxo conversa_texto precisa das ferramentas de produção (ferramentasConversa)');
+  }
+  const ferramentas = ferramentasConversa.map(paraDefinicaoOpenAI);
 
   const completion = await client.chat.completions.create({
     model: modelo,
@@ -342,6 +349,7 @@ type EstrategiaAvaliacao = (
   db: DbClient,
   modelo: string,
   caso: CasoTesteBenchmark,
+  ferramentasConversa?: ToolDefinition[],
 ) => Promise<ResultadoAvaliacaoCaso>;
 
 const ESTRATEGIAS: Record<string, EstrategiaAvaliacao> = {
@@ -358,6 +366,7 @@ export async function executarBenchmarkFluxo(
   db: DbClient,
   fluxo: string,
   modelosCandidatos: string[],
+  ferramentasConversa?: ToolDefinition[],
 ): Promise<ResultadoBenchmarkModelo[]> {
   const estrategia = ESTRATEGIAS[fluxo];
   if (!estrategia) {
@@ -372,7 +381,7 @@ export async function executarBenchmarkFluxo(
     let custoTotal = 0;
 
     for (const caso of casos) {
-      const avaliacao = await estrategia(client, db, modelo, caso);
+      const avaliacao = await estrategia(client, db, modelo, caso, ferramentasConversa);
       custoTotal += avaliacao.custo;
 
       if (avaliacao.acerto) {

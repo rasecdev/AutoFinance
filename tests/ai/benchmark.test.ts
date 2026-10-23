@@ -7,6 +7,7 @@ import writeXlsxFile from 'write-excel-file/node';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DadosParaAnaliseQualidade } from '../../src/ai/analisarQualidade.js';
 import { executarBenchmarkFluxo } from '../../src/ai/benchmark.js';
+import { montarToolsConversa } from '../../src/ai/tools/conversaTools.js';
 import type { DadosParaResumoMensal } from '../../src/ai/relatorioMensal.js';
 import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
@@ -104,7 +105,7 @@ describe('executarBenchmarkFluxo', () => {
       respostaComToolCalls([{ nome: 'registrar_transacao', argumentos: { valor: 30, categoria: 'transporte' } }]),
     );
 
-    const resultados = await executarBenchmarkFluxo(client, db, FLUXO, ['openai/gpt-4o-mini']);
+    const resultados = await executarBenchmarkFluxo(client, db, FLUXO, ['openai/gpt-4o-mini'], montarToolsConversa(db, client));
 
     expect(resultados).toEqual([
       { modelo: 'openai/gpt-4o-mini', totalCasos: 1, acertos: 1, acuracia: 1, custoTotal: 0.0001 },
@@ -120,7 +121,7 @@ describe('executarBenchmarkFluxo', () => {
     });
     const { client } = criarClienteFalso(respostaComToolCalls([{ nome: 'consultar_saldo', argumentos: {} }]));
 
-    const resultados = await executarBenchmarkFluxo(client, db, FLUXO, ['openai/gpt-4o-mini']);
+    const resultados = await executarBenchmarkFluxo(client, db, FLUXO, ['openai/gpt-4o-mini'], montarToolsConversa(db, client));
 
     expect(resultados[0]).toMatchObject({ acertos: 0, acuracia: 0 });
   });
@@ -136,7 +137,7 @@ describe('executarBenchmarkFluxo', () => {
       respostaComToolCalls([{ nome: 'registrar_transacao', argumentos: { valor: 999 } }]),
     );
 
-    const resultados = await executarBenchmarkFluxo(client, db, FLUXO, ['openai/gpt-4o-mini']);
+    const resultados = await executarBenchmarkFluxo(client, db, FLUXO, ['openai/gpt-4o-mini'], montarToolsConversa(db, client));
 
     expect(resultados[0]).toMatchObject({ acertos: 0, acuracia: 0 });
   });
@@ -152,7 +153,7 @@ describe('executarBenchmarkFluxo', () => {
       respostaComToolCalls([{ nome: 'registrar_transacao', argumentos: { categoria: 'transporte', valor: 30 } }]),
     );
 
-    const resultados = await executarBenchmarkFluxo(client, db, FLUXO, ['openai/gpt-4o-mini']);
+    const resultados = await executarBenchmarkFluxo(client, db, FLUXO, ['openai/gpt-4o-mini'], montarToolsConversa(db, client));
 
     expect(resultados[0]).toMatchObject({ acertos: 1, acuracia: 1 });
   });
@@ -170,7 +171,7 @@ describe('executarBenchmarkFluxo', () => {
       ]),
     );
 
-    const resultados = await executarBenchmarkFluxo(client, db, FLUXO, ['openai/gpt-4o-mini']);
+    const resultados = await executarBenchmarkFluxo(client, db, FLUXO, ['openai/gpt-4o-mini'], montarToolsConversa(db, client));
 
     expect(resultados[0]).toMatchObject({ acertos: 1, acuracia: 1 });
   });
@@ -197,7 +198,7 @@ describe('executarBenchmarkFluxo', () => {
       respostaComToolCalls([{ nome: 'ferramenta_errada', argumentos: {} }]),
     );
 
-    const resultados = await executarBenchmarkFluxo(client, db, FLUXO, ['modelo-bom', 'modelo-ruim']);
+    const resultados = await executarBenchmarkFluxo(client, db, FLUXO, ['modelo-bom', 'modelo-ruim'], montarToolsConversa(db, client));
 
     expect(resultados).toHaveLength(2);
     expect(resultados[0]).toMatchObject({ modelo: 'modelo-bom', acertos: 2, totalCasos: 2, acuracia: 1 });
@@ -213,7 +214,7 @@ describe('executarBenchmarkFluxo', () => {
     });
     const { client } = criarClienteFalso(respostaComToolCalls([{ nome: 'ferramenta_a', argumentos: {} }]));
 
-    await executarBenchmarkFluxo(client, db, FLUXO, ['openai/gpt-4o-mini']);
+    await executarBenchmarkFluxo(client, db, FLUXO, ['openai/gpt-4o-mini'], montarToolsConversa(db, client));
 
     const registros = lerUsoTokens();
     expect(registros).toHaveLength(1);
@@ -228,7 +229,7 @@ describe('executarBenchmarkFluxo', () => {
   it('retorna resultado vazio/claro pra fluxo sem nenhum caso de teste, sem chamar a API', async () => {
     const { client, create } = criarClienteFalso();
 
-    const resultados = await executarBenchmarkFluxo(client, db, FLUXO, ['openai/gpt-4o-mini']);
+    const resultados = await executarBenchmarkFluxo(client, db, FLUXO, ['openai/gpt-4o-mini'], montarToolsConversa(db, client));
 
     expect(resultados).toEqual([
       { modelo: 'openai/gpt-4o-mini', totalCasos: 0, acertos: 0, acuracia: 0, custoTotal: 0 },

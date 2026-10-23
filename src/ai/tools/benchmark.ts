@@ -67,7 +67,15 @@ function formatarCustoUsd(valor: number): string {
   return `US$ ${valor.toFixed(6)}`;
 }
 
-export function criarToolRodarBenchmarkInterno(client: OpenAI, db: DbClient): ToolDefinition {
+// obterFerramentasConversa devolve o conjunto de produção que o benchmark de
+// conversa_texto compara (montarToolsConversa) — recebido por parâmetro, e
+// não importado, porque conversaTools é quem registra esta tool e importar de
+// volta fecharia um ciclo (ADR 0003).
+export function criarToolRodarBenchmarkInterno(
+  client: OpenAI,
+  db: DbClient,
+  obterFerramentasConversa: () => ToolDefinition[],
+): ToolDefinition {
   return {
     name: 'rodar_benchmark_interno',
     description:
@@ -106,7 +114,13 @@ export function criarToolRodarBenchmarkInterno(client: OpenAI, db: DbClient): To
         return `Não há nenhum caso de teste cadastrado pro fluxo "${fluxo}" ainda — nada foi rodado.`;
       }
 
-      const resultados = await executarBenchmarkFluxo(client, db, fluxo, modelosCandidatos);
+      const resultados = await executarBenchmarkFluxo(
+        client,
+        db,
+        fluxo,
+        modelosCandidatos,
+        obterFerramentasConversa(),
+      );
 
       const linhas = resultados.map((resultado) => {
         registrarBenchmark(db, {

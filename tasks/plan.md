@@ -40,7 +40,7 @@ Fase 15:  checkpoint 14 + P1 + P2 ──► 171 ──► 172, 173, 174 ──�
 ### Fase 13 — Reorganização por conceito e arquitetura verificável
 
 #### Fase A: Corrigir as violações (antes de ligar o gate)
-- [ ] Tarefa 147: quebrar o ciclo `ai/benchmark` ↔ `tools/conversaTools` ↔ `tools/benchmark`
+- [x] Tarefa 147: quebrar o ciclo `ai/benchmark` ↔ `tools/conversaTools` ↔ `tools/benchmark`
 - [ ] Tarefa 148: mover `bot/contextoRecente` para `ai/`
 
 #### Fase B: Gate
