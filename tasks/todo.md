@@ -149,13 +149,13 @@ Convenção de verificação comum a toda tarefa de código: `npm run build`, `n
 **Description:** `src/ai/tools/` tem 26 arquivos misturando tools e auxiliares. Agrupar por domínio (transações, dívidas, contas, relatórios, e-mail, consulta, benchmark e qualidade) e mover os auxiliares compartilhados (`resolucao`, `similaridade`, `normalizarDescricao`, `mesReferencia`, `errosExecucao`) para uma subpasta comum. Movimentação pura.
 
 **Acceptance criteria:**
-- [ ] Subpastas por domínio em `src/ai/tools/`; nenhum arquivo solto exceto o registro e os tipos
-- [ ] Os testes em `tests/ai/tools/` espelham a nova estrutura
-- [ ] A lista final de tools registradas é idêntica (mesmos nomes e schemas)
+- [x] Subpastas por domínio em `src/ai/tools/`; nenhum arquivo solto exceto o registro e os tipos
+- [x] Os testes em `tests/ai/tools/` espelham a nova estrutura
+- [x] A lista final de tools registradas é idêntica (mesmos nomes e schemas)
 
 **Verification:**
-- [ ] `npm test`, `npm run arquitetura`
-- [ ] Teste que compara a lista de nomes de tools antes e depois (snapshot temporário na própria tarefa)
+- [x] `npm test`, `npm run arquitetura`
+- [x] Teste que compara a lista de nomes de tools antes e depois (snapshot temporário na própria tarefa)
 
 **Dependencies:** Tarefa 152
 

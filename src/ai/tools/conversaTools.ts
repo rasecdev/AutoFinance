@@ -1,38 +1,38 @@
 import type OpenAI from 'openai';
 import type { DbClient } from '../../db/client.js';
-import { criarToolCriarCasoTesteBenchmark, criarToolRodarBenchmarkInterno } from './benchmark.js';
+import { criarToolCriarCasoTesteBenchmark, criarToolRodarBenchmarkInterno } from './avaliacao/benchmark.js';
 import {
   criarToolCriarCartao,
   criarToolCriarConta,
   criarToolEditarConta,
   criarToolListarCartoes,
   criarToolListarContas,
-} from './contas.js';
-import { criarToolConsultarSaldo, criarToolConsultarExtrato, criarToolResumoMensal } from './consultas.js';
-import { criarToolConsultarDadosDinamico } from './consultaDinamica.js';
-import { criarToolConsultarEGraficar } from './consultaEGraficar.js';
-import { criarToolGerarGrafico } from './grafico.js';
+} from './contas/contas.js';
+import { criarToolConsultarSaldo, criarToolConsultarExtrato, criarToolResumoMensal } from './consulta/consultas.js';
+import { criarToolConsultarDadosDinamico } from './consulta/consultaDinamica.js';
+import { criarToolConsultarEGraficar } from './consulta/consultaEGraficar.js';
+import { criarToolGerarGrafico } from './consulta/grafico.js';
 import {
   criarToolConsultarDividasAtivas,
   criarToolConsultarFatura,
   criarToolResumoDividas,
-} from './consultasDividas.js';
-import { criarToolCriarDespesaFixa, criarToolEditarDespesaFixa } from './despesasFixas.js';
-import { criarToolAmortizarDivida, criarToolCriarDivida, criarToolQuitarDivida, criarToolRenegociar } from './dividas.js';
-import { criarToolListarErros } from './errosExecucao.js';
-import { criarToolPagarFatura, criarToolPagarParcela } from './pagamentos.js';
+} from './dividas/consultasDividas.js';
+import { criarToolCriarDespesaFixa, criarToolEditarDespesaFixa } from './transacoes/despesasFixas.js';
+import { criarToolAmortizarDivida, criarToolCriarDivida, criarToolQuitarDivida, criarToolRenegociar } from './dividas/dividas.js';
+import { criarToolListarErros } from './comum/errosExecucao.js';
+import { criarToolPagarFatura, criarToolPagarParcela } from './dividas/pagamentos.js';
 import {
   criarToolConsultarPatrimonioLiquido,
   criarToolProjetarFluxoCaixa,
   criarToolSimularAmortizacao,
-} from './projecaoFinanceira.js';
-import { criarToolAnalisarQualidade } from './qualidade.js';
-import { criarToolRegistrarFaturaEmail } from './registrarFaturaEmail.js';
-import { criarToolRegistrarParcelaEmail } from './registrarParcelaEmail.js';
-import { criarToolRelatorio } from './relatorios.js';
-import { criarToolEditarTransacao, criarToolExcluirTransacao, criarToolRegistrarTransacao } from './transacoes.js';
-import { criarToolRegistrarTransacoesEmLote } from './transacoesEmLote.js';
-import { criarToolRegistrarTransferencia } from './transferencias.js';
+} from './consulta/projecaoFinanceira.js';
+import { criarToolAnalisarQualidade } from './avaliacao/qualidade.js';
+import { criarToolRegistrarFaturaEmail } from './email/registrarFaturaEmail.js';
+import { criarToolRegistrarParcelaEmail } from './email/registrarParcelaEmail.js';
+import { criarToolRelatorio } from './relatorios/relatorios.js';
+import { criarToolEditarTransacao, criarToolExcluirTransacao, criarToolRegistrarTransacao } from './transacoes/transacoes.js';
+import { criarToolRegistrarTransacoesEmLote } from './transacoes/transacoesEmLote.js';
+import { criarToolRegistrarTransferencia } from './transacoes/transferencias.js';
 import type { ToolDefinition } from './types.js';
 
 // Lista de ferramentas do fluxo conversa_texto, compartilhada entre a

@@ -1,0 +1,249 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import Database from 'better-sqlite3-multiple-ciphers';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  resolverCartaoId,
+  resolverContaId,
+  resolverDividaGlobal,
+  resolverDividaId,
+  resolverDividaPorIdentificador,
+} from '../../../../src/ai/tools/comum/resolucao.js';
+import type { DbClient } from '../../../../src/db/client.js';
+import { criarCartao } from '../../../../src/db/repositories/cartoes.js';
+import { criarConta } from '../../../../src/db/repositories/contas.js';
+import { criarDivida } from '../../../../src/db/repositories/dividas.js';
+import { migrate } from '../../../../src/db/migrate.js';
+
+const CHAVE_TESTE = 'chave-teste-resolucao';
+
+let dir: string;
+let db: DbClient;
+
+beforeEach(() => {
+  dir = mkdtempSync(join(tmpdir(), 'autofinance-resolucao-test-'));
+  db = new Database(join(dir, 'teste.db'));
+  db.pragma("cipher='sqlcipher'");
+  db.pragma(`key='${CHAVE_TESTE}'`);
+  migrate(db);
+});
+
+afterEach(() => {
+  db.close();
+  rmSync(dir, { recursive: true, force: true });
+});
+
+describe('resolverContaId — busca aproximada (erro de digitação)', () => {
+  it('resolve mesmo com um erro de digitação no apelido', () => {
+    const contaId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Principal' }).id;
+
+    const resultado = resolverContaId(db, undefined, 'Principa');
+
+    expect(resultado).toEqual({ ok: true, id: contaId });
+  });
+
+  it('não resolve quando o nome informado não se parece com nenhuma conta existente', () => {
+    criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Principal' });
+
+    const resultado = resolverContaId(db, undefined, 'Xablau');
+
+    expect(resultado.ok).toBe(false);
+  });
+});
+
+describe('resolverCartaoId — busca aproximada (erro de digitação)', () => {
+  it('resolve mesmo com um erro de digitação no nome do cartão', () => {
+    const contaId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Principal' }).id;
+    const cartaoId = criarCartao(db, { contaId, nome: 'Nubank Cartão', limite: 5000, diaFechamento: 5, diaVencimento: 10 }).id;
+
+    const resultado = resolverCartaoId(db, undefined, 'Nubank Cartao');
+
+    expect(resultado).toEqual({ ok: true, id: cartaoId });
+  });
+});
+
+describe('resolverContaId/resolverCartaoId — nome parcial (achado real: "nubank" para "Nubank Cartão")', () => {
+  it('resolve conta por nome parcial (substring, não é erro de digitação)', () => {
+    const contaId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Nubank PJ' }).id;
+
+    const resultado = resolverContaId(db, undefined, 'nubank');
+
+    expect(resultado).toEqual({ ok: true, id: contaId });
+  });
+
+  it('resolve cartão por nome parcial (substring, não é erro de digitação)', () => {
+    const contaId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Principal' }).id;
+    const cartaoId = criarCartao(db, { contaId, nome: 'Nubank Cartão', limite: 5000, diaFechamento: 5, diaVencimento: 10 }).id;
+
+    const resultado = resolverCartaoId(db, undefined, 'nubank');
+
+    expect(resultado).toEqual({ ok: true, id: cartaoId });
+  });
+
+  it('pede pra desambiguar quando o nome parcial casa com mais de um cartão', () => {
+    const contaId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Principal' }).id;
+    const outraContaId = criarConta(db, { bancoNome: 'Bradesco', tipo: 'PF', apelido: 'Outra' }).id;
+    criarCartao(db, { contaId, nome: 'Nubank PF', limite: 5000, diaFechamento: 5, diaVencimento: 10 });
+    criarCartao(db, { contaId: outraContaId, nome: 'Nubank PJ', limite: 5000, diaFechamento: 5, diaVencimento: 10 });
+
+    const resultado = resolverCartaoId(db, undefined, 'nubank');
+
+    expect(resultado.ok).toBe(false);
+  });
+});
+
+describe('resolverDividaId — busca aproximada na divida_descricao', () => {
+  it('resolve mesmo com um erro de digitação na descrição', () => {
+    const contaId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Principal' }).id;
+    criarDivida(db, {
+      contaId,
+      tipo: 'emprestimo',
+      valorTotal: 1000,
+      numParcelas: 4,
+      dataInicio: '2026-09-01',
+      descricao: 'Financiamento carro',
+    });
+    criarDivida(db, {
+      contaId,
+      tipo: 'emprestimo',
+      valorTotal: 2000,
+      numParcelas: 6,
+      dataInicio: '2026-09-01',
+      descricao: 'Reforma casa',
+    });
+
+    const resultado = resolverDividaId(db, contaId, 'emprestimo', 'Financiamento caro');
+
+    expect(resultado.ok).toBe(true);
+  });
+
+  it('resolve por nome parcial (não é erro de digitação, é descrição incompleta)', () => {
+    const contaId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Principal' }).id;
+    criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 12000,
+      numParcelas: 12,
+      dataInicio: '2026-09-01',
+      descricao: 'Financiamento Moto',
+    });
+    criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 8000,
+      numParcelas: 10,
+      dataInicio: '2026-09-01',
+      descricao: 'Reforma casa',
+    });
+
+    const resultado = resolverDividaId(db, contaId, 'financiamento', 'Moto');
+
+    expect(resultado.ok).toBe(true);
+  });
+
+  it('resolve também na direção inversa (texto informado maior que a descrição real)', () => {
+    const contaId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Principal' }).id;
+    criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 12000,
+      numParcelas: 12,
+      dataInicio: '2026-09-01',
+      descricao: 'Moto',
+    });
+
+    const resultado = resolverDividaId(db, contaId, 'financiamento', 'Financiamento da Moto');
+
+    expect(resultado.ok).toBe(true);
+  });
+});
+
+describe('resolverDividaGlobal — busca sem conta (Fase 6, Tarefa 66/simular_amortizacao)', () => {
+  it('resolve direto quando a dívida do tipo é única no sistema, sem precisar de conta', () => {
+    const contaId = criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Principal' }).id;
+    const divida = criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 12000,
+      numParcelas: 12,
+      dataInicio: '2026-09-01',
+      descricao: 'Financiamento Moto',
+    });
+
+    const resultado = resolverDividaGlobal(db, 'financiamento');
+
+    expect(resultado).toEqual({ ok: true, id: divida.divida.id });
+  });
+
+  it('pede pra especificar quando há mais de uma dívida do mesmo tipo em contas diferentes', () => {
+    const contaId1 = criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Principal' }).id;
+    const contaId2 = criarConta(db, { bancoNome: 'Itaú', tipo: 'PJ', apelido: 'PJ' }).id;
+    criarDivida(db, { contaId: contaId1, tipo: 'financiamento', valorTotal: 12000, numParcelas: 12, dataInicio: '2026-09-01', descricao: 'Moto' });
+    criarDivida(db, { contaId: contaId2, tipo: 'financiamento', valorTotal: 8000, numParcelas: 10, dataInicio: '2026-09-01', descricao: 'Carro' });
+
+    const resultado = resolverDividaGlobal(db, 'financiamento');
+
+    expect(resultado.ok).toBe(false);
+  });
+
+  it('descrição informada desambigua entre dívidas de contas diferentes', () => {
+    const contaId1 = criarConta(db, { bancoNome: 'Nubank', tipo: 'PF', apelido: 'Principal' }).id;
+    const contaId2 = criarConta(db, { bancoNome: 'Itaú', tipo: 'PJ', apelido: 'PJ' }).id;
+    criarDivida(db, { contaId: contaId1, tipo: 'financiamento', valorTotal: 12000, numParcelas: 12, dataInicio: '2026-09-01', descricao: 'Moto' });
+    const dividaCarro = criarDivida(db, { contaId: contaId2, tipo: 'financiamento', valorTotal: 8000, numParcelas: 10, dataInicio: '2026-09-01', descricao: 'Carro' });
+
+    const resultado = resolverDividaGlobal(db, 'financiamento', 'Carro');
+
+    expect(resultado).toEqual({ ok: true, id: dividaCarro.divida.id });
+  });
+
+  it('retorna erro quando não há nenhuma dívida ativa do tipo', () => {
+    const resultado = resolverDividaGlobal(db, 'consignado');
+
+    expect(resultado.ok).toBe(false);
+  });
+});
+
+describe('resolverDividaPorIdentificador — busca por texto livre, sem tipo (Fase 7, lerEmailFaturas)', () => {
+  it('resolve por substring do identificador contra a descrição, sem depender do tipo', () => {
+    const contaId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Principal' }).id;
+    const divida = criarDivida(db, {
+      contaId,
+      tipo: 'financiamento',
+      valorTotal: 12000,
+      numParcelas: 12,
+      dataInicio: '2026-09-01',
+      descricao: 'Itaú Financiamento Veículo',
+    });
+
+    const resultado = resolverDividaPorIdentificador(db, 'Itaú Financiamento Veículo - Parcela 3');
+
+    expect(resultado).toEqual({ ok: true, id: divida.divida.id });
+  });
+
+  it('não resolve quando nenhuma dívida ativa tem descrição parecida', () => {
+    const contaId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Principal' }).id;
+    criarDivida(db, { contaId, tipo: 'emprestimo', valorTotal: 1000, numParcelas: 4, dataInicio: '2026-09-01', descricao: 'Empréstimo Pessoal' });
+
+    const resultado = resolverDividaPorIdentificador(db, 'Banco Totalmente Diferente');
+
+    expect(resultado.ok).toBe(false);
+  });
+
+  it('pede pra especificar quando mais de uma dívida ativa tem descrição parecida', () => {
+    const contaId = criarConta(db, { bancoNome: 'Itaú', tipo: 'PF', apelido: 'Principal' }).id;
+    criarDivida(db, { contaId, tipo: 'financiamento', valorTotal: 5000, numParcelas: 10, dataInicio: '2026-09-01', descricao: 'Nubank Financiamento Moto' });
+    criarDivida(db, { contaId, tipo: 'emprestimo', valorTotal: 3000, numParcelas: 6, dataInicio: '2026-09-01', descricao: 'Nubank Empréstimo Pessoal' });
+
+    const resultado = resolverDividaPorIdentificador(db, 'Nubank');
+
+    expect(resultado.ok).toBe(false);
+  });
+
+  it('retorna erro quando não há nenhuma dívida ativa com descrição cadastrada', () => {
+    const resultado = resolverDividaPorIdentificador(db, 'Qualquer coisa');
+
+    expect(resultado.ok).toBe(false);
+  });
+});
