@@ -1,8 +1,9 @@
 import type OpenAI from 'openai';
 import { z } from 'zod';
 import { describe, expect, it, vi } from 'vitest';
-import { MODELO_PADRAO, gerarResposta, removerChavesNulas } from '../../src/ai/openrouter.js';
-import type { ToolDefinition } from '../../src/ai/tools/types.js';
+import { gerarResposta } from '../../../src/ai/agente/gerarResposta.js';
+import { MODELO_PADRAO } from '../../../src/ai/openrouter.js';
+import type { ToolDefinition } from '../../../src/ai/tools/types.js';
 
 function criarClienteFalso(...respostas: unknown[]): OpenAI {
   const create = vi.fn();
@@ -48,35 +49,6 @@ function respostaToolCall(
     usage,
   };
 }
-
-describe('removerChavesNulas', () => {
-  it('remove chaves com valor null de um objeto', () => {
-    expect(removerChavesNulas({ a: 1, b: null, c: 'x' })).toEqual({ a: 1, c: 'x' });
-  });
-
-  it('mantém undefined, zero, string vazia e false (só remove null)', () => {
-    expect(removerChavesNulas({ a: undefined, b: 0, c: '', d: false })).toEqual({
-      a: undefined,
-      b: 0,
-      c: '',
-      d: false,
-    });
-  });
-
-  it('remove recursivamente em objeto aninhado', () => {
-    expect(removerChavesNulas({ a: { b: null, c: 1 } })).toEqual({ a: { c: 1 } });
-  });
-
-  it('mapeia elementos de array recursivamente, sem remover null do array em si', () => {
-    expect(removerChavesNulas([{ a: null, b: 1 }, 'x', null])).toEqual([{ b: 1 }, 'x', null]);
-  });
-
-  it('devolve valor primitivo/null como está', () => {
-    expect(removerChavesNulas(null)).toBeNull();
-    expect(removerChavesNulas(5)).toBe(5);
-    expect(removerChavesNulas('x')).toBe('x');
-  });
-});
 
 describe('gerarResposta — sem ferramentas (compatibilidade)', () => {
   it('retorna a resposta em texto sem chamar tool_calls', async () => {

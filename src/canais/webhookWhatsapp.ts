@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import http, { type IncomingMessage, type ServerResponse } from 'node:http';
 import type OpenAI from 'openai';
-import { extrairResultadoTool } from '../ai/openrouter.js';
+import { extrairResultadoTool } from '../ai/agente/executarToolCall.js';
 import type { ToolDefinition } from '../ai/tools/types.js';
 import { obterPendencia, removerPendencia } from '../ai/confirmacao/pendencias.js';
 import { OPCAO_POLL_CONFIRMAR } from '../bot/tecladoConfirmacao.js';
