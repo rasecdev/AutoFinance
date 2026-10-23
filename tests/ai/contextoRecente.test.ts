@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { definirUltimaTransacao, obterUltimaTransacao } from '../../src/bot/contextoRecente.js';
+import { definirUltimaTransacao, obterUltimaTransacao } from '../../src/ai/contextoRecente.js';
 
 describe('contextoRecente', () => {
   it('retorna undefined quando não há transação rastreada pro chat', () => {

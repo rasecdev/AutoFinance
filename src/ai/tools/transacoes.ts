@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { definirUltimaTransacao, obterUltimaTransacao } from '../../bot/contextoRecente.js';
+import { definirUltimaTransacao, obterUltimaTransacao } from '../contextoRecente.js';
 import type { DbClient } from '../../db/client.js';
 import { buscarCategoriaCache, upsertCategoriaCache } from '../../db/repositories/cacheCategorizacao.js';
 import {

@@ -41,7 +41,7 @@ Fase 15:  checkpoint 14 + P1 + P2 ──► 171 ──► 172, 173, 174 ──�
 
 #### Fase A: Corrigir as violações (antes de ligar o gate)
 - [x] Tarefa 147: quebrar o ciclo `ai/benchmark` ↔ `tools/conversaTools` ↔ `tools/benchmark`
-- [ ] Tarefa 148: mover `bot/contextoRecente` para `ai/`
+- [x] Tarefa 148: mover `bot/contextoRecente` para `ai/`
 
 #### Fase B: Gate
 - [ ] Tarefa 149: gate `dependency-cruiser` no CI (`npm run arquitetura`), baseline zero

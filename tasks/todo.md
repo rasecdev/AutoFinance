@@ -36,12 +36,12 @@ Convenção de verificação comum a toda tarefa de código: `npm run build`, `n
 **Description:** `src/ai/tools/transacoes.ts` importa `src/bot/contextoRecente.ts`, violando a Fronteira "ai não importa de bot". O contexto recente é estado de conversa de IA, então o módulo passa para `src/ai/`.
 
 **Acceptance criteria:**
-- [ ] `contextoRecente` vive em `src/ai/` e todos os imports (inclusive nos handlers do bot e nos testes) apontam para o novo caminho
-- [ ] `ai` não importa nada de `bot`
+- [x] `contextoRecente` vive em `src/ai/` e todos os imports (inclusive nos handlers do bot e nos testes) apontam para o novo caminho
+- [x] `ai` não importa nada de `bot`
 
 **Verification:**
-- [ ] `npm test`, `npm run build`, `npm run lint`
-- [ ] `git mv` usado para preservar o histórico; teste correspondente também movido para `tests/ai/`
+- [x] `npm test`, `npm run build`, `npm run lint`
+- [x] `git mv` usado para preservar o histórico; teste correspondente também movido para `tests/ai/`
 
 **Dependencies:** None
 
