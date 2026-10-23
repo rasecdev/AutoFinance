@@ -14,5 +14,10 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // Arquivos de configuração CommonJS (ex: .dependency-cruiser.cjs) usam `module`.
+    files: ['**/*.cjs'],
+    languageOptions: { sourceType: 'commonjs', globals: { module: 'writable' } },
+  },
   eslintConfigPrettier,
 );

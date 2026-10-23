@@ -44,7 +44,7 @@ Fase 15:  checkpoint 14 + P1 + P2 ──► 171 ──► 172, 173, 174 ──�
 - [x] Tarefa 148: mover `bot/contextoRecente` para `ai/`
 
 #### Fase B: Gate
-- [ ] Tarefa 149: gate `dependency-cruiser` no CI (`npm run arquitetura`), baseline zero
+- [x] Tarefa 149: gate `dependency-cruiser` no CI (`npm run arquitetura`), baseline zero
 
 ### Checkpoint: Gate ligado
 - [ ] `npm run build`/`lint`/`test` sem erro; `npm run arquitetura` sem violação; CI verde com o novo job

@@ -32,6 +32,8 @@ jobs:
       - if: steps.has-package-json.outputs.exists == 'true'
         run: npm run lint --if-present
       - if: steps.has-package-json.outputs.exists == 'true'
+        run: npm run arquitetura --if-present
+      - if: steps.has-package-json.outputs.exists == 'true'
         run: npm test --if-present
       - if: steps.has-package-json.outputs.exists == 'true'
         run: npm audit --audit-level=high
