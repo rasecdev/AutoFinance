@@ -6,7 +6,7 @@ import type { Context } from 'grammy';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MODELO_PADRAO } from '../../src/ai/openrouter.js';
 import { createHandlerModelo } from '../../src/bot/handlers/modelo.js';
-import { obterOverrideModelo } from '../../src/bot/modeloAtivo.js';
+import { obterOverrideModelo } from '../../src/ai/roteamento/modeloAtivo.js';
 import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';
 import { definirRoteamento } from '../../src/db/repositories/roteamentoTarefas.js';

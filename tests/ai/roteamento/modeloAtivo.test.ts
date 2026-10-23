@@ -3,11 +3,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { MODELO_PADRAO } from '../../src/ai/openrouter.js';
-import { definirModeloAtivo, obterOverrideModelo, resolverModeloConversa } from '../../src/bot/modeloAtivo.js';
-import type { DbClient } from '../../src/db/client.js';
-import { migrate } from '../../src/db/migrate.js';
-import { definirRoteamento } from '../../src/db/repositories/roteamentoTarefas.js';
+import { MODELO_PADRAO } from '../../../src/ai/openrouter.js';
+import { definirModeloAtivo, obterOverrideModelo, resolverModeloConversa } from '../../../src/ai/roteamento/modeloAtivo.js';
+import type { DbClient } from '../../../src/db/client.js';
+import { migrate } from '../../../src/db/migrate.js';
+import { definirRoteamento } from '../../../src/db/repositories/roteamentoTarefas.js';
 
 const CHAVE_TESTE = 'chave-teste-modelo-ativo';
 
