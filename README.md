@@ -90,6 +90,10 @@ Duas camadas independentes, cada uma resolvendo um problema diferente:
 | Testes | [Vitest](https://vitest.dev/) |
 | Deploy | [Docker Compose](https://docs.docker.com/compose/), ambientes isolados (Homologação / Produção) |
 
+### Arquitetura do código
+
+O código é organizado por conceito, com as dependências entre pastas verificadas no CI (sem ciclos, sem `import` proibido). O mapa completo fica em [`docs/arquitetura/`](docs/arquitetura/README.md): comece pela [visão geral](docs/arquitetura/visao-geral.mmd) (diagrama Mermaid).
+
 ## Status do projeto
 
 | Fase | Entrega | Status |

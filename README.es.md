@@ -90,6 +90,10 @@ Dos capas independientes, cada una resolviendo un problema distinto:
 | Tests | [Vitest](https://vitest.dev/) |
 | Deploy | [Docker Compose](https://docs.docker.com/compose/), entornos aislados (Staging / Producción) |
 
+### Arquitectura del código
+
+El código está organizado por concepto, y las dependencias entre carpetas se verifican en el CI (sin ciclos, sin `import` prohibido). El mapa completo está en [`docs/arquitetura/`](docs/arquitetura/README.md) (en portugués): empieza por la [visión general](docs/arquitetura/visao-geral.mmd) (diagrama Mermaid).
+
 ## Estado del proyecto
 
 | Fase | Entrega | Estado |

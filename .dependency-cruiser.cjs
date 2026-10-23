@@ -39,6 +39,27 @@ module.exports = {
       to: { path: '^src/(bot|canais|scripts)' },
     },
     {
+      name: 'ai-confirmacao-e-roteamento-sao-base',
+      comment: 'Confirmação e roteamento de modelo são base da IA: não conhecem o laço (agente), as tools nem a avaliação.',
+      severity: 'error',
+      from: { path: '^src/ai/(confirmacao|roteamento)' },
+      to: { path: '^src/ai/(agente|tools|avaliacao)' },
+    },
+    {
+      name: 'ai-agente-nao-importa-avaliacao',
+      comment: 'O laço de tool calling não depende da avaliação (benchmark e qualidade dependem dele).',
+      severity: 'error',
+      from: { path: '^src/ai/agente' },
+      to: { path: '^src/ai/avaliacao' },
+    },
+    {
+      name: 'ai-tools-de-dominio-nao-importam-agente-nem-avaliacao',
+      comment: 'Tools de domínio ficam abaixo do laço e da avaliação; só o registro (conversaTools) junta tudo.',
+      severity: 'error',
+      from: { path: '^src/ai/tools/(transacoes|dividas|contas|consulta|relatorios|email|comum)/' },
+      to: { path: '^src/ai/(agente|avaliacao)' },
+    },
+    {
       name: 'integracoes-nao-importa-bot-ai-canais-scripts',
       severity: 'error',
       from: { path: '^src/integracoes' },

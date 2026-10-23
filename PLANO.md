@@ -503,7 +503,7 @@ Licença: **MIT**. Comparado com os projetos pesquisados do akitaonrails (ver "E
 
 Variação real de confiabilidade entre provedores nesse formato (não é falha do JSON schema em si, é maturidade de implementação por modelo): Gemini às vezes prefixa o nome da função com `default_api.` (contornado em `resolverTool`) e alguns modelos mandam `null` num parâmetro opcional em vez de omitir a chave (contornado em `removerChavesNulas`) — ambos documentados como achados de teste real mais acima nesta fase.
 
-**Exemplo concreto do JSON trocado** *(dúvida do usuário, 2026-09-09, usando a tool real `editar_conta` de `src/ai/tools/contas.ts`)*: usuário manda "muda o nome da conta Nubank pra Nubank PJ". O schema Zod da tool é convertido para JSON schema (`paraDefinicaoOpenAI`) e enviado dentro de `tools` no request; em vez de texto, o modelo responde com `tool_calls`:
+**Exemplo concreto do JSON trocado** *(dúvida do usuário, 2026-09-09, usando a tool real `editar_conta` de `src/ai/tools/contas/contas.ts`)*: usuário manda "muda o nome da conta Nubank pra Nubank PJ". O schema Zod da tool é convertido para JSON schema (`paraDefinicaoOpenAI`) e enviado dentro de `tools` no request; em vez de texto, o modelo responde com `tool_calls`:
 
 ```json
 {

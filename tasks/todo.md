@@ -213,13 +213,13 @@ Convenção de verificação comum a toda tarefa de código: `npm run build`, `n
 **Description:** atualizar a estrutura descrita no `CLAUDE.md` do projeto (convenções de código), as referências de caminho no PLANO e PROGRESSO que apontam para arquivos movidos, e registrar a matriz de Fronteiras das pastas novas (`ai/confirmacao`, `ai/roteamento`, `ai/agente`, `ai/avaliacao`; `ai/prompts`, `ai/guardrails` e `ai/observabilidade` quando nascerem).
 
 **Acceptance criteria:**
-- [ ] `CLAUDE.md` descreve a estrutura nova e o comando `npm run arquitetura`
-- [ ] Nenhuma referência a caminho movido restante em PLANO e PROGRESSO (busca por `openrouter.ts`, `bot/confirmacao.ts`, `bot/modeloAtivo.ts`, `bot/contextoRecente.ts`)
-- [ ] Matriz de Fronteiras das pastas novas registrada na configuração do gate
+- [x] `CLAUDE.md` descreve a estrutura nova e o comando `npm run arquitetura`
+- [x] Nenhuma referência a caminho movido restante em PLANO e PROGRESSO (busca por `openrouter.ts`, `bot/confirmacao.ts`, `bot/modeloAtivo.ts`, `bot/contextoRecente.ts`)
+- [x] Matriz de Fronteiras das pastas novas registrada na configuração do gate
 
 **Verification:**
-- [ ] `grep` pelos caminhos antigos sem resultado fora de histórico
-- [ ] `npm run arquitetura` com as regras novas
+- [x] `grep` pelos caminhos antigos sem resultado fora de histórico
+- [x] `npm run arquitetura` com as regras novas
 
 **Dependencies:** Tarefa 155
 
