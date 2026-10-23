@@ -1,27 +1,8 @@
 import { InlineKeyboard } from 'grammy';
-import type { PendenciaConfirmacao } from '../ai/openrouter.js';
 
-// chatId: number (Telegram) | string (WhatsApp — Fase 9 Rodada 2), valor
-// opaco nos dois casos.
-const pendencias = new Map<number | string, PendenciaConfirmacao>();
-
-export function definirPendencia(chatId: number | string, pendencia: PendenciaConfirmacao): void {
-  pendencias.set(chatId, pendencia);
-}
-
-export function obterPendencia(chatId: number | string): PendenciaConfirmacao | undefined {
-  return pendencias.get(chatId);
-}
-
-export function removerPendencia(chatId: number | string): void {
-  pendencias.delete(chatId);
-}
-
-const RESPOSTAS_AFIRMATIVAS = new Set(['sim', 's', 'confirmo', 'confirma', 'ok']);
-
-export function ehConfirmacaoAfirmativa(texto: string): boolean {
-  return RESPOSTAS_AFIRMATIVAS.has(texto.trim().toLowerCase());
-}
+// Apresentação da confirmação por canal (teclado inline do Telegram, Poll do
+// WhatsApp). A política (pendências, resposta afirmativa, pergunta) vive em
+// src/ai/confirmacao/ — aqui só o que depende do canal.
 
 // Segunda forma de responder a uma confirmação, além de digitar "sim" (achado
 // real: usuário achou o fluxo de texto confuso/sujeito a erro de digitação).

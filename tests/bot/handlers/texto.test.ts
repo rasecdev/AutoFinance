@@ -6,7 +6,7 @@ import type OpenAI from 'openai';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import type { ToolDefinition } from '../../../src/ai/tools/types.js';
-import { definirPendencia } from '../../../src/bot/confirmacao.js';
+import { definirPendencia } from '../../../src/ai/confirmacao/pendencias.js';
 import { processarMensagemTexto } from '../../../src/bot/handlers/texto.js';
 import type { CanalContext } from '../../../src/canais/contextoCanal.js';
 import type { DbClient } from '../../../src/db/client.js';

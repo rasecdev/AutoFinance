@@ -22,7 +22,8 @@ import { registrarUsoTokens } from '../../db/repositories/usoTokens.js';
 import { t } from '../../i18n/t.js';
 import type { Logger } from '../../logging/logger.js';
 import { criarContextoTelegram } from '../../canais/contextoCanal.js';
-import { definirPendencia, montarTecladoConfirmacao } from '../confirmacao.js';
+import { definirPendencia } from '../../ai/confirmacao/pendencias.js';
+import { montarTecladoConfirmacao } from '../tecladoConfirmacao.js';
 import { definirRastroResposta } from '../rastroRespostas.js';
 import { processarMensagemTexto } from './texto.js';
 

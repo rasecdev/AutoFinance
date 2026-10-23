@@ -6,7 +6,7 @@ import type { Context } from 'grammy';
 import type OpenAI from 'openai';
 import writeXlsxFile from 'write-excel-file/node';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { obterPendencia, removerPendencia } from '../../../src/bot/confirmacao.js';
+import { obterPendencia, removerPendencia } from '../../../src/ai/confirmacao/pendencias.js';
 import { obterTraceIdPorMensagem } from '../../../src/bot/rastroRespostas.js';
 import type { DbClient } from '../../../src/db/client.js';
 import { migrate } from '../../../src/db/migrate.js';

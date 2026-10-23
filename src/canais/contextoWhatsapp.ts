@@ -1,4 +1,4 @@
-import { OPCOES_POLL_CONFIRMACAO, PERGUNTA_POLL_CONFIRMACAO } from '../bot/confirmacao.js';
+import { OPCOES_POLL_CONFIRMACAO, PERGUNTA_POLL_CONFIRMACAO } from '../bot/tecladoConfirmacao.js';
 import type { CanalContext, RespostaEnviada } from './contextoCanal.js';
 import {
   enviarDocumentoWhatsapp,

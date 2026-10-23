@@ -1,5 +1,5 @@
 import { Bot, InputFile } from 'grammy';
-import { montarTecladoConfirmacao, OPCOES_POLL_CONFIRMACAO, PERGUNTA_POLL_CONFIRMACAO } from '../bot/confirmacao.js';
+import { montarTecladoConfirmacao, OPCOES_POLL_CONFIRMACAO, PERGUNTA_POLL_CONFIRMACAO } from '../bot/tecladoConfirmacao.js';
 import type { Env } from '../config/env.js';
 import type { DbClient } from '../db/client.js';
 import { definirPendenciaPersistida, type PendenciaPersistida } from '../db/repositories/confirmacoesPendentes.js';

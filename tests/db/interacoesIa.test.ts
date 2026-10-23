@@ -5,7 +5,7 @@ import Database from 'better-sqlite3-multiple-ciphers';
 import type OpenAI from 'openai';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MODELO_PADRAO } from '../../src/ai/openrouter.js';
-import { definirPendencia, obterPendencia } from '../../src/bot/confirmacao.js';
+import { definirPendencia, obterPendencia } from '../../src/ai/confirmacao/pendencias.js';
 import { createHandlerTexto } from '../../src/bot/handlers/texto.js';
 import type { DbClient } from '../../src/db/client.js';
 import { migrate } from '../../src/db/migrate.js';

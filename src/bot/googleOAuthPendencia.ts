@@ -1,7 +1,7 @@
 import type { Auth } from 'googleapis';
 
 // Estado em memória do vínculo OAuth Google em andamento por chat — mesma
-// forma do mecanismo de confirmação já existente (src/bot/confirmacao.ts),
+// forma do mecanismo de confirmação já existente (src/ai/confirmacao/pendencias.ts),
 // mas guarda o OAuth2Client aguardando o código colado de volta no chat, não
 // uma tool pendente. Some se o bot reiniciar (comportamento aceitável: o
 // usuário roda /registrar_email de novo).

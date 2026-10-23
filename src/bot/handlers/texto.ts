@@ -17,7 +17,12 @@ import { t } from '../../i18n/t.js';
 import { registrarInteracaoIa } from '../../db/repositories/interacoesIa.js';
 import { registrarUsoTokens } from '../../db/repositories/usoTokens.js';
 import type { Logger } from '../../logging/logger.js';
-import { definirPendencia, ehConfirmacaoAfirmativa, obterPendencia, removerPendencia } from '../confirmacao.js';
+import {
+  definirPendencia,
+  ehConfirmacaoAfirmativa,
+  obterPendencia,
+  removerPendencia,
+} from '../../ai/confirmacao/pendencias.js';
 import { resolverModeloConversa } from '../modeloAtivo.js';
 import { definirRastroResposta } from '../rastroRespostas.js';
 

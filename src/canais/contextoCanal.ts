@@ -1,5 +1,5 @@
 import { InputFile, type Context } from 'grammy';
-import { montarTecladoConfirmacao } from '../bot/confirmacao.js';
+import { montarTecladoConfirmacao } from '../bot/tecladoConfirmacao.js';
 
 // Interface mínima de saída reaproveitada pelo núcleo de conversa
 // (processarMensagemTexto e o que ele chama, texto.ts) — só os métodos que

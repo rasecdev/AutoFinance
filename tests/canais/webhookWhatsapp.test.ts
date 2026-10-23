@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Env } from '../../src/config/env.js';
 import type { ToolDefinition } from '../../src/ai/tools/types.js';
 import type { DependenciasWebhookWhatsapp } from '../../src/canais/webhookWhatsapp.js';
-import { definirPendencia, obterPendencia, removerPendencia } from '../../src/bot/confirmacao.js';
+import { definirPendencia, obterPendencia, removerPendencia } from '../../src/ai/confirmacao/pendencias.js';
 import {
   definirPendenciaOAuthGoogle,
   removerPendenciaOAuthGoogle,
